@@ -1,8 +1,10 @@
 # Recto
 
+Community listing name: **Recto Zotero Translation** (plugin id remains `recto`).
+
 Convert Zotero PDF papers into Markdown, generate AI summaries and Chinese translations, and build a searchable local paper library with bilingual reading — inside Obsidian.
 
-把 Zotero 里的 PDF 论文转成 Markdown，生成 AI 摘要与中文译文，并在 Obsidian 里建立可检索的本地论文库与双语对照阅读。
+把 Zotero 里的 PDF 论文转成 Markdown，生成 AI 摘要与中文译文，并在 Obsidian 里建立可检索的本地论文库与双语对照阅读。社区目录显示名为 **Recto Zotero Translation**（插件 id 仍为 `recto`）。
 
 ## Features / 功能
 
