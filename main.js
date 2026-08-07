@@ -4221,8 +4221,16 @@ function buildZoteroPdfSelectionPlan(candidates) {
 // ── T82-D-S Zotero 自动同步判定核 ──────────────────────────────────
 // 触发：启动延迟约 10 秒 + 每次打开 Hub；共用冷却窗口；先比 sqlite mtime。
 // 自动路径绝不弹窗、绝不删文件；歧义与 orphaned 只记待确认。
+// T83-A：静默自动导入另需「点过一键导入」门闩；路径探测不受影响。
 const ZOTERO_AUTO_CHECK_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 const ZOTERO_AUTO_CHECK_STARTUP_DELAY_MS = 10 * 1000;
+
+function resolveZoteroLibraryImportOptIn(input = {}) {
+	if (input.optedIn === true) return true;
+	const map = input.folderMap;
+	if (map && typeof map === "object" && Object.keys(map).length > 0) return true;
+	return false;
+}
 
 function shouldRunZoteroAutoCheck(input = {}) {
 	if (input.force) return { run: true, reason: "force" };
@@ -5418,6 +5426,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.folderMap = {};
 		this.readingStates = {};
 		this.zoteroImportProjectionPending = false;
+		this.zoteroLibraryImportOptedIn = false;
 		this.zoteroLastAutoCheckAt = 0;
 		this.zoteroLastSqliteMtimeMs = null;
 		this.zoteroAutoCheckStatus = "never";
@@ -5561,6 +5570,13 @@ class RectoPlugin extends obsidian.Plugin {
 			this.folderMap = d.folderMap || {}; // zoteroFolder → { stem, originalName }
 			this.readingStates = d.readingStates || {}; // zoteroItemKey → reading | read
 			this.zoteroImportProjectionPending = d.zoteroImportProjectionPending === true;
+			const resolvedOptIn = resolveZoteroLibraryImportOptIn({
+				optedIn: d.zoteroLibraryImportOptedIn === true,
+				folderMap: this.folderMap,
+			});
+			this.zoteroLibraryImportOptedIn = resolvedOptIn;
+			// 老用户已有论文对象但尚无显式标记：迁移为已开通，避免丢自动同步。
+			if (resolvedOptIn && d.zoteroLibraryImportOptedIn !== true) migrated = true;
 			this.zoteroLastAutoCheckAt = Number(d.zoteroLastAutoCheckAt) || 0;
 			const savedMtime = d.zoteroLastSqliteMtimeMs;
 			this.zoteroLastSqliteMtimeMs = savedMtime === null || savedMtime === undefined || savedMtime === ""
@@ -5584,6 +5600,7 @@ class RectoPlugin extends obsidian.Plugin {
 			folderMap: this.folderMap,
 			readingStates: this.readingStates,
 			zoteroImportProjectionPending: this.zoteroImportProjectionPending === true,
+			zoteroLibraryImportOptedIn: this.zoteroLibraryImportOptedIn === true,
 			zoteroLastAutoCheckAt: Number(this.zoteroLastAutoCheckAt) || 0,
 			zoteroLastSqliteMtimeMs: this.zoteroLastSqliteMtimeMs == null
 				? null
@@ -7474,16 +7491,19 @@ class RectoPlugin extends obsidian.Plugin {
 			}
 			if (!tasks.length) {
 				new obsidian.Notice("没有找到可读的本地 Zotero PDF，未导入任何内容", 7000);
+				await this.markZoteroLibraryImportOptedIn();
 				return { imported: 0, existing: 0, total: 0, copyFailures: [] };
 			}
 			handedOff = true;
-			return await this.commitZoteroImportTasks(tasks, {
+			const result = await this.commitZoteroImportTasks(tasks, {
 				operation,
 				progress,
 				hostEl: options.hostEl || null,
 				skipConfirm: false,
 				manageOperation: true,
 			});
+			if (result != null) await this.markZoteroLibraryImportOptedIn();
+			return result;
 		} catch (error) {
 			if (handedOff) throw error;
 			if (isCancellationError(error, operation.controller.signal)) {
@@ -7794,8 +7814,15 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	// T82-D-S：启动延迟 / 打开 Hub / 设置页「立即检查」共用。自动路径静默降级，不弹错。
+	// T83-A：未点过「一键导入」不开静默导入；路径探测与冷却判定仍可走，但这里直接跳过整轮。
 	async maybeRunZoteroAutoCheck(options = {}) {
 		const force = !!options.force;
+		if (!resolveZoteroLibraryImportOptIn({
+			optedIn: this.zoteroLibraryImportOptedIn === true,
+			folderMap: this.folderMap,
+		})) {
+			return { skipped: true, reason: "not-opted-in" };
+		}
 		const decision = shouldRunZoteroAutoCheck({
 			lastCheckAt: this.zoteroLastAutoCheckAt,
 			now: Date.now(),
@@ -8009,6 +8036,26 @@ class RectoPlugin extends obsidian.Plugin {
 			? tabs.find(item => item && item.plugin === this)
 			: null;
 		if (tab && typeof tab.refreshAllSetupStatus === "function") tab.refreshAllSetupStatus();
+	}
+
+	refreshSettingsTabIfOpen() {
+		const tabs = this.app && this.app.setting && this.app.setting.pluginTabs;
+		const tab = Array.isArray(tabs)
+			? tabs.find(item => item && item.plugin === this)
+			: null;
+		if (tab && typeof tab.display === "function") {
+			tab.display();
+			return;
+		}
+		this.refreshSettingsStatusIfOpen();
+	}
+
+	async markZoteroLibraryImportOptedIn() {
+		if (this.zoteroLibraryImportOptedIn) return false;
+		this.zoteroLibraryImportOptedIn = true;
+		await this.save().catch(() => {});
+		this.refreshSettingsTabIfOpen();
+		return true;
 	}
 
 	async handleReadingStatusClick(event) {
@@ -12252,20 +12299,26 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		// 再把人送到那里去——两处各有一套选择弹窗，是 T82-D 之前最大的重复。
 		const pending = (Number(this.plugin.zoteroPendingAmbiguous) || 0)
 			+ (Number(this.plugin.zoteroPendingOrphaned) || 0);
+		const optedIn = resolveZoteroLibraryImportOptIn({
+			optedIn: this.plugin.zoteroLibraryImportOptedIn === true,
+			folderMap: this.plugin.folderMap,
+		});
 		new obsidian.Setting(container).setName(stepName("导入 Zotero 论文库"))
-			.setDesc("导入后会自动检查 Zotero 变化：新的单 PDF 条目静默入库；多 PDF 与已删除条目只记待确认，不自动删文件。也可点「立即检查」。")
+			.setDesc(optedIn
+				? "已开启自动同步：新的单 PDF 条目会静默入库；多 PDF 与已删除条目只记待确认，不自动删文件。点「立即检查」可立刻强制同步。"
+				: "首次点「一键导入」并完成后才会开启自动同步。导入只在本地建文件夹与复制 PDF，不转换、不扣额度。")
 			.addButton(b => {
+				if (optedIn) {
+					b.setButtonText("立即检查");
+					if (b.setDisabled) b.setDisabled(!this.plugin.hasNodeSqlite);
+					return b.onClick(async () => {
+						await this.plugin.maybeRunZoteroAutoCheck({ force: true });
+						this.refreshAllSetupStatus();
+					});
+				}
 				b.setButtonText(this.plugin.hasNodeSqlite ? "一键导入" : "当前运行时不支持");
 				if (b.setDisabled) b.setDisabled(!this.plugin.hasNodeSqlite);
 				return b.onClick(() => this.plugin.importZoteroLibrary({ hostEl: this.containerEl }));
-			})
-			.addButton(b => {
-				b.setButtonText("立即检查");
-				if (b.setDisabled) b.setDisabled(!this.plugin.hasNodeSqlite);
-				return b.onClick(async () => {
-					await this.plugin.maybeRunZoteroAutoCheck({ force: true });
-					this.refreshAllSetupStatus();
-				});
 			});
 		if (pending > 0) {
 			new obsidian.Setting(container).setName("待确认的 Zotero 变化")
@@ -12630,6 +12683,7 @@ if (process.env.NODE_ENV === "test") {
 		isZoteroAutoCheckTransientError,
 		classifyZoteroAutoImportCandidates,
 		countPendingAmbiguousGroups,
+		resolveZoteroLibraryImportOptIn,
 		formatZoteroSyncRelativeTime,
 		confirmInHostWindow,
 		resolveHostWindow,
