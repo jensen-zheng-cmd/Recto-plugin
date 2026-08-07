@@ -1944,8 +1944,15 @@ function applyObsidianTranslationFormulaFallbacks(sidecar, alignment, markdown, 
 		if (!body || !resource) throw new Error("译文公式截图降级缺少公式正文或截图资源");
 		const formulaMarkdown = `$$\n${String(body.text || "").trim()}\n$$${derivation.anchor ? `\n^${derivation.anchor}` : ""}`;
 		const fallbackMarkdown = `![recto-formula-snapshot](${resource.path})`;
-		if (!outputMarkdown.includes(formulaMarkdown)) throw new Error("译文公式截图降级无法定位原公式块");
-		outputMarkdown = outputMarkdown.replace(formulaMarkdown, fallbackMarkdown);
+		// 生产只翻译路径：本地 sidecar 转换时已降级，后端按 formula-snapshot 生成的译文
+		// 已经是截图，没有 $$ 可替换。视为已对齐，只清锚点；两者都没有才是真故障。
+		if (!outputMarkdown.includes(formulaMarkdown)) {
+			if (!outputMarkdown.includes(fallbackMarkdown)) {
+				throw new Error("译文公式截图降级无法定位原公式块");
+			}
+		} else {
+			outputMarkdown = outputMarkdown.replace(formulaMarkdown, fallbackMarkdown);
+		}
 		derivation.anchor = null;
 		const sidecarDerivation = (outputSidecar.derivations || []).find(item => item && item.id === derivation.id);
 		if (!sidecarDerivation) throw new Error("译文公式截图降级缺少 Sidecar 派生记录");
