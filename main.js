@@ -202,6 +202,7 @@ const DEFAULT_PAPER_LIBRARY_AGENTS = [
 	"   - `zotero` 是 Zotero 来源分栏：`item_type` 是条目类型，`venue` 是统一出处，`creators` 是完整有序作者，`tags` 是 Zotero 标签，`fields` 按 Zotero 原字段名保留该条目实际存在的书目字段（如 `DOI`、`abstractNote`、`language`、`proceedingsTitle`）。",
 	"   - `keywords` 来自 AI 摘要，`zotero.tags` 来自 Zotero，两者来源不同，不要合并或互相替代。",
 	"3. 仅在 `summary_path` 非空时读取摘要，再完成第二轮筛选和初步回答；未转换论文不能仅凭书目信息推断正文内容。",
+	"   - `conversion_status` 为 `converted` 但 `summary_path` 为 `null` 是正常状态（用户关掉了「转换后生成摘要」）：这类论文没有 L2 层，直接用 `ch_path` 或 `source_path` 全文做第二轮筛选，不要因为缺摘要就当成未转换。",
 	"4. 询问公式、模型、算法步骤、实验设置、数值结果、限制或精确结论时，必须升级到 `ch_path` 或 `source_path` 全文。",
 	"5. 仅在图表、公式排版、页码、脚注或 Markdown 转换结果不可靠时读取 `pdf_path`。",
 	"",
@@ -271,6 +272,11 @@ const DEFAULT_SETTINGS = {
 	sourceFolder: "",
 	baseFolder: "论文库",
 	pollIntervalMs: 5000,
+	// T83-I：摘要与转换是两件事，勾掉就只出正文。默认开着，老用户行为不变。
+	generateSummaryOnConvert: true,
+	// T83-N：PDF 增强后处理总开关。开 = standard profile（已过评测台双门的确定性规则），
+	// 关 = basic profile（只剩安全底座）。开关只在 Hub 转换区，设置页不重复放一份。
+	enhancedPostprocess: true,
 	summaryDepth: "standard",
 	translationChineseThreshold: 0.35,
 	autoCreateNoteOutline: false,
@@ -534,6 +540,102 @@ function createRectoAnchorExtension() {
 		return repairs.length ? [transaction, { changes: repairs, sequential: true }] : transaction;
 	});
 	return [repairFilter, anchorViewPlugin];
+}
+
+// 未识别符号（T83-L）。MinerU 解不出字形时留下 U+FFFD；同一篇里它分别代表过 ξ、x、y、μ、ε，
+// 而 PDF 文本层在这些位置是空的——没有任何本地证据能定出是哪个字，所以后端**原样保留**这个字符、
+// 只报数量（`metadata.unrecognizedSymbolCount`），翻译 prompt 也明令模型不得据上下文补字。
+// 保留原字符是有代价考量的：文本一个字节都没变，Sidecar 契约、`^rc-` 锚点与双栏对齐全不受影响；
+// 要看得见这件事，只能由显示层来做。下面两处（阅读视图后处理 + 实时预览装饰）就是那个显示层。
+const RECTO_UNKNOWN_GLYPH_CHAR = "\uFFFD";
+const RECTO_UNKNOWN_GLYPH_CLASS = "recto-unknown-glyph";
+const RECTO_UNKNOWN_GLYPH_LABEL = "未识别符号：原文此处的字符没有识别出来，已按原文保留，未做任何推测";
+// 公式与代码块跳过：MathJax 输出的内部结构不该被塞进新元素，代码块里的原字符也该照原样看。
+const RECTO_UNKNOWN_GLYPH_SKIP_SELECTOR = `.${RECTO_UNKNOWN_GLYPH_CLASS}, code, pre, .math, mjx-container`;
+
+// \u7EAF\u6838\uFF1A\u8FD9\u6BB5\u6587\u672C\u91CC U+FFFD \u51FA\u73B0\u5728\u54EA\u4E9B\u4E0B\u6807\u3002\u5B9E\u65F6\u9884\u89C8\u7684\u88C5\u9970\u533A\u95F4\u4E0E\u8BA1\u6570\u90FD\u4ECE\u8FD9\u91CC\u51FA\u3002
+function findRectoUnknownGlyphOffsets(text) {
+	const value = String(text || "");
+	const offsets = [];
+	for (let index = value.indexOf(RECTO_UNKNOWN_GLYPH_CHAR); index >= 0; index = value.indexOf(RECTO_UNKNOWN_GLYPH_CHAR, index + 1)) {
+		offsets.push(index);
+	}
+	return offsets;
+}
+
+function countRectoUnknownGlyphs(text) {
+	return findRectoUnknownGlyphOffsets(text).length;
+}
+
+// 「本篇有 N 个未识别符号」。null / 非整数 = 这篇是本任务之前转的，没有这个数，一个字都不显示——
+// 把「没测过」显示成 0 就是在替后端下没有依据的结论。
+function describeRectoUnknownSymbols(count) {
+	const value = Number(count);
+	if (!Number.isInteger(value) || value <= 0) return "";
+	return `未识别符号 ${value} 处`;
+}
+
+// 阅读视图后处理：只改 DOM，不动文件。标记里保留原字符，复制粘贴出去的仍是原文。
+function markRectoUnknownGlyphsInElement(el) {
+	if (!el || typeof el.textContent !== "string" || !el.textContent.includes(RECTO_UNKNOWN_GLYPH_CHAR)) return 0;
+	const doc = el.ownerDocument;
+	if (!doc || typeof doc.createTreeWalker !== "function") return 0;
+	const walker = doc.createTreeWalker(el, 4 /* NodeFilter.SHOW_TEXT */);
+	const targets = [];
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		if (!node.nodeValue || !node.nodeValue.includes(RECTO_UNKNOWN_GLYPH_CHAR)) continue;
+		const parent = node.parentElement;
+		if (parent && typeof parent.closest === "function" && parent.closest(RECTO_UNKNOWN_GLYPH_SKIP_SELECTOR)) continue;
+		targets.push(node);
+	}
+	let marked = 0;
+	for (const node of targets) {
+		if (!node.parentNode) continue;
+		const fragment = doc.createDocumentFragment();
+		const parts = node.nodeValue.split(RECTO_UNKNOWN_GLYPH_CHAR);
+		parts.forEach((part, index) => {
+			if (index > 0) {
+				const span = doc.createElement("span");
+				span.className = RECTO_UNKNOWN_GLYPH_CLASS;
+				span.textContent = RECTO_UNKNOWN_GLYPH_CHAR;
+				span.setAttribute("role", "img");
+				span.setAttribute("title", RECTO_UNKNOWN_GLYPH_LABEL);
+				span.setAttribute("aria-label", RECTO_UNKNOWN_GLYPH_LABEL);
+				fragment.appendChild(span);
+				marked++;
+			}
+			if (part) fragment.appendChild(doc.createTextNode(part));
+		});
+		node.parentNode.replaceChild(fragment, node);
+	}
+	return marked;
+}
+
+// 实时预览/源码视图：只加 mark 装饰、不替换文本，光标、选区与 coordsAtPos 都不受影响
+// （对照阅读的位置量测就吃 coordsAtPos，替换装饰会把双栏对齐带偏）。只扫可视区。
+function createRectoUnknownGlyphExtension() {
+	const { Decoration, ViewPlugin } = require("@codemirror/view");
+	const glyphMark = Decoration.mark({
+		class: RECTO_UNKNOWN_GLYPH_CLASS,
+		attributes: { title: RECTO_UNKNOWN_GLYPH_LABEL, "aria-label": RECTO_UNKNOWN_GLYPH_LABEL },
+	});
+	return ViewPlugin.fromClass(class {
+		constructor(view) {
+			this.decorations = this.build(view);
+		}
+		build(view) {
+			const ranges = [];
+			for (const range of view.visibleRanges) {
+				for (const offset of findRectoUnknownGlyphOffsets(view.state.doc.sliceString(range.from, range.to))) {
+					ranges.push(glyphMark.range(range.from + offset, range.from + offset + 1));
+				}
+			}
+			return Decoration.set(ranges, true);
+		}
+		update(update) {
+			if (update.docChanged || update.viewportChanged) this.decorations = this.build(update.view);
+		}
+	}, { decorations: value => value.decorations });
 }
 
 // Recto 标识（T69 方案 B「对页」）：左页实、右页虚＝原文与译文并置。
@@ -814,13 +916,19 @@ const ZOTERO_TASK_FIELDS = [
 	"zoteroMetadata",
 ];
 
+// T83-N：后端 profile id 的两个合法值。插件只提交这两个字符串之一，规则白名单与版本全在后端。
+const RECTO_POSTPROCESS_PROFILE_STANDARD = "standard";
+const RECTO_POSTPROCESS_PROFILE_BASIC = "basic";
+
 // requestTranslation 必须跟着任务持久化：Hub 的「翻译」按钮是按批次要译文的，
 // 重启恢复时若退回全局设置，写回校验就会和当初提交的意图不一致。
 // translateOnly 与 stem 同理（T81-S）：恢复时必须知道这是一个只写译文的任务、写进哪一篇，
 // 否则会拿它去跑转换写回，卡在「缺少源 Markdown」上反复重试。
+// postprocessProfile 同理（T83-N）：它是**提交那一刻**的选择，重启后若退回当前设置，
+// 用户中途改了总开关就会让恢复的那一篇与后端固化的 profile 对不上。
 const PENDING_BACKEND_TASK_FIELDS = [
 	"name", "recordId", "folder", "path", "fileSize", "sourceFileName", "documentId", "requestTranslation",
-	"translateOnly", "stem",
+	"translateOnly", "stem", "postprocessProfile",
 	...ZOTERO_TASK_FIELDS,
 ];
 
@@ -1750,6 +1858,20 @@ function renderRectoTranslationMarkdown(sidecar, alignment, blockById) {
 	].join("\n");
 }
 
+function getRectoTranslationQuality(derivations) {
+	const fallbackSourceBlockIds = Array.from(new Set((derivations || [])
+		.filter(item => item && ["partial", "source-fallback"].includes(item.status))
+		.flatMap(item => item.derived_from || [])));
+	return {
+		translatedDerivationCount: (derivations || []).filter(item => item.status === "translated").length,
+		preservedDerivationCount: (derivations || []).filter(item => item.status === "preserved").length,
+		partialDerivationCount: (derivations || []).filter(item => item.status === "partial").length,
+		sourceFallbackDerivationCount: (derivations || []).filter(item => item.status === "source-fallback").length,
+		fallbackBlockCount: fallbackSourceBlockIds.length,
+		fallbackSourceBlockIds,
+	};
+}
+
 function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
 	const fail = message => {
 		const error = new Error(`译文块级对齐无效：${message}`);
@@ -1778,7 +1900,7 @@ function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
 		if (!item || item.kind !== "translation" || ids.has(item.id) || targets.has(item.targetBlockId) || item.outputOrder !== index
 			|| !Array.isArray(item.derived_from) || !item.derived_from.length || !Array.isArray(item.segments)) fail("派生身份、顺序或结构错误");
 		if (item.language !== alignment.language || item.model !== alignment.model || item.templateVersion !== alignment.templateVersion
-			|| !["translated", "preserved", "source-fallback"].includes(item.status)) fail("派生元数据错误");
+			|| !["translated", "partial", "preserved", "source-fallback"].includes(item.status)) fail("派生元数据错误");
 		const expectedId = `${alignment.sourceRevisionId}:derivation:translation:${String(index).padStart(RECTO_ANCHOR_WIDTH, "0")}`;
 		const expectedTarget = `${alignment.sourceRevisionId}:translation:${alignment.language.toLowerCase()}:${String(index).padStart(RECTO_ANCHOR_WIDTH, "0")}`;
 		if (item.id !== expectedId || item.targetBlockId !== expectedTarget) fail("派生目标身份错误");
@@ -1792,16 +1914,19 @@ function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
 			sourceCoverage.set(sourceId, sourceCoverage.get(sourceId) + 1);
 		}
 		const seen = new Set();
+		let changedTranslatable = false;
 		for (const segment of item.segments) {
 			const identity = `${segment && segment.sourceBlockId}\u0000${segment && segment.key}`;
 			const source = sourceSegments.get(identity);
 			if (!source || !item.derived_from.includes(segment.sourceBlockId) || seen.has(identity) || typeof segment.text !== "string"
 				|| segment.translate !== source.translate || segment.kind !== source.kind) fail("译文片段身份错误");
 			if ((!source.translate || item.status === "preserved" || item.status === "source-fallback") && segment.text !== source.text) fail("保留内容被改写");
-			if (item.status === "translated" && source.translate && String(source.text || "").trim() && !String(segment.text || "").trim()) fail("译文片段为空");
+			if (["translated", "partial"].includes(item.status) && source.translate && String(source.text || "").trim() && !String(segment.text || "").trim()) fail("译文片段为空");
+			if (source.translate && segment.text !== source.text) changedTranslatable = true;
 			seen.add(identity);
 			segmentCoverage.set(identity, segmentCoverage.get(identity) + 1);
 		}
+		if (item.status === "partial" && !changedTranslatable) fail("局部回退块没有保留任何有效译文");
 		const preservedSources = item.derived_from.filter(sourceId =>
 			getRectoTranslationBlockStrategy(blockById.get(sourceId), metadataPreserveIds) === "preserve"
 		);
@@ -1851,7 +1976,14 @@ function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
 		.replace(/\r\n?/g, "\n")
 		.trimEnd();
 	if (normalizedMarkdown !== expectedMarkdown) fail("译文 Markdown 与派生内容不一致");
-	const expectedStatus = alignment.derivations.some(item => item.status === "source-fallback") ? "degraded" : "complete";
+	const expectedStatus = alignment.derivations.some(item => ["partial", "source-fallback"].includes(item.status)) ? "degraded" : "complete";
+	const expectedQuality = getRectoTranslationQuality(alignment.derivations);
+	const alignmentHasQuality = alignment.quality != null;
+	const sidecarHasQuality = sidecar.translationAlignment && sidecar.translationAlignment.quality != null;
+	if (alignmentHasQuality !== sidecarHasQuality
+		|| (alignmentHasQuality && (JSON.stringify(alignment.quality) !== JSON.stringify(expectedQuality)
+			|| JSON.stringify(sidecar.translationAlignment.quality) !== JSON.stringify(expectedQuality)))
+		|| (!alignmentHasQuality && alignment.derivations.some(item => item.status === "partial"))) fail("翻译质量摘要不一致");
 	if (alignment.status !== expectedStatus || !sidecar.translationAlignment || sidecar.translationAlignment.ruleset !== RECTO_TRANSLATION_ALIGNMENT_RULESET
 		|| sidecar.translationAlignment.language !== alignment.language || sidecar.translationAlignment.status !== alignment.status
 		|| sidecar.translationAlignment.model !== alignment.model || sidecar.translationAlignment.templateVersion !== alignment.templateVersion
@@ -1859,38 +1991,73 @@ function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
 	return { status: alignment.status, derivationCount: alignment.derivations.length, anchors: seenAnchors };
 }
 
-function applyObsidianFormulaFallbacks(sidecar, markdown, renderMath = obsidian.renderMath) {
+// 阅读模式在 tex2chtml 前对 .math 的 innerHTML 走 Vd（只反转义 &amp;|&lt;|&gt;|&quot;）。
+// 写回检测若跳过同一预处理，含实体的 LaTeX 会与阅读通道结论分叉。
+const RECTO_MATH_HTML_ENTITY_RE = /&(amp|lt|gt|quot);/g;
+const RECTO_MATH_HTML_ENTITIES = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"' };
+function unescapeRectoMathHtmlEntities(source) {
+	return String(source || "").replace(RECTO_MATH_HTML_ENTITY_RE, entity => RECTO_MATH_HTML_ENTITIES[entity] || entity);
+}
+
+function isObsidianMathRenderFailure(rendered) {
+	return !rendered || !!(rendered.querySelector && rendered.querySelector("mjx-merror, .math-error, .MathJax_Error"));
+}
+
+// 写回检测必须对齐阅读模式：先 loadMathJax，再 Vd 式预处理，renderMath 后 finishRenderMath。
+// 缺 loadMathJax 时 MathJax.tex2chtml 直接抛错，会把可读公式（含 \tag）整批误杀成截图。
+async function applyObsidianFormulaFallbacks(sidecar, markdown, renderMath = obsidian.renderMath, hooks = {}) {
 	if (!sidecar || !sidecar.contentObjectification || typeof renderMath !== "function") return { sidecar, markdown, failedBlockIds: [] };
+	const loadMathJax = hooks.loadMathJax !== undefined
+		? hooks.loadMathJax
+		: (typeof obsidian.loadMathJax === "function" ? () => obsidian.loadMathJax() : null);
+	const finishRenderMath = hooks.finishRenderMath !== undefined
+		? hooks.finishRenderMath
+		: (typeof obsidian.finishRenderMath === "function" ? () => obsidian.finishRenderMath() : null);
+	// MathJax 装不上就别整批误杀；阅读打开后同一 $$ 仍可渲。真坏公式留给阅读态暴露。
+	if (typeof loadMathJax === "function") {
+		try {
+			await loadMathJax();
+		} catch {
+			return { sidecar, markdown, failedBlockIds: [] };
+		}
+	}
 	const output = JSON.parse(JSON.stringify(sidecar));
 	let outputMarkdown = String(markdown || "");
 	const failedBlockIds = [];
-	for (const block of output.blocks || []) {
-		const object = block && block.type === "formula" && block.contentObject;
-		if (!object || !["latex-original", "latex-ai-repair"].includes(object.preferredRepresentation)) continue;
-		const repaired = object.representations.find(item => item.kind === "latex-ai-repair");
-		const latex = String((object.preferredRepresentation === "latex-ai-repair" && repaired && repaired.latex) || (block.content && (block.content.math || block.content.text)) || "").trim();
-		let failed = false;
-		try {
-			const rendered = renderMath(latex, true);
-			failed = !rendered || !!(rendered.querySelector && rendered.querySelector("mjx-merror, .math-error, .MathJax_Error"));
-		} catch {
-			failed = true;
+	try {
+		for (const block of output.blocks || []) {
+			const object = block && block.type === "formula" && block.contentObject;
+			if (!object || !["latex-original", "latex-ai-repair"].includes(object.preferredRepresentation)) continue;
+			const repaired = object.representations.find(item => item.kind === "latex-ai-repair");
+			const latex = String((object.preferredRepresentation === "latex-ai-repair" && repaired && repaired.latex) || (block.content && (block.content.math || block.content.text)) || "").trim();
+			const renderSource = unescapeRectoMathHtmlEntities(latex);
+			let failed = false;
+			try {
+				const rendered = renderMath(renderSource, true);
+				failed = isObsidianMathRenderFailure(rendered);
+			} catch {
+				failed = true;
+			}
+			object.formulaValidation = object.formulaValidation || {};
+			object.formulaValidation.render = { status: failed ? "failed" : "passed", engine: "Obsidian MathJax" };
+			if (!failed) continue;
+			failedBlockIds.push(block.id);
+			const snapshot = object.representations.find(item => item.kind === "formula-snapshot" && item.resourceId);
+			const resource = snapshot && (output.resources || []).find(item => item.id === snapshot.resourceId);
+			if (!resource) continue;
+			const anchorMarkdown = `^rc-${String(block.ordinal).padStart(RECTO_ANCHOR_WIDTH, "0")}`;
+			const formulaMarkdown = `$$\n${latex}\n$$\n${anchorMarkdown}`;
+			const fallbackMarkdown = `![recto-formula-snapshot](${resource.path})`;
+			if (!outputMarkdown.includes(formulaMarkdown)) continue;
+			outputMarkdown = outputMarkdown.replace(formulaMarkdown, fallbackMarkdown);
+			object.preferredRepresentation = "formula-snapshot";
+			block.normalized.projection = "omitted";
+			block.normalized.projectionReason = "formula-render-failed-snapshot-fallback";
 		}
-		object.formulaValidation = object.formulaValidation || {};
-		object.formulaValidation.render = { status: failed ? "failed" : "passed", engine: "Obsidian MathJax" };
-		if (!failed) continue;
-		failedBlockIds.push(block.id);
-		const snapshot = object.representations.find(item => item.kind === "formula-snapshot" && item.resourceId);
-		const resource = snapshot && (output.resources || []).find(item => item.id === snapshot.resourceId);
-		if (!resource) continue;
-		const anchorMarkdown = `^rc-${String(block.ordinal).padStart(RECTO_ANCHOR_WIDTH, "0")}`;
-		const formulaMarkdown = `$$\n${latex}\n$$\n${anchorMarkdown}`;
-		const fallbackMarkdown = `![recto-formula-snapshot](${resource.path})`;
-		if (!outputMarkdown.includes(formulaMarkdown)) continue;
-		outputMarkdown = outputMarkdown.replace(formulaMarkdown, fallbackMarkdown);
-		object.preferredRepresentation = "formula-snapshot";
-		block.normalized.projection = "omitted";
-		block.normalized.projectionReason = "formula-render-failed-snapshot-fallback";
+	} finally {
+		if (typeof finishRenderMath === "function") {
+			try { await finishRenderMath(); } catch { /* 样式刷失败不影响降级结论 */ }
+		}
 	}
 	if (output.structureRepair && output.structureRepair.report) {
 		const report = output.structureRepair.report;
@@ -1961,9 +2128,9 @@ function applyObsidianTranslationFormulaFallbacks(sidecar, alignment, markdown, 
 	return { sidecar: outputSidecar, alignment: outputAlignment, markdown: outputMarkdown };
 }
 
-function normalizeBackendSidecarBundle(result, writableResources, markdown) {
+async function normalizeBackendSidecarBundle(result, writableResources, markdown) {
 	if (!result || !result.sidecar) return null;
-	const formulaPrepared = applyObsidianFormulaFallbacks(result.sidecar, markdown);
+	const formulaPrepared = await applyObsidianFormulaFallbacks(result.sidecar, markdown);
 	const preparedSidecar = formulaPrepared.sidecar;
 	const preparedMarkdown = formulaPrepared.markdown;
 	const validated = validateRectoSidecar(preparedSidecar);
@@ -2596,6 +2763,27 @@ function normalizeMultipartToken(value, fallback) {
 		.slice(0, 160);
 }
 
+// T83-J-B：截断必须保住扩展名。裸切会把正好压线的长名字切成 `….p`，
+// 后端按扩展名判 PDF 就会回 400「Only PDF uploads are accepted」。
+function truncateNameKeepingExtension(value, maxChars) {
+	const name = String(value || "");
+	if (name.length <= maxChars) return name;
+	const dot = name.lastIndexOf(".");
+	const ext = dot > 0 ? name.slice(dot) : "";
+	if (!ext || ext.length >= maxChars) return name.slice(0, maxChars);
+	return `${name.slice(0, maxChars - ext.length).trimEnd()}${ext}`;
+}
+
+// T83-J-B：文件名要同时给 ASCII 回退与 RFC 5987 的 `filename*`。
+// 只写裸 UTF-8 字节的话 busboy 会按 latin1 读——服务端拿到的既是乱码、字符数还比实际多，
+// 一个 120 字符含中文的名字会膨胀到 122，撞上后端 120 的截断上限、把 `.pdf` 切掉。
+function buildMultipartFilenameParams(filename) {
+	const clean = truncateNameKeepingExtension(String(filename || "paper.pdf").replace(/["\r\n]/g, "_"), 160) || "paper.pdf";
+	const ascii = clean.replace(/[^\x20-\x7E]/g, "_");
+	const encoded = encodeURIComponent(clean).replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+	return `filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
 function buildMultipartBody(fields, files, boundary) {
 	const chunks = [];
 	const pushText = (value) => chunks.push(Buffer.from(value, "utf8"));
@@ -2606,7 +2794,7 @@ function buildMultipartBody(fields, files, boundary) {
 	}
 	for (const file of files || []) {
 		pushText(`--${boundary}\r\n`);
-		pushText(`Content-Disposition: form-data; name="${normalizeMultipartToken(file.name, "file")}"; filename="${normalizeMultipartToken(file.filename, "paper.pdf")}"\r\n`);
+		pushText(`Content-Disposition: form-data; name="${normalizeMultipartToken(file.name, "file")}"; ${buildMultipartFilenameParams(file.filename)}\r\n`);
 		pushText(`Content-Type: ${String(file.contentType || "application/octet-stream")}\r\n\r\n`);
 		chunks.push(Buffer.isBuffer(file.data) ? file.data : Buffer.from(file.data || ""));
 		pushText("\r\n");
@@ -3255,6 +3443,44 @@ function pickHubTitle(...candidates) {
 	return "";
 }
 
+function extractHubTranslationQuality(sidecar) {
+	const summary = sidecar && sidecar.translationAlignment;
+	if (!summary || !["complete", "degraded"].includes(summary.status)) return null;
+	const summaryFallbackIds = summary.quality && Array.isArray(summary.quality.fallbackSourceBlockIds)
+		? uniqueStrings(summary.quality.fallbackSourceBlockIds)
+		: [];
+	const derivationFallbackIds = uniqueStrings((Array.isArray(sidecar.derivations) ? sidecar.derivations : [])
+		.filter(item => item && item.kind === "translation" && item.language === summary.language
+			&& ["partial", "source-fallback"].includes(item.status))
+		.flatMap(item => Array.isArray(item.derived_from) ? item.derived_from : []));
+	const fallbackBlockCount = summaryFallbackIds.length || derivationFallbackIds.length;
+	if (summary.status === "complete" && fallbackBlockCount === 0) return { status: "complete", fallbackBlockCount: 0 };
+	if (summary.status === "degraded" && fallbackBlockCount > 0) return { status: "degraded", fallbackBlockCount };
+	return null;
+}
+
+function normalizeHubTranslationQuality(raw, hasTranslation) {
+	if (!hasTranslation) return { status: "none", fallbackBlockCount: 0 };
+	const quality = raw && typeof raw === "object" ? raw : null;
+	const fallbackBlockCount = Number(quality && quality.fallbackBlockCount);
+	if (quality && quality.status === "complete" && fallbackBlockCount === 0) {
+		return { status: "complete", fallbackBlockCount: 0 };
+	}
+	if (quality && quality.status === "degraded" && Number.isInteger(fallbackBlockCount) && fallbackBlockCount > 0) {
+		return { status: "partial", fallbackBlockCount };
+	}
+	return { status: "unknown", fallbackBlockCount: 0 };
+}
+
+function describeHubTranslationStatus(entry) {
+	if (!entry || !entry.hasTranslation) return "";
+	if (entry.translationStatus === "partial") {
+		return `部分未翻译（${entry.translationFallbackBlockCount} 块）`;
+	}
+	if (entry.translationStatus === "complete") return "已翻译";
+	return "有译文（完整度未知）";
+}
+
 // 标题遵循「原文原型」契约：titleOriginal 恒为原文，展示用译文兜底原文，排序一律用原文。
 function normalizeHubEntry(raw) {
 	const entry = raw || {};
@@ -3263,6 +3489,8 @@ function normalizeHubEntry(raw) {
 	const displayTitle = pickHubTitle(entry.title) || titleOriginal;
 	const titleTranslated = displayTitle && displayTitle !== titleOriginal ? displayTitle : "";
 	const collections = uniqueStrings(entry.collections);
+	const hasTranslation = !!entry.translationPath;
+	const translationQuality = normalizeHubTranslationQuality(entry.translationQuality, hasTranslation);
 	return {
 		recordId: String(entry.recordId || entry.folder || stem),
 		stem,
@@ -3278,7 +3506,14 @@ function normalizeHubEntry(raw) {
 		readingKey: String(entry.readingKey || ""),
 		readingStatus: normalizeReadingStatus(entry.readingStatus),
 		conversionStatus: entry.conversionStatus === "converted" ? "converted" : "unconverted",
-		hasTranslation: !!entry.translationPath,
+		hasTranslation,
+		translationStatus: translationQuality.status,
+		translationFallbackBlockCount: translationQuality.fallbackBlockCount,
+		hasPartialTranslation: translationQuality.status === "partial",
+		// T83-L：整数才是真的数过；旧条目没有这个字段，保持 null＝「未知」，界面上一个字不显示。
+		unrecognizedSymbolCount: Number.isInteger(entry.unrecognizedSymbolCount) && entry.unrecognizedSymbolCount >= 0
+			? entry.unrecognizedSymbolCount
+			: null,
 		// DOI 与网址只从 Zotero 原字段投影出来展示，键名就是 Zotero 自己的 fieldName；
 		// 属于「原文原型」的只读投影，不回写论文对象。
 		doi: getZoteroMetadataField(entry.zoteroMetadata, "DOI"),
@@ -3438,11 +3673,16 @@ const BATCH_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "
 
 // 单篇内部的完成比例。子进度只在它所属的那个阶段里插值，拿不到就停在阶段起点——
 // 长阶段里假装匀速爬是骗人的，让 spinner 表示「在动」更诚实。
-function computeBatchItemFraction(phase, wantsTranslation, sub) {
+function computeBatchItemFraction(phase, wantsTranslation, sub, wantsSummary = true) {
 	const weights = { ...BATCH_PHASE_WEIGHTS };
 	if (!wantsTranslation) {
 		weights.mineru += weights.translation;
 		weights.translation = 0;
+	}
+	// T83-I：关掉摘要时同理——不摊掉这 0.15，进度条会在摘要那一格空等再直接跳到底。
+	if (!wantsSummary) {
+		weights.mineru += weights.summary;
+		weights.summary = 0;
 	}
 	const total = BATCH_PHASE_ORDER.reduce((sum, key) => sum + weights[key], 0) || 1;
 	const index = BATCH_PHASE_ORDER.indexOf(phase);
@@ -3468,7 +3708,7 @@ function computeBatchProgressFraction(state) {
 	const sum = weights.reduce((acc, value) => acc + value, 0) || 1;
 	let done = 0;
 	for (let i = 0; i < index; i++) done += weights[i];
-	done += weights[index] * computeBatchItemFraction(state.phase, state.wantsTranslation, state.sub);
+	done += weights[index] * computeBatchItemFraction(state.phase, state.wantsTranslation, state.sub, state.wantsSummary !== false);
 	return Math.max(0, Math.min(1, done / sum));
 }
 
@@ -3513,10 +3753,11 @@ function resolveHubRangeSelection(visible, anchorRecordId, targetRecordId) {
 // 批量面板的分组。已转换但没译文的单独一档：它和「未转换」的差别在于只需要翻译一段
 // （T81-S 起可以只翻译），转换那段既不重跑也不重复计费，所以两者的篇数必须分开算。
 function summarizeHubSelection(entries) {
-	const summary = { total: 0, unconverted: 0, convertedWithoutTranslation: 0, translated: 0 };
+	const summary = { total: 0, unconverted: 0, convertedWithoutTranslation: 0, translated: 0, partialTranslation: 0 };
 	for (const entry of entries || []) {
 		summary.total++;
 		if (entry.conversionStatus !== "converted") summary.unconverted++;
+		else if (entry.hasPartialTranslation) summary.partialTranslation++;
 		else if (entry.hasTranslation) summary.translated++;
 		else summary.convertedWithoutTranslation++;
 	}
@@ -3729,7 +3970,11 @@ function findExistingPaperSourcePath(vaultBasePath, baseFolder, stem) {
 	return "";
 }
 
-function collectSummaryMarkdownRecords(vaultBasePath, baseFolder) {
+// T83-I：摘要变成可选产出后，「这篇转换过」的判据不能再只看 br-*.md——
+// 关掉摘要转出来的论文会整篇从 papers.jsonl 里消失。正文（en-/ch-/<stem>.md）与摘要
+// 任一存在即算转换过；`summaryPath` 为空字符串表示这篇没有摘要，使用方据此把
+// `summary_path` 落成 null。只要摘要的使用方自己过滤 `summaryPath`。
+function collectConvertedPaperRecords(vaultBasePath, baseFolder) {
 	const recordsByStem = new Map();
 	const collectPaperRoot = (paperRoot, legacy = false) => {
 		if (!fs.existsSync(paperRoot)) return;
@@ -3742,8 +3987,13 @@ function collectSummaryMarkdownRecords(vaultBasePath, baseFolder) {
 				? obsidian.normalizePath(`${baseFolder}/${LEGACY_CONVERTED_DIR}/${stem}/${getSummaryFileName(stem)}`)
 				: getSummaryVaultPath(baseFolder, stem);
 			const absPath = nodePath.join(vaultBasePath, summaryPath);
-			if (fs.existsSync(absPath)) {
-				recordsByStem.set(stem, { stem, summaryPath, absPath });
+			const hasSummary = fs.existsSync(absPath);
+			if (hasSummary || findExistingPaperSourcePath(vaultBasePath, baseFolder, stem)) {
+				recordsByStem.set(stem, {
+					stem,
+					summaryPath: hasSummary ? summaryPath : "",
+					absPath: hasSummary ? absPath : "",
+				});
 			}
 		}
 	};
@@ -3766,8 +4016,10 @@ function collectSummaryMarkdownRecords(vaultBasePath, baseFolder) {
 		}
 	}
 
+	// 按 stem 排：没有摘要的条目 summaryPath 是空串，拿它排序会把它们全排到最前面。
+	// 非 legacy 论文的摘要路径是 `<base>/<stem>/br-<stem>.md`，前缀恒定，按 stem 排与原来同序。
 	return Array.from(recordsByStem.values())
-		.sort((a, b) => a.summaryPath.localeCompare(b.summaryPath, "zh-Hans-CN"));
+		.sort((a, b) => a.stem.localeCompare(b.stem, "zh-Hans-CN"));
 }
 
 function normalizeJsonlYear(value) {
@@ -3827,11 +4079,13 @@ function buildPaperJsonlEntries(options) {
 		}
 	}
 
-	const summaryRecords = collectSummaryMarkdownRecords(vaultBasePath, baseFolder);
+	const summaryRecords = collectConvertedPaperRecords(vaultBasePath, baseFolder);
 	const seenRecordIds = new Set();
 	const entries = summaryRecords.map(summaryRecord => {
 		const stem = summaryRecord.stem;
-		const text = fs.readFileSync(summaryRecord.absPath, "utf8");
+		// 没有摘要的论文（T83-I 关掉摘要转出来的）没有可读的 frontmatter，
+		// 标题、作者、年份一律回落到论文对象里的 Zotero 原型。
+		const text = summaryRecord.absPath ? fs.readFileSync(summaryRecord.absPath, "utf8") : "";
 		const fm = parseSimpleFrontmatter(text);
 		const record = recordsByStem.get(stem);
 		if (record) seenRecordIds.add(record.recordId);
@@ -3854,15 +4108,30 @@ function buildPaperJsonlEntries(options) {
 		const collections = info && info.stem
 			? normalizeZoteroCollectionFields(info).zoteroCollectionPaths
 			: [];
+		// T83-I：作者/年份/期刊原本只从摘要 frontmatter 取。没有摘要的论文（关掉摘要转出来的）
+		// 那份 frontmatter 根本不存在，必须回落到论文对象里的 Zotero 原型，否则同一篇论文
+		// 会因为「有没有摘要」而丢掉书目信息。有摘要时 fm 优先，行为与原来一致。
+		const zoteroMetadata = normalizeZoteroItemMetadata(info.zoteroMetadata);
+		const fmAuthors = uniqueStrings(Array.isArray(fm.authors) ? fm.authors : [fm.authors]);
+		const authors = fmAuthors.length
+			? fmAuthors
+			: (getZoteroMetadataAuthors(zoteroMetadata).length
+				? getZoteroMetadataAuthors(zoteroMetadata)
+				: uniqueStrings(info.authors));
+		const year = normalizeJsonlYear(fm.year) ?? normalizeJsonlYear(info.year);
+		const venue = cleanDisplayText(fm.venue)
+			|| getZoteroMetadataVenue(zoteroMetadata)
+			|| cleanDisplayText(info.venue)
+			|| null;
 		return {
 			record_id: record ? record.recordId : `summary:${stem}`,
 			zotero_key: zoteroKey || null,
 			zotero_attachment_key: cleanDisplayText(info.zoteroAttachmentKey) || null,
 			title_zh: null,
 			title_original: originalTitle || null,
-			authors: uniqueStrings(Array.isArray(fm.authors) ? fm.authors : [fm.authors]),
-			year: normalizeJsonlYear(fm.year),
-			venue: cleanDisplayText(fm.venue) || null,
+			authors,
+			year,
+			venue,
 			category: cleanDisplayText(fm.category) || null,
 			collections,
 			keywords: uniqueStrings(Array.isArray(fm.keywords) ? fm.keywords : [fm.keywords]),
@@ -5485,10 +5754,14 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		this.registerMarkdownPostProcessor((el, ctx) => this.stampRectoAlignmentBlocks(el, ctx));
 		this.registerMarkdownPostProcessor((el, ctx) => this.resizeRectoImages(el, ctx));
+		// T83-L：不按路径限定在论文库里——U+FFFD 本身就是「这个字没解出来」的标准记号，
+		// 在哪份笔记里都是同一个意思；判据是文本里有没有它，一次 includes 就短路了。
+		this.registerMarkdownPostProcessor(el => markRectoUnknownGlyphsInElement(el));
 		this.registerEvent(this.app.workspace.on("file-open", () => this.applyReaderTheme()));
 		this.registerEvent(this.app.workspace.on("layout-change", () => this.applyReaderTheme()));
 		this.registerEditorExtension(createReaderCaretLayerExtension());
 		this.registerEditorExtension(createRectoAnchorExtension());
+		this.registerEditorExtension(createRectoUnknownGlyphExtension());
 		this.registerReadingStatusClickHandler();
 		this.registerPaperJsonlWatchers();
 		this.app.workspace.onLayoutReady(() => {
@@ -5898,7 +6171,7 @@ class RectoPlugin extends obsidian.Plugin {
 					} else {
 						const stem = await this.writeBackendTaskResult(task, result, null);
 						await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
-						this.recordSuccessfulConversion(task, stem);
+						this.recordSuccessfulConversion(task, stem, result);
 						await this.clearPendingBackendTask(taskId);
 						summary.recovered++;
 					}
@@ -6984,10 +7257,13 @@ class RectoPlugin extends obsidian.Plugin {
 		return out;
 	}
 
-	recordSuccessfulConversion(task, stem) {
+	recordSuccessfulConversion(task, stem, result) {
 		const recordId = task.recordId || task.folder;
 		const documentId = normalizeRectoUuid(task && task.documentId);
 		const sourceRevisionId = normalizeRectoUuid(task && task.sourceRevisionId);
+		// T83-L：后端报的「这一篇还剩几个未识别符号」。旧结果没有这个字段，此时**什么都不写**——
+		// 写成 0 就是把「没测过」说成「一个都没有」，而这个数正是要给用户看的诚实度指标。
+		const unrecognized = Number(result && result.metadata && result.metadata.unrecognizedSymbolCount);
 		if (!this.convertedFolders.includes(recordId)) this.convertedFolders.push(recordId);
 		this.folderMap[recordId] = {
 			...(this.folderMap[recordId] || {}),
@@ -6998,6 +7274,7 @@ class RectoPlugin extends obsidian.Plugin {
 			conversionStatus: "converted",
 			...(documentId ? { documentId } : {}),
 			...(sourceRevisionId ? { sourceRevisionId } : {}),
+			...(Number.isInteger(unrecognized) && unrecognized >= 0 ? { unrecognizedSymbolCount: unrecognized } : {}),
 		};
 	}
 
@@ -7099,7 +7376,9 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
-	isSummaryMarkdownPath(filePath) {
+	// T83-I：摘要可选之后，索引的判据不再只有 br-*.md——只出正文的论文靠 en-/ch- 现身，
+	// 所以刷新时必须一起认这两个前缀，否则关掉摘要转出来的论文在手动增删时索引不会随之更新。
+	isPaperIndexMarkdownPath(filePath) {
 		const base = this.getValidatedBaseFolder();
 		const normalized = obsidian.normalizePath(String(filePath || ""));
 		const basePrefix = obsidian.normalizePath(`${base}/`);
@@ -7107,14 +7386,16 @@ class RectoPlugin extends obsidian.Plugin {
 		const legacyPrefix = obsidian.normalizePath(`${base}/摘要/`);
 		if (normalized.startsWith(legacyPrefix) && normalized.toLowerCase().endsWith(".md")) return true;
 		if (!normalized.startsWith(basePrefix) || !normalized.toLowerCase().endsWith(".md")) return false;
-		if (!nodePath.basename(normalized).startsWith(SUMMARY_FILE_PREFIX)) return false;
+		const fileName = nodePath.basename(normalized);
+		const watched = [SUMMARY_FILE_PREFIX, EN_MARKDOWN_PREFIX, CH_MARKDOWN_PREFIX];
+		if (!watched.some(prefix => fileName.startsWith(prefix))) return false;
 		if (normalized.startsWith(legacyNestedPrefix)) return true;
 		const rel = normalized.substring(basePrefix.length);
 		return rel.split("/").length === 2;
 	}
 
 	schedulePaperJsonlRefresh(filePath) {
-		if (!this.isSummaryMarkdownPath(filePath)) return;
+		if (!this.isPaperIndexMarkdownPath(filePath)) return;
 		if (this.paperJsonlRefreshSuspended) {
 			this.paperJsonlRefreshPending = true;
 			return;
@@ -7134,8 +7415,8 @@ class RectoPlugin extends obsidian.Plugin {
 		this.registerEvent(vault.on("modify", file => this.schedulePaperJsonlRefresh(file && file.path)));
 		this.registerEvent(vault.on("delete", file => this.schedulePaperJsonlRefresh(file && file.path)));
 		this.registerEvent(vault.on("rename", (file, oldPath) => {
-			if (this.isSummaryMarkdownPath(oldPath) || this.isSummaryMarkdownPath(file && file.path)) {
-				this.schedulePaperJsonlRefresh(this.isSummaryMarkdownPath(file && file.path) ? file.path : oldPath);
+			if (this.isPaperIndexMarkdownPath(oldPath) || this.isPaperIndexMarkdownPath(file && file.path)) {
+				this.schedulePaperJsonlRefresh(this.isPaperIndexMarkdownPath(file && file.path) ? file.path : oldPath);
 			}
 		}));
 	}
@@ -8120,6 +8401,8 @@ class RectoPlugin extends obsidian.Plugin {
 				readingKey,
 				readingStatus: this.getReadingStatus(readingKey),
 				conversionStatus: converted ? "converted" : "unconverted",
+				translationQuality: info.translationQuality || null,
+				unrecognizedSymbolCount: info.unrecognizedSymbolCount,
 			});
 		}
 		return out;
@@ -8242,18 +8525,36 @@ class RectoPlugin extends obsidian.Plugin {
 		const base = this.getValidatedBaseFolder();
 		const vault = this.app.vault;
 		this.hubBriefCache = new Map();
+		this.hubTranslationQualityCache = new Map();
 		return buildHubEntries(this.getZoteroIndexEntries().map(entry => {
 			const folderPath = getPaperFolderVaultPath(base, entry.stem);
 			const folder = vault.getAbstractFileByPath(folderPath);
 			const translationPath = obsidian.normalizePath(`${folderPath}/${getChineseMarkdownFileName(entry.stem)}`);
 			const sourceFile = folder ? this.findOriginalMarkdownInPaperFolder(folder) : null;
+			const hasTranslation = !!vault.getAbstractFileByPath(translationPath);
 			return {
 				...entry,
-				translationPath: vault.getAbstractFileByPath(translationPath) ? translationPath : "",
+				translationPath: hasTranslation ? translationPath : "",
+				translationQuality: hasTranslation
+					? (entry.translationQuality || this.readHubTranslationQuality(folderPath))
+					: null,
 				sourcePath: sourceFile ? sourceFile.path : "",
 				summaryPath: entry.summaryPath && vault.getAbstractFileByPath(entry.summaryPath) ? entry.summaryPath : "",
 			};
 		}));
+	}
+
+	readHubTranslationQuality(folderPath) {
+		const sidecarPath = obsidian.normalizePath(`${folderPath}/recto/sidecar-v1.json`);
+		if (!this.hubTranslationQualityCache) this.hubTranslationQualityCache = new Map();
+		if (this.hubTranslationQualityCache.has(sidecarPath)) return this.hubTranslationQualityCache.get(sidecarPath);
+		let quality = null;
+		try {
+			const abs = nodePath.join(this.app.vault.adapter.basePath, sidecarPath);
+			quality = extractHubTranslationQuality(JSON.parse(fs.readFileSync(abs, "utf8")));
+		} catch { quality = null; }
+		this.hubTranslationQualityCache.set(sidecarPath, quality);
+		return quality;
 	}
 
 	readHubSummaryBrief(entry) {
@@ -8545,8 +8846,35 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	// T81-S：转换端点不再接受 translation，发过去会被后端明确拒绝。译文是独立任务。
+	// T83-I：摘要是可选产出。关掉时后端跳过整段摘要生成、也不返回占位摘要，
+	// 于是 `writeBackendTaskResult` 里那条 `if (summaryRaw)` 自然不会落 br-*.md。
 	getBackendRequestedOutputs() {
-		return ["mineruMarkdown", "summary"];
+		const outputs = ["mineruMarkdown"];
+		if (this.shouldGenerateSummaryOnConvert()) outputs.push("summary");
+		return outputs;
+	}
+
+	shouldGenerateSummaryOnConvert() {
+		return this.settings.generateSummaryOnConvert !== false;
+	}
+
+	// T83-N：总开关只映射到一个受限的 profile id，插件永远不提交规则列表或 AI 参数——
+	// 规则白名单与版本全在后端，客户端只能点名一个已注册的 profile。
+	shouldUseEnhancedPostprocess() {
+		return this.settings.enhancedPostprocess !== false;
+	}
+
+	getBackendPostprocessProfile() {
+		return this.shouldUseEnhancedPostprocess() ? RECTO_POSTPROCESS_PROFILE_STANDARD : RECTO_POSTPROCESS_PROFILE_BASIC;
+	}
+
+	// 任务自带的选择优先于当前设置：重启恢复出来的任务必须按**当初提交时**的 profile 写回，
+	// 否则用户中途改了开关，恢复的那一篇就会跟后端固化的 profile 对不上。
+	getTaskPostprocessProfile(task) {
+		const declared = task && task.postprocessProfile;
+		return declared === RECTO_POSTPROCESS_PROFILE_BASIC || declared === RECTO_POSTPROCESS_PROFILE_STANDARD
+			? declared
+			: this.getBackendPostprocessProfile();
 	}
 
 	// 只用来给后端一个「大概多大」的提示；真实页数由后端自己数，客户端估的页数不参与计费。
@@ -8572,6 +8900,7 @@ class RectoPlugin extends obsidian.Plugin {
 			body: {
 				estimatedPages: this.estimateBackendTaskPages(task),
 				requestedOutputs: this.getBackendRequestedOutputs(),
+				postprocessProfile: this.getTaskPostprocessProfile(task),
 				sourceName: task.name || task.recordId || "paper.pdf",
 				documentId,
 			},
@@ -8984,6 +9313,13 @@ class RectoPlugin extends obsidian.Plugin {
 
 		await this.writeBackendSidecarText(subFolder, `${JSON.stringify(prepared.sidecar, null, 2)}\n`);
 		log(`  更新 Sidecar: ${subFolder}/${RECTO_METADATA_DIRECTORY}/${RECTO_SIDECAR_FILE}`);
+		const projectedQuality = extractHubTranslationQuality(prepared.sidecar);
+		if (projectedQuality && task && task.recordId && this.folderMap && this.folderMap[task.recordId]) {
+			this.folderMap[task.recordId] = { ...this.folderMap[task.recordId], translationQuality: projectedQuality };
+			await this.save().catch(error => {
+				log(`  ⚠ 翻译质量索引暂未持久化，将从 Sidecar 读取：${getSanitizedErrorMessage(error)}`);
+			});
+		}
 
 		// 摘要的 ch 链接是转换时按「没有译文」填的，补上才点得开。
 		const summaryFile = this.app.vault.getAbstractFileByPath(this.getSummaryPath(stem));
@@ -9015,7 +9351,7 @@ class RectoPlugin extends obsidian.Plugin {
 		let resources = this.decodeBackendResultResources(result, log);
 		let sidecarBundle = null;
 		try {
-			sidecarBundle = normalizeBackendSidecarBundle(result, resources, sourceMarkdownRaw);
+			sidecarBundle = await normalizeBackendSidecarBundle(result, resources, sourceMarkdownRaw);
 			if (sidecarBundle) {
 				sourceMarkdownRaw = sidecarBundle.markdown;
 				resources = resources.filter(resource => sidecarBundle.resourcePaths.has(resource.relativePath));
@@ -9199,6 +9535,10 @@ class RectoPlugin extends obsidian.Plugin {
 			"接收方：Recto 后端；为完成解析、翻译和摘要，内容可能交由当前选用的第三方处理服务（如 MinerU、DeepSeek）。",
 			"请确认你有权上传这些文件，并同意按本批次处理。",
 			"",
+			// T83-N-R：开关搬进设置页之后，这是花钱之前唯一能看见自己处于哪一档的地方。
+			// 不写的话，半年前关掉它的人会一直以为自己在用标准档。
+			`本次：PDF 转换后处理 ${this.shouldUseEnhancedPostprocess() ? "已开启" : "已关闭（仅基础处理）"}，可在设置 →「高级设置」里修改。`,
+			"",
 			// 一次性把 24 小时窗口讲清楚，之后就不再拿它反复打扰用户（T81-R 用户拍板：
 			// 按时长弹警告是噪音，风险应该在它产生的那一刻讲一次）。
 			`处理在云端进行：中途关掉 Obsidian 不会打断任务，下次打开会自动把结果写回本地。但后端只保留结果 ${HUB_QUEUE_RESULT_TTL_HOURS} 小时，超过就会删除且额度不退——请在这之内回来一次。`,
@@ -9297,6 +9637,7 @@ class RectoPlugin extends obsidian.Plugin {
 				tasks.map(task => Number(task && task.fileSize) || 0)
 			);
 			modal.setWantsTranslation(wantsTranslation);
+			modal.setWantsSummary(!translateOnly && this.shouldGenerateSummaryOnConvert());
 			modal.enableCancel(operation);
 			modal.log("=== Recto backend ===");
 			modal.log(`Backend: ${this.getBackendBaseUrl()}`);
@@ -9352,7 +9693,7 @@ class RectoPlugin extends obsidian.Plugin {
 					await this.acknowledgeBackendTaskResult(ready.taskId);
 					modal.log(`[${index + 1}/${tasks.length}] acknowledged backend result ${ready.taskId}`);
 					await this.clearPendingBackendTask(ready.taskId);
-					this.recordSuccessfulConversion(task, stem);
+					this.recordSuccessfulConversion(task, stem, result);
 					// T81-S：转换与翻译是两段独立计费。第二段失败（最常见的是翻译额度不够）
 					// 绝不能把已经写好、也已经扣过费的转换成果一起判为失败——如实说明即可。
 					// T82-A-S-U：刚写完的正文若是 `ch-*.md`，说明原文就是中文——不跑第二段。
@@ -9489,7 +9830,10 @@ class RectoPlugin extends obsidian.Plugin {
 			new obsidian.Notice(`选中 ${wanted.size} 篇，其中 ${picked.length} 篇可提交，${skipped} 篇已转换或源 PDF 不可读取，已跳过。`, 8000);
 		}
 		const requestTranslation = options.requestTranslation === true;
-		return await this.runBatchWithTasks(picked.map(task => ({ ...task, requestTranslation })));
+		// T83-N：profile 在这里定死一次，整批共用同一个值——批次跑到一半用户改了开关，
+		// 后半批不该悄悄换一套规则。
+		const postprocessProfile = this.getBackendPostprocessProfile();
+		return await this.runBatchWithTasks(picked.map(task => ({ ...task, requestTranslation, postprocessProfile })));
 	}
 
 	/**
@@ -9646,7 +9990,9 @@ class RectoPlugin extends obsidian.Plugin {
 			});
 		}
 
-		for (const record of collectSummaryMarkdownRecords(this.app.vault.adapter.basePath, base)) {
+		// 这份列表的标签就是「仅在摘要文件中找到」，所以只认真正有摘要的孤儿条目。
+		for (const record of collectConvertedPaperRecords(this.app.vault.adapter.basePath, base)) {
+			if (!record.summaryPath) continue;
 			if (seen.has(record.stem)) continue;
 			const fm = this.readSummaryMeta(record.summaryPath);
 			out.push({
@@ -10362,7 +10708,8 @@ function createRectoHubViewClass(api) {
 			addRow("状态", [
 				`${READING_STATUS_SYMBOLS[entry.readingStatus]} ${READING_STATUS_LABELS[entry.readingStatus]}`,
 				entry.conversionStatus === "converted" ? "已转换" : "未转换",
-				entry.hasTranslation ? "有译文" : "",
+				describeHubTranslationStatus(entry),
+				describeRectoUnknownSymbols(entry.unrecognizedSymbolCount),
 			].filter(Boolean).join(" · "));
 			const brief = this.plugin.readHubSummaryBrief(entry);
 			if (brief) this.detailEl.createDiv({ cls: "recto-hub-detail-brief", text: brief });
@@ -10449,7 +10796,6 @@ function createRectoHubViewClass(api) {
 		renderProcessActions(container, entries) {
 			const summary = summarizeHubSelection(entries);
 			const translatable = summary.unconverted + summary.convertedWithoutTranslation;
-			// 已经转换完、也有译文了，就没有任何可做的动作——整块不出现，别摆一排禁用按钮。
 			if (!translatable) return;
 			const box = container.createDiv({ cls: "recto-hub-process" });
 			if (summary.unconverted) {
@@ -10461,21 +10807,25 @@ function createRectoHubViewClass(api) {
 				convert.dataset.hubProcess = "convert";
 				convert.setAttribute("title", "上传未转换的 PDF 并解析为 Markdown 与摘要");
 			}
-			const translate = box.createEl("button", { cls: summary.unconverted ? "" : "mod-cta" });
-			setChromeIcon(translate.createSpan({ cls: "rc-icon" }), "languages");
-			translate.createSpan({
-				text: summary.total > 1 ? `翻译选中（${translatable} 篇）` : "翻译本篇",
-			});
-			translate.dataset.hubProcess = "translate";
-			translate.setAttribute("title", summary.unconverted && summary.convertedWithoutTranslation
-				? "未转换的会先转换再翻译；已转换的只翻译，不重复转换、不重复计费"
-				: (summary.unconverted ? "未转换的论文会转换并一并产出译文" : "只翻译，不重复转换"));
+			if (translatable) {
+				const translate = box.createEl("button", { cls: summary.unconverted ? "" : "mod-cta" });
+				setChromeIcon(translate.createSpan({ cls: "rc-icon" }), "languages");
+				translate.createSpan({
+					text: summary.total > 1 ? `翻译选中（${translatable} 篇）` : "翻译本篇",
+				});
+				translate.dataset.hubProcess = "translate";
+				translate.setAttribute("title", summary.unconverted && summary.convertedWithoutTranslation
+					? "未转换的会先转换再翻译；已转换的只翻译，不重复转换、不重复计费"
+					: (summary.unconverted ? "未转换的论文会转换并一并产出译文" : "只翻译，不重复转换"));
+			}
 			if (summary.unconverted && summary.convertedWithoutTranslation) {
 				box.createDiv({
 					cls: "recto-hub-process-note",
 					text: `选中的 ${translatable} 篇里，${summary.unconverted} 篇需要先转换再翻译，${summary.convertedWithoutTranslation} 篇已转换、只需翻译。`,
 				});
 			}
+			// T83-N-R：后处理开关搬去了设置页「高级设置」。Hub 这里不再摆第二个入口——
+			// 它当时是主题原生复选框，与设置页的拨杆不是同一套控件；档位改由上传确认弹窗如实告知。
 		}
 
 		renderBatchDetail() {
@@ -10484,7 +10834,7 @@ function createRectoHubViewClass(api) {
 			this.detailEl.createEl("h3", { text: `已选 ${summary.total} 篇` });
 			this.detailEl.createDiv({
 				cls: "recto-hub-detail-original",
-				text: `未转换 ${summary.unconverted} · 已转换无译文 ${summary.convertedWithoutTranslation} · 有译文 ${summary.translated}`,
+				text: `未转换 ${summary.unconverted} · 已转换无译文 ${summary.convertedWithoutTranslation} · 完整/旧版译文 ${summary.translated} · 部分未翻译 ${summary.partialTranslation}`,
 			});
 			this.renderProcessActions(this.detailEl, entries);
 			const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
@@ -11844,6 +12194,8 @@ class StatusBarProgress {
 		// 空 phase = 不属于转换流水线（导入/删除等），此时不画进度条，只报阶段文字。
 		this.phase = "";
 		this.sub = null;
+		// T83-I：这一轮跑不跑摘要，决定进度条要不要把摘要那一格摊给解析。
+		this.wantsSummary = true;
 		this.sizes = Array.isArray(sizes) ? sizes.slice() : [];
 		this.queuedRemaining = Math.max(0, total - 1);
 		this.tick = 0;
@@ -11916,6 +12268,7 @@ class StatusBarProgress {
 				phase: this.lastPublished.phase,
 				sub: this.lastPublished.sub,
 				wantsTranslation: this.wantsTranslation,
+				wantsSummary: this.wantsSummary !== false,
 			});
 		this.plugin.batchProgress = this.lastPublished;
 		this.renderStatusBar();
@@ -11931,6 +12284,12 @@ class StatusBarProgress {
 
 	setWantsTranslation(value) {
 		this.wantsTranslation = !!value;
+		this.publish();
+	}
+
+	// T83-I：这一轮会不会跑摘要。只翻译的批次与关掉摘要的转换批次都是 false。
+	setWantsSummary(value) {
+		this.wantsSummary = !!value;
 		this.publish();
 	}
 
@@ -12121,7 +12480,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		const advanced = createAdvancedSettingsSection(
 			c,
 			"高级设置",
-			"服务连接、写回行为、对照阅读与侧边栏按钮"
+			"服务连接、PDF 转换后处理、写回行为、对照阅读与侧边栏按钮"
 		);
 		advanced.parentElement.open = !!this.advancedOpen;
 		advanced.parentElement.addEventListener("toggle", () => {
@@ -12247,8 +12606,14 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				.addOption("en-US", "English")
 				.setValue(s.backendOutputLanguage || "zh-CN")
 				.onChange(async value => this.persistBackendPreferenceChange(() => { s.backendOutputLanguage = value; })));
+		// T83-I：摘要与转换技术上无关。只想要正文（批量补库、只做对照阅读）时关掉它，
+		// 转换照常，只是不生成也不落 br- 摘要文件。
+		new obsidian.Setting(container).setName("转换后生成摘要")
+			.setDesc("关掉后只出正文，不生成摘要文件；正文、译文与对照阅读都不受影响。")
+			.addToggle(t => t.setValue(s.generateSummaryOnConvert !== false)
+				.onChange(async value => { s.generateSummaryOnConvert = value; await this.plugin.save(); }));
 		new obsidian.Setting(container).setName("摘要详略")
-			.setDesc("不影响正文转换。")
+			.setDesc("不影响正文转换；关掉「转换后生成摘要」时这项不起作用。")
 			.addDropdown(d => d
 				.addOption("brief", "简略")
 				.addOption("standard", "标准")
@@ -12595,6 +12960,14 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				if (!Number.isNaN(n) && n >= 3 && n <= 10) { s.pollIntervalMs = n * 1000; await this.plugin.save(); }
 			}));
 
+		// T83-N-R：后处理只有这一个入口。它默认开着，绝大多数人不必看见；关掉是排错与效果对比用的，
+		// 所以放高级设置而不是「处理偏好」——但改了之后必须在上传确认弹窗里如实告知当前档位。
+		container.createEl("h4", { text: "PDF 转换" });
+		new obsidian.Setting(container).setName("PDF 转换后处理")
+			.setDesc("开启后在转换结果上多跑一遍确定性修复：清理页眉页脚与伪标题、粘合跨页断句、还原假上下标与词中空格。关掉后仅基础处理，用于排错与效果对比——正文、Sidecar、对照锚点与未识别符号计数都不受影响。")
+			.addToggle(t => t.setValue(s.enhancedPostprocess !== false)
+				.onChange(async value => { s.enhancedPostprocess = value; await this.plugin.save(); }));
+
 		container.createEl("h4", { text: "本地写回" });
 		new obsidian.Setting(container).setName("自动创建笔记框架")
 			.setDesc("后端结果写回后创建“note-论文名.md”；已有文件不会覆盖。")
@@ -12674,6 +13047,8 @@ if (process.env.NODE_ENV === "test") {
 	RectoPlugin.__test = {
 		applyObsidianFormulaFallbacks,
 		applyObsidianTranslationFormulaFallbacks,
+		unescapeRectoMathHtmlEntities,
+		isObsidianMathRenderFailure,
 		DEFAULT_SETTINGS,
 		DEFAULT_ONBOARDING_STATE,
 		READER_THEMES,
@@ -12731,11 +13106,17 @@ if (process.env.NODE_ENV === "test") {
 		describeHubAuthorLines,
 		describeHubFilterCrumbs,
 		describeHubIdentifier,
+		describeHubTranslationStatus,
+		describeRectoUnknownSymbols,
+		countRectoUnknownGlyphs,
+		findRectoUnknownGlyphOffsets,
+		extractHubTranslationQuality,
 		filterHubEntries,
 		formatHubAuthors,
 		hubEntryInCollection,
 		hubEntryMatchesQuery,
 		normalizeHubEntry,
+		normalizeHubTranslationQuality,
 		resolveHubRangeSelection,
 		sortHubEntries,
 		splitHubQueryMatches,
@@ -12792,6 +13173,8 @@ if (process.env.NODE_ENV === "test") {
 		GroupedPaperSelectionModal,
 		groupItemsByZoteroCollection,
 		isBackendAdmin,
+		buildMultipartFilenameParams,
+		truncateNameKeepingExtension,
 		describeBackendErrorBody,
 		isBackendTaskNotFoundError,
 		isRetryableBackendRequestError,

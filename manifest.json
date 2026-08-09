@@ -1,7 +1,7 @@
 {
   "id": "recto",
   "name": "Recto Zotero Translation",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "minAppVersion": "1.4.0",
   "description": "Convert Zotero PDF papers into Markdown, generate AI summaries and Chinese translations, and build a searchable local paper library with bilingual reading.",
   "author": "Jensen Zheng",
