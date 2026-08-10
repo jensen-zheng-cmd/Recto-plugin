@@ -237,6 +237,12 @@ const DEFAULT_ONBOARDING_STATE = {
 	currentStep: 0,
 };
 
+// T83-O：Hub 关掉再打开要回到上次那批论文。**只记这五项**——分类文件夹、两个筛选维度、
+// 排序列与升降序。搜索词不记（重开时看到一份被过滤的短列表，很容易以为论文丢了），
+// 选中行、分类树折叠、标题原/译也不记。归一在 normalizeHubViewState：任何一项脏了就退回默认，
+// 不让一份坏状态卡住整个视图。
+const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", status: "all", conversion: "all", sort: "title", descending: false };
+
 const DEFAULT_BACKEND_BASE_URL = "https://api.rectoai.uk";
 
 const DEFAULT_SETTINGS = {
@@ -287,12 +293,13 @@ const DEFAULT_SETTINGS = {
 	readerLineHeight: 1.75,
 	readerFontScale: 1,
 	pdfCompareHighlight: true,
+	// T83-O：Hub 上次看到哪（分类 / 筛选 / 排序），下次打开照旧。纯 UI 状态，见 normalizeHubViewState。
+	hubViewState: { ...HUB_VIEW_STATE_DEFAULT },
 	onboarding: { ...DEFAULT_ONBOARDING_STATE },
 	// 侧边栏默认只放论文库这一个入口（T82-D）。对照阅读与 PDF 对照都是在论文里才用得上的动作，
 	// 在 Hub 和命令面板里都够得着；默认全塞进侧边栏只会让新装的插件占掉四格图标。
 	ribbonButtons: {
 		hub: true,
-		deletePaper: false,
 		repairPdfs: false,
 		dualPane: false,
 		pdfCompare: false,
@@ -567,14 +574,6 @@ function countRectoUnknownGlyphs(text) {
 	return findRectoUnknownGlyphOffsets(text).length;
 }
 
-// 「本篇有 N 个未识别符号」。null / 非整数 = 这篇是本任务之前转的，没有这个数，一个字都不显示——
-// 把「没测过」显示成 0 就是在替后端下没有依据的结论。
-function describeRectoUnknownSymbols(count) {
-	const value = Number(count);
-	if (!Number.isInteger(value) || value <= 0) return "";
-	return `未识别符号 ${value} 处`;
-}
-
 // 阅读视图后处理：只改 DOM，不动文件。标记里保留原字符，复制粘贴出去的仍是原文。
 function markRectoUnknownGlyphsInElement(el) {
 	if (!el || typeof el.textContent !== "string" || !el.textContent.includes(RECTO_UNKNOWN_GLYPH_CHAR)) return 0;
@@ -668,7 +667,6 @@ const BROWSER_LOGIN_STATUS_NOTES = {
 
 const RIBBON_BUTTONS = [
 	{ key: "hub", name: "Recto 论文库", icon: RECTO_ICON_ID, action: "activateRectoHub" },
-	{ key: "deletePaper", name: "删除库中论文", icon: "lucide-trash-2", action: "openDeletePaperModal" },
 	{ key: "repairPdfs", name: "修复 PDF 原文件", icon: "lucide-wrench", action: "repairPdfs" },
 	{ key: "dualPane", name: "对照阅读：原文/译文双栏", icon: "lucide-columns-2", action: "toggleRectoDualPane" },
 	{ key: "pdfCompare", name: "PDF 对照阅读", icon: "lucide-book-open", action: "toggleRectoPdfCompare" },
@@ -3413,6 +3411,18 @@ const HUB_SORT_LABELS = { status: "阅读状态", title: "标题", author: "作�
 const HUB_SORT_DEFAULT_DESC = { year: true };
 const HUB_STATUS_SORT_ORDER = { reading: 0, unread: 1, read: 2 };
 
+function normalizeHubViewState(raw) {
+	const value = raw && typeof raw === "object" ? raw : {};
+	const sort = HUB_SORT_KEYS.includes(value.sort) ? value.sort : HUB_VIEW_STATE_DEFAULT.sort;
+	return {
+		collectionPath: typeof value.collectionPath === "string" ? value.collectionPath : "",
+		status: HUB_STATUS_FILTERS.includes(value.status) ? value.status : HUB_VIEW_STATE_DEFAULT.status,
+		conversion: HUB_CONVERSION_FILTERS.includes(value.conversion) ? value.conversion : HUB_VIEW_STATE_DEFAULT.conversion,
+		sort,
+		descending: typeof value.descending === "boolean" ? value.descending : !!HUB_SORT_DEFAULT_DESC[sort],
+	};
+}
+
 // Zotero 的题名字段允许 HTML（<i>、<sub>、<sup>）与字符实体，直接显示会把标签露出来；
 // 抓不到题名时 Zotero 还会写占位串，也不该当成标题展示。两者都只在展示层处理，不回写论文对象。
 const HUB_PLACEHOLDER_TITLES = new Set(["[no title found]", "no title found", "untitled", "无标题"]);
@@ -3470,15 +3480,6 @@ function normalizeHubTranslationQuality(raw, hasTranslation) {
 		return { status: "partial", fallbackBlockCount };
 	}
 	return { status: "unknown", fallbackBlockCount: 0 };
-}
-
-function describeHubTranslationStatus(entry) {
-	if (!entry || !entry.hasTranslation) return "";
-	if (entry.translationStatus === "partial") {
-		return `部分未翻译（${entry.translationFallbackBlockCount} 块）`;
-	}
-	if (entry.translationStatus === "complete") return "已翻译";
-	return "有译文（完整度未知）";
 }
 
 // 标题遵循「原文原型」契约：titleOriginal 恒为原文，展示用译文兜底原文，排序一律用原文。
@@ -5735,7 +5736,6 @@ class RectoPlugin extends obsidian.Plugin {
 		this.addCommand({ id: "open-hub", name: "打开 Recto 论文库", callback: () => { void this.activateRectoHub(); } });
 		this.addCommand({ id: "open-account", name: "Recto 账号与额度", callback: () => this.openAccountModal() });
 		this.addCommand({ id: "repair-pdfs", name: "修复：重新复制所有PDF原文件", callback: () => this.repairPdfs() });
-		this.addCommand({ id: "delete-paper", name: "删除库中论文", callback: () => this.openDeletePaperModal() });
 		this.addCommand({ id: "import-zotero-library", name: "一键导入 Zotero 论文库", callback: () => this.importZoteroLibrary() });
 		// T81 删掉了「Zotero 库索引」md 文件，这条命令留下的是纯数据同步；名字随之改掉，
 		// 命令 id 不动——改 id 会让用户已有的快捷键绑定失效。
@@ -9964,62 +9964,25 @@ class RectoPlugin extends obsidian.Plugin {
 		return files[0];
 	}
 
-	getDeleteCandidates() {
-		const base = this.getValidatedBaseFolder();
-		const seen = new Set();
-		const out = [];
-		for (const [folder, info] of Object.entries(this.folderMap || {})) {
-			if (!info || !info.stem) continue;
-			seen.add(info.stem);
-			const metadata = normalizeZoteroCollectionFields(info);
-			const summaryPath = this.getSummaryPathForStem(info.stem);
-			const fm = this.readSummaryMeta(summaryPath);
-			out.push({
-				folder,
-				stem: info.stem,
-				originalName: info.originalName || "",
-				zoteroTitle: info.zoteroTitle || "",
-				year: fm.year || info.year || "",
-				authors: fm.authors || info.authors || [],
-				venue: fm.venue || info.venue || "",
-				zoteroMetadata: normalizeZoteroItemMetadata(info.zoteroMetadata),
-				zoteroCollections: metadata.zoteroCollections,
-				zoteroCollectionPaths: metadata.zoteroCollectionPaths,
-				paperPath: this.getPaperSubFolder(info.stem),
-				summaryPath,
-			});
-		}
-
-		// 这份列表的标签就是「仅在摘要文件中找到」，所以只认真正有摘要的孤儿条目。
-		for (const record of collectConvertedPaperRecords(this.app.vault.adapter.basePath, base)) {
-			if (!record.summaryPath) continue;
-			if (seen.has(record.stem)) continue;
-			const fm = this.readSummaryMeta(record.summaryPath);
-			out.push({
-				folder: null,
-				stem: record.stem,
-				originalName: "仅在摘要文件中找到",
-				zoteroTitle: "",
-				year: fm.year || "",
-				authors: fm.authors || [],
-				venue: fm.venue || "",
-				zoteroCollections: [UNFILED_COLLECTION],
-				zoteroCollectionPaths: [UNFILED_COLLECTION],
-				paperPath: this.getPaperSubFolder(record.stem),
-				summaryPath: record.summaryPath,
-			});
-		}
-		return out.sort((a, b) => a.stem.localeCompare(b.stem, "zh-Hans-CN"));
-	}
-
-	openDeletePaperModal() {
+	// T83-O：删除只剩 Hub 一条入口（设置页那节、命令与选择弹窗都撤了）。Hub 传的是 folderMap 的键，
+	// 候选在这里就地组装；删除本身仍走 deleteSelectedPapers——回收站、记账、索引重写只有那一份实现。
+	async deletePaperRecords(recordIds) {
 		if (!this.getValidatedBaseFolderOrNotice()) return;
-		const candidates = this.getDeleteCandidates();
+		const candidates = uniqueStrings(recordIds).map(recordId => {
+			const info = (this.folderMap || {})[recordId];
+			if (!info || !info.stem) return null;
+			return {
+				folder: recordId,
+				stem: info.stem,
+				paperPath: this.getPaperSubFolder(info.stem),
+				summaryPath: this.getSummaryPathForStem(info.stem),
+			};
+		}).filter(Boolean);
 		if (!candidates.length) {
-			new obsidian.Notice("论文库中没有可删除的论文记录");
+			new obsidian.Notice("这些论文已经不在库里了");
 			return;
 		}
-		new DeletePaperSelectionModal(this, candidates).open();
+		return this.deleteSelectedPapers(candidates);
 	}
 
 	async deleteSelectedPapers(candidates) {
@@ -10236,7 +10199,9 @@ function createRectoHubViewClass(api) {
 			this.visible = [];
 			this.tree = [];
 			this.collapsedPaths = new Set();
-			this.filters = { query: "", collectionPath: "", status: "all", conversion: "all", sort: "title", descending: false };
+			// 分类 / 筛选 / 排序从上次的持久化状态起步（T83-O）；query 每次都是空的，不记搜索词。
+			this.filters = { query: "", ...normalizeHubViewState(plugin.settings && plugin.settings.hubViewState) };
+			this.persistedViewState = JSON.stringify(normalizeHubViewState(this.filters));
 			// selectedRecordId 是「当前行」（右栏单篇详情看它）；selectedIds 是多选集合。
 			// 两者分开：多选时仍有一个当前行，键盘上下键才有落脚点。
 			this.selectedRecordId = "";
@@ -10382,11 +10347,22 @@ function createRectoHubViewClass(api) {
 			if (this.anchorRecordId && !visibleIds.has(this.anchorRecordId)) this.anchorRecordId = "";
 			if (this.selectedRecordId && !visibleIds.has(this.selectedRecordId)) this.selectedRecordId = "";
 			if (!this.selectedRecordId && this.visible.length) this.selectedRecordId = this.visible[0].recordId;
+			this.persistViewState();
 			this.renderCrumbs();
 			this.renderChips();
 			this.renderHead();
 			this.renderList();
 			this.renderDetail();
+		}
+
+		// applyFilters 是所有筛选/排序变化的汇合点，持久化就挂在这儿。只有值真的变了才落盘——
+		// reload 每次写回、每次批次收尾都会走到这里，无脑 save 等于给 data.json 加一串空写。
+		persistViewState() {
+			const next = JSON.stringify(normalizeHubViewState(this.filters));
+			if (next === this.persistedViewState) return;
+			this.persistedViewState = next;
+			this.plugin.settings.hubViewState = JSON.parse(next);
+			void this.plugin.save();
 		}
 
 		// 已选条目（按当前可见顺序），批量面板与批量操作都以它为准。
@@ -10421,6 +10397,8 @@ function createRectoHubViewClass(api) {
 
 		// 选择变化只改 class，不重画列表：重画会丢滚动位置与已渲染的分块。
 		syncRowSelectionClasses() {
+			// 单选行与多选里的当前行 class 完全相同，朱批条要不要画只能由容器上的 is-multi 决定（T83-O）。
+			this.listEl.toggleClass("is-multi", this.isBatchMode());
 			for (const row of Array.from(this.listEl.children)) {
 				if (!row.dataset || !row.dataset.hubRecord) continue;
 				const id = row.dataset.hubRecord;
@@ -10584,6 +10562,7 @@ function createRectoHubViewClass(api) {
 		renderList() {
 			this.listEl.empty();
 			this.listEl.scrollTop = 0;
+			this.listEl.toggleClass("is-multi", this.isBatchMode());
 			this.renderedCount = 0;
 		if (this.loadError) {
 			const box = this.listEl.createDiv({ cls: "recto-hub-error" });
@@ -10705,12 +10684,13 @@ function createRectoHubViewClass(api) {
 				copy.dataset.hubCopy = identifier.text;
 			}
 			addRow("分类", (entry.collections || []).join("；"));
+			// T83-O：状态行只说「读到哪 + 转没转」。译文完整度与未识别符号计数都撤了——
+			// 中文源论文的正文就写在 ch-<stem>.md，Hub 判「有没有译文」看的正是这个路径，
+			// 于是中文论文一律被判成「有译文（完整度未知）」，那条提示对它们永远是假的。
 			addRow("状态", [
 				`${READING_STATUS_SYMBOLS[entry.readingStatus]} ${READING_STATUS_LABELS[entry.readingStatus]}`,
 				entry.conversionStatus === "converted" ? "已转换" : "未转换",
-				describeHubTranslationStatus(entry),
-				describeRectoUnknownSymbols(entry.unrecognizedSymbolCount),
-			].filter(Boolean).join(" · "));
+			].join(" · "));
 			const brief = this.plugin.readHubSummaryBrief(entry);
 			if (brief) this.detailEl.createDiv({ cls: "recto-hub-detail-brief", text: brief });
 			this.renderProcessActions(this.detailEl, [entry]);
@@ -10724,6 +10704,10 @@ function createRectoHubViewClass(api) {
 			const hasAnything = entry.translationPath || entry.sourcePath || entry.summaryPath || entry.pdfPath;
 			if (!hasAnything) {
 				this.detailEl.createDiv({ cls: "recto-hub-empty", text: "这篇还没有可打开的文件" });
+				// 一个文件都没有的论文对象更该删得掉，所以空态也要留着垃圾桶。
+				// 图标样式挂在 .recto-hub-detail-actions 的后代选择器上，容器不能省。
+				const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
+				this.renderDeleteIcon(actions.createDiv({ cls: "recto-hub-detail-icons" }));
 				return;
 			}
 			const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
@@ -10753,6 +10737,19 @@ function createRectoHubViewClass(api) {
 			cite.dataset.hubCopy = this.formatCitation(entry);
 			cite.setAttribute("title", "复制引用");
 			cite.setAttribute("aria-label", "复制引用");
+			this.renderDeleteIcon(icons);
+		}
+
+		// T83-O：单篇的删除排在图标行最右，与阅读动作隔开语义——它是危险动作，
+		// 颜色只在 hover 时转 danger，静默时不抢眼（recto-ui 基调：色彩只表语义）。
+		// 多选面板不用这个图标，它在那儿有一整行（见 renderBatchDetail）。
+		renderDeleteIcon(icons) {
+			const remove = icons.createEl("button", { cls: "recto-hub-detail-danger" });
+			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "trash-2");
+			remove.dataset.hubProcess = "delete";
+			const title = "删除本篇（移入系统回收站）";
+			remove.setAttribute("title", title);
+			remove.setAttribute("aria-label", title);
 		}
 
 		// 作者按人数收起：长作者表在 300px 栏里能铺十几行，后面的作者信息量很低。
@@ -10837,9 +10834,14 @@ function createRectoHubViewClass(api) {
 				text: `未转换 ${summary.unconverted} · 已转换无译文 ${summary.convertedWithoutTranslation} · 完整/旧版译文 ${summary.translated} · 部分未翻译 ${summary.partialTranslation}`,
 			});
 			this.renderProcessActions(this.detailEl, entries);
+			// T83-O：这一行原来是「清除选择」——Escape 就能做同样的事，占着多选面板唯一的动作位没有价值。
+			// 删除接手这个位置，也就不必在多选时另摆一个孤零零的图标按钮。
 			const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
-			const clear = actions.createEl("button", { text: "清除选择" });
-			clear.dataset.hubProcess = "clear";
+			const remove = actions.createEl("button", { cls: "recto-hub-detail-danger" });
+			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "trash-2");
+			remove.createSpan({ text: `删除选中（${summary.total} 篇）` });
+			remove.dataset.hubProcess = "delete";
+			remove.setAttribute("title", "选中论文的文件夹与摘要移入系统回收站；删前会再确认一次");
 			const list = this.detailEl.createDiv({ cls: "recto-hub-batch-list" });
 			for (const entry of entries.slice(0, 8)) {
 				list.createDiv({ cls: "recto-hub-batch-row", text: entry.titleOriginal });
@@ -10996,6 +10998,11 @@ function createRectoHubViewClass(api) {
 				this.moveSelection(event.key === "ArrowDown" ? 1 : -1, event.shiftKey);
 				return;
 			}
+			if (event.key === "Delete") {
+				event.preventDefault();
+				void this.deleteSelectedRecords();
+				return;
+			}
 			if (event.key === "Enter") {
 				event.preventDefault();
 				const entry = this.getSelectedEntry();
@@ -11134,8 +11141,8 @@ function createRectoHubViewClass(api) {
 		}
 
 		handleProcessAction(action) {
-			if (action === "clear") {
-				this.setSelection(this.selectedRecordId ? [this.selectedRecordId] : [], this.selectedRecordId);
+			if (action === "delete") {
+				void this.deleteSelectedRecords();
 				return;
 			}
 			if (action !== "convert" && action !== "translate") return;
@@ -11157,6 +11164,20 @@ function createRectoHubViewClass(api) {
 		}
 		this.withProcessButtonsDisabled(() => this.plugin.runHubTranslateForRecords(pending.map(entry => entry.recordId)));
 	}
+
+		// T83-O：垃圾桶按钮与 Delete 键共用这一条路径。**单篇直接删、多篇才确认**（用户拍板）——
+		// 文件进的是系统回收站还捞得回来，但 folderMap 记录会一并清掉，批量误删的代价明显更高。
+		async deleteSelectedRecords() {
+			const entries = this.getSelectedEntries();
+			if (!entries.length) return;
+			if (entries.length > 1) {
+				const names = entries.slice(0, 8).map(entry => `- ${entry.titleOriginal}`).join("\n");
+				const more = entries.length > 8 ? `\n- 另有 ${entries.length - 8} 篇` : "";
+				const message = `确定删除选中的 ${entries.length} 篇论文吗？\n\n${names}${more}\n\n论文文件夹和摘要将移入系统回收站。`;
+				if (!confirmInHostWindow(message, this.rootEl)) return;
+			}
+			await this.plugin.deletePaperRecords(entries.map(entry => entry.recordId));
+		}
 
 	// 转换/翻译一点出去就把整块按钮禁用，跑到完（或失败）再恢复——
 	// 否则状态栏进度在走，按钮却像没点上，用户会重复提交（T82-C）。
@@ -12152,25 +12173,6 @@ class GroupedPaperSelectionModal extends obsidian.Modal {
 	}
 }
 
-class DeletePaperSelectionModal extends GroupedPaperSelectionModal {
-	constructor(plugin, candidates) {
-		super(plugin, candidates, {
-			title: "选择要删除的论文",
-			description: `共找到 ${candidates.length} 篇库中论文。删除后文件会移入系统回收站。`,
-			actionText: "删除选中论文",
-			busyText: "删除中...",
-			warning: true,
-			getTitle: item => item.stem,
-			confirmText: picked => {
-				const names = picked.slice(0, 8).map(item => `- ${item.stem}`).join("\n");
-				const more = picked.length > 8 ? `\n- 另有 ${picked.length - 8} 篇` : "";
-				return `确定删除选中的 ${picked.length} 篇论文吗？\n\n${names}${more}\n\n论文文件夹和摘要将移入系统回收站。`;
-			},
-			onSubmit: picked => plugin.deleteSelectedPapers(picked),
-		});
-	}
-}
-
 // ═══════════════════════════════════════════════════════════════════
 // Status Bar Progress (non-blocking)
 // ═══════════════════════════════════════════════════════════════════
@@ -12471,11 +12473,6 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			c,
 			"处理偏好",
 			"改动在下一次转换或翻译时生效。"
-		), s);
-		this.renderMaintenance(createSettingsSection(
-			c,
-			"论文库维护",
-			"Zotero 与论文文件本身不受影响。"
 		), s);
 		const advanced = createAdvancedSettingsSection(
 			c,
@@ -13008,22 +13005,6 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			.addButton(b => b.setButtonText("生成 sanitized zip").onClick(() => this.plugin.createSanitizedDistributionPackage()));
 	}
 
-	renderMaintenance(container) {
-		new obsidian.Setting(container).setName("论文对象与转换记录")
-			.setDesc(`当前论文对象 ${Object.keys(this.plugin.folderMap || {}).length} 个，其中已转换 ${this.plugin.convertedFolders.length} 个。`)
-			.addButton(b => b.setButtonText("删除库中论文").onClick(() => this.plugin.openDeletePaperModal()))
-			.addButton(b => b.setButtonText("清除全部记录").setWarning().onClick(async () => {
-				if (!confirmInHostWindow("确定清除全部论文对象、转换记录和阅读状态吗？\n\nZotero 与论文文件不会被删除；之后重新运行一键导入会复用已有的论文文件夹与 PDF 重建对象。", this.containerEl)) return;
-				this.plugin.convertedFolders = [];
-				this.plugin.folderMap = {};
-				this.plugin.readingStates = {};
-				await this.plugin.save();
-				await this.plugin.writePaperJsonlIndex();
-				new obsidian.Notice("已清除转换记录和阅读状态");
-				this.plugin.safeRefreshHubViews();
-				this.display();
-			}));
-	}
 }
 
 function sleep(ms, signal) {
@@ -13106,8 +13087,6 @@ if (process.env.NODE_ENV === "test") {
 		describeHubAuthorLines,
 		describeHubFilterCrumbs,
 		describeHubIdentifier,
-		describeHubTranslationStatus,
-		describeRectoUnknownSymbols,
 		countRectoUnknownGlyphs,
 		findRectoUnknownGlyphOffsets,
 		extractHubTranslationQuality,
@@ -13117,6 +13096,7 @@ if (process.env.NODE_ENV === "test") {
 		hubEntryMatchesQuery,
 		normalizeHubEntry,
 		normalizeHubTranslationQuality,
+		normalizeHubViewState,
 		resolveHubRangeSelection,
 		sortHubEntries,
 		splitHubQueryMatches,

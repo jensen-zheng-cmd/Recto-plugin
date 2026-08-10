@@ -1,124 +1,101 @@
 # Recto
 
-Community listing name: **Recto Zotero Translation** (plugin id remains `recto`).
+**从 Zotero 一键导入论文，自动转为 Markdown，支持中英对照阅读。借助 Obsidian 的双链、搜索与 AI 能力，让读过的论文彼此关联，逐步构建个人知识库。**
 
-Convert Zotero PDF papers into Markdown, generate AI summaries and Chinese translations, and build a searchable local paper library with bilingual reading — inside Obsidian.
+![Recto 论文库](assets/hub.png)
 
-把 Zotero 里的 PDF 论文转成 Markdown，生成 AI 摘要与中文译文，并在 Obsidian 里建立可检索的本地论文库与双语对照阅读。社区目录显示名为 **Recto Zotero Translation**（插件 id 仍为 `recto`）。
+## 背景
 
-## Features / 功能
+许多研究者的 Zotero 中积累了数百篇论文，但真正精读的屈指可数。阅读过程中，需要在 PDF 阅读器与翻译工具之间频繁切换；公式与表格经复制后往往格式混乱；已理解的内容散落在浏览器中，事后难以检索、引用，也无法纳入个人笔记体系。
 
-- **Zotero import** — detect local Zotero storage, import bibliographic metadata, and keep a paper library index in your vault  
-  **Zotero 导入** — 检测本机 Zotero storage，导入书目元数据，并在库内维护论文索引
-- **PDF → Markdown** — convert selected papers via the Recto cloud service (desktop only)  
-  **PDF → Markdown** — 通过 Recto 云端服务转换所选论文（仅桌面端）
-- **AI summary & translation** — structured summaries plus Chinese translation with alignment-aware bilingual reading  
-  **AI 摘要与翻译** — 结构化摘要、中文译文，以及对齐感知的双语对照阅读
-- **Hub** — browse conversion status, open papers, and start convert/translate from one place  
-  **Hub** — 在一处查看转换状态、打开论文、发起转换/翻译
+Recto 旨在衔接这一工作流：将论文导入 Obsidian，转换为 Markdown 格式，提供翻译与对照阅读功能，所有产出均存储在本地库中，与既有笔记无缝集成。
 
-## Requirements / 使用要求
+## 一键导入 Zotero 文献库
 
-- **Obsidian desktop** (`isDesktopOnly: true`). Node / local-file APIs are required.  
-  **Obsidian 桌面端**（`isDesktopOnly: true`），需要 Node / 本地文件能力。
-- **A Recto account** is required for conversion, summary, translation, and paid quotas. Browsing a local library you already built does not require being signed in.  
-  **完整转换 / 摘要 / 翻译 / 付费额度需要 Recto 账号**。浏览你已落在本地的论文库不强制登录。
-- **Network access** to Recto services (`rectoai.uk` / `api.rectoai.uk`).  
-  **需要联网**访问 Recto 服务（`rectoai.uk` / `api.rectoai.uk`）。
-- Optional: a local **Zotero** install with PDF files downloaded into Zotero storage (cloud-only attachments that were never downloaded locally cannot be converted).  
-  可选：本机已安装 **Zotero**，且 PDF 已下载到 storage（未落盘的纯云端附件无法转换）。
+插件自动识别本机 Zotero 应用，将书目元数据与 PDF 附件一并导入，保留原有分类结构。导入后可直接翻阅 PDF；选择目标论文即可发起转换或翻译。
 
-## Account, free tier, and payments / 账号、免费额度与付费
+![一键导入 Zotero](assets/zotero-import.gif)
 
-- Sign-up and sign-in happen in the browser on the Recto account site; the plugin never asks you to type a password into Obsidian.  
-  注册与登录在浏览器账号页完成；插件不会在 Obsidian 内收集密码。
-- New accounts need **email verification** before the first Obsidian session.  
-  新账号须**先验邮箱**才能进入 Obsidian 会话。
-- **Basic** includes a limited free allowance so you can try conversion and reading. **Pro** / **Max** are optional paid plans (period membership; no auto-renew / no silent charge).  
-  **Basic** 提供有限免费额度便于试用；**Pro** / **Max** 为可选付费档（周期会员，到期不自动续费、不静默扣款）。
-- Plan prices and remaining allowance are loaded from the Recto backend (catalog can refresh without login; your membership and balance require login).  
-  套餐价目与剩余额度由 Recto 后端提供（价目表可不登录刷新；会员与余额需登录）。
-- In the Obsidian Community directory this plugin is labeled **Optional payments** — there is a free tier, but paid cloud processing is part of the product.  
-  社区目录定价标签为 **Optional payments**：有免费档，但付费云端处理是产品的一部分。
+![发起转换与翻译](assets/convert-translate.gif)
 
-## Network, privacy, and data retention / 联网、隐私与数据保留
+## 双语逐段对照，同步滚动
 
-Honest disclosure for Community review and for users:
+左侧英文，右侧中文。译文按段落与原文绑定，阅读位置始终保持同步，翻页不会错位。
 
-### What leaves your computer / 什么会离开本机
+![原文译文双栏对照](assets/compare-md-md.gif)
 
-- When you start a **conversion**, selected **PDF files** are uploaded to the **Recto backend**. To finish parsing, summary, and translation, that content **may be forwarded to third-party processing services** chosen by Recto (vendor names intentionally omitted here; they can change as the service evolves).  
-  你发起**转换**时，所选 **PDF** 会上传到 **Recto 后端**；为完成解析、摘要与翻译，内容**可能转发至 Recto 选用的第三方处理服务**（此处不列厂商名；服务选型可能随运营调整）。
-- When you start **translation-only**, the plugin uploads the paper’s **Sidecar** (structured text derived from the earlier parse), not the PDF again. That payload may likewise be processed by third-party services via the Recto backend.  
-  **只翻译**时上传的是该篇的 **Sidecar**（此前解析得到的结构化文本），不再传 PDF；同样可能经 Recto 后端交由第三方处理。
-- Account, billing, and session traffic also goes to Recto (`api.rectoai.uk` / `rectoai.uk`), including email for auth and payment handoff pages.  
-  账号、计费与会话流量也走 Recto（含认证邮件与支付交接页）。
+## 译文与 PDF 原页联动
 
-### What stays local / 什么留在本地
+对某段翻译存疑时，点击该段落，左侧 PDF 即跳转至对应页面并高亮具体区域。公式、图表、页码均可精确定位。
 
-- Your Obsidian vault notes, generated Markdown / images / Sidecar, `papers.jsonl`, and plugin settings (`data.json` on disk) stay on your machine.  
-  Obsidian 库内笔记、生成的 Markdown / 图片 / Sidecar、`papers.jsonl` 与插件设置（磁盘上的 `data.json`）留在本机。
-- **Zotero**: Recto may read your local Zotero database and **storage folder outside the vault** (read-only import). It does not upload your whole Zotero library; only PDFs (or Sidecars) you explicitly queue for cloud processing are uploaded.  
-  **Zotero**：Recto 可能读取 vault **之外**的本地 Zotero 数据库与 **storage**（只读导入）。不会整库上传；只有你明确加入云端处理队列的 PDF（或 Sidecar）才会上传。
-- Recto does **not** ship client-side telemetry, ads, or a self-update channel separate from Obsidian’s normal Community Plugin updates.  
-  插件**不做**客户端遥测、动态广告，也不在 Obsidian 社区更新机制之外另做自我更新。
+![PDF 与译文对照](assets/compare-md-pdf.gif)
 
-### Retention / 保留策略
 
-- **Task files** (uploaded PDFs, intermediates, result packages) are temporary. After the plugin acknowledges a successful write-back they are deleted promptly; if not pulled, results expire on a **24-hour** TTL. Failed-task files are kept briefly for retry, then purged (also on a **24-hour** window). Cancel deletes server-side task files immediately.  
-  **任务文件**（上传的 PDF、中间产物、结果包）为临时数据：插件确认写回成功后尽快删除；未拉取的结果约 **24 小时**过期。失败任务文件短暂保留供重试后清理（同样约 **24 小时**）。取消任务会立即删除服务端任务文件。
-- **Account records** (email, membership, credit ledger, orders) are kept so billing and support remain consistent. There is currently **no self-service “delete my account” button** in the product; contact the author if you need account closure.  
-  **账号记录**（邮箱、会员、额度账本、订单）会保留以便计费与支持。产品目前**没有自助销户入口**；如需关闭账号请联系作者。
-- Payment processing uses third-party payment rails through Recto’s checkout pages; Recto does not ask the plugin to store card numbers.  
-  支付经 Recto 结账页走第三方支付通道；插件不采集或存储银行卡号。
+## 公式、表格与插图完整保留
 
-## Install / 安装
+生成的 Markdown 文件中，公式保持可渲染形态并保留编号，插图和表格维持原有位置——非简单将 PDF 提取为纯文本流。
 
-### From Obsidian Community Plugins (after listing)
+![转换产物](assets/markdown-output.png)
 
-1. Settings → Community plugins → Browse → search **Recto**  
-2. Install → Enable
+## 文献管理与检索
 
-### Manual (GitHub Release)
+沿用 Zotero 分类树结构，支持按状态筛选：已转换、有译文、未处理。单篇论文可标记为未读、在读、已读，支持按标题、作者、期刊、分类进行检索。
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest Release](https://github.com/jensen-zheng-cmd/Recto-plugin/releases)  
-2. Put them in `<vault>/.obsidian/plugins/recto/`  
-3. Enable **Recto** under Community plugins
+![论文库筛选与阅读状态](assets/library-filter.gif)
 
-分发包**只有**上述三件套；不要把本机的 `data.json` 或开发文档拷进插件目录。
+## 自动生成结构化摘要
 
-## Usage (short) / 使用简述
+转换过程中可同步生成摘要笔记。笔记属性包含标题、作者、年份、期刊、关键词与分类字段，原文与 PDF 以双链形式嵌入——点击即可回溯出处，亦可被 Dataview 等插件作为结构化数据查询。
 
-1. Enable the plugin → open **Recto Hub** from the ribbon or command palette.  
-2. Sign in via the account flow (browser).  
-3. Point Recto at your Zotero storage (auto-detect when possible).  
-4. Pick papers in Hub → convert / translate → read the Markdown (and bilingual view) in your vault.
+![AI 摘要](assets/ai-summary.png)
 
-1. 启用插件 → 从侧栏或命令面板打开 **Recto Hub**。  
-2. 按提示在浏览器完成登录。  
-3. 配置 Zotero storage（可自动检测）。  
-4. 在 Hub 选择论文 → 转换 / 翻译 → 在库内阅读 Markdown（及双语对照）。
+## 安装
 
-## Development note / 开发说明
+**通过社区插件市场安装**：设置 → 第三方插件 → 浏览 → 搜索 **Recto** → 安装并启用。
 
-This public repository is the **distribution surface** for Community listing: root `README.md`, `LICENSE`, `manifest.json`, plus Release assets `main.js` / `manifest.json` / `styles.css`. Day-to-day development may happen in a separate private trunk; only the files needed to install and review the plugin are published here.
+**手动安装**：前往 [Releases](https://github.com/jensen-zheng-cmd/Recto-plugin/releases) 下载 `main.js`、`manifest.json`、`styles.css` 三个文件，置于 `<your vault>/.obsidian/plugins/recto/` 目录下，重启 Obsidian 后启用。
 
-本公开仓库是社区上架用的**发布面**：根目录 `README.md`、`LICENSE`、`manifest.json`，以及 Release 附件三件套。日常开发可能在私有主干进行；此处只发布安装与审核所需文件。
+## 使用步骤
 
-## Third-party fonts / 第三方字体
+1. **打开论文库**。启用插件后，左侧边栏出现 Recto 图标，点击即可打开「Recto 论文库」；亦可于命令面板搜索 `打开 Recto 论文库`。
+2. **登录**。命令面板执行 `Recto 账号与额度`，注册与登录均在浏览器中完成，完成后自动跳转回 Obsidian。插件内不涉及密码输入。
+3. **导入 Zotero**。命令面板执行 `一键导入 Zotero 论文库`，后续过程由插件自动完成。
+4. **转换与翻译**。在论文列表中选中目标，右侧详情栏点击「转换本篇」；直接点击「翻译本篇」亦可，未转换的论文会先行转换再翻译。支持多选批量排队处理。
+5. **阅读**。点击「阅读」直接查看译文；需对照时，使用详情栏图标中的「原文/译文双栏对照」或「PDF 对照阅读」。
 
-Embedded UI fonts are licensed under the **SIL Open Font License 1.1**:
+所有文件存储于 vault 的 `论文库/` 路径下，每篇论文对应一个子文件夹：`en-` 为原文，`ch-` 为译文，`br-` 为摘要，PDF 附件亦复制一份于此。
 
-- [Inter](https://github.com/rsms/inter)  
-- [Source Han Sans](https://github.com/adobe-fonts/source-han-sans) (SC subset; Reserved Font Name “Source”)  
+## 使用前提
+
+- **仅支持 Obsidian 桌面端**。需读取本地文件系统，移动端不适用。
+- **本机须安装 Zotero**，且目标 PDF 已下载至本地 storage——仅云端存储未落地的附件无法读取。
+- **需注册 Recto 账号**（免费）。转换、摘要与翻译均于云端完成，每月提供免费额度，可满足轻度使用需求。
+- **界面当前仅提供中文。**
+
+两项已知限制：中文论文不提供翻译功能，插件界面将隐藏翻译入口；对照阅读要求该篇原文与译文均存在，PDF 对照则需译文与 PDF 同时就绪。
+
+## 网络服务说明
+
+转换、摘要与翻译任务均提交至 **Recto 云端服务**（`api.rectoai.uk`）处理：选中 PDF 将上传至服务器，仅执行翻译时上传结构化文本而非原始 PDF；账号与额度管理亦通过同一服务。数据流转方式、留存时长及本地保留范围，详见 **[PRIVACY.md](PRIVACY.md)**。
+
+## 开发说明
+
+本仓库为社区插件市场的发布页面，包含根目录的 `README.md`、`PRIVACY.md`、`LICENSE`、`assets/` 目录及分发所需的三文件，辅以 Release 附件。日常开发于私有主干分支进行，此处仅存放安装与审核相关文件。
+
+## 第三方字体
+
+界面内嵌字体遵循 **SIL Open Font License 1.1** 授权：
+
+- [Inter](https://github.com/rsms/inter)
+- [Source Han Sans](https://github.com/adobe-fonts/source-han-sans)（SC 子集，保留字体名 "Source"）
 - [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono)
 
-See <https://openfontlicense.org>.
+许可原文见 <https://openfontlicense.org>。
 
-## License / 许可
+## 许可
 
 [MIT](./LICENSE) © 2026 Jensen Zheng
 
-## Author / 作者
+## 作者
 
 Jensen Zheng — GitHub [@jensen-zheng-cmd](https://github.com/jensen-zheng-cmd)
