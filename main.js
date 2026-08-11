@@ -2523,6 +2523,22 @@ function describeBackendMembershipLine(membership, now = Date.now()) {
 	return `${membership.planName} ${trialLabel}有效期至 ${date}${soon}`;
 }
 
+// 换档方向（T84-A-A，2026-08-10 用户拍板；与后端 `isPlanDowngrade` 同一套规则）。档位与
+// 周期两个维度**谁都不能降**：年付日单价便宜，剩余价值按月付的贵单价折回来会凭空少掉几个月
+// （剩 300 天只折出 176 天），降档同理，而界面上没有任何提示。用户要降只能等到期。
+// 认不出档位或周期时返回 false——一次性额度包走不到换档这条路，拦下来只会误伤。
+const PLAN_CYCLE_ORDER = ["monthly", "yearly"];
+
+function isBackendPlanDowngrade(card, membership) {
+	if (!card || !membership) return false;
+	const tierFrom = PLAN_TIER_ORDER.indexOf(membership.tier);
+	const tierTo = PLAN_TIER_ORDER.indexOf(card.tier);
+	const cycleFrom = PLAN_CYCLE_ORDER.indexOf(membership.cycle);
+	const cycleTo = PLAN_CYCLE_ORDER.indexOf(card.cycle);
+	if (tierFrom < 0 || tierTo < 0 || cycleFrom < 0 || cycleTo < 0) return false;
+	return tierTo < tierFrom || cycleTo < cycleFrom;
+}
+
 /**
  * 一张套餐卡此刻该显示什么（T82-A-R，2026-08-01 用户拍板）。
  *
@@ -2555,6 +2571,24 @@ function describeBackendPlanAction(card, membership) {
 		return { kind: "buy", label: `升级到 ${state.label}`, disabled: false, badge: "" };
 	}
 
+	// T84-A-A：降档与降周期买不了，卡片置灰。真正的守卫在后端 `startHandoff`——这里只是
+	// 让用户不必点一下才知道（不变量 7：客户端只显示，不判权益）。试用不参与判定，
+	// 试用挂 Pro 只是个显示名，拿它当真实档位会挡掉正常购买。
+	if (!active.isTrial && isBackendPlanDowngrade(state, active)) {
+		return {
+			kind: "blocked",
+			label: "到期后可切换",
+			disabled: true,
+			badge: "",
+			// 文案只用 `.recto-ui` 中文子集里已有的字（`tests/ui-cjk-font.test.js` 守着）——
+			// 「日单价」「损失」里的「价」「损」不在子集内，换成等义的说法，不为一句提示
+			// 重跑一遍字体子集化。
+			hint: `当前是 ${active.planName} ${active.cycle === "yearly" ? "年付" : "月付"}会员。`
+				+ `现在换成 ${state.label} 会按新档的每天额度折算剩余时长，你会少掉一部分已买的天数，`
+				+ `所以请等当前会员到期后再选。`,
+		};
+	}
+
 	// 同档换周期：写「升级到 Pro」很怪——用户已经是 Pro 了，换的是付费周期而不是档位。
 	if (state.tier === active.tier) {
 		return {
@@ -2565,6 +2599,8 @@ function describeBackendPlanAction(card, membership) {
 		};
 	}
 
+	// T84-A-A 之后 downgrade 这一支只剩试用用户走得到（试用不参与降档判定），付费会员的降档
+	// 已经在上面拦成 blocked。留着是 `higher` 为假时的兜底，不是活路径。
 	const higher = PLAN_TIER_ORDER.indexOf(state.tier) > PLAN_TIER_ORDER.indexOf(active.tier);
 	return higher
 		? { kind: "upgrade", label: `升级到 ${state.label}`, disabled: false, badge: "" }
@@ -11662,6 +11698,8 @@ class RectoAccountModal extends obsidian.Modal {
 			text: action.label,
 		});
 		cta.setAttr("type", "button");
+		// T84-A-A：买不了的档把原因挂 title，按钮上只留一句短的。理由比「不能买」有用得多。
+		if (action.hint) cta.setAttr("title", action.hint);
 		if (action.disabled || this.busy) {
 			cta.disabled = true;
 		} else {
