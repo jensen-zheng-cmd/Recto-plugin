@@ -230,7 +230,10 @@ const READING_STATUS_LABELS = {
 	read: "已读",
 };
 
-const ONBOARDING_VERSION = 1;
+// v1 只有 T04 留下的持久状态，没有任何界面。v2 才是 T85 的真实步骤机：已有 data.json
+// 且仍停在 v1/未完成的老用户要静默完成，只有新安装留下的 v2/未完成状态允许续接。
+// 版本只区分步骤机内部形态，绝不因为插件升级而把已完成用户重新拉回引导。
+const ONBOARDING_VERSION = 2;
 const DEFAULT_ONBOARDING_STATE = {
 	completed: false,
 	version: ONBOARDING_VERSION,
@@ -239,7 +242,7 @@ const DEFAULT_ONBOARDING_STATE = {
 
 // T83-O：Hub 关掉再打开要回到上次那批论文。**只记这五项**——分类文件夹、两个筛选维度、
 // 排序列与升降序。搜索词不记（重开时看到一份被过滤的短列表，很容易以为论文丢了），
-// 选中行、分类树折叠、标题原/译也不记。归一在 normalizeHubViewState：任何一项脏了就退回默认，
+// 选中行、分类树折叠、标题中/英也不记。归一在 normalizeHubViewState：任何一项脏了就退回默认，
 // 不让一份坏状态卡住整个视图。
 const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", status: "all", conversion: "all", sort: "title", descending: false };
 
@@ -351,6 +354,68 @@ function normalizeOnboardingState(value) {
 		version: Number.isInteger(version) && version > 0 ? version : ONBOARDING_VERSION,
 		currentStep: Number.isInteger(currentStep) && currentStep >= 0 ? currentStep : 0,
 	};
+}
+
+function resolveOnboardingLoadState(rawData, mergedState) {
+	const hasPersistedData = !!(
+		rawData
+		&& typeof rawData === "object"
+		&& !Array.isArray(rawData)
+		&& Object.keys(rawData).length
+	);
+	const rawOnboarding = rawData && rawData.settings && rawData.settings.onboarding;
+	const state = normalizeOnboardingState(mergedState);
+	if (!hasPersistedData) {
+		return {
+			state: { ...state, completed: false, version: ONBOARDING_VERSION },
+			shouldOpen: true,
+			migrated: false,
+		};
+	}
+	const isCurrentInProgress = !!(
+		rawOnboarding
+		&& typeof rawOnboarding === "object"
+		&& !Array.isArray(rawOnboarding)
+		&& Number(rawOnboarding.version) === ONBOARDING_VERSION
+		&& state.completed !== true
+	);
+	if (isCurrentInProgress) return { state, shouldOpen: true, migrated: false };
+	if (state.completed !== true) {
+		return {
+			state: { ...state, completed: true },
+			shouldOpen: false,
+			migrated: true,
+		};
+	}
+	return { state, shouldOpen: false, migrated: false };
+}
+
+function describeOnboardingFlow(input = {}) {
+	const lights = input.lights && typeof input.lights === "object" ? input.lights : {};
+	const zotero = input.zotero && typeof input.zotero === "object" ? input.zotero : {};
+	if (!lights.account || lights.account.state !== "ready") {
+		return { id: "account", currentStep: 0 };
+	}
+	if (!lights.credits || lights.credits.state !== "ready") {
+		return { id: "credits", currentStep: 0 };
+	}
+	if (input.externalResult) return { id: "external-result", currentStep: 2 };
+	if (Math.max(0, Number(zotero.importedCount) || 0) > 0) {
+		return { id: "hub", currentStep: 2 };
+	}
+	if (input.preferExternal !== true && input.hasNodeSqlite === true && zotero.pathConfigured === true) {
+		return { id: "zotero", currentStep: 1 };
+	}
+	return { id: "external", currentStep: 1 };
+}
+
+function findChangedExternalConversion(before, after) {
+	const previous = new Map(normalizeExternalConversions(before).map(item => [item.recordId, item]));
+	const changed = normalizeExternalConversions(after).filter(item => {
+		const old = previous.get(item.recordId);
+		return !old || old.convertedAt !== item.convertedAt || old.outputFolder !== item.outputFolder;
+	});
+	return changed.length ? changed[changed.length - 1] : null;
 }
 
 const READER_THEME_CLASS = "recto-reader";
@@ -611,6 +676,66 @@ function countRectoUnknownGlyphs(text) {
 	return findRectoUnknownGlyphOffsets(text).length;
 }
 
+// 行内代码与行内公式的区间（只在一行内成对，与 Markdown 一致）。反引号按「同长度的成对
+// 反引号串」配，`$…$` 不许跨 `$`。宁可多圈一点也不能漏——漏了就是在代码里打标。
+function findRectoInlineCodeAndMathRanges(line) {
+	const ranges = [];
+	const pattern = /(`+).*?\1|\$[^$]+\$/g;
+	for (let match = pattern.exec(line); match; match = pattern.exec(line)) {
+		ranges.push({ from: match.index, to: match.index + match[0].length });
+	}
+	return ranges;
+}
+
+/**
+ * 实时预览里「不该打标」的区间。CM6 拿到的是纯文本，没有 DOM 可以 `closest()`，
+ * 所以 `RECTO_UNKNOWN_GLYPH_SKIP_SELECTOR` 那条路在这里用不上，只能按文本认。
+ * 覆盖面与那个选择器一一对应：围栏代码块 / 行内代码 / `$$` 块公式 / 行内公式。
+ * **没闭合的围栏与块公式一律保护到文末**——正在敲的半截代码块同样不该被打标。
+ */
+function buildRectoUnknownGlyphSkipRanges(text) {
+	const value = String(text || "");
+	const ranges = [];
+	let fenceFrom = -1;
+	let fenceMark = "";
+	let mathFrom = -1;
+	let offset = 0;
+	for (const line of value.split("\n")) {
+		const end = offset + line.length;
+		const trimmed = line.trim();
+		const fence = /^(`{3,}|~{3,})/.exec(trimmed);
+		if (fenceFrom >= 0) {
+			// 闭合要求同种标记且不短于开栏，这是 CommonMark 的规矩。
+			if (fence && fence[1][0] === fenceMark[0] && fence[1].length >= fenceMark.length) {
+				ranges.push({ from: fenceFrom, to: end });
+				fenceFrom = -1;
+			}
+		} else if (fence) {
+			fenceFrom = offset;
+			fenceMark = fence[1];
+		} else if (mathFrom >= 0) {
+			if (trimmed.includes("$$")) {
+				ranges.push({ from: mathFrom, to: end });
+				mathFrom = -1;
+			}
+		} else if (trimmed.startsWith("$$") && !trimmed.slice(2).includes("$$")) {
+			mathFrom = offset;
+		} else {
+			for (const range of findRectoInlineCodeAndMathRanges(line)) {
+				ranges.push({ from: offset + range.from, to: offset + range.to });
+			}
+		}
+		offset = end + 1;
+	}
+	if (fenceFrom >= 0) ranges.push({ from: fenceFrom, to: value.length });
+	if (mathFrom >= 0) ranges.push({ from: mathFrom, to: value.length });
+	return ranges;
+}
+
+function isRectoUnknownGlyphSkipped(ranges, offset) {
+	return (ranges || []).some(range => offset >= range.from && offset < range.to);
+}
+
 // 阅读视图后处理：只改 DOM，不动文件。标记里保留原字符，复制粘贴出去的仍是原文。
 function markRectoUnknownGlyphsInElement(el) {
 	if (!el || typeof el.textContent !== "string" || !el.textContent.includes(RECTO_UNKNOWN_GLYPH_CHAR)) return 0;
@@ -657,18 +782,25 @@ function createRectoUnknownGlyphExtension() {
 	});
 	return ViewPlugin.fromClass(class {
 		constructor(view) {
+			this.skips = buildRectoUnknownGlyphSkipRanges(view.state.doc.toString());
 			this.decorations = this.build(view);
 		}
 		build(view) {
 			const ranges = [];
 			for (const range of view.visibleRanges) {
 				for (const offset of findRectoUnknownGlyphOffsets(view.state.doc.sliceString(range.from, range.to))) {
-					ranges.push(glyphMark.range(range.from + offset, range.from + offset + 1));
+					const at = range.from + offset;
+					// 代码块与公式里原样看：阅读视图靠 RECTO_UNKNOWN_GLYPH_SKIP_SELECTOR 跳过，
+					// 这一侧此前一处不跳，同一篇文章两个视图给出两种结果。
+					if (isRectoUnknownGlyphSkipped(this.skips, at)) continue;
+					ranges.push(glyphMark.range(at, at + 1));
 				}
 			}
 			return Decoration.set(ranges, true);
 		}
 		update(update) {
+			// 跳过区间只随文档内容变，滚动不必重算（整篇 toString 与 anchor 扩展同一个量级）。
+			if (update.docChanged) this.skips = buildRectoUnknownGlyphSkipRanges(update.state.doc.toString());
 			if (update.docChanged || update.viewportChanged) this.decorations = this.build(update.view);
 		}
 	}, { decorations: value => value.decorations });
@@ -677,6 +809,8 @@ function createRectoUnknownGlyphExtension() {
 // Recto 标识（T69 方案 B「对页」）：左页实、右页虚＝原文与译文并置。
 // Obsidian 的 addIcon 要求 100×100 视野的内联内容；同一份图形也用作 Hub 的 wordmark。
 const RECTO_BRAND_NAME = "Recto";
+// T85-E：公开联系方式。任务交付前由产品方给出真实 QQ，绝不从用户邮箱或后台列表猜测。
+const RECTO_SUPPORT_QQ = "3127199431";
 const RECTO_ICON_ID = "recto-mark";
 const RECTO_ICON_SVG = [
 	'<rect x="12.5" y="16.7" width="33.3" height="66.6" rx="5" fill="currentColor"/>',
@@ -691,10 +825,19 @@ function setChromeIcon(el, name) {
 }
 
 // 浏览器登录回跳的深链动作：obsidian://recto-auth?handoff=<公开 id>。
+// 转换失败日志：写在 vault 根上，所以必须能认出「这一份是我们自己写的」——
+// 标记用 Obsidian 的注释语法，阅读视图里不显示，也不会被当成正文内容。
+const RECTO_CONVERT_LOG_BASENAME = "recto-convert-log";
+const RECTO_CONVERT_LOG_MARKER = "%% recto-convert-log %%";
+
 const RECTO_AUTH_PROTOCOL_ACTION = "recto-auth";
 const BROWSER_LOGIN_POLL_INTERVAL_MS = 2000;
 // 与后端交接单的 10 分钟有效期对齐；到点停表，交回手动「已在浏览器登录」。
 const BROWSER_LOGIN_POLL_MAX_ATTEMPTS = 300;
+// 下单后刷额度：不轮询订单（认领密钥在网页 fragment 里，插件从不持有）。
+// 只反复读 /api/v1/me——和「关掉面板再打开」是同一条取数链路，只是不用人去关。
+const CHECKOUT_BILLING_POLL_INTERVAL_MS = 3000;
+const CHECKOUT_BILLING_POLL_MAX_ATTEMPTS = 200;
 const BROWSER_LOGIN_STATUS_NOTES = {
 	pending: "浏览器那边还没完成登录。",
 	expired: "登录页已超时，请重新点「在浏览器中登录」。",
@@ -3364,9 +3507,23 @@ function toBackendCreditNumber(value) {
 	return Number.isFinite(number) ? number : null;
 }
 
-function describeBackendAccountView(settings) {
+// 会话过期只按**本地时钟**算，所以它只用来提示与降级显示，绝不拿它去清凭据——
+// 机器时钟歪掉时那会把还能用的会话一起丢掉。真正的过期判定仍在后端（401）。
+// 没有 expiresAt（旧安装，或登录响应没带）一律当作没过期，不许猜。
+function isBackendSessionExpired(expiresAt, now = Date.now()) {
+	const text = String(expiresAt || "").trim();
+	if (!text) return false;
+	const time = Date.parse(text);
+	if (!Number.isFinite(time)) return false;
+	return time <= (Number.isFinite(now) ? now : Date.now());
+}
+
+function describeBackendAccountView(settings, now = Date.now()) {
 	const s = settings && typeof settings === "object" ? settings : {};
 	const loggedIn = !!String(s.backendSessionToken || "").trim();
+	// 「有 token」不等于「登得进去」：过期之后状态灯、额度徽章、弹窗都还在说「已登录」，
+	// 而任何一次请求都会 401。loggedIn 保持原语义（有没有凭据），过期另记一位。
+	const sessionExpired = loggedIn && isBackendSessionExpired(s.backendSessionExpiresAt, now);
 	const availableCredits = toBackendCreditNumber(s.backendLastAvailableCredits);
 	const heldCredits = toBackendCreditNumber(s.backendLastHeldCredits);
 	const grantedCredits = toBackendCreditNumber(s.backendLastGrantedCredits);
@@ -3387,6 +3544,7 @@ function describeBackendAccountView(settings) {
 	}
 	return {
 		loggedIn,
+		sessionExpired,
 		email: String(s.backendAccountEmail || "").trim(),
 		emailVerified: !!s.backendAccountEmailVerified,
 		sessionExpiresAt: String(s.backendSessionExpiresAt || "").trim(),
@@ -3416,6 +3574,11 @@ function describeHubCreditsBadge(settings) {
 	const view = describeBackendAccountView(settings);
 	if (!view.loggedIn) {
 		return { tone: "signed-out", text: "登录", title: "尚未登录 Recto 账号，点击打开账号面板", known: false, percent: 0, heldPercent: 0 };
+	}
+	// 过期的会话与没登录同一种处境：出路都是重新登录一次。徽章与账号面板必须说同一句话，
+	// 否则徽章画着剩余额度的圆环、面板却是登录页。
+	if (view.sessionExpired) {
+		return { tone: "signed-out", text: "登录", title: `${RECTO_BRAND_NAME} 账号登录已过期，点击重新登录`, known: false, percent: 0, heldPercent: 0 };
 	}
 	const suffix = `${view.email ? `已登录：${view.email}；` : ""}点击打开账号面板`;
 	if (view.creditsEmpty) {
@@ -3447,12 +3610,40 @@ function buildHubCreditsRingMarkup(percent, heldPercent) {
 }
 
 // 浏览器登录的等待态：轮询是唯一的传输通道，深链只是「立刻醒一次」的加速信号。
-// 已登录、没有待办交接单、单子过期、超出重试上限，四种情况都必须停表。
+// 有效登录、没有待办交接单、单子过期、超出重试上限，四种情况都必须停表。
+// 「有效」不含会话过期：过期账号画成登录侧（loggedIn 仍为 true，凭据归后端 401 清），
+// 点「在浏览器中登录」之后必须轮询，否则界面写着等待、表却没在跑。
 function decideBrowserLoginPoll(view, handoff, attempt = 0, maxAttempts = BROWSER_LOGIN_POLL_MAX_ATTEMPTS, now = Date.now()) {
-	if (!view || view.loggedIn) return { poll: false, reason: "signed-in" };
+	if (!view || (view.loggedIn && !view.sessionExpired)) return { poll: false, reason: "signed-in" };
 	if (!handoff || !handoff.handoffId) return { poll: false, reason: "no-handoff" };
 	const expiresAt = Date.parse(String(handoff.expiresAt || ""));
 	if (Number.isFinite(expiresAt) && expiresAt <= now) return { poll: false, reason: "expired" };
+	if (Number(attempt) >= Number(maxAttempts)) return { poll: false, reason: "timeout" };
+	return { poll: true, reason: "waiting" };
+}
+
+function snapshotCheckoutBilling(settings) {
+	const s = settings && typeof settings === "object" ? settings : {};
+	return {
+		planCode: String(s.backendMembershipPlanCode || "").trim(),
+		expiresAt: String(s.backendMembershipExpiresAt || "").trim(),
+		isTrial: !!s.backendMembershipIsTrial,
+		availableCredits: toBackendCreditNumber(s.backendLastAvailableCredits),
+		grantedCredits: toBackendCreditNumber(s.backendLastGrantedCredits),
+	};
+}
+
+function checkoutBillingChanged(before, after) {
+	if (!before || !after) return false;
+	return before.planCode !== after.planCode
+		|| before.expiresAt !== after.expiresAt
+		|| before.isTrial !== after.isTrial
+		|| before.availableCredits !== after.availableCredits
+		|| before.grantedCredits !== after.grantedCredits;
+}
+
+function decideCheckoutBillingPoll(started, attempt = 0, maxAttempts = CHECKOUT_BILLING_POLL_MAX_ATTEMPTS) {
+	if (!started) return { poll: false, reason: "idle" };
 	if (Number(attempt) >= Number(maxAttempts)) return { poll: false, reason: "timeout" };
 	return { poll: true, reason: "waiting" };
 }
@@ -4233,6 +4424,56 @@ function pickHubTitle(...candidates) {
 	return "";
 }
 
+const TRANSLATED_TITLE_PREFIX_BYTES = 8192;
+
+function readFilePrefixSync(absPath, maxBytes = TRANSLATED_TITLE_PREFIX_BYTES) {
+	let fd;
+	try {
+		fd = fs.openSync(absPath, "r");
+		const buf = Buffer.alloc(maxBytes);
+		const n = fs.readSync(fd, buf, 0, maxBytes, 0);
+		return buf.slice(0, n).toString("utf8");
+	} catch {
+		return "";
+	} finally {
+		if (fd !== undefined) fs.closeSync(fd);
+	}
+}
+
+function stripYamlFrontmatterPrefix(text) {
+	const raw = String(text || "");
+	if (!raw.startsWith("---")) return raw;
+	const end = raw.indexOf("\n---", 3);
+	if (end === -1) return raw;
+	const after = raw.indexOf("\n", end + 4);
+	return after === -1 ? "" : raw.slice(after + 1);
+}
+
+// 译文标题只来自 ch-*.md 文档标题块（ATX `#`），剥掉 ^rc- 锚点。
+// 不读摘要 filename——那是旧版 AI 现编短名，不是译文（T81）。
+function extractRectoTranslatedTitle(markdown) {
+	const body = stripYamlFrontmatterPrefix(markdown);
+	const match = body.match(/^\s*#(?!#)[ \t]+(.+?)\s*$/m);
+	if (!match) return "";
+	const heading = String(match[1] || "").replace(/\s*\^rc-\d{6}\s*$/, "").trim();
+	return stripHubTitleMarkup(heading);
+}
+
+// 真有译文才填：en 与 ch 都在且路径不同。中文源正文也是 ch-*.md，相同则仍为 null。
+function resolveTranslatedTitleFromPaperFiles(vaultBasePath, chPath, sourcePath, originalTitle) {
+	const ch = String(chPath || "").replace(/\\/g, "/");
+	const source = String(sourcePath || "").replace(/\\/g, "/");
+	if (!ch || !source || ch === source) return null;
+	const chAbs = nodePath.join(vaultBasePath, ch);
+	const sourceAbs = nodePath.join(vaultBasePath, source);
+	if (!fs.existsSync(chAbs) || !fs.existsSync(sourceAbs)) return null;
+	const title = extractRectoTranslatedTitle(readFilePrefixSync(chAbs));
+	if (!title) return null;
+	const original = stripHubTitleMarkup(originalTitle);
+	if (original && title === original) return null;
+	return title;
+}
+
 function extractHubTranslationQuality(sidecar) {
 	const summary = sidecar && sidecar.translationAlignment;
 	if (!summary || !["complete", "degraded"].includes(summary.status)) return null;
@@ -4341,6 +4582,8 @@ function filterHubEntries(entries, filters = {}) {
 	});
 }
 
+// 标题排序一律用原文：切到译文显示时如果跟着中文重排，点一下前后对不上号。
+// 这是显示层的事——`papers.jsonl` 的落盘顺序与去重键同样以原文为准（数据契约 2026-07-26）。
 function compareHubTitles(a, b) {
 	return String(a.titleOriginal || a.title || "").localeCompare(String(b.titleOriginal || b.title || ""), "zh-Hans-CN")
 		|| String(a.recordId || "").localeCompare(String(b.recordId || ""));
@@ -4370,29 +4613,30 @@ function sortHubEntries(entries, sortKey, descending = false) {
 	const key = HUB_SORT_KEYS.includes(sortKey) ? sortKey : "title";
 	const flip = descending ? -1 : 1;
 	const list = (entries || []).slice();
-	if (key === "title") return list.sort((a, b) => compareHubTitles(a, b) * flip);
+	const byTitle = (a, b) => compareHubTitles(a, b);
+	if (key === "title") return list.sort((a, b) => byTitle(a, b) * flip);
 	if (key === "status") {
 		return list.sort((a, b) =>
 			((HUB_STATUS_SORT_ORDER[a.readingStatus] ?? 3) - (HUB_STATUS_SORT_ORDER[b.readingStatus] ?? 3)) * flip
-			|| compareHubTitles(a, b));
+			|| byTitle(a, b));
 	}
 	if (key === "author") {
 		return list.sort((a, b) =>
 			compareHubOptionalText(formatHubAuthors(a.authors), formatHubAuthors(b.authors), descending)
-			|| compareHubTitles(a, b));
+			|| byTitle(a, b));
 	}
 	if (key === "venue") {
-		return list.sort((a, b) => compareHubOptionalText(a.venue, b.venue, descending) || compareHubTitles(a, b));
+		return list.sort((a, b) => compareHubOptionalText(a.venue, b.venue, descending) || byTitle(a, b));
 	}
 	return list.sort((a, b) => {
 		const yearA = Number.parseInt(a.year, 10);
 		const yearB = Number.parseInt(b.year, 10);
 		const validA = Number.isFinite(yearA);
 		const validB = Number.isFinite(yearB);
-		if (!validA && !validB) return compareHubTitles(a, b);
+		if (!validA && !validB) return byTitle(a, b);
 		if (!validA) return 1;
 		if (!validB) return -1;
-		return (yearA - yearB) * flip || compareHubTitles(a, b);
+		return (yearA - yearB) * flip || byTitle(a, b);
 	});
 }
 
@@ -4447,6 +4691,19 @@ const BATCH_STAGE_PHASES = {
 	取结果: "write",
 	写回: "write",
 };
+// setStage 与 setProgress 共用的同一条判定，绝不各写一份（T85-B 修的就是它们漂开之后的事故：
+// setProgress 曾无条件写死 phase = "submit"，把一键导入的「扫描 / 建档 / 复制 PDF」三个真阶段
+// 全丢掉，状态栏画出「12/214 ▱▱▱ 3% · 提交」——百分比是假的，「提交」是转换流水线的术语）。
+// 转换流水线用 done / failed 报「一篇结束、下一篇还没开始」，它们不是阶段名：单独归到流水线
+// 起点 submit 上，进度就停在「已完成 N 篇」的边界。其余认不出的阶段名一律 phase 留空，
+// describeBatchStatusLine 于是不画进度条、只如实报阶段文字——不假装有可加权的进度。
+function resolveBatchProgressStage(stage) {
+	const text = String(stage || "");
+	if (text === "done") return { phase: "submit", stage: "已完成一篇" };
+	if (text === "failed") return { phase: "submit", stage: "上一篇失败" };
+	return { phase: BATCH_STAGE_PHASES[text] || "", stage: text };
+}
+
 // 电子风字符进度条：状态栏里没法画 DOM 进度条，用方块拼；spinner 负责「长阶段还活着」。
 const BATCH_BAR_GLYPHS = { full: "▰", empty: "▱" };
 const BATCH_BAR_WIDTH = 8;
@@ -4875,10 +5132,10 @@ function buildPaperJsonlEntries(options) {
 		const info = record ? record.info : {};
 		const zoteroKey = String(info.zoteroItemKey || info.zoteroAttachmentKey || (record && record.recordId) || "").trim();
 		// 原文标题是不可变原型（Zotero 为准）。
-		// title_zh 只放**真正的标题译文**——目前没有任何来源，所以恒为 null。曾经这里取摘要
+		// title_zh 只放**真正的标题译文**：从 ch-*.md 文档标题块提取。曾经这里取摘要
 		// frontmatter 的 filename，但那是旧版 AI 现编的「简短中文论文名」而非译文，对中文原文的
-		// 论文也会另造一个名字。T81 第三轮起后端不再索取该字段，这里对存量摘要也停止读取；
-		// 将来真正的标题翻译只能来自译文里标题块的对齐结果，届时再给 title_zh 补值。
+		// 论文也会另造一个名字。T81 第三轮起后端不再索取该字段，这里对存量摘要也停止读取。
+		// 没有 en- 对照（中文源）或标题与原文相同（source-fallback）时仍为 null。
 		const originalTitle = cleanDisplayText(info.zoteroTitle || fm.title || stem);
 		const sourcePath = extractWikiLinkPath(fm.source) || findExistingPaperSourcePath(vaultBasePath, baseFolder, stem);
 		const pdfPath = extractWikiLinkPath(fm.pdf)
@@ -4888,6 +5145,7 @@ function buildPaperJsonlEntries(options) {
 			const expected = obsidian.normalizePath(`${getPaperFolderVaultPath(baseFolder, stem)}/${getChineseMarkdownFileName(stem)}`);
 			if (fs.existsSync(nodePath.join(vaultBasePath, expected))) chPath = expected;
 		}
+		const titleZh = resolveTranslatedTitleFromPaperFiles(vaultBasePath, chPath, sourcePath, originalTitle);
 		const collections = info && info.stem
 			? normalizeZoteroCollectionFields(info).zoteroCollectionPaths
 			: [];
@@ -4910,7 +5168,7 @@ function buildPaperJsonlEntries(options) {
 			record_id: record ? record.recordId : `summary:${stem}`,
 			zotero_key: zoteroKey || null,
 			zotero_attachment_key: cleanDisplayText(info.zoteroAttachmentKey) || null,
-			title_zh: null,
+			title_zh: titleZh,
 			title_original: originalTitle || null,
 			authors,
 			year,
@@ -4947,11 +5205,12 @@ function buildPaperJsonlEntries(options) {
 		const expectedChPath = obsidian.normalizePath(`${paperFolder}/${getChineseMarkdownFileName(info.stem)}`);
 		const chPath = isConverted && fs.existsSync(nodePath.join(vaultBasePath, expectedChPath)) ? expectedChPath : "";
 		const pdfPath = findImportedPdfVaultPath(vaultBasePath, baseFolder, info);
+		const titleZh = resolveTranslatedTitleFromPaperFiles(vaultBasePath, chPath, sourcePath, originalTitle);
 		entries.push({
 			record_id: recordId,
 			zotero_key: zoteroKey || null,
 			zotero_attachment_key: attachmentKey || null,
-			title_zh: null,
+			title_zh: titleZh,
 			title_original: originalTitle || null,
 			authors: authors.length ? authors : uniqueStrings(info.authors),
 			year: normalizeJsonlYear(info.year),
@@ -4971,7 +5230,7 @@ function buildPaperJsonlEntries(options) {
 		});
 	}
 
-	const sortKey = entry => String(entry.title_zh || entry.title_original || "");
+	const sortKey = entry => String(entry.title_original || "");
 	return entries.sort((a, b) => (
 		sortKey(a).localeCompare(sortKey(b), "zh-Hans-CN")
 		|| String(a.record_id || "").localeCompare(String(b.record_id || ""))
@@ -5383,13 +5642,49 @@ function formatZoteroSyncRelativeTime(timestamp, now = Date.now()) {
 	return `${days} 天前`;
 }
 
+/**
+ * 「设置里的论文库文件夹指错了」的判据（纯函数，壳只负责取值）。
+ *
+ * 只在**有论文记录、而那个目录里一篇都找不到**时成立。`trackBaseFolderRename` 覆盖了在 Obsidian
+ * 里改名那条路，剩下两种它收不到的——外部改名（资源管理器 / git / 同步盘）与「改名时插件没加载」——
+ * 全落在这里。**正常情况下它永远不该成立**：所以判据取的是「一个论文子目录都没有」而不是
+ * 「篇数对不上」，宁可漏报也不要在正常库上误报。
+ *
+ * `missing`（目录根本不存在）与 `empty`（目录在但没有任何论文子目录）分开报：前者多半是改名或
+ * 移动，后者多半是指到了一个别的空目录。
+ */
+function describeBaseFolderMismatch(input = {}) {
+	const recordCount = Math.max(0, Number(input.recordCount) || 0);
+	if (!recordCount) return null;
+	const baseFolder = String(input.baseFolder || "").trim();
+	if (!baseFolder) return null;
+	if (input.baseFolderExists === false) {
+		return { kind: "missing", baseFolder, recordCount };
+	}
+	if (input.paperFolderCount === 0) {
+		return { kind: "empty", baseFolder, recordCount };
+	}
+	return null;
+}
+
+function describeBaseFolderMismatchText(mismatch) {
+	if (!mismatch) return "";
+	const where = `「${mismatch.baseFolder}」`;
+	return mismatch.kind === "missing"
+		? `论文库文件夹 ${where} 不在了，但本地仍有 ${mismatch.recordCount} 篇论文的记录。多半是它被改名或移动过——请把下面的路径改成它现在的位置。`
+		: `论文库文件夹 ${where} 里没有任何论文，但本地仍有 ${mismatch.recordCount} 篇的记录。多半是路径指错了——请把下面的路径改成论文实际所在的文件夹。`;
+}
+
 function describeSetupStatusLights(input = {}) {
 	const settings = input.settings && typeof input.settings === "object" ? input.settings : {};
 	const zotero = input.zotero && typeof input.zotero === "object" ? input.zotero : {};
-	const view = describeBackendAccountView(settings);
-	const account = view.loggedIn
-		? { key: "account", state: "ready", text: "Recto 账号已登录", icon: "check" }
-		: { key: "account", state: "warning", text: "Recto 账号未登录", icon: "circle-dashed" };
+	const view = describeBackendAccountView(settings, input.now);
+	// 过期了还画绿灯说「已登录」是彻头彻尾的假状态：此刻任何一次请求都会 401。
+	const account = view.sessionExpired
+		? { key: "account", state: "warning", text: `${RECTO_BRAND_NAME} 账号登录已过期`, icon: "circle-alert" }
+		: (view.loggedIn
+			? { key: "account", state: "ready", text: "Recto 账号已登录", icon: "check" }
+			: { key: "account", state: "warning", text: "Recto 账号未登录", icon: "circle-dashed" });
 
 	const pendingAmbiguous = Math.max(0, Number(zotero.pendingAmbiguous) || 0);
 	const pendingOrphaned = Math.max(0, Number(zotero.pendingOrphaned) || 0);
@@ -5413,13 +5708,16 @@ function describeSetupStatusLights(input = {}) {
 			icon: "check",
 		};
 	} else if (importedCount <= 0) {
-		zoteroLight = { key: "zotero", state: "warning", text: "Zotero 待配置", icon: "circle-dashed" };
+		// 走到这里 pathConfigured 一定为真（上面第一条已经拦掉未配置），所以不能再说「待配置」——
+		// 路径配好但一篇没导入时，「开始使用」因 isSetupConfigured("zotero") 判真而**不显示**
+		// Zotero 那一步，灯却催你去配置，两边直接打架。差的是导入，就说导入。
+		zoteroLight = { key: "zotero", state: "warning", text: "Zotero 待导入", icon: "circle-dashed" };
 	} else {
 		zoteroLight = { key: "zotero", state: "unknown", text: "Zotero 待检查", icon: "circle-dashed" };
 	}
 
 	let credits;
-	if (!view.loggedIn) {
+	if (!view.loggedIn || view.sessionExpired) {
 		credits = { key: "credits", state: "unknown", text: "额度未知", icon: "circle-dashed" };
 	} else if (!view.meter || !view.meter.known) {
 		credits = { key: "credits", state: "unknown", text: "额度未知", icon: "circle-dashed" };
@@ -6538,6 +6836,11 @@ class RectoPdfCompareSession {
 			new obsidian.Notice("该段落缺少 PDF 页码，未跳转");
 			return;
 		}
+		// 紧邻的 no-page 给提示、这一条却静默，是同类问题的两种待遇；补齐即可。
+		if (target.status === "unknown-block") {
+			new obsidian.Notice("该段落不在结构信息里，未跳转");
+			return;
+		}
 		if (target.status !== "ok") return;
 		const pdfView = this.getPdfView();
 		if (!pdfView) return;
@@ -6682,6 +6985,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.cloudProcessingConsentAccepted = false;
 		this.cloudProcessingConsentPresented = false;
 		this.cloudProcessingConsentPromise = null;
+		this.shouldOpenOnboarding = false;
 		this.paperJsonlRefreshSuspended = 0;
 		this.paperJsonlRefreshPending = false;
 		this.dualPaneSession = null;
@@ -6702,7 +7006,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.registerView(RECTO_HUB_VIEW_TYPE, (leaf) => new (getRectoHubViewClass())(leaf, this));
 		this.addCommand({ id: "open-hub", name: "打开 Recto 论文库", callback: () => { void this.activateRectoHub(); } });
 		this.addCommand({ id: "open-account", name: "Recto 账号与额度", callback: () => this.openAccountModal() });
-		this.addCommand({ id: "repair-pdfs", name: "修复：重新复制所有PDF原文件", callback: () => this.repairPdfs() });
+		this.addCommand({ id: "repair-pdfs", name: "修复：重新复制所有 PDF 原文件", callback: () => this.repairPdfs() });
 		this.addCommand({ id: "import-zotero-library", name: "一键导入 Zotero 论文库", callback: () => this.importZoteroLibrary() });
 		// T84：库外 PDF 的入口。命令 id 一经发布永不改动（不变量 4），改的只能是显示名。
 		// 拆成两条命令而不是一条加确认弹窗：转换与翻译是两段独立计费，「要不要译文」是用户的
@@ -6718,6 +7022,9 @@ class RectoPlugin extends obsidian.Plugin {
 		// 命令 id 不动——改 id 会让用户已有的快捷键绑定失效。
 		this.addCommand({ id: "sync-zotero-classification-index", name: "同步 Zotero 数据", callback: () => this.syncZoteroClassificationIndex() });
 		this.addCommand({ id: "recover-pending-backend-tasks", name: "恢复未完成的云端处理", callback: () => { void this.recoverPendingBackendTasksFromCommand(); } });
+		// T85-C：软取消原本只有状态栏浮层里那一个按钮，而浮层只有 hover / focus-within 打得开，
+		// 键盘与读屏用户够不到，卡住时只能等自动放弃。命令与那个按钮走同一条软取消。
+		this.addCommand({ id: "cancel-queued-tasks", name: "取消未开始的任务", callback: () => this.cancelQueuedTasksFromCommand() });
 		this.addCommand({ id: "cycle-reader-theme", name: "切换论文阅读主题", callback: () => { void this.cycleReaderTheme(); } });
 		this.addCommand({ id: "toggle-dual-pane", name: "对照阅读：原文/译文双栏", callback: () => { void this.toggleRectoDualPane(); } });
 		this.addCommand({ id: "toggle-pdf-compare", name: "PDF 对照阅读：原文 PDF/译文", callback: () => { void this.toggleRectoPdfCompare(); } });
@@ -6751,12 +7058,15 @@ class RectoPlugin extends obsidian.Plugin {
 			void initializePaperIndexes.catch((error) => {
 				console.warn("Recto: initialize paper indexes failed", getSanitizedErrorMessage(error));
 			});
-			void this.ensureCloudProcessingConsent({ interactive: true, startup: true }).then(accepted => {
+			const startupCloudReady = this.ensureCloudProcessingConsent({ interactive: true, startup: true }).then(accepted => {
 				if (!accepted) return;
 				return this.recoverPendingBackendTasks();
 			}).catch((error) => {
 				console.warn("Recto: recover pending backend tasks failed", getSanitizedErrorMessage(error));
 			});
+			// 首装时云端知情确认与 T85 都会弹窗。等前者彻底收掉再开短引导，避免两个 Modal
+			// 叠在一起；拒绝确认也照常显示引导，之后只有用户主动点账号/处理动作才会再问。
+			void startupCloudReady.then(() => this.openOnboardingOnStartup());
 			// 与 recoverPendingBackendTasks 错开：启动后再等约 10 秒做一次 Zotero 自动检查。
 			this.zoteroAutoCheckTimer = setTimeout(() => {
 				this.zoteroAutoCheckTimer = null;
@@ -6865,7 +7175,10 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		this.cloudProcessingConsentAccepted = !!(d && d.cloudProcessingConsentAccepted === true);
 		this.cloudProcessingConsentPresented = !!(d && d.cloudProcessingConsentPresented === true);
-		this.settings.onboarding = normalizeOnboardingState(this.settings.onboarding);
+		const onboardingLoad = resolveOnboardingLoadState(d, this.settings.onboarding);
+		this.settings.onboarding = onboardingLoad.state;
+		this.shouldOpenOnboarding = onboardingLoad.shouldOpen;
+		migrated = onboardingLoad.migrated || migrated;
 		this.settings.pluginUpdate = normalizeRectoPluginUpdateState(this.settings.pluginUpdate);
 		if (migrated) await this.save();
 	}
@@ -6945,9 +7258,17 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!id) return false;
 		const entry = (this.pendingBackendTasks || []).find(item => item && item.taskId === id);
 		if (!entry) return false;
-		const name = (entry.task && entry.task.name) || entry.recordId || id;
+		// 队列条上那一行会直接消失，此外毫无反馈。task id 绝不进正常用户表面（T84-F），
+		// 所以拿不到论文名时只说通用的一句，不拿 id 顶替。
+		const name = (entry.task && entry.task.name) || "";
 		await this.clearPendingBackendTask(id);
 		this.safeRefreshHubViews();
+		// 「额度不退」这句不能省（见 codemap/task-queue.md）：原先只挂在按钮的 title 上，
+		// 点完就没了。措辞与那条 title 保持一致。
+		new obsidian.Notice(
+			`已放弃${name ? `「${name}」` : "该任务"}，这篇论文可以重新转换；本次已扣的额度不会退回。`,
+			8000
+		);
 		return true;
 	}
 
@@ -7039,7 +7360,10 @@ class RectoPlugin extends obsidian.Plugin {
 			new obsidian.Notice("当前没有等待写回的论文。", 6000);
 			return { recovered: 0, dropped: 0, kept: 0 };
 		}
+		// 紧邻的两道门（未登录、有任务在跑）都给提示，这一道也不能例外——三条都是用户点了
+		// 「再试一次 / 恢复」之后什么都没发生。
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
+			new obsidian.Notice("尚未启用云端处理，恢复已取消。", 6000);
 			return { recovered: 0, dropped: 0, kept: count };
 		}
 		if (!this.hasBackendAccountSession()) {
@@ -7272,6 +7596,12 @@ class RectoPlugin extends obsidian.Plugin {
 		await this.save();
 		return this.settings.onboarding;
 	}
+	openOnboardingOnStartup() {
+		if (!this.shouldOpenOnboarding || this.isUnloading || this.getOnboardingState().completed) return false;
+		this.shouldOpenOnboarding = false;
+		new RectoOnboardingModal(this).open();
+		return true;
+	}
 
 	getBackendBaseUrl() {
 		return normalizeBackendBaseUrl(this.settings.backendBaseUrl);
@@ -7495,6 +7825,10 @@ class RectoPlugin extends obsidian.Plugin {
 			const result = await this.pollBackendBrowserLogin({ timeout: 30000 });
 			if (result.status === "approved") {
 				new obsidian.Notice(`已登录 ${RECTO_BRAND_NAME} 账号`, 5000);
+				// 与弹窗轮询那条 approved 分支同一个理由：整条取数链路只有 refreshBackendBilling
+				// 一个入口，不在这里取一次，刚登录的用户打开账号面板看到的就是「套餐读取失败」。
+				// 这一趟失败不算登录失败——登录已经成功了，套餐面板自己还会再试并如实报状态。
+				await this.refreshBackendBilling({ timeout: 30000 }).catch(() => {});
 				if (this.refreshAccountDependentViews) this.refreshAccountDependentViews();
 			}
 			this.notifyBrowserLoginChanged();
@@ -8003,6 +8337,28 @@ class RectoPlugin extends obsidian.Plugin {
 		return !!(this.activeOperation && this.activeOperation.stopAfterCurrent);
 	}
 
+	// 命令面板版的软取消，判定与状态栏浮层按钮（StatusBarProgress.requestCancel）逐条一致：
+	// 没有活动操作、已经请求过、或只剩正在跑的这一篇，都不该把 stopAfterCurrent 置上去。
+	// 状态栏那一行不用在这里手动刷——spinner 每 120ms 重画一次，读的就是同一个 operation。
+	cancelQueuedTasksFromCommand() {
+		const operation = this.activeOperation;
+		if (!operation || operation.controller.signal.aborted) {
+			new obsidian.Notice("当前没有正在运行的任务。", 5000);
+			return false;
+		}
+		if (operation.stopAfterCurrent) {
+			new obsidian.Notice("已经请求过取消，正在跑的这一篇会跑完。", 6000);
+			return false;
+		}
+		if ((Number(operation.queuedRemaining) || 0) <= 0) {
+			new obsidian.Notice("只剩正在跑的这一篇了，它会跑完；万一卡住会自动放弃并退回额度。", 8000);
+			return false;
+		}
+		const dropped = this.requestStopAfterCurrent();
+		new obsidian.Notice(`已取消尚未开始的 ${dropped} 篇；正在跑的这一篇会跑完。`, 8000);
+		return true;
+	}
+
 	getActiveSignal() {
 		return this.activeOperation ? this.activeOperation.controller.signal : null;
 	}
@@ -8113,6 +8469,13 @@ class RectoPlugin extends obsidian.Plugin {
 			new obsidian.Notice(`对照阅读不可用：${blocker}`);
 			return;
 		}
+		// 两个对照会话不能同时活着：它们会在同一个 `ch-` 窗格上各挂一套 click/scroll 监听，
+		// 点一下同时触发两种跳转。放在这里而不是方法开头——上面每一道校验都可能中途 return，
+		// 那时把用户正在用的另一种对照关掉是白关。切换即接管，不弹确认。
+		if (this.pdfCompareSession) {
+			this.stopRectoPdfCompare();
+			new obsidian.Notice("已切换到双栏对照，PDF 对照已关闭。", 5000);
+		}
 		// 固定布局：左原文 + 右译文。已开着的原文/译文直接复用，不重复开新界面。
 		const activeLeaf = this.findRectoOpenLeaf(file.path) || this.app.workspace.getMostRecentLeaf();
 		const { leftLeaf, rightLeaf } = await this.openRectoComparePanes(sourceFile, translationFile, activeLeaf);
@@ -8120,7 +8483,10 @@ class RectoPlugin extends obsidian.Plugin {
 			new obsidian.Notice("对照阅读启动失败：无法绑定视图");
 			return;
 		}
+		// 锚点不配对时对照仍然可用，只是那些块点不动、滚不到——算出来了就必须说，
+		// 否则用户只会以为对照坏了。
 		const degraded = describeRectoAlignmentDegradation(map);
+		if (degraded) new obsidian.Notice(`对照阅读已启动：${degraded}，这些段落不会联动滚动。`, 8000);
 	}
 
 	// clearPersisted=false 只用于插件卸载/重启：保留记忆，下次启动才好恢复关联。
@@ -8367,6 +8733,12 @@ class RectoPlugin extends obsidian.Plugin {
 		if (prepared.error) {
 			new obsidian.Notice(`PDF 对照不可用：${prepared.error}`);
 			return;
+		}
+		// 与 startRectoDualPane 同一条规矩：两个对照会话不能同时活着（同一个 `ch-` 窗格上
+		// 叠两套 click/scroll 监听）。同样放在所有校验之后，切换即接管。
+		if (this.dualPaneSession) {
+			this.stopRectoDualPane();
+			new obsidian.Notice("已切换到 PDF 对照，原文译文双栏已关闭。", 5000);
 		}
 		// 固定布局：左 PDF + 右中文 md。已开着的 PDF/译文直接复用，不重复开新界面。
 		const activeLeaf = this.findRectoOpenLeaf(file.path) || this.app.workspace.getMostRecentLeaf();
@@ -8745,6 +9117,29 @@ class RectoPlugin extends obsidian.Plugin {
 		return buildZoteroDefaultPathCandidates(options);
 	}
 
+	autoFillDetectedZoteroSourceIfNeeded(settings = this.settings) {
+		if (!settings || settings.sourceFolder) return null;
+		let candidates = [];
+		try {
+			candidates = this.getZoteroDefaultPathCandidates();
+		} catch (error) {
+			console.warn("Recto: Zotero default path detection failed", getSanitizedErrorMessage(error));
+			return null;
+		}
+		const candidate = Array.isArray(candidates) && candidates.length ? candidates[0] : null;
+		if (!candidate || !candidate.storageDir) return null;
+		const resolved = nodePath.resolve(String(candidate.storageDir || "").trim());
+		const storage = nodePath.basename(resolved).toLowerCase() === "storage"
+			? resolved
+			: nodePath.join(resolved, "storage");
+		if (!isReadableDirectory(storage)) return null;
+		settings.sourceFolder = this.normalizeZoteroSourceFolder(storage);
+		const savePromise = Promise.resolve(this.save()).catch(error => {
+			console.warn("Recto: failed to save detected Zotero storage", getSanitizedErrorMessage(error));
+		});
+		return { ...candidate, storageDir: storage, savePromise };
+	}
+
 	normalizeZoteroSourceFolder(raw) {
 		const text = String(raw || "").trim();
 		if (!text) return "";
@@ -8978,10 +9373,52 @@ class RectoPlugin extends obsidian.Plugin {
 		this.registerEvent(vault.on("modify", file => this.schedulePaperJsonlRefresh(file && file.path)));
 		this.registerEvent(vault.on("delete", file => this.schedulePaperJsonlRefresh(file && file.path)));
 		this.registerEvent(vault.on("rename", (file, oldPath) => {
+			this.trackBaseFolderRename(file, oldPath);
 			if (this.isPaperIndexMarkdownPath(oldPath) || this.isPaperIndexMarkdownPath(file && file.path)) {
 				this.schedulePaperJsonlRefresh(this.isPaperIndexMarkdownPath(file && file.path) ? file.path : oldPath);
 			}
 		}));
+	}
+
+	/**
+	 * 用户在 Obsidian 文件浏览器里给论文库目录改名或拖动时，设置跟着走。
+	 *
+	 * **只覆盖「经 Obsidian 发起」的改名**，这是查过 Obsidian 自己的实现定下的（1.13.7 的 app.js）：
+	 * `trigger("renamed", …)` 全文件只有两处，都在 adapter 的 `rename()` 里——它先给被改名的那个发
+	 * 一次，再遍历所有 `startsWith(旧路径 + "/")` 的后代各发一次。而**外部改名**（资源管理器 / git /
+	 * 同步盘）走的是另一条路：`reconcileFolderCreation` 与 `removeFile` 只发 `folder-created` /
+	 * `folder-removed`，永远不发 `renamed`；插件没加载时更收不到任何事件。那两种处境由
+	 * `describeBaseFolderMismatch` 的错位检测兜底，两者是一套设计的两半，别只做一半。
+	 *
+	 * **必须 O(1)**：一次文件夹改名会逐个后代各发一次事件（200 篇论文上千次），这里只做一次
+	 * 字符串比较，不扫盘、不写索引。文件夹自己那一发排在所有后代之前，所以拿第一发就够。
+	 *
+	 * 改名连带的 wikilink 更新是 Obsidian 自己做的（正文里的图片嵌入写的是
+	 * `![[<base>/<stem>/images/x.png]]`，带着基础目录名），插件不重复实现，也不搬文件。
+	 */
+	// 壳：取值 + 数一层子目录，判定全在 describeBaseFolderMismatch 里。只数直接子目录，
+	// 不递归——论文一律是 `<base>/<stem>/`，深扫没有意义还慢。
+	getBaseFolderMismatch() {
+		const baseFolder = String(this.settings.baseFolder || "").trim();
+		const recordCount = Object.keys(this.folderMap || {}).length;
+		if (!baseFolder || !recordCount) return null;
+		const node = this.app.vault.getAbstractFileByPath(baseFolder);
+		if (!node || !node.children) {
+			return describeBaseFolderMismatch({ baseFolder, recordCount, baseFolderExists: false });
+		}
+		const paperFolderCount = node.children.filter(child => child && child.children).length;
+		return describeBaseFolderMismatch({ baseFolder, recordCount, baseFolderExists: true, paperFolderCount });
+	}
+
+	trackBaseFolderRename(file, oldPath) {
+		const previous = String(this.settings.baseFolder || "").trim();
+		if (!previous || String(oldPath || "").trim() !== previous) return;
+		const next = String((file && file.path) || "").trim();
+		if (!next || next === previous) return;
+		this.settings.baseFolder = next;
+		void this.save();
+		this.refreshSettingsStatusIfOpen();
+		new obsidian.Notice(`论文库文件夹已同步为「${next}」。`, 6000);
 	}
 
 	getReadingStateKey(info, folder) {
@@ -9345,7 +9782,10 @@ class RectoPlugin extends obsidian.Plugin {
 			this.throwIfUnloaded();
 			if (plan.ambiguousGroups.length) progress.setStage("等待选择", `${plan.ambiguousGroups.length} 组多 PDF`);
 			const tasks = await this.chooseZoteroPdfTasks(plan);
+			// 多 PDF 弹窗取消会连无歧义的那些条目一起放弃（取消就是取消，不半做），但必须说出来：
+			// 用户看到的只是弹窗关掉、库里一篇没多。
 			if (tasks == null) {
+				new obsidian.Notice("已取消导入，未导入任何论文。", 6000);
 				return null;
 			}
 			if (!tasks.length) {
@@ -9361,7 +9801,21 @@ class RectoPlugin extends obsidian.Plugin {
 				skipConfirm: false,
 				manageOperation: true,
 			});
-			if (result != null) await this.markZoteroLibraryImportOptedIn();
+			if (result != null) {
+				// 状态灯只认 zoteroAutoCheckStatus，而它此前只由自动检查那条路写；手动「一键导入」
+				// 跑完不写，用户刚导完就看到灰色的「Zotero 待检查」，会怀疑导入没成。手动导入同样是
+				// 一次「刚跟 Zotero 对过账」，如实记上——但**只在真的跑完时**：`incomplete`（投影写
+				// 失败）与 `cancelled` 都不该点亮「已同步」。
+				// **开通判定不跟着收紧**：它决定静默自动同步开不开（不变量 17），原来只要 result 非空
+				// 就开通，这里一个字不动。
+				const completed = result.status === "completed";
+				if (completed) this.persistZoteroAutoCheckState({ status: "ok", lastCheckAt: Date.now() });
+				// 首次开通那一次 markZoteroLibraryImportOptedIn 自己会落盘，顺带把上面这行状态带走；
+				// 已开通时它直接返回，才轮到这里写——别为同一批状态连写两次 data.json。
+				const justOptedIn = await this.markZoteroLibraryImportOptedIn();
+				if (completed && !justOptedIn) await this.save();
+				if (completed) this.refreshSettingsStatusIfOpen();
+			}
 			return result;
 		} catch (error) {
 			if (handedOff) throw error;
@@ -9681,7 +10135,12 @@ class RectoPlugin extends obsidian.Plugin {
 			force,
 		});
 		if (!decision.run) return { skipped: true, reason: decision.reason };
-		if (this.activeOperation) return { skipped: true, reason: "busy" };
+		// 这道门在 beginOperation 之前，走不到那边的忙碌提示；不补一句的话，用户在设置页点
+		// 「立即检查」撞上别的任务时是彻底静默的。自动轮询（force = false）照旧沉默。
+		if (this.activeOperation) {
+			if (force) new obsidian.Notice(`已有任务正在运行：${this.activeOperation.label}`, 6000);
+			return { skipped: true, reason: "busy" };
+		}
 		if (!this.hasNodeSqlite || !this.settings.sourceFolder) {
 			return { skipped: true, reason: "not-configured" };
 		}
@@ -9888,6 +10347,8 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!tab) return;
 		// 后台自动检查也会改变待确认数，所以这里连那一行一起定点刷新（同样不重绘整页）。
 		if (typeof tab.refreshZoteroPendingRow === "function") tab.refreshZoteroPendingRow();
+		// 论文库文件夹可能刚被 Obsidian 改名（trackBaseFolderRename），或刚被检测出指错了。
+		if (typeof tab.refreshBaseFolderRow === "function") tab.refreshBaseFolderRow();
 		if (typeof tab.refreshAllSetupStatus === "function") tab.refreshAllSetupStatus();
 	}
 
@@ -10018,34 +10479,62 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	// ── Hub（T58） ────────────────────────────────────────────────
+	// 三个入口（命令面板、侧边栏按钮、设置页「打开」）调它的写法全是 `void …()` 或裸调用，
+	// 谁都不接 rejection——`setViewState` 失败时用户点了没反应、控制台也没有一行。
+	// 兜底放在这里而不是逐个调用点：只此一处，将来加第四个入口也自动兜住。
 	async activateRectoHub() {
-		const workspace = this.app.workspace;
-		const existing = workspace.getLeavesOfType(RECTO_HUB_VIEW_TYPE);
-		if (existing.length) {
-			workspace.revealLeaf(existing[0]);
-			if (existing[0].view && typeof existing[0].view.reload === "function") existing[0].view.reload();
+		try {
+			const workspace = this.app.workspace;
+			const existing = workspace.getLeavesOfType(RECTO_HUB_VIEW_TYPE);
+			if (existing.length) {
+				workspace.revealLeaf(existing[0]);
+				if (existing[0].view && typeof existing[0].view.reload === "function") existing[0].view.reload();
+				void this.maybeRunZoteroAutoCheck().catch((error) => {
+					console.warn("Recto: zotero auto-check failed", getSanitizedErrorMessage(error));
+				});
+				return;
+			}
+			if (!this.getValidatedBaseFolderOrNotice()) return;
+			const leaf = workspace.getLeaf("tab");
+			await leaf.setViewState({ type: RECTO_HUB_VIEW_TYPE, active: true });
+			workspace.revealLeaf(leaf);
 			void this.maybeRunZoteroAutoCheck().catch((error) => {
 				console.warn("Recto: zotero auto-check failed", getSanitizedErrorMessage(error));
 			});
-			return;
+		} catch (error) {
+			console.error("Recto: failed to open hub", getSanitizedErrorMessage(error));
+			new obsidian.Notice("打不开论文库，请重试或重启 Obsidian。", 8000);
 		}
-		if (!this.getValidatedBaseFolderOrNotice()) return;
-		const leaf = workspace.getLeaf("tab");
-		await leaf.setViewState({ type: RECTO_HUB_VIEW_TYPE, active: true });
-		workspace.revealLeaf(leaf);
-		void this.maybeRunZoteroAutoCheck().catch((error) => {
-			console.warn("Recto: zotero auto-check failed", getSanitizedErrorMessage(error));
-		});
 	}
 
 	openAccountModal(options = {}) {
 		if (!this.hasCloudProcessingConsent()) {
 			void this.ensureCloudProcessingConsent({ interactive: true }).then(accepted => {
 				if (accepted) this.openAccountModal(options);
+				// 点了额度徽章却选「暂不启用」时，面板不会打开——不说一句的话与徽章点不动没区别。
+				else new obsidian.Notice("尚未启用云端处理，账号面板未打开。", 6000);
 			});
 			return;
 		}
 		new RectoAccountModal(this, options).open();
+	}
+
+	openHelpFeedbackModal() {
+		new RectoHelpFeedbackModal(this).open();
+	}
+
+	async submitFeedback(input = {}, options = {}) {
+		if (!this.hasBackendAccountSession()) throw new Error("请先登录 Recto 账号再提交反馈。");
+		// 反馈不是论文云端处理，不要求用户先同意 PDF 上传；但沿用账号会话，邮箱由后端身份取得。
+		return await requestBackendJson(this.settings, "/api/v1/feedback", {
+			method: "POST",
+			body: {
+				category: String(input.category || ""),
+				message: String(input.message || ""),
+			},
+			timeout: options.timeout || 30000,
+			signal: options.signal || this.getActiveSignal(),
+		});
 	}
 
 	// 直接打开本插件的设置页。`app.setting` 不是公开 API，拿不到就退回提示，不让 Hub 报错。
@@ -10057,6 +10546,29 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		setting.open();
 		if (typeof setting.openTabById === "function") setting.openTabById(this.manifest.id);
+	}
+
+	async openExternalConversionResult(record) {
+		const outputFolder = obsidian.normalizePath(String((record && record.outputFolder) || ""));
+		const stem = outputFolder.split("/").filter(Boolean).pop() || "";
+		if (!outputFolder || !stem) {
+			new obsidian.Notice("找不到刚才的转换结果，请从文件列表打开输出目录。", 6000);
+			return false;
+		}
+		const candidates = [
+			obsidian.normalizePath(`${outputFolder}/${getEnglishMarkdownFileName(stem)}`),
+			obsidian.normalizePath(`${outputFolder}/${getChineseMarkdownFileName(stem)}`),
+		];
+		const file = candidates.map(path => this.app.vault.getAbstractFileByPath(path)).find(Boolean);
+		if (!file) {
+			new obsidian.Notice(`正文已保存到「${outputFolder}」，请从文件列表打开。`, 8000);
+			return false;
+		}
+		const leaf = this.getHubOpenLeaf(file);
+		if (!leaf) return false;
+		await leaf.openFile(file, { active: true });
+		if (typeof this.app.workspace.revealLeaf === "function") this.app.workspace.revealLeaf(leaf);
+		return true;
 	}
 
 	// 后端任务恢复会在插件加载与卸载路径上跑，那时 workspace 可能还没就绪；取不到就当没开着 Hub。
@@ -10096,19 +10608,27 @@ class RectoPlugin extends obsidian.Plugin {
 		const vault = this.app.vault;
 		this.hubBriefCache = new Map();
 		this.hubTranslationQualityCache = new Map();
+		const vaultBasePath = vault && vault.adapter && vault.adapter.basePath || "";
 		return buildHubEntries(this.getZoteroIndexEntries().map(entry => {
 			const folderPath = getPaperFolderVaultPath(base, entry.stem);
 			const folder = vault.getAbstractFileByPath(folderPath);
 			const translationPath = obsidian.normalizePath(`${folderPath}/${getChineseMarkdownFileName(entry.stem)}`);
 			const sourceFile = folder ? this.findOriginalMarkdownInPaperFolder(folder) : null;
-			const hasTranslation = !!vault.getAbstractFileByPath(translationPath);
+			const sourcePath = sourceFile ? sourceFile.path : "";
+			const chineseFile = vault.getAbstractFileByPath(translationPath);
+			// 中文源正文也是 ch-*.md；有没有译文看的是 en 与 ch 是否是两份不同的文件。
+			const hasTranslation = !!(chineseFile && sourceFile && sourcePath !== translationPath);
+			const titleZh = hasTranslation
+				? resolveTranslatedTitleFromPaperFiles(vaultBasePath, translationPath, sourcePath, entry.title)
+				: null;
 			return {
 				...entry,
+				title: titleZh || entry.title,
 				translationPath: hasTranslation ? translationPath : "",
 				translationQuality: hasTranslation
 					? (entry.translationQuality || this.readHubTranslationQuality(folderPath))
 					: null,
-				sourcePath: sourceFile ? sourceFile.path : "",
+				sourcePath,
 				summaryPath: entry.summaryPath && vault.getAbstractFileByPath(entry.summaryPath) ? entry.summaryPath : "",
 			};
 		}));
@@ -10392,17 +10912,32 @@ class RectoPlugin extends obsidian.Plugin {
 		return !!this.findOriginalMarkdownInPaperFolder(paperDir);
 	}
 
+	// 返回真正写到的路径——文件名可能被顺延过，界面上不能再照着写死的那个名字提示。
 	async writeConvertLog(log) {
 		this.throwIfUnloaded();
-		const content = "```\n" + log.map(line => {
+		const content = `${RECTO_CONVERT_LOG_MARKER}\n\n` + "```\n" + log.map(line => {
 			const safe = sanitizeLogText(line).trim();
 			if (!safe) return "";
 			return getUserFacingErrorMessage(safe, "处理阶段未完成；详细诊断信息已隐藏。");
 		}).join("\n") + "\n```";
-		const path = "recto-convert-log.md";
-		const ex = this.app.vault.getAbstractFileByPath(path);
-		if (ex) await this.app.vault.modify(ex, content);
-		else await this.app.vault.create(path, content);
+		// 文件名是写死的，而用户完全可能已经有一篇同名笔记——原来直接 modify 就把它整篇冲掉了
+		// （§5：绝不覆盖用户自己的文件）。**只覆盖开头带标记的那份**，也就是我们上一次写的；
+		// 撞上别人的就往后顺延一个名字。顺延到头就抛，调用方两处都接着并如实报「日志未能保存」。
+		for (let seq = 0; seq < 20; seq++) {
+			const path = seq === 0 ? `${RECTO_CONVERT_LOG_BASENAME}.md` : `${RECTO_CONVERT_LOG_BASENAME}-${seq}.md`;
+			const existing = this.app.vault.getAbstractFileByPath(path);
+			if (!existing) {
+				await this.app.vault.create(path, content);
+				return path;
+			}
+			// 同名的是文件夹：绕开，不去读也不去写。
+			if (existing.children) continue;
+			const current = await this.app.vault.read(existing).catch(() => "");
+			if (!String(current).startsWith(RECTO_CONVERT_LOG_MARKER)) continue;
+			await this.app.vault.modify(existing, content);
+			return path;
+		}
+		throw new Error("转换日志的文件名已被占用，请先删除或改名 vault 根目录下的 recto-convert-log*.md");
 	}
 
 	// ═══════════════════════════════════════════════════════════════
@@ -11309,7 +11844,12 @@ class RectoPlugin extends obsidian.Plugin {
 
 	async runBackendBatchWithTasks(tasks) {
 		const s = this.settings;
-		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) return;
+		// 拒绝云端确认（或按 Esc 关掉）不能一声不吭地返回：用户刚点过转换/翻译，界面毫无反应
+		// 与「点坏了」分不开。措辞与库外 PDF 那条入口一致。
+		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
+			new obsidian.Notice("尚未启用云端处理，本次处理已取消。", 6000);
+			return;
+		}
 		if (!this.hasBackendAccountSession()) { new obsidian.Notice("请先登录 Recto 账号"); return; }
 		if (!tasks || !tasks.length) { new obsidian.Notice("没有选择需要提交到 Recto 的任务"); return; }
 		tasks = tasks.map(task => ({ ...task, recordId: task.recordId || task.folder || task.name }));
@@ -11347,7 +11887,8 @@ class RectoPlugin extends obsidian.Plugin {
 				return this.convertedFolders.includes(task.recordId) && info && this.hasConvertedOutput(task.recordId);
 			});
 			if (blocked.length) {
-				new obsidian.Notice(`有 ${blocked.length} 篇论文仍在恢复或已经完成，已阻止重复提交并启动恢复检查。请勿重复上传；也可在命令面板运行“Recto: 立即恢复未完成的云端处理”。`, 12000);
+				// 命令的真实显示名就是「恢复未完成的云端处理」，没有「立即」二字——照着提示去搜是搜不到的。
+			new obsidian.Notice(`有 ${blocked.length} 篇论文仍在恢复或已经完成，已阻止重复提交并启动恢复检查。请勿重复上传；也可在命令面板运行“Recto: 恢复未完成的云端处理”。`, 12000);
 				return;
 			}
 			this.stemReservations = new Map();
@@ -11471,7 +12012,8 @@ class RectoPlugin extends obsidian.Plugin {
 			this.clearPendingPaperJsonlRefresh();
 			const successCount = results.filter(item => item.status === "success").length;
 			const failedCount = results.length - successCount;
-			let failureLogSaved = false;
+			// 日志文件名可能被顺延过（撞上用户的同名笔记），所以提示里报的是真正写到的那个。
+			let failureLogPath = "";
 			if (failedCount) {
 				const failedResults = results.filter(item => item.status === "failed");
 				modal.log(`\n转换结果：成功 ${successCount} / 失败 ${failedCount} / 总计 ${tasks.length}`);
@@ -11480,15 +12022,14 @@ class RectoPlugin extends obsidian.Plugin {
 					modal.log(`失败：${item.task.name || record} - ${item.reason || "未知错误"}`);
 				}
 				try {
-					await this.writeConvertLog(modal.logs);
-					failureLogSaved = true;
-					modal.log("失败日志已保存: recto-convert-log.md");
+					failureLogPath = await this.writeConvertLog(modal.logs);
+					modal.log(`失败日志已保存: ${failureLogPath}`);
 				} catch (logError) {
 					modal.log(`⚠ 失败日志未能保存：${getUserFacingErrorMessage(logError)}`);
 				}
 			}
 			modal.setFinished(failedCount ? `完成，${failedCount} 篇失败` : "已完成");
-			const failedNoticeSuffix = failedCount ? (failureLogSaved ? "，请查看 recto-convert-log.md" : "，失败日志保存失败") : "";
+			const failedNoticeSuffix = failedCount ? (failureLogPath ? `，请查看 ${failureLogPath}` : "，失败日志保存失败") : "";
 			const stoppedSuffix = stoppedEarly ? `，已取消未开始的 ${stoppedEarly} 篇` : "";
 			new obsidian.Notice(
 				`Recto：成功 ${successCount} 篇，失败 ${failedCount} 篇${stoppedSuffix}${failedNoticeSuffix}`,
@@ -11504,21 +12045,20 @@ class RectoPlugin extends obsidian.Plugin {
 		} catch (error) {
 			const cancelled = isCancellationError(error, operation.controller.signal);
 			const reason = getUserFacingErrorMessage(error, "处理未完成，请稍后重试。");
-			let failureLogSaved = false;
+			let failureLogPath = "";
 			if (modal) {
 				if (!cancelled) modal.log(`处理已停止：${reason}`);
 				if (!cancelled) {
 					try {
-						await this.writeConvertLog(modal.logs);
-						failureLogSaved = true;
-						modal.log("失败日志已保存: recto-convert-log.md");
+						failureLogPath = await this.writeConvertLog(modal.logs);
+						modal.log(`失败日志已保存: ${failureLogPath}`);
 					} catch (logError) {
 						modal.log(`⚠ 失败日志未能保存：${getUserFacingErrorMessage(logError)}`);
 					}
 				}
 				modal.setFinished(cancelled ? "已中止" : "已失败");
 			}
-			if (!cancelled) new obsidian.Notice(`Recto 任务失败：${reason}${failureLogSaved ? "，请查看 recto-convert-log.md" : ""}`, 8000);
+			if (!cancelled) new obsidian.Notice(`Recto 任务失败：${reason}${failureLogPath ? `，请查看 ${failureLogPath}` : ""}`, 8000);
 		} finally {
 			if (suspended) await this.resumePaperJsonlRefresh({ flush: true });
 			this.finishOperation(operation);
@@ -11881,7 +12421,13 @@ class RectoPlugin extends obsidian.Plugin {
 				new obsidian.Notice(`⚠ ${stem}：${getUserFacingErrorMessage(e)}`, 5000);
 			}
 		}
-		new obsidian.Notice(`PDF修复完成：${fixed}/${total} 个文件已重新复制`, 8000);
+		// 一篇都没扫到时报「0/0 个文件已重新复制」听着像修完了，其实是没东西可修——分开说。
+		new obsidian.Notice(
+			total > 0
+				? `PDF 修复完成：${fixed}/${total} 个文件已重新复制`
+				: "没有找到需要重新复制的 PDF：还没有导入过论文，或 Zotero 源文件当前不可读。",
+			8000
+		);
 	}
 
 	async copyPdfToVault(srcPath, vaultPath, options = {}) {
@@ -12016,6 +12562,8 @@ function createRectoHubViewClass(api) {
 			this.searchTimer = null;
 			this.loadError = "";
 			this.unsubscribeTaskQueue = null;
+			// 「N 篇已退出选择」那条提示：连着改筛选时替换上一条，不叠。
+			this.deselectNotice = null;
 		}
 
 		getViewType() { return RECTO_HUB_VIEW_TYPE; }
@@ -12049,11 +12597,23 @@ function createRectoHubViewClass(api) {
 			this.registerDomEvent(this.crumbsEl, "click", (event) => this.handleCrumbClick(event));
 			this.registerDomEvent(this.chipsEl, "click", (event) => this.handleChipClick(event));
 			this.registerDomEvent(this.headEl, "click", (event) => this.handleHeadClick(event));
-			this.registerDomEvent(this.headEl, "keydown", (event) => {
-				if (event.key !== "Enter" && event.key !== " ") return;
-				event.preventDefault();
-				this.handleHeadClick(event);
-			});
+			// Hub 的筛选控件（列头、分类/阅读状态、面包屑、chips、队列折叠）都是裸 div/span——
+			// 结构是 T69 方案 C 的分栏布局定的，不动结构。标了 role="button" + tabindex 之后就必须
+			// 自己实现激活：span 没有原生 Enter/Space。列头早就是这么接的，这里把那条先例抽出来复用，
+			// 而不是再抄四遍。焦点环不用管——styles.css 的 `.recto-ui [tabindex]:focus-visible` 通吃。
+			for (const [el, handler] of [
+				[this.headEl, (event) => this.handleHeadClick(event)],
+				[this.navEl, (event) => this.handleNavClick(event)],
+				[this.crumbsEl, (event) => this.handleCrumbClick(event)],
+				[this.chipsEl, (event) => this.handleChipClick(event)],
+				[this.queueEl, (event) => this.handleQueueClick(event)],
+			]) {
+				this.registerDomEvent(el, "keydown", (event) => {
+					if (event.key !== "Enter" && event.key !== " ") return;
+					event.preventDefault();
+					handler(event);
+				});
+			}
 			this.registerDomEvent(this.detailEl, "click", (event) => this.handleDetailClick(event));
 			this.registerDomEvent(this.queueEl, "click", (event) => this.handleQueueClick(event));
 			// 队列条订阅任务状态：切走再回来（甚至重启 Obsidian）都能把在途任务重新画出来。
@@ -12130,11 +12690,14 @@ function createRectoHubViewClass(api) {
 			}
 			this.renderNav();
 			this.refreshCreditsBadge();
-			this.applyFilters();
+			// reload 是外部数据变化的入口（批次收尾、写回、恢复各调一次），不是用户改筛选，
+			// 所以选择集缩水不在这里提示——否则批次一结束就跟一串与用户无关的 Notice。
+			this.applyFilters({ quiet: true });
 			this.renderQueue();
 		}
 
-		applyFilters() {
+		// quiet：外部数据变化引起的重排（reload）不提示，只有用户自己改筛选时才提示。
+		applyFilters(options = {}) {
 			this.visible = sortHubEntries(
 				filterHubEntries(this.entries, this.filters),
 				this.filters.sort,
@@ -12142,8 +12705,20 @@ function createRectoHubViewClass(api) {
 			);
 			const visibleIds = new Set(this.visible.map(entry => entry.recordId));
 			// 看不见的条目一律退出选择：绝不能让筛掉的论文被批量转换。
+			const wasBatch = this.selectedIds.size >= 2;
+			let dropped = 0;
 			for (const id of Array.from(this.selectedIds)) {
-				if (!visibleIds.has(id)) this.selectedIds.delete(id);
+				if (!visibleIds.has(id)) {
+					this.selectedIds.delete(id);
+					dropped++;
+				}
+			}
+			// 多选缩水必须说一句：面板上「已选 N 篇」悄悄变小，用户还以为选着原来那 20 篇。
+			// 单选被筛掉不提示——右栏当场换成另一篇，本身已经说清楚了。
+			if (dropped && wasBatch && !options.quiet) {
+				// 搜索框是 120ms 防抖的，连着打字会一句叠一句；替换掉上一条而不是堆起来。
+				if (this.deselectNotice && typeof this.deselectNotice.hide === "function") this.deselectNotice.hide();
+				this.deselectNotice = new api.Notice(`已选的 ${dropped} 篇不在当前筛选内，已退出选择。`, 6000);
 			}
 			if (this.anchorRecordId && !visibleIds.has(this.anchorRecordId)) this.anchorRecordId = "";
 			if (this.selectedRecordId && !visibleIds.has(this.selectedRecordId)) this.selectedRecordId = "";
@@ -12205,11 +12780,12 @@ function createRectoHubViewClass(api) {
 				const id = row.dataset.hubRecord;
 				row.toggleClass("is-active", id === this.selectedRecordId);
 				row.toggleClass("is-selected", this.selectedIds.has(id));
+				row.toggleClass("is-anchor", !!this.anchorRecordId && id === this.anchorRecordId);
 			}
 		}
 
 		// 列头即排序入口：点同一列切正反序，点别的列换列并用该列的默认方向。
-		// 标题列额外有「原文/译文」切换按钮（data-hub-title-mode），点击只切换显示模式、不触发排序。
+		// 标题列额外有「中/英」切换按钮（data-hub-title-mode），点击只切换显示模式、不触发排序。
 		renderHead() {
 			this.headEl.empty();
 			for (const key of HUB_SORT_KEYS) {
@@ -12220,17 +12796,17 @@ function createRectoHubViewClass(api) {
 				cell.setAttribute("title", `按${HUB_SORT_LABELS[key]}排序`);
 				if (key !== "status") cell.createSpan({ text: HUB_SORT_LABELS[key] });
 				if (key === "title") {
-					// 译文切换按钮：只有当前列表中有任何已译条目时才显示
+					// 中/英切换：只有当前列表中有任何已译条目时才显示
 					const hasTranslated = this.visible.some(entry => entry.titleTranslated);
 					if (hasTranslated) {
 						const modeBtn = cell.createSpan({
 							cls: "recto-hub-title-mode",
-							text: this.titleMode === "translated" ? "译" : "原",
+							text: this.titleMode === "translated" ? "中" : "英",
 						});
 						modeBtn.dataset.hubTitleMode = "toggle";
 						modeBtn.setAttribute("title", this.titleMode === "translated"
-							? "当前显示译文标题，点击切换回原文标题"
-							: "当前显示原文标题，点击切换为译文标题");
+							? "当前显示中文标题，点击切换为英文标题"
+							: "当前显示英文标题，点击切换为中文标题");
 					}
 				}
 				const active = this.filters.sort === key;
@@ -12247,6 +12823,14 @@ function createRectoHubViewClass(api) {
 
 		getSelectedEntry() {
 			return this.visible.find(entry => entry.recordId === this.selectedRecordId) || null;
+		}
+
+		// 裸 div/span 当按钮用时要补的两个属性。激活由 onOpen 里那圈 keydown 转发器统一接。
+		markAsButton(el, label = "") {
+			el.setAttribute("role", "button");
+			el.setAttribute("tabindex", "0");
+			if (label) el.setAttribute("aria-label", label);
+			return el;
 		}
 
 		// 快捷筛选与分类是两个独立维度（AND）：两处各自高亮，不再互相抹掉高亮。
@@ -12275,6 +12859,7 @@ function createRectoHubViewClass(api) {
 			for (const item of quick) {
 				const row = this.navEl.createDiv({ cls: "recto-hub-nav-row" });
 				row.dataset.hubStatus = item.status;
+				this.markAsButton(row);
 				row.toggleClass("is-active", this.filters.status === item.status);
 				row.createSpan({ cls: "recto-hub-nav-name", text: item.label });
 				row.createSpan({ cls: "recto-hub-nav-count", text: String(item.count) });
@@ -12297,9 +12882,11 @@ function createRectoHubViewClass(api) {
 				const close = el.createSpan({ cls: "recto-hub-crumb-close", text: "×" });
 				close.dataset.hubCrumbClear = crumb.key;
 				close.setAttribute("title", `清除这个筛选条件：${crumb.label}`);
+				this.markAsButton(close, `清除这个筛选条件：${crumb.label}`);
 			});
 			const clearAll = this.crumbsEl.createSpan({ cls: "recto-hub-crumb-clear", text: "全部清除" });
 			clearAll.dataset.hubCrumbClear = "all";
+			this.markAsButton(clearAll);
 		}
 
 		clearHubFilter(key) {
@@ -12327,9 +12914,11 @@ function createRectoHubViewClass(api) {
 				row.style.paddingLeft = `${8 + depth * 12}px`;
 				row.toggleClass("is-active", this.filters.collectionPath === node.path);
 				const collapsed = this.collapsedPaths.has(node.path);
+				this.markAsButton(row);
 				if (node.children.length) {
 					const caret = row.createSpan({ cls: "recto-hub-nav-caret", text: collapsed ? "▸" : "▾" });
 					caret.dataset.hubToggle = node.path;
+					this.markAsButton(caret, `${collapsed ? "展开" : "折叠"}：${node.name}`);
 				} else {
 					row.createSpan({ cls: "recto-hub-nav-caret" });
 				}
@@ -12351,6 +12940,7 @@ function createRectoHubViewClass(api) {
 			for (const chip of chips) {
 				const el = this.chipsEl.createSpan({ cls: "recto-hub-chip", text: chip.label });
 				el.dataset.hubConversion = chip.key;
+				this.markAsButton(el);
 				el.toggleClass("is-active", this.filters.conversion === chip.key);
 			}
 			const summary = summarizeHubEntries(this.visible);
@@ -12371,10 +12961,26 @@ function createRectoHubViewClass(api) {
 			box.createSpan({ text: `读取失败：${this.loadError}` });
 			return;
 		}
+			// T85-D：设置里的论文库文件夹指错了（多半是在 Obsidian 外面改的名——那种改法只发
+			// create + delete，插件收不到 rename，`trackBaseFolderRename` 跟不上）。记录还在、
+			// 文件却一个都不在那儿；不说破的话 Hub 看起来就是「论文全没了」。
+			// 不 return：底下该画的照画，这只是顶上一条横幅。
+			const mismatch = typeof this.plugin.getBaseFolderMismatch === "function"
+				? this.plugin.getBaseFolderMismatch()
+				: null;
+			if (mismatch) {
+				const box = this.listEl.createDiv({ cls: "recto-hub-error" });
+				setChromeIcon(box.createSpan({ cls: "rc-icon" }), "triangle-alert");
+				box.createSpan({ text: describeBaseFolderMismatchText(mismatch) });
+			}
 			if (!this.entries.length) {
 				const empty = this.listEl.createDiv({ cls: "recto-hub-empty" });
 				empty.createDiv({ text: "还没有论文" });
-				empty.createDiv({ text: "运行「一键导入 Zotero 论文库」后再回来。" });
+				empty.createDiv({ text: "把 Zotero 论文库导进来就能开始。" });
+				// 光说「运行一键导入」而不给按钮，用户得自己去设置页找——旁边那个「没有匹配的论文」
+				// 空态早就有按钮了，同一个位置两种待遇。
+				const importBtn = empty.createEl("button", { cls: "mod-cta", text: "一键导入 Zotero 论文库" });
+				importBtn.dataset.hubEmptyImport = "1";
 				return;
 			}
 			if (!this.visible.length) {
@@ -12401,6 +13007,9 @@ function createRectoHubViewClass(api) {
 			row.dataset.hubRecord = entry.recordId;
 			row.toggleClass("is-active", entry.recordId === this.selectedRecordId);
 			row.toggleClass("is-selected", this.selectedIds.has(entry.recordId));
+			// Shift 范围选的锚点此前只活在逻辑里，界面上零表达——用户按住 Shift 点下去才知道
+			// 范围是从哪一行起算的。只在多选时显示（单选时锚点没有意义）。
+			row.toggleClass("is-anchor", !!this.anchorRecordId && entry.recordId === this.anchorRecordId);
 			row.toggleClass("is-unconverted", unconverted);
 			const status = row.createSpan({
 				cls: `recto-hub-dot is-${entry.readingStatus}`,
@@ -12412,7 +13021,9 @@ function createRectoHubViewClass(api) {
 			this.fillRowTitle(title, entry);
 			this.renderMatchedText(row.createSpan({ cls: "recto-hub-col-author" }), formatHubAuthors(entry.authors));
 			this.renderMatchedText(row.createSpan({ cls: "recto-hub-col-venue" }), entry.venue);
-			row.createSpan({ cls: "recto-hub-col-year", text: entry.year });
+			// 年份也进 hubEntryMatchesQuery 的 haystack：搜「2023」时这一行是被它筛进来的，
+			// 却是全行唯一不打底纹的一格，看起来就像「凭空混进来一条」。
+			this.renderMatchedText(row.createSpan({ cls: "recto-hub-col-year" }), entry.year);
 		}
 
 		// 搜索命中打底纹：筛进来了却看不出命中在哪，用户还得自己找一遍。
@@ -12425,7 +13036,7 @@ function createRectoHubViewClass(api) {
 			}
 		}
 
-		// 标题单独抽出来：原/译切换只重写这一格，不重画列表，滚动位置与已渲染分块都保住。
+		// 标题单独抽出来：中/英切换只重写这一格，不重画列表，滚动位置与已渲染分块都保住。
 		fillRowTitle(el, entry) {
 			const unconverted = entry.conversionStatus !== "converted";
 			const displayTitle = (this.titleMode === "translated" && entry.titleTranslated)
@@ -12459,9 +13070,9 @@ function createRectoHubViewClass(api) {
 				this.detailEl.createDiv({ cls: "recto-hub-empty", text: "选择一篇论文" });
 				return;
 			}
-			this.detailEl.createEl("h3", { text: entry.title });
+			this.detailEl.createEl("h3", { text: entry.titleOriginal });
 			if (entry.titleTranslated) {
-				this.detailEl.createDiv({ cls: "recto-hub-detail-original", text: entry.titleOriginal });
+				this.detailEl.createDiv({ cls: "recto-hub-detail-sub", text: entry.titleTranslated });
 			}
 			const kv = this.detailEl.createDiv({ cls: "recto-hub-detail-kv" });
 			const addRow = (key, value) => {
@@ -12594,7 +13205,10 @@ function createRectoHubViewClass(api) {
 		renderProcessActions(container, entries) {
 			const summary = summarizeHubSelection(entries);
 			const translatable = summary.unconverted + summary.convertedWithoutTranslation;
-			if (!translatable) return;
+			// 「部分未翻译」不算进 translatable，是有理由的：重译是整篇重来、按页另计一次费，
+			// 不是把缺的那几个块补上。但 renderBatchDetail 明晃晃地把这个数摆出来，这里却整块
+			// return——数字给了、按钮没了、一句解释也没有。**不造一个点不动的假入口**，如实说一句。
+			if (!translatable && !summary.partialTranslation) return;
 			const box = container.createDiv({ cls: "recto-hub-process" });
 			if (summary.unconverted) {
 				const convert = box.createEl("button", { cls: "mod-cta" });
@@ -12622,6 +13236,14 @@ function createRectoHubViewClass(api) {
 					text: `选中的 ${translatable} 篇里，${summary.unconverted} 篇需要先转换再翻译，${summary.convertedWithoutTranslation} 篇已转换、只需翻译。`,
 				});
 			}
+			if (summary.partialTranslation) {
+				box.createDiv({
+					cls: "recto-hub-process-note",
+					text: summary.total > 1
+						? `另有 ${summary.partialTranslation} 篇只译出了一部分，暂不支持重译。`
+						: "这篇只译出了一部分，暂不支持重译。",
+				});
+			}
 			// T83-N-R：后处理开关搬去了设置页「高级设置」。Hub 这里不再摆第二个入口——
 			// 它当时是主题原生复选框，与设置页的拨杆不是同一套控件；档位改由上传确认弹窗如实告知。
 		}
@@ -12629,9 +13251,12 @@ function createRectoHubViewClass(api) {
 		renderBatchDetail() {
 			const entries = this.getSelectedEntries();
 			const summary = summarizeHubSelection(entries);
-			this.detailEl.createEl("h3", { text: `已选 ${summary.total} 篇` });
+			const heading = this.detailEl.createEl("h3", { text: `已选 ${summary.total} 篇` });
+			// T83-O 撤掉「清除选择」按钮的理由是 Escape 已经能做同样的事（注释在下面），
+			// 但界面上一个字都没说过这件事。只补这一句提示，不把按钮加回来。
+			heading.createSpan({ cls: "recto-hub-batch-hint", text: "按 Esc 收回" });
 			this.detailEl.createDiv({
-				cls: "recto-hub-detail-original",
+				cls: "recto-hub-detail-sub",
 				text: `未转换 ${summary.unconverted} · 已转换无译文 ${summary.convertedWithoutTranslation} · 完整/旧版译文 ${summary.translated} · 部分未翻译 ${summary.partialTranslation}`,
 			});
 			this.renderProcessActions(this.detailEl, entries);
@@ -12669,6 +13294,9 @@ function createRectoHubViewClass(api) {
 			const head = this.queueEl.createDiv({ cls: "recto-hub-queue-head" });
 			const caret = head.createSpan({ cls: "recto-hub-queue-caret", text: this.queueExpanded ? "▾" : "▸" });
 			caret.dataset.hubQueue = "toggle";
+			// 同一行的「再试一次 / 立即恢复」本来就是真 <button>，只有这个折叠三角键盘够不到。
+			// 旁边那段摘要文字也挂着同一个 toggle，但它只是鼠标的大命中区，不再占一个 Tab 位。
+			this.markAsButton(caret, this.queueExpanded ? "折叠待写回列表" : "展开待写回列表");
 			const summary = view.counts.blocked
 				? `⚠ ${view.counts.blocked} 篇写回失败，已停止自动重试`
 				: [`${view.rows.length} 篇已提交待写回`, view.oldestAgeText ? `最早 ${view.oldestAgeText}` : ""].filter(Boolean).join(" · ");
@@ -12749,6 +13377,14 @@ function createRectoHubViewClass(api) {
 				this.clearHubFilter("all");
 				return;
 			}
+			const emptyImport = event.target && event.target.closest
+				? event.target.closest("[data-hub-empty-import]")
+				: null;
+			if (emptyImport) {
+				event.preventDefault();
+				void this.plugin.importZoteroLibrary();
+				return;
+			}
 			const toggle = event.target && event.target.closest ? event.target.closest("[data-hub-status-toggle]") : null;
 			if (toggle) {
 				event.preventDefault();
@@ -12783,6 +13419,21 @@ function createRectoHubViewClass(api) {
 		}
 
 		handleListKeydown(event) {
+			// 焦点在阅读状态圆点上时，Enter / Space 必须作用于**这个圆点所属的行**。
+			// 圆点是 span + role="button" + tabindex="0"，而 span 没有原生 Enter/Space 激活，
+			// 事件会一路冒泡到列表容器、落进下面的 getSelectedEntry() 分支；而点圆点又不会把该行
+			// 设为选中（handleListClick 里 stopPropagation），于是焦点行与选中行经常不是同一行——
+			// 净效果是键盘用户按一下就打开或改掉**另一篇**论文，且没有任何提示。这一段就是圆点
+			// 缺失的那个激活实现，必须排在所有按选中行动作的分支之前。只截 role="button" 该认的
+			// 这两个键——方向键等照常落到下面的列表导航，否则焦点停在圆点上时整个列表就走不动了。
+			const toggle = event.key === "Enter" || event.key === " "
+				? (event.target && event.target.closest ? event.target.closest("[data-hub-status-toggle]") : null)
+				: null;
+			if (toggle) {
+				event.preventDefault();
+				void this.cycleStatus(toggle.dataset.hubStatusToggle);
+				return;
+			}
 			if ((event.ctrlKey || event.metaKey) && (event.key === "a" || event.key === "A")) {
 				event.preventDefault();
 				this.setSelection(this.visible.map(entry => entry.recordId), this.selectedRecordId);
@@ -12883,7 +13534,8 @@ function createRectoHubViewClass(api) {
 				event.stopPropagation();
 				this.titleMode = this.titleMode === "translated" ? "original" : "translated";
 				this.renderHead();
-				// 只改已有行的标题格，不重画列表——重画会把滚动位置和已渲染的分块一起丢掉。
+				// 只改已有行的标题格，不重画列表——顺序按原文排，切中/英对得上号；
+				// 重画会把滚动位置和已渲染的分块一起丢掉。
 				this.updateRowTitles();
 				return;
 			}
@@ -13068,6 +13720,9 @@ class RectoDecisionModal extends obsidian.Modal {
 		}
 		if (this.options.note) contentEl.createDiv({ cls: "recto-decision-note", text: String(this.options.note) });
 		const actions = contentEl.createDiv({ cls: "recto-decision-actions" });
+		let preferred = null;
+		let firstSafe = null;
+		let firstAny = null;
 		for (const action of this.options.actions || []) {
 			const button = actions.createEl("button", {
 				text: String(action.label || "继续"),
@@ -13075,7 +13730,16 @@ class RectoDecisionModal extends obsidian.Modal {
 			});
 			button.setAttr("type", "button");
 			button.addEventListener("click", () => this.finish(action.value));
+			if (!firstAny) firstAny = button;
+			if (!firstSafe && !action.warning) firstSafe = button;
+			if (!preferred && action.defaultFocus) preferred = button;
 		}
+		// 原来建完按钮就结束，弹窗打开时没有任何焦点，键盘用户要按好几下 Tab 才够得到动作。
+		// 默认落在**第一个非危险动作**上（现有十处动作组的第一项都是「取消 / 暂不启用 / 跳过此版本」
+		// 这类安全项），绝不自动聚焦 warning 按钮——那等于把删除放在回车底下。
+		// 需要落在别的项上时由调用方标 `defaultFocus: true`（如「保留现有记录」）。
+		const focusTarget = preferred || firstSafe || firstAny;
+		if (focusTarget && typeof focusTarget.focus === "function") focusTarget.focus();
 	}
 
 	finish(value) {
@@ -13094,6 +13758,394 @@ class RectoDecisionModal extends obsidian.Modal {
 	}
 }
 
+class RectoOnboardingModal extends obsidian.Modal {
+	constructor(plugin) {
+		super(plugin.app);
+		this.plugin = plugin;
+		this.busy = false;
+		this.closed = false;
+		this.completed = false;
+		this.finishing = false;
+		this.preferExternal = false;
+		const saved = plugin.getOnboardingState();
+		this.externalResult = findExternalConversionRecord(plugin.externalConversions, saved.externalRecordId);
+	}
+
+	onOpen() {
+		this.closed = false;
+		if (this.modalEl && this.modalEl.addClass) {
+			this.modalEl.addClass("recto-onboarding-modal");
+			this.modalEl.addClass("recto-ui");
+		}
+		if (typeof this.setTitle === "function") this.setTitle("欢迎使用 Recto");
+		// 与设置页共用同一份 T82-D-S 探测：命中就立即落盘，后面的状态灯与导入动作都读它。
+		const detected = this.plugin.autoFillDetectedZoteroSourceIfNeeded(this.plugin.settings);
+		if (detected && detected.savePromise && typeof detected.savePromise.then === "function") {
+			void detected.savePromise.then(() => { if (!this.closed) this.render(); });
+		} else {
+			this.render();
+		}
+	}
+
+	getSnapshot() {
+		const zotero = this.plugin.getZoteroSetupStatusSnapshot();
+		const lights = describeSetupStatusLights({ settings: this.plugin.settings, zotero });
+		const flow = describeOnboardingFlow({
+			lights,
+			zotero,
+			hasNodeSqlite: this.plugin.hasNodeSqlite === true,
+			preferExternal: this.preferExternal,
+			externalResult: this.externalResult,
+		});
+		return { zotero, lights, flow };
+	}
+
+	render() {
+		if (this.closed) return;
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("recto-ui");
+		contentEl.addClass("recto-onboarding-content");
+		const snapshot = this.getSnapshot();
+		const state = this.plugin.getOnboardingState();
+		if (state.currentStep !== snapshot.flow.currentStep) {
+			void this.plugin.updateOnboardingState({ currentStep: snapshot.flow.currentStep }).catch(error => {
+				console.warn("Recto: failed to save onboarding progress", getSanitizedErrorMessage(error));
+			});
+		}
+
+		const progress = contentEl.createDiv({ cls: "recto-onboarding-progress" });
+		progress.createSpan({ text: `第 ${snapshot.flow.currentStep + 1} / 3 步` });
+		const track = progress.createDiv({ cls: "recto-onboarding-progress-track" });
+		const value = track.createDiv({ cls: "recto-onboarding-progress-value" });
+		value.style.width = `${((snapshot.flow.currentStep + 1) / 3) * 100}%`;
+
+		const statuses = contentEl.createDiv({ cls: "recto-onboarding-statuses" });
+		for (const light of [snapshot.lights.account, snapshot.lights.credits, snapshot.lights.zotero]) {
+			const status = statuses.createDiv({ cls: `recto-onboarding-status is-${light.state || "unknown"}` });
+			const icon = status.createSpan({ cls: "rc-icon" });
+			setChromeIcon(icon, light.icon || "circle-dashed");
+			status.createSpan({ text: light.text || "" });
+		}
+
+		const card = contentEl.createDiv({ cls: "recto-onboarding-card" });
+		this.renderStep(card, snapshot);
+	}
+
+	renderStep(card, snapshot) {
+		const id = snapshot.flow.id;
+		if (id === "account") {
+			this.renderStepHeader(card, "user-round", "先登录 Recto 账号", "登录、注册和找回密码都在系统浏览器完成，密码不会进入 Obsidian 插件。");
+			this.renderActions(card, [{
+				label: "打开账号面板",
+				cta: true,
+				action: () => this.plugin.openAccountModal({ onChange: () => this.render() }),
+			}]);
+			return;
+		}
+		if (id === "credits") {
+			this.renderStepHeader(card, "gauge", "确认可用额度", "账号已经登录；请在账号面板确认免费额度，或选择适合你的套餐。");
+			this.renderActions(card, [{
+				label: "查看账号与额度",
+				cta: true,
+				action: () => this.plugin.openAccountModal({ onChange: () => this.render() }),
+			}]);
+			return;
+		}
+		if (id === "zotero") {
+			this.renderStepHeader(card, "library", "导入第一篇论文", "已检测到 Zotero 数据目录。导入只在本地复制 PDF、建立论文对象，不转换，也不扣额度。");
+			this.renderActions(card, [
+				{ label: "一键导入 Zotero", cta: true, action: () => this.importZotero() },
+				{ label: "改用库外 PDF", action: () => { this.preferExternal = true; this.render(); } },
+			]);
+			return;
+		}
+		if (id === "hub") {
+			this.renderStepHeader(card, "library-big", "材料已经就绪", "打开论文库，选择一篇论文，在右侧完成转换；转换完成后从同一处打开正文或译文阅读。");
+			this.renderActions(card, [{
+				label: "打开论文库，选择一篇转换",
+				cta: true,
+				action: () => this.complete(() => { void this.plugin.activateRectoHub(); }),
+			}]);
+			return;
+		}
+		if (id === "external-result") {
+			this.renderStepHeader(card, "book-open", "第一篇已经转换", "正文已经写回当前 Vault。现在可以直接打开阅读，之后也能从文件列表再次找到它。");
+			this.renderActions(card, [{
+				label: "打开正文阅读",
+				cta: true,
+				action: () => this.complete(() => this.plugin.openExternalConversionResult(this.externalResult)),
+			}]);
+			return;
+		}
+		this.renderStepHeader(
+			card,
+			"file-plus",
+			"选择第一篇 PDF",
+			this.plugin.hasNodeSqlite
+				? "没有检测到可用的 Zotero 数据目录。可以先选一篇本地 PDF 转换，也可以去设置页手动配置 Zotero。"
+				: "当前运行环境不能读取 Zotero 数据库，但仍可直接选择本地 PDF 完成第一次转换。"
+		);
+		this.renderActions(card, [
+			{ label: "选择 PDF 并转换", cta: true, action: () => this.convertExternalPdf() },
+			{ label: "配置 Zotero", action: () => this.complete(() => this.plugin.openRectoSettings()) },
+		]);
+	}
+
+	renderStepHeader(card, iconName, title, description) {
+		const heading = card.createDiv({ cls: "recto-onboarding-step-heading" });
+		const icon = heading.createSpan({ cls: "rc-icon recto-onboarding-step-icon" });
+		setChromeIcon(icon, iconName);
+		const copy = heading.createDiv();
+		copy.createEl("h3", { text: title });
+		copy.createEl("p", { text: description });
+	}
+
+	renderActions(card, actions) {
+		const row = card.createDiv({ cls: "recto-onboarding-actions" });
+		let primary = null;
+		for (const item of actions) {
+			const button = row.createEl("button", {
+				text: this.busy && item.cta ? `${item.label}…` : item.label,
+				cls: `${item.cta ? "mod-cta" : ""}${this.busy && item.cta ? " is-pending" : ""}`,
+			});
+			button.setAttr("type", "button");
+			button.disabled = this.busy;
+			button.addEventListener("click", () => void this.runAction(item.action));
+			if (!primary && item.cta) primary = button;
+		}
+		const skip = row.createEl("button", { text: "跳过引导", cls: "recto-onboarding-skip" });
+		skip.setAttr("type", "button");
+		skip.disabled = this.busy;
+		skip.addEventListener("click", () => void this.complete());
+		if (primary && typeof primary.focus === "function") primary.focus();
+	}
+
+	async runAction(action) {
+		if (this.busy || this.finishing || typeof action !== "function") return;
+		this.busy = true;
+		this.render();
+		try {
+			await action();
+		} catch (error) {
+			new obsidian.Notice(getUserFacingErrorMessage(error, "这一步没有完成，请稍后重试。"), 8000);
+		} finally {
+			this.busy = false;
+			if (!this.closed && !this.finishing) this.render();
+		}
+	}
+
+	async importZotero() {
+		await this.plugin.importZoteroLibrary({ hostEl: this.modalEl || this.contentEl });
+	}
+
+	async convertExternalPdf() {
+		const before = normalizeExternalConversions(this.plugin.externalConversions);
+		await this.plugin.convertExternalPdfsFromCommand();
+		this.externalResult = findChangedExternalConversion(before, this.plugin.externalConversions);
+		if (this.externalResult) {
+			await this.plugin.updateOnboardingState({
+				currentStep: 2,
+				externalRecordId: this.externalResult.recordId,
+			});
+		}
+	}
+
+	async complete(action = null) {
+		if (this.finishing) return;
+		this.finishing = true;
+		try {
+			await this.plugin.updateOnboardingState({ completed: true, currentStep: 2 });
+		} catch (error) {
+			this.finishing = false;
+			new obsidian.Notice("未能保存引导状态，请重试。", 6000);
+			console.warn("Recto: failed to complete onboarding", getSanitizedErrorMessage(error));
+			return;
+		}
+		this.completed = true;
+		this.close();
+		if (typeof action === "function") {
+			try {
+				await action();
+			} catch (error) {
+				new obsidian.Notice("引导已完成，但目标页面没有打开，请从设置页继续。", 8000);
+				console.warn("Recto: onboarding handoff failed", getSanitizedErrorMessage(error));
+			}
+		}
+	}
+
+	onClose() {
+		this.closed = true;
+		if (!this.completed && !this.finishing) {
+			this.finishing = true;
+			void this.plugin.updateOnboardingState({ completed: true, currentStep: 2 }).catch(error => {
+				console.warn("Recto: failed to skip onboarding", getSanitizedErrorMessage(error));
+			});
+		}
+		this.contentEl.empty();
+	}
+}
+
+// T85-E：反馈主阵地完整留在插件内。Hub 顶栏不加第三个图标；设置页是主入口，
+// 账号弹窗底部是弱入口。表单与 QQ 同一页；快速开始不进本弹窗，由 T85 仅在初次安装触发。
+class RectoHelpFeedbackModal extends obsidian.Modal {
+	constructor(plugin) {
+		super(plugin.app);
+		this.plugin = plugin;
+		this.closed = false;
+		this.submitting = false;
+		this.category = "issue";
+		this.viewVersion = 0;
+	}
+
+	onOpen() {
+		this.closed = false;
+		if (this.modalEl && this.modalEl.addClass) {
+			this.modalEl.addClass("recto-help-modal");
+			this.modalEl.addClass("recto-ui");
+		}
+		if (typeof this.setTitle === "function") this.setTitle("问题反馈");
+		if (this.titleEl && this.titleEl.createSpan) {
+			this.titleEl.addClass("recto-help-heading");
+			const mark = this.titleEl.createSpan({ cls: "recto-help-heading-mark" });
+			mark.innerHTML = RECTO_MARK_MARKUP;
+			if (this.titleEl.prepend) this.titleEl.prepend(mark);
+		}
+		this.render();
+	}
+
+	render() {
+		this.viewVersion += 1;
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("recto-ui");
+		contentEl.addClass("recto-help-content");
+		const signedIn = this.plugin.hasBackendAccountSession();
+		if (signedIn) this.renderForm(contentEl);
+		else {
+			this.renderSignedOut(contentEl);
+			this.renderContact(contentEl);
+		}
+	}
+
+	renderSignedOut(parent) {
+		const box = parent.createDiv({ cls: "recto-help-signed-out" });
+		const login = box.createEl("button", { text: "打开账号登录", cls: "mod-cta" });
+		login.setAttr("type", "button");
+		login.addEventListener("click", () => {
+			this.close();
+			this.plugin.openAccountModal();
+		});
+	}
+
+	renderContact(parent) {
+		const row = parent.createDiv({ cls: "recto-help-contact" });
+		row.createSpan({ cls: "recto-help-contact-label", text: "Contact us：" });
+		row.createSpan({ cls: "recto-help-contact-number", text: `QQ ${RECTO_SUPPORT_QQ}` });
+		const copyButton = row.createEl("button", { text: "复制" });
+		copyButton.setAttr("type", "button");
+		copyButton.addEventListener("click", () => void this.copySupportQq());
+	}
+
+	async copySupportQq() {
+		if (!RECTO_SUPPORT_QQ) return;
+		try {
+			if (typeof navigator === "undefined" || !navigator.clipboard || !navigator.clipboard.writeText) {
+				throw new Error("clipboard unavailable");
+			}
+			await navigator.clipboard.writeText(RECTO_SUPPORT_QQ);
+			new obsidian.Notice("QQ 号已复制", 2500);
+		} catch {
+			new obsidian.Notice(`复制失败，请手动记录 QQ：${RECTO_SUPPORT_QQ}`, 6000);
+		}
+	}
+
+	renderForm(parent) {
+		const form = parent.createDiv({ cls: "recto-help-form" });
+		const types = form.createDiv({
+			cls: "recto-help-types",
+			attr: { role: "radiogroup", "aria-label": "反馈类型" },
+		});
+		const typeButtons = [];
+		for (const option of [
+			{ value: "issue", label: "故障" },
+			{ value: "feature", label: "建议" },
+			{ value: "other", label: "其他" },
+		]) {
+			const active = option.value === this.category;
+			const button = types.createEl("button", {
+				cls: `recto-help-type${active ? " is-active" : ""}`,
+				text: option.label,
+			});
+			button.setAttr("type", "button");
+			button.setAttr("role", "radio");
+			button.setAttr("aria-checked", active ? "true" : "false");
+			button.addEventListener("click", () => {
+				if (this.submitting || this.category === option.value) return;
+				this.category = option.value;
+				for (const item of typeButtons) {
+					const on = item.dataset.helpType === this.category;
+					item.toggleClass("is-active", on);
+					item.setAttr("aria-checked", on ? "true" : "false");
+				}
+			});
+			button.dataset.helpType = option.value;
+			typeButtons.push(button);
+		}
+
+		const message = form.createEl("textarea");
+		message.setAttr("rows", "9");
+		message.setAttr("maxlength", "2000");
+		message.setAttr("placeholder", "请描述问题或建议…");
+
+		const status = form.createDiv({ cls: "recto-help-form-status", attr: { "aria-live": "polite" } });
+		const footer = form.createDiv({ cls: "recto-help-form-footer" });
+		this.renderContact(footer);
+		const submit = footer.createEl("button", { text: "提交反馈", cls: "mod-cta" });
+		submit.setAttr("type", "button");
+		const version = this.viewVersion;
+		submit.addEventListener("click", async () => {
+			if (this.submitting) return;
+			const text = String(message.value || "").trim();
+			if (text.length < 5) {
+				status.setText("请至少填写 5 个字。");
+				status.removeClass("is-success");
+				status.addClass("is-error");
+				return;
+			}
+			this.submitting = true;
+			submit.disabled = true;
+			submit.setText("正在提交…");
+			status.setText("");
+			status.removeClass("is-error");
+			status.removeClass("is-success");
+			try {
+				await this.plugin.submitFeedback({ category: this.category, message: text });
+				if (this.closed || this.viewVersion !== version) return;
+				message.value = "";
+				status.setText("反馈已收到，谢谢。");
+				status.addClass("is-success");
+			} catch (error) {
+				if (this.closed || this.viewVersion !== version) return;
+				status.setText(getUserFacingErrorMessage(error, "提交失败，请稍后重试或通过 QQ 联系。"));
+				status.addClass("is-error");
+			} finally {
+				this.submitting = false;
+				if (!this.closed && this.viewVersion === version) {
+					submit.disabled = false;
+					submit.setText("提交反馈");
+				}
+			}
+		});
+		if (typeof message.focus === "function") message.focus();
+	}
+
+	onClose() {
+		this.closed = true;
+		this.contentEl.empty();
+	}
+}
+
 // T59：账号、额度、套餐与订单从设置页整体搬到这个弹窗。命令、Hub 额度徽章与设置页入口
 // 唤起的都是同一个类。
 // T71：未登录侧不再有任何认证输入框——登录、注册、找回密码全部搬到浏览器里的账号网页，
@@ -13108,9 +14160,22 @@ class RectoAccountModal extends obsidian.Modal {
 		this.loginBlocked = false;
 		this.loginNote = "";
 		this.unsubscribeBrowserLogin = null;
+		this.loginPolling = false;
 		this.busy = false;
 		this.pendingLabel = "";
 		this.closed = false;
+		// 「从未取过套餐」与「真的取失败了」是两种处境，此前都画成「套餐读取失败」。
+		// backendPlansCache 默认就是 []，空数组本身分不出这两者，只能另记一位。
+		this.plansLoading = false;
+		this.plansFailed = false;
+		// 下过单就留一行常驻提示。Notice 5 秒就没了，而弹窗此刻还开着——原来那句
+		//「付款完成后重新打开这个面板」说完就消失，之后界面上再无任何线索。
+		this.checkoutStarted = false;
+		this.checkoutPaid = false;
+		this.checkoutSnapshot = null;
+		this.checkoutTimer = null;
+		this.checkoutAttempt = 0;
+		this.checkoutPolling = false;
 		// 月付/年付只是这一次看的视角，不值得进 data.json；关掉弹窗回到默认即可。
 		this.planCycle = "monthly";
 	}
@@ -13144,6 +14209,7 @@ class RectoAccountModal extends obsidian.Modal {
 		// 先置 closed 再停表：网络请求的续段可能晚于关闭才回来，不能让它把界面重画、把轮询重开。
 		this.closed = true;
 		this.stopBrowserLoginPolling();
+		this.stopCheckoutBillingPolling();
 		if (this.unsubscribeBrowserLogin) this.unsubscribeBrowserLogin();
 		this.unsubscribeBrowserLogin = null;
 		this.contentEl.empty();
@@ -13158,11 +14224,18 @@ class RectoAccountModal extends obsidian.Modal {
 	// T82-A-A 去掉了「刷新」「刷新套餐」两个按钮——打开面板本身就是那个刷新动作，
 	// 用户不该为了看到最新数字先去点一个按钮。
 	async refreshAccountQuietly() {
+		// 先重画一次进「正在读取」：这一趟最长 30 秒，中间画成「读取失败」是撒谎。
+		this.plansLoading = true;
+		this.plansFailed = false;
+		if (!this.closed) this.render();
 		try {
 			await this.plugin.refreshBackendBilling({ timeout: 30000 });
 		} catch (error) {
+			this.plansFailed = true;
 			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, "账号信息暂时无法刷新，请稍后重试。");
 			await this.plugin.save();
+		} finally {
+			this.plansLoading = false;
 		}
 		if (this.closed) return;
 		this.notifyChanged();
@@ -13205,9 +14278,19 @@ class RectoAccountModal extends obsidian.Modal {
 		const view = describeBackendAccountView(this.plugin.settings);
 		// 弹窗标题栏已经写着「Recto 账号与额度」，这里不再重复一遍品牌字标；
 		// 邮箱挪到底部与「退出登录」同排——它们本来就是一组。
-		if (view.loggedIn) this.renderSignedIn(contentEl, view);
+		// 会话过期的账号画成登录侧：登录侧才有「在浏览器中登录」这个唯一的出路，
+		// 画成已登录只会摆出一屏点了就 401 的按钮。凭据不在这里清（那归后端 401）。
+		if (view.loggedIn && !view.sessionExpired) this.renderSignedIn(contentEl, view);
 		else this.renderSignedOut(contentEl, view);
+		const support = contentEl.createEl("button", {
+			cls: "recto-account-support-link",
+			text: "问题反馈",
+		});
+		support.setAttr("type", "button");
+		if (this.busy) support.disabled = true;
+		support.addEventListener("click", () => this.plugin.openHelpFeedbackModal());
 		this.syncBrowserLoginPolling(view);
+		this.syncCheckoutBillingPolling();
 	}
 
 	createButton(container, label, handler, cls = "") {
@@ -13232,7 +14315,8 @@ class RectoAccountModal extends obsidian.Modal {
 		const waiting = this.describeBrowserLoginWaiting();
 		const box = container.createDiv({ cls: "recto-account-browser" });
 		const intro = box.createDiv({ cls: "recto-account-browser-intro" });
-		intro.createDiv({ cls: "recto-account-kicker", text: waiting.active ? "Browser login · waiting" : "Recto account" });
+		// 全中文界面里不留英文 kicker（品牌字 Recto 除外，它是名字不是文案）。
+		intro.createDiv({ cls: "recto-account-kicker", text: waiting.active ? "浏览器登录 · 等待中" : `${RECTO_BRAND_NAME} 账号` });
 		intro.createEl("h3", {
 			cls: "recto-account-browser-title",
 			text: waiting.active ? "浏览器登录后，自动回到这里。" : "把登录交给浏览器。",
@@ -13259,6 +14343,10 @@ class RectoAccountModal extends obsidian.Modal {
 			status.createSpan({ cls: "recto-account-browser-pulse" });
 			status.createSpan({ text: "正在等待浏览器完成登录" });
 		}
+		// 过期与从没登录过长得一样，不说一句用户会以为自己被莫名其妙登出了。
+		if (view.sessionExpired) {
+			box.createDiv({ cls: "recto-account-hint", text: "上次登录的会话已过期，重新登录即可继续使用。" });
+		}
 		this.renderActionError(box, view);
 		const actions = box.createDiv({ cls: "recto-account-actions" });
 		this.createButton(actions, waiting.active ? "重新打开登录页" : "在浏览器中登录", () => {
@@ -13281,6 +14369,11 @@ class RectoAccountModal extends obsidian.Modal {
 					if (result.status === "approved") {
 						this.loginNote = "";
 						new obsidian.Notice(`已登录 ${RECTO_BRAND_NAME} 账号`, 5000);
+						// 与自动轮询 / 深链两条 approved 同一条规矩：登录成功后必须取一次套餐。
+						// runAction 收尾只 render()，不走 refreshAccountQuietly；不在这里取，
+						// 套餐仍是 []，界面会永远停在「正在读取套餐…」，若打开时已经因过期
+						// 401 把 plansFailed 置过位，还会退回「套餐读取失败」。
+						void this.refreshAccountQuietly();
 						return true;
 					}
 					this.loginNote = BROWSER_LOGIN_STATUS_NOTES[result.status] || "浏览器那边还没完成登录。";
@@ -13349,6 +14442,9 @@ class RectoAccountModal extends obsidian.Modal {
 
 	async pollBrowserLoginOnce() {
 		if (this.busy) return;
+		// `busy` 是弹窗动作的忙碌位，轮询自己从不设它——2 秒一跳、单次最长 30 秒，
+		// 不另记一位就必然叠出十几个在途请求。
+		if (this.loginPolling) return;
 		if (this.closed || this.plugin.isUnloading) {
 			this.stopBrowserLoginPolling();
 			return;
@@ -13368,14 +14464,18 @@ class RectoAccountModal extends obsidian.Modal {
 			return;
 		}
 		this.loginAttempt += 1;
+		this.loginPolling = true;
 		try {
 			const result = await this.plugin.pollBackendBrowserLogin({ timeout: 30000 });
 			if (result.status === "approved") {
 				this.stopBrowserLoginPolling();
 				this.loginNote = "";
 				new obsidian.Notice(`已登录 ${RECTO_BRAND_NAME} 账号`, 5000);
-				this.notifyChanged();
-				this.render();
+				// 登录成功后必须取一次套餐与额度：整条取数链路只有 refreshBackendBilling 一个入口，
+				// 而它原来只在「打开面板时已登录」那一种情形下跑过。先开面板再去浏览器登录的新用户
+				// 走的正是这条路，回来时套餐一次都没取过，界面却说「套餐读取失败」。
+				// refreshAccountQuietly 自带 notifyChanged + render，这里不必再画一次。
+				void this.refreshAccountQuietly();
 				return;
 			}
 			if (result.status === "expired" || result.status === "consumed") {
@@ -13392,6 +14492,57 @@ class RectoAccountModal extends obsidian.Modal {
 			await this.plugin.save();
 			this.loginNote = "自动检查登录状态失败，已停止；在浏览器登录后请点「已在浏览器登录」。";
 			this.render();
+		} finally {
+			this.loginPolling = false;
+		}
+	}
+
+	syncCheckoutBillingPolling() {
+		if (this.checkoutPaid) {
+			this.stopCheckoutBillingPolling();
+			return;
+		}
+		if (decideCheckoutBillingPoll(this.checkoutStarted, this.checkoutAttempt).poll) {
+			this.startCheckoutBillingPolling();
+		} else {
+			this.stopCheckoutBillingPolling();
+		}
+	}
+
+	startCheckoutBillingPolling() {
+		if (this.checkoutTimer) return;
+		this.checkoutTimer = setInterval(() => { void this.pollCheckoutBillingOnce(); }, CHECKOUT_BILLING_POLL_INTERVAL_MS);
+	}
+
+	stopCheckoutBillingPolling() {
+		if (this.checkoutTimer) clearInterval(this.checkoutTimer);
+		this.checkoutTimer = null;
+	}
+
+	async pollCheckoutBillingOnce() {
+		if (this.busy || this.checkoutPolling || this.closed || this.plugin.isUnloading || this.checkoutPaid) return;
+		const decision = decideCheckoutBillingPoll(this.checkoutStarted, this.checkoutAttempt);
+		if (!decision.poll) {
+			this.stopCheckoutBillingPolling();
+			if (decision.reason === "timeout") this.render();
+			return;
+		}
+		this.checkoutAttempt += 1;
+		this.checkoutPolling = true;
+		try {
+			// 不走 refreshAccountQuietly：它会把面板闪成「正在读取套餐」。
+			await this.plugin.refreshBackendBilling({ timeout: 30000 });
+			if (this.closed) return;
+			if (checkoutBillingChanged(this.checkoutSnapshot, snapshotCheckoutBilling(this.plugin.settings))) {
+				this.checkoutPaid = true;
+				this.stopCheckoutBillingPolling();
+				this.notifyChanged();
+				this.render();
+			}
+		} catch {
+			// 付款可能要好几分钟，一次网络抖动不该停表。打满次数再停。
+		} finally {
+			this.checkoutPolling = false;
 		}
 	}
 
@@ -13475,7 +14626,13 @@ class RectoAccountModal extends obsidian.Modal {
 	renderPlans(container, view) {
 		const box = container.createDiv({ cls: "recto-account-purchase" });
 		if (!view.plans.length) {
-			box.createDiv({ cls: "recto-account-hint", text: "套餐读取失败，重新打开面板会再试一次。" });
+			// 「从未取过」与「取失败了」必须分开说。取数链路只有一条（refreshBackendBilling），
+			// 而它此前只在打开面板且已登录时才跑一次——先开面板再去浏览器登录的新用户，回来时
+			// 套餐一次都没取过，却被告知「读取失败」，而根本没有失败发生。
+			box.createDiv({
+				cls: "recto-account-hint",
+				text: this.plansFailed ? "套餐读取失败，重新打开面板会再试一次。" : "正在读取套餐…",
+			});
 			return;
 		}
 
@@ -13484,6 +14641,20 @@ class RectoAccountModal extends obsidian.Modal {
 			// 后端返回的套餐一个都认不出来（code 约定对不上）时，宁可说清楚，也不要画一片空白。
 			box.createDiv({ cls: "recto-account-hint", text: "套餐信息暂时无法显示，请联系我们。" });
 			return;
+		}
+
+		// 下过单就留一行，直到付到账、超时、或关掉弹窗。
+		// 不轮询订单（认领密钥在网页 fragment 里，插件从不持有，T82-A 决策 2 仍成立）；
+		// 只反复读 /api/v1/me，和「关掉再打开」是同一条取数链路。
+		// 付到账之后不另写一句「已生效」——进度条和套餐角标自己会变，那就是刷新。
+		if (this.checkoutStarted && !this.checkoutPaid) {
+			const waiting = decideCheckoutBillingPoll(true, this.checkoutAttempt).poll;
+			box.createDiv({
+				cls: "recto-account-hint",
+				text: waiting
+					? "正在等待浏览器完成付款，额度会自动更新。"
+					: "还没等到付款结果。关掉这个面板再打开一次也会刷新；插件不会查询订单本身。",
+			});
 		}
 
 		// 目录里真有年付档才给切换器——只有免费档时摆一个月/年开关是假的。
@@ -13520,11 +14691,15 @@ class RectoAccountModal extends obsidian.Modal {
 		price.createSpan({ cls: "recto-account-plan-amount", text: card.price });
 		if (card.period) price.createSpan({ cls: "recto-account-plan-period", text: card.period });
 
+		// 请求期间所有卡片一起置灰，看不出是哪张在请求（下单超时 30 秒）。这里复用 createButton
+		// 那套 pendingLabel + is-pending，让正在请求的那一张自己显示「…」。
+		const pending = this.pendingLabel === action.label;
 		const cta = cell.createEl("button", {
 			cls: `recto-account-plan-cta${action.disabled ? "" : " mod-cta"}`,
-			text: action.label,
+			text: pending ? `${action.label}…` : action.label,
 		});
 		cta.setAttr("type", "button");
+		if (pending) cta.addClass("is-pending");
 		// T84-A-A：买不了的档把原因挂 title，按钮上只留一句短的。理由比「不能买」有用得多。
 		if (action.hint) cta.setAttr("title", action.hint);
 		if (action.disabled || this.busy) {
@@ -13538,9 +14713,14 @@ class RectoAccountModal extends obsidian.Modal {
 					this.plugin.settings.backendSelectedPlanCode = card.code;
 					const url = await this.plugin.startBackendCheckout(card.code, { timeout: 30000 });
 					this.plugin.openExternalUrl(url);
-				// 插件这边不轮询订单（T82-A 决策 2）：网页自己会显示「已到账」，
-				// 额度靠「打开面板即刷新」，所以这句话必须说清楚要重新打开面板。
-				}, "已在浏览器打开支付页。付款完成后重新打开这个面板，就能看到新额度。");
+					// 不轮询订单（T82-A 决策 2）：认领密钥在网页 fragment 里，插件从不持有。
+					// 付完款网页自己会显示「已到账」；插件这边反复读 /api/v1/me，
+					// 会员或额度一变就停表重画——不必再关开一次面板。
+					this.checkoutSnapshot = snapshotCheckoutBilling(this.plugin.settings);
+					this.checkoutStarted = true;
+					this.checkoutPaid = false;
+					this.checkoutAttempt = 0;
+				}, "支付页已在浏览器打开，请在浏览器里完成付款。");
 			});
 		}
 
@@ -13580,6 +14760,14 @@ class RectoAccountModal extends obsidian.Modal {
 	}
 }
 
+// 同步预览的行文本。取不到文件名时**只显示 stem**——原来回退到 `attachmentKey`，
+// 那是 Zotero 的内部主键（形如 `ABCD1234`），对用户没有任何意义，摆出来只像一串乱码。
+function describeZoteroSyncPreviewRow(stem, fileName) {
+	const name = String(fileName || "").trim();
+	const title = String(stem || "").trim();
+	return name ? `${title}（${name}）` : title;
+}
+
 class ZoteroSyncPreviewModal extends obsidian.Modal {
 	constructor(plugin, plan, resolve) {
 		super(plugin.app);
@@ -13611,7 +14799,7 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 			});
 			for (const item of this.plan.missingPdfs) {
 				contentEl.createEl("div", {
-					text: `${item.info.stem}（${item.info.sourceFileName || item.attachmentKey}）`,
+					text: describeZoteroSyncPreviewRow(item.info.stem, item.info.sourceFileName),
 					cls: "recto-sync-preview-row",
 				});
 			}
@@ -13622,8 +14810,25 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 				text: "同步后它们会标记为已从 Zotero 删除，但 Obsidian 文件默认保留。仅勾选的论文会移入系统回收站。",
 				cls: "setting-item-description",
 			});
+			// 全选/全不选：orphaned 动辄十几条，逐个点太苦；两个按钮只改已有勾选框的状态，
+			// 不重建列表（重建会把滚动位置甩回顶部，同 MultiPdfChoiceModal 的教训）。
+			const bulk = contentEl.createDiv({ cls: "recto-sync-preview-bulk" });
+			this.orphanCheckboxes = [];
+			const selectAll = (checked) => {
+				this.selected = checked ? new Set(this.plan.orphaned.map(item => item.recordId)) : new Set();
+				for (const box of this.orphanCheckboxes) box.checked = checked;
+				if (this.deleteButton && this.deleteButton.setDisabled) this.deleteButton.setDisabled(!this.selected.size);
+			};
+			const all = bulk.createEl("button", { text: "全选" });
+			all.setAttr("type", "button");
+			all.addEventListener("click", () => selectAll(true));
+			const none = bulk.createEl("button", { text: "全不选" });
+			none.setAttr("type", "button");
+			none.addEventListener("click", () => selectAll(false));
 			for (const item of this.plan.orphaned) {
-				const row = contentEl.createDiv({ cls: "recto-sync-preview-row" });
+				// 行做成 label：原来行文本是个裸 span，点字不勾选——勾选框只有 14px，
+				// 一整行可点的目标却只有那一小块。
+				const row = contentEl.createEl("label", { cls: "recto-sync-preview-row" });
 				const checkbox = row.createEl("input");
 				checkbox.type = "checkbox";
 				checkbox.setAttr("aria-label", `移入回收站：${item.info.stem}`);
@@ -13633,7 +14838,8 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 					else this.selected.delete(item.recordId);
 					if (this.deleteButton && this.deleteButton.setDisabled) this.deleteButton.setDisabled(!this.selected.size);
 				};
-				row.createSpan({ text: `${item.info.stem}（${item.info.originalName || item.attachmentKey}）` });
+				this.orphanCheckboxes.push(checkbox);
+				row.createSpan({ text: describeZoteroSyncPreviewRow(item.info.stem, item.info.originalName) });
 			}
 		}
 		new obsidian.Setting(contentEl)
@@ -13707,6 +14913,10 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 			section.createEl("h3", { text: group.title });
 			section.createEl("p", { text: `${group.files.length} 个 PDF 版本`, cls: "setting-item-description" });
 			const choice = this.choices.get(group.folder);
+			// 改「处理方式」原来直接重跑 onOpen()，而 onOpen 开头就 contentEl.empty()——
+			// 整窗重建。歧义组多时，改完第 1 组要重新滚到第 3 组，焦点也一起丢。
+			// 改成只重画这一组自己的明细区，其余各组、滚动位置与焦点全不动。
+			let detail = null;
 			new obsidian.Setting(section)
 				.setName("处理方式")
 				.addDropdown(dropdown => dropdown
@@ -13716,34 +14926,10 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 					.setValue(choice.mode)
 					.onChange(value => {
 						choice.mode = value;
-						this.onOpen();
+						this.renderGroupDetail(detail, group, choice);
 					}));
-			if (choice.mode === "one") {
-				new obsidian.Setting(section)
-					.setName("使用文件")
-					.addDropdown(dropdown => {
-						for (const file of group.files) {
-							let detail = "";
-							try {
-								const stat = fs.statSync(file.path);
-								detail = ` (${(stat.size / 1024 / 1024).toFixed(1)} MB, ${stat.mtime.toLocaleString("zh-CN")})`;
-							} catch {}
-							const choiceKey = getPdfChoiceKey(file);
-							const recommended = choiceKey === group.recommendedChoiceKey ? " [推荐]" : "";
-							const attachment = group.files.some(other => other !== file && other.name === file.name)
-								? ` [版本 ${group.files.indexOf(file) + 1}]`
-								: "";
-							dropdown.addOption(choiceKey, `${file.name}${attachment}${recommended}${detail}`);
-						}
-						return dropdown.setValue(choice.choiceKey).onChange(value => {
-							choice.choiceKey = value;
-						});
-					});
-			} else if (choice.mode === "all") {
-				for (const file of group.files) {
-					section.createEl("div", { text: `• ${file.name}`, cls: "setting-item-description" });
-				}
-			}
+			detail = section.createDiv({ cls: "recto-multi-pdf-detail" });
+			this.renderGroupDetail(detail, group, choice);
 		}
 		new obsidian.Setting(contentEl)
 			.addButton(button => button.setButtonText("取消").onClick(() => this.finish(null)))
@@ -13755,6 +14941,40 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 				}
 				this.finish(tasks);
 			}));
+	}
+
+	// 一组的明细区：只有「选择一个 PDF」与「全部分别处理」有内容，「本次跳过」是空的。
+	renderGroupDetail(container, group, choice) {
+		if (!container) return;
+		container.empty();
+		if (choice.mode === "one") {
+			new obsidian.Setting(container)
+				.setName("使用文件")
+				.addDropdown(dropdown => {
+					for (const file of group.files) {
+						let detail = "";
+						try {
+							const stat = fs.statSync(file.path);
+							detail = ` (${(stat.size / 1024 / 1024).toFixed(1)} MB, ${stat.mtime.toLocaleString("zh-CN")})`;
+						} catch {}
+						const choiceKey = getPdfChoiceKey(file);
+						const recommended = choiceKey === group.recommendedChoiceKey ? " [推荐]" : "";
+						const attachment = group.files.some(other => other !== file && other.name === file.name)
+							? ` [版本 ${group.files.indexOf(file) + 1}]`
+							: "";
+						dropdown.addOption(choiceKey, `${file.name}${attachment}${recommended}${detail}`);
+					}
+					return dropdown.setValue(choice.choiceKey).onChange(value => {
+						choice.choiceKey = value;
+					});
+				});
+			return;
+		}
+		if (choice.mode === "all") {
+			for (const file of group.files) {
+				container.createEl("div", { text: `• ${file.name}`, cls: "setting-item-description" });
+			}
+		}
 	}
 
 	finish(value) {
@@ -13816,6 +15036,12 @@ class StatusBarProgress {
 
 	buildStatusBar() {
 		this.statusBarEl.empty();
+		// 浮层是 display:none，只由 `.rc-statusbar:hover` / `:focus-within` 打开；而 display:none 的
+		// 子树不可聚焦，状态栏自己又没有 tabindex，于是 `:focus-within` 永远不会被键盘触发——
+		// 「取消未开始的 N 篇」那个按钮此前键盘完全够不到。给容器一个 tab 位，焦点一落浮层就展开，
+		// 再 Tab 一下就到按钮上。另有一条同名命令兜底（键盘用户未必会想到去 Tab 状态栏）。
+		// **不挂 aria-label**：那会盖掉里面这行随批次实时变化的状态文字，读屏用户反而听不到进度。
+		this.statusBarEl.tabIndex = 0;
 		this.textEl = this.statusBarEl.createSpan({ cls: "rc-statusbar-text" });
 		this.popoverEl = this.statusBarEl.createDiv({ cls: "rc-statusbar-popover" });
 		this.popoverTextEl = this.popoverEl.createDiv({ cls: "rc-statusbar-popover-text" });
@@ -13835,7 +15061,9 @@ class StatusBarProgress {
 		const remaining = this.queuedRemaining;
 		const done = !!(snapshot && snapshot.finished);
 		const stopping = !!(this.operation && this.operation.stopAfterCurrent);
-		const stage = `${BATCH_PHASE_LABELS[this.phase] || this.stage || "进行中"}${this.detail ? ` · ${this.detail.substring(0, 40)}` : ""}`;
+		// 论文名常常超过 40 字，硬截会截得像另一个名字；截了就加省略号说明它被截过。
+		const detail = this.detail.length > 40 ? `${this.detail.substring(0, 40)}…` : this.detail;
+		const stage = `${BATCH_PHASE_LABELS[this.phase] || this.stage || "进行中"}${detail ? ` · ${detail}` : ""}`;
 		// 只剩在跑的那篇时按钮直接消失——强制中止已于 T81-U 删除。这一步必须把「不用管它」说出来，
 		// 否则用户只看见按钮没了，会以为卡住了没出路。
 		this.popoverTextEl.setText(done
@@ -13931,11 +15159,12 @@ class StatusBarProgress {
 	}
 
 	setStage(stage, detail) {
-		this.stage = String(stage || "");
-		this.detail = String(detail || "");
 		// 认得的阶段才进流水线权重；导入/删除等复用同一个进度条，它们的阶段名不在表里，
 		// phase 置空后进度条不画，只报阶段文字——不假装有可加权的进度。
-		this.phase = BATCH_STAGE_PHASES[this.stage] || "";
+		const resolved = resolveBatchProgressStage(stage);
+		this.stage = resolved.stage;
+		this.detail = String(detail || "");
+		this.phase = resolved.phase;
 		this.sub = null;
 		this.publish();
 	}
@@ -13958,10 +15187,13 @@ class StatusBarProgress {
 		this.total = tot;
 		this.index = Math.min(Math.max(0, tot - 1), cur);
 		if (stage === "failed") this.failed++;
-		// 一篇结束、下一篇还没开始：回到流水线起点，进度停在「已完成 N 篇」的边界上。
-		this.phase = "submit";
+		// 阶段判定与 setStage 走同一条 resolveBatchProgressStage：转换流水线的 done / failed 仍
+		// 停在「已完成 N 篇」的边界（phase = submit），导入等非流水线阶段则 phase 留空、阶段文字
+		// 如实显示，不再被写死成「提交」并画出一个假百分比。
+		const resolved = resolveBatchProgressStage(stage);
+		this.phase = resolved.phase;
 		this.sub = null;
-		this.stage = stage === "failed" ? "上一篇失败" : "已完成一篇";
+		this.stage = resolved.stage;
 		this.detail = "";
 		this.publish();
 	}
@@ -14023,6 +15255,55 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		this.plugin = plugin;
 		this.customModelEditors = new Set();
 		this.setupStatusItems = {};
+		this.busySettingButtons = new WeakSet();
+	}
+
+	/**
+	 * 「论文库文件夹」那一行的定点刷新（不重绘整页，理由同「待确认」那一行）。
+	 *
+	 * **配好且指得对时收成只读**：改名一律去 Obsidian 文件浏览器做——它会连正文里的图片
+	 * wikilink 一起更新（`![[<base>/<stem>/images/x.png]]` 带着基础目录名），插件这边由
+	 * `trackBaseFolderRename` 跟着改设置，用户不用两头跑。
+	 *
+	 * **检测到错位时自动解锁**：外部改名（资源管理器 / git / 同步盘）与「改名时插件没加载」
+	 * 收不到 rename 事件，设置会指向一个不存在或空的目录。**没有这条解锁，只读态就是个死角**
+	 * ——应用内没有任何出路。锁在一致时生效，恰好在需要编辑时解开。
+	 */
+	refreshBaseFolderRow() {
+		const setting = this.baseFolderSetting;
+		const text = this.baseFolderText;
+		if (!setting || !text || !text.inputEl) return;
+		const mismatch = this.plugin.getBaseFolderMismatch();
+		const configured = !!String(this.plugin.settings.baseFolder || "").trim();
+		const locked = configured && !mismatch;
+		text.setValue(this.plugin.settings.baseFolder || "");
+		text.inputEl.readOnly = locked;
+		text.inputEl.toggleClass("is-locked", locked);
+		if (setting.settingEl && setting.settingEl.toggleClass) {
+			setting.settingEl.toggleClass("is-error", !!mismatch);
+		}
+		setting.setDesc(mismatch
+			? describeBaseFolderMismatchText(mismatch)
+			: (locked
+				? "在 Obsidian 文件浏览器里给这个文件夹改名或移动即可，这里会自动同步（正文里的链接也由 Obsidian 一并更新）。"
+				: "Vault 内的相对路径。"));
+	}
+
+	// 按钮自己的忙碌态：跑起来就禁用并换成「…中」的文案，跑完复原。扫描全库要好几秒，
+	// 在此之前设置页只有结束时那一条 Notice，中间零活动指示，用户会反复点。
+	// 定点改这一个按钮、不调 display()——整页重绘会把滚动位置与焦点甩回页首（同「待确认」那一行的理由）。
+	async runSettingButton(button, label, pendingLabel, action) {
+		if (this.busySettingButtons.has(button)) return undefined;
+		this.busySettingButtons.add(button);
+		button.setButtonText(pendingLabel);
+		if (button.setDisabled) button.setDisabled(true);
+		try {
+			return await action();
+		} finally {
+			this.busySettingButtons.delete(button);
+			button.setButtonText(label);
+			if (button.setDisabled) button.setDisabled(false);
+		}
 	}
 
 	// T82-D：token scope 必须挂在设置页根上。只挂 `.recto-settings` 的话，T82-C 定义在
@@ -14302,7 +15583,9 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	// T82-D 删掉的那两个手动同步按钮是内部调试遗留，普通用户按不出任何额外结果。
 	renderBackendPreferences(container, s) {
 		// 一个语言下拉管到底：摘要、笔记与译文都用它（合并见 getBackendPreferencesPayload）。
+		// 代码注释早就写着「一个语言下拉管到底」，界面上却一个字没说，用户以为它只管摘要。
 		new obsidian.Setting(container).setName("输出语言")
+			.setDesc("摘要、笔记与译文共用这一项。")
 			.addDropdown(d => d
 				.addOption("zh-CN", "中文")
 				.addOption("en-US", "English")
@@ -14323,7 +15606,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				.setValue(s.summaryDepth || "standard")
 				.onChange(async value => this.persistBackendPreferenceChange(() => { s.summaryDepth = value; })));
 		new obsidian.Setting(container).setName("笔记结构")
-			.setDesc("摘要的组织方式。")
+			.setDesc("摘要的组织方式；不影响正文与译文。")
 			.addDropdown(d => d
 				.addOption("standard", "标准研究笔记")
 				.addOption("outline", "大纲式")
@@ -14338,6 +15621,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				.setValue(s.backendTranslationStyle || "faithful")
 				.onChange(async value => this.persistBackendPreferenceChange(() => { s.backendTranslationStyle = value; })));
 		new obsidian.Setting(container).setName("生成术语表")
+			.setDesc("在摘要里附一份本篇关键术语的中外文对照。")
 			.addToggle(t => t.setValue(!!s.backendGlossaryEnabled)
 				.onChange(async value => this.persistBackendPreferenceChange(() => { s.backendGlossaryEnabled = value; })));
 	}
@@ -14357,17 +15641,55 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		}
 
 		// 只说「必须在 Vault 内」——这条不写清楚，用户会粘一个绝对路径进来然后被静默拒绝。
-		new obsidian.Setting(container).setName(stepName("论文库文件夹"))
-			.setDesc("Vault 内的相对路径。")
-			.addText(t => t.setPlaceholder("论文库").setValue(s.baseFolder)
-				.onChange(async value => {
+		this.baseFolderSetting = new obsidian.Setting(container).setName(stepName("论文库文件夹"))
+			.addText(t => {
+				this.baseFolderText = t;
+				t.setPlaceholder("论文库").setValue(s.baseFolder);
+				// **不挂 onChange**：逐键校验既吵又危险。删掉「论文库」三个字的过程中必然经过空串，
+				// 右上角当场弹「不能为空」；而输入「zotero」的过程里 z / zo / zot 每一步都会被
+				// **存成**一个合法的论文库文件夹，其间任何一次索引写入或转换都会照着半截名字建目录
+				// （目录是 ensureFolder 懒建的，`${base}/${stem}` 是读的时候现拼的）。
+				// 改成失焦（或回车）时才校验落盘；无效就退回上一个好值，不留一个存不进去的残值。
+				t.inputEl.addEventListener("blur", async () => {
+					const raw = t.inputEl.value;
+					const previous = s.baseFolder;
+					if (raw.trim() === previous) return;
+					let next = "";
 					try {
-						s.baseFolder = validateVaultRelativeFolder(value);
-						await this.plugin.save();
+						next = validateVaultRelativeFolder(raw);
 					} catch (error) {
 						new obsidian.Notice(`论文库文件夹无效：${getUserFacingErrorMessage(error, "请选择 Vault 内的文件夹。")}`, 6000);
+						t.setValue(previous);
+						t.inputEl.toggleClass("is-rejected", true);
+						return;
 					}
-				}));
+					t.inputEl.toggleClass("is-rejected", false);
+					// 归一化之后其实没变（如多打了个斜杠）：只把输入框写规整，不落盘、不提示。
+					if (next === previous) { t.setValue(next); return; }
+					// 换 base 不搬旧目录：路径是读的时候按 `${base}/${stem}` 现拼的，换掉就等于指向
+					// 一个空目录——旧论文还在原处，但论文库看起来空了。自动搬是一次真正的数据迁移
+					// （papers.jsonl 的路径、对照会话记的文件路径、wikilink 都要跟着改），不在这里做，
+					// 但必须如实说一句，否则用户只会以为论文没了。
+					const old = previous && this.plugin.app.vault.getAbstractFileByPath(previous);
+					if (old && old.children && old.children.length) {
+						new obsidian.Notice(
+							`论文库文件夹已改为「${next}」。旧目录不会自动改名，里面的论文仍在原处。`,
+							12000
+						);
+					}
+					s.baseFolder = next;
+					t.setValue(next);
+					await this.plugin.save();
+					this.refreshBaseFolderRow();
+					this.refreshAllSetupStatus();
+				});
+				// 回车即提交；不按回车直接切走时 blur 也会收，两条路同一个终点。
+				t.inputEl.addEventListener("keydown", event => {
+					if (event.key === "Enter") t.inputEl.blur();
+				});
+				return t;
+			});
+		this.refreshBaseFolderRow();
 
 		// 转换与翻译的入口只有一个：论文库（Hub）的详情栏。设置页只负责把论文导进来，
 		// 再把人送到那里去——两处各有一套选择弹窗，是 T82-D 之前最大的重复。
@@ -14385,33 +15707,43 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				if (optedIn) {
 					b.setButtonText("立即检查");
 					if (b.setDisabled) b.setDisabled(!this.plugin.hasNodeSqlite);
-					return b.onClick(async () => {
+					return b.onClick(() => this.runSettingButton(b, "立即检查", "检查中…", async () => {
 						await this.plugin.maybeRunZoteroAutoCheck({ force: true });
 						// 检查完当场把「待确认」那一行显/隐出来，不用等下次打开设置页。
 						this.refreshZoteroPendingRow();
 						this.refreshAllSetupStatus();
-					});
+					}));
 				}
-				b.setButtonText(this.plugin.hasNodeSqlite ? "一键导入" : "当前运行时不支持");
+				const importLabel = this.plugin.hasNodeSqlite ? "一键导入" : "当前运行时不支持";
+				b.setButtonText(importLabel);
 				if (b.setDisabled) b.setDisabled(!this.plugin.hasNodeSqlite);
-				return b.onClick(() => this.plugin.importZoteroLibrary({ hostEl: this.containerEl }));
+				return b.onClick(() => this.runSettingButton(b, importLabel, "导入中…", () =>
+					this.plugin.importZoteroLibrary({ hostEl: this.containerEl })));
 			});
 		// 这一行**常显但按需隐藏**，不再条件渲染：点「立即检查」发现新的待确认项时它要能当场
 		// 出现，而条件渲染的行只有整页重绘才长得出来。重绘（display()）会把滚动位置与焦点甩回
 		// 页首（T84 真机实测过），所以这里与上面「库外 PDF」那一段同一个口径——定点更新，
 		// 一次 display() 都不调。出现时走一条极短的淡入，避免凭空跳一行出来。
 		this.zoteroPendingSetting = new obsidian.Setting(container).setName("待确认的 Zotero 变化")
-			.addButton(b => b.setButtonText("处理待确认").setCta().onClick(async () => {
-				await this.plugin.resolveZoteroPendingConfirmations(this.containerEl);
-				this.refreshZoteroPendingRow();
-				this.refreshAllSetupStatus();
-			}));
+			.addButton(b => b.setButtonText("处理待确认").setCta()
+				.onClick(() => this.runSettingButton(b, "处理待确认", "处理中…", async () => {
+					await this.plugin.resolveZoteroPendingConfirmations(this.containerEl);
+					this.refreshZoteroPendingRow();
+					this.refreshAllSetupStatus();
+				})));
 		this.refreshZoteroPendingRow({ animate: false });
 
 		// 这一句留着：转换入口只在 Hub，不说清楚用户会在设置页里找按钮。
 		new obsidian.Setting(container).setName("打开论文库")
 			.setDesc("转换、翻译与对照阅读都在这里完成。")
 			.addButton(b => b.setButtonText("打开").setCta().onClick(() => { void this.plugin.activateRectoHub(); }));
+
+		new obsidian.Setting(container)
+			.setName("问题反馈")
+			.setDesc("提交问题或建议，也可以复制 QQ 联系。")
+			.addButton(button => button
+				.setButtonText("打开")
+				.onClick(() => this.plugin.openHelpFeedbackModal()));
 	}
 
 	renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, name) {
@@ -14439,11 +15771,27 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		}
 		sourceSetting.addText(t => {
 			t.inputEl.style.width = "100%";
-			return t.setPlaceholder("C:\\Users\\...\\Zotero\\storage").setValue(s.sourceFolder)
-				.onChange(async value => {
-					await this.updateSourceFolder(value.trim(), s);
-					this.refreshSetupStatus("zotero");
-				});
+			t.setPlaceholder("C:\\Users\\...\\Zotero\\storage").setValue(s.sourceFolder);
+			// **不挂 onChange**，与「论文库文件夹」同一套：失焦（或回车）才校验落盘，
+			// 无效就退回上一个好值。逐键校验在这里比那边更危险——updateSourceFolder 里还挂着
+			// 「更换 Zotero 论文库」那个决策弹窗，敲到一半的路径万一真存在，弹窗当场糊在脸上。
+			// 而原来校验失败只弹一句 Notice、既不回退也不标红：settings 保持旧值，关掉设置页
+			// 再打开，输入框里那个存不进去的残值就悄悄跳回，用户根本不知道自己改了个寂寞。
+			t.inputEl.addEventListener("blur", async () => {
+				const raw = t.inputEl.value.trim();
+				const previous = s.sourceFolder || "";
+				if (raw === previous) return;
+				const updated = await this.updateSourceFolder(raw, s);
+				// false = 目录读不到，或用户在「更换 Zotero 论文库」里选了取消。两种都没落盘。
+				t.setValue(updated === false ? previous : (s.sourceFolder || ""));
+				t.inputEl.toggleClass("is-rejected", updated === false);
+				this.refreshSetupStatus("zotero");
+			});
+			// 回车即提交；不按回车直接切走时 blur 也会收，两条路同一个终点。
+			t.inputEl.addEventListener("keydown", event => {
+				if (event.key === "Enter") t.inputEl.blur();
+			});
+			return t;
 		});
 		sourceSetting.addButton(b => b.setButtonText("选择文件夹").onClick(async () => {
 			const folder = await this.plugin.pickDirectory("选择 Zotero 数据目录（可直接选择名为 storage 的文件夹）", s.sourceFolder || this.plugin.app.vault.adapter.basePath);
@@ -14483,6 +15831,9 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	}
 
 	autoFillDetectedZoteroSourceIfNeeded(settings) {
+		if (this.plugin && typeof this.plugin.autoFillDetectedZoteroSourceIfNeeded === "function") {
+			return this.plugin.autoFillDetectedZoteroSourceIfNeeded(settings);
+		}
 		if (!settings || settings.sourceFolder) return null;
 		const candidate = this.getDetectedZoteroSourceCandidate();
 		if (!candidate || !candidate.storageDir) return null;
@@ -14514,7 +15865,9 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				details: ["如果这是另一个 Zotero 库，建议清空旧论文记录，避免状态混淆。"],
 				actions: [
 					{ label: "取消更换", value: "cancel" },
-					{ label: "保留现有记录", value: "keep" },
+					// 默认焦点落在这一项而不是第一项「取消更换」：三项里它才是「换库又不丢东西」的
+					// 正解；而「清空记录并更换」会连不可重建的阅读状态一起清掉，绝不能落在回车底下。
+					{ label: "保留现有记录", value: "keep", defaultFocus: true },
 					{ label: "清空记录并更换", value: "clear", warning: true },
 				],
 			});
@@ -14671,7 +16024,10 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				.onChange(async value => { s.autoCreateNoteOutline = value; await this.plugin.save(); }));
 
 		container.createEl("h4", { text: "PDF 对照阅读" });
-		new obsidian.Setting(container).setName("跳页时在 PDF 上叠高亮框")
+		// 名字原来写的是「跳页时在 PDF 上叠高亮框」，与实际不符：这个开关管的是**每次点击**都画的
+		// 那个框，而点击默认只高亮、不跳页（轮显的 phase 0），所以「跳页时」三个字是错的。
+		new obsidian.Setting(container).setName("点击段落时在 PDF 上标出对应位置")
+			.setDesc("关掉后仍然会跳页定位，只是不显示高亮框。")
 			.addToggle(t => t.setValue(s.pdfCompareHighlight !== false).onChange(async value => {
 				s.pdfCompareHighlight = value;
 				await this.plugin.save();
@@ -14744,6 +16100,10 @@ if (process.env.NODE_ENV === "test") {
 		RIBBON_BUTTONS,
 		RectoSettingTab,
 		RectoDecisionModal,
+		RectoOnboardingModal,
+		RectoHelpFeedbackModal,
+		MultiPdfChoiceModal,
+		ZoteroSyncPreviewModal,
 		RectoAccountModal,
 		isRectoPluginVersion,
 		compareRectoPluginVersions,
@@ -14754,11 +16114,16 @@ if (process.env.NODE_ENV === "test") {
 		validateRectoUpdateManifest,
 		isRectoPluginUpdateTerminalFailure,
 		looksLikeCompleteRectoPluginBundle,
+		isBackendSessionExpired,
 		describeBackendAccountView,
 		describeHubCreditsBadge,
 		buildHubCreditsRingMarkup,
 		describeCreditsMeter,
 		describeSetupStatusLights,
+		describeOnboardingFlow,
+		describeBaseFolderMismatch,
+		describeBaseFolderMismatchText,
+		describeZoteroSyncPreviewRow,
 		shouldRunZoteroAutoCheck,
 		shouldSkipZoteroScanByMtime,
 		isZoteroAutoCheckTransientError,
@@ -14783,6 +16148,10 @@ if (process.env.NODE_ENV === "test") {
 		decideBrowserLoginPoll,
 		matchesPendingHandoff,
 		BROWSER_LOGIN_POLL_MAX_ATTEMPTS,
+		CHECKOUT_BILLING_POLL_MAX_ATTEMPTS,
+		snapshotCheckoutBilling,
+		checkoutBillingChanged,
+		decideCheckoutBillingPoll,
 		RECTO_AUTH_PROTOCOL_ACTION,
 		applyBackendPlansToSettings,
 		applyBackendPreferencesToSettings,
@@ -14807,6 +16176,7 @@ if (process.env.NODE_ENV === "test") {
 		computeBatchItemFraction,
 		computeBatchProgressFraction,
 		describeBatchStatusLine,
+		resolveBatchProgressStage,
 		renderBatchBar,
 		formatHubQueueAge,
 		BATCH_PHASE_LABELS,
@@ -14819,6 +16189,8 @@ if (process.env.NODE_ENV === "test") {
 		describeHubIdentifier,
 		countRectoUnknownGlyphs,
 		findRectoUnknownGlyphOffsets,
+		buildRectoUnknownGlyphSkipRanges,
+		isRectoUnknownGlyphSkipped,
 		extractHubTranslationQuality,
 		filterHubEntries,
 		formatHubAuthors,
@@ -14850,8 +16222,10 @@ if (process.env.NODE_ENV === "test") {
 		createReaderCaretLayerExtension,
 		createSanitizedDistributionZip,
 		extractMarkdownHeadingOutline,
+		extractRectoTranslatedTitle,
 		extractSummaryBrief,
 		extractWikiLinkPath,
+		resolveTranslatedTitleFromPaperFiles,
 		findZoteroCollectionTreeNode,
 		findRectoAnchorRanges,
 		buildPaperJsonlZoteroObject,
@@ -14895,6 +16269,8 @@ if (process.env.NODE_ENV === "test") {
 		normalizeBackendBaseUrl,
 		normalizeBackendPlansCache,
 		normalizeOnboardingState,
+		resolveOnboardingLoadState,
+		findChangedExternalConversion,
 		normalizePendingBackendTasks,
 		parseSimpleFrontmatter,
 		parseRectoFrontmatter,
