@@ -234,17 +234,22 @@ const READING_STATUS_LABELS = {
 // 且仍停在 v1/未完成的老用户要静默完成，只有新安装留下的 v2/未完成状态允许续接。
 // 版本只区分步骤机内部形态，绝不因为插件升级而把已完成用户重新拉回引导。
 const ONBOARDING_VERSION = 2;
+// T85-R 换掉了状态的内容（`currentStep` → `welcomeSeen` + `skipped`）但**没有升版号**：
+// 升到 v3 会让 1.1.1 里中途关掉引导的人被判成「旧形态」而静默标完成，正好惩罚了
+// 唯一需要续接的那批人。归一会给老 v2 状态补上新键，老的 `currentStep` 残值由
+// `...state` 原样带过，不读也不写。
 const DEFAULT_ONBOARDING_STATE = {
 	completed: false,
 	version: ONBOARDING_VERSION,
-	currentStep: 0,
+	welcomeSeen: false,
+	skipped: [],
 };
 
 // T83-O：Hub 关掉再打开要回到上次那批论文。**只记这五项**——分类文件夹、两个筛选维度、
 // 排序列与升降序。搜索词不记（重开时看到一份被过滤的短列表，很容易以为论文丢了），
 // 选中行、分类树折叠、标题中/英也不记。归一在 normalizeHubViewState：任何一项脏了就退回默认，
 // 不让一份坏状态卡住整个视图。
-const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", status: "all", conversion: "all", sort: "title", descending: false };
+const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", status: "all", conversion: "all", sort: "title", descending: false, navCollapsed: false };
 
 const DEFAULT_BACKEND_BASE_URL = "https://api.rectoai.uk";
 
@@ -300,10 +305,7 @@ const DEFAULT_SETTINGS = {
 	// git diff、Obsidian Sync 冲突、导出、别的插件那里 `^rc-000012` 全都会现形。开了才有双栏对照。
 	markdownTranslationWriteAnchors: false,
 	backendOutputLanguage: "zh-CN",
-	backendNoteStructure: "standard",
 	backendTranslationTargetLanguage: "zh-CN",
-	backendTranslationStyle: "faithful",
-	backendGlossaryEnabled: false,
 	sourceFolder: "",
 	baseFolder: "论文库",
 	pollIntervalMs: 5000,
@@ -324,8 +326,9 @@ const DEFAULT_SETTINGS = {
 	translationChineseThreshold: 0.35,
 	autoCreateNoteOutline: false,
 	readerTheme: "warm",
-	// T82-D-R：默认作用于整个库。只影响新安装——老用户的值早就存在 data.json 里。
-	readerScope: "vault",
+	// T86-D-B：默认只作用于论文库。装上插件是为了读论文，不该把全库笔记的字体栏宽一起改掉。
+	// 只影响新安装——老用户的值早就存在 data.json 里。
+	readerScope: "library",
 	readerWidthPx: 760,
 	readerLineHeight: 1.75,
 	readerFontScale: 1,
@@ -337,7 +340,6 @@ const DEFAULT_SETTINGS = {
 	// 在 Hub 和命令面板里都够得着；默认全塞进侧边栏只会让新装的插件占掉四格图标。
 	ribbonButtons: {
 		hub: true,
-		repairPdfs: false,
 		dualPane: false,
 		pdfCompare: false,
 		externalPdf: false,
@@ -347,12 +349,15 @@ const DEFAULT_SETTINGS = {
 function normalizeOnboardingState(value) {
 	const state = value && typeof value === "object" && !Array.isArray(value) ? value : {};
 	const version = Number(state.version);
-	const currentStep = Number(state.currentStep);
+	const skipped = Array.isArray(state.skipped)
+		? [...new Set(state.skipped.map(item => String(item || "").trim()).filter(Boolean))]
+		: [];
 	return {
 		...state,
 		completed: state.completed === true,
 		version: Number.isInteger(version) && version > 0 ? version : ONBOARDING_VERSION,
-		currentStep: Number.isInteger(currentStep) && currentStep >= 0 ? currentStep : 0,
+		welcomeSeen: state.welcomeSeen === true,
+		skipped,
 	};
 }
 
@@ -390,23 +395,36 @@ function resolveOnboardingLoadState(rawData, mergedState) {
 	return { state, shouldOpen: false, migrated: false };
 }
 
+// T85-R：改成「此刻还欠着哪几步」+ 跳过集合，取第一个没被跳过的。原来是 if 链——前一步
+// 没亮就永远返回前一步，于是「跳过这一步」跳完还会被算回同一步，单步跳过根本无从实现。
+// 一步都不剩时 `done` 为真：该收尾了，不是停在最后一屏。
 function describeOnboardingFlow(input = {}) {
 	const lights = input.lights && typeof input.lights === "object" ? input.lights : {};
 	const zotero = input.zotero && typeof input.zotero === "object" ? input.zotero : {};
-	if (!lights.account || lights.account.state !== "ready") {
-		return { id: "account", currentStep: 0 };
-	}
-	if (!lights.credits || lights.credits.state !== "ready") {
-		return { id: "credits", currentStep: 0 };
-	}
-	if (input.externalResult) return { id: "external-result", currentStep: 2 };
-	if (Math.max(0, Number(zotero.importedCount) || 0) > 0) {
-		return { id: "hub", currentStep: 2 };
-	}
-	if (input.preferExternal !== true && input.hasNodeSqlite === true && zotero.pathConfigured === true) {
-		return { id: "zotero", currentStep: 1 };
-	}
-	return { id: "external", currentStep: 1 };
+	const skipped = new Set((Array.isArray(input.skipped) ? input.skipped : []).map(item => String(item || "").trim()));
+	const steps = [];
+	if (input.welcomeSeen !== true) steps.push("welcome");
+	const signedIn = !!lights.account && lights.account.state === "ready";
+	if (!signedIn) steps.push("account");
+	// 额度这一步**只在已登录时**才有意义：没登录时额度必然是 unknown，那一屏没有任何
+	// 能做的事，文案还会张口就说「账号已经登录」——跳过登录之后正好撞上这句假话。
+	else if (!lights.credits || lights.credits.state !== "ready") steps.push("credits");
+	if (input.externalResult) steps.push("external-result");
+	else if (Math.max(0, Number(zotero.importedCount) || 0) > 0) steps.push("hub");
+	else if (input.preferExternal !== true && input.hasNodeSqlite === true && zotero.pathConfigured === true) steps.push("zotero");
+	else steps.push("external");
+	const id = steps.find(step => !skipped.has(step)) || "";
+	return { id, done: !id };
+}
+
+// T85-R N 段：引导第一步落在**注册**页而不是登录页——新用户第一次点它就是要开户。
+// 后端的 `/account/register` 完整支持交接单（站内切页会把 handoff 带过去，注册请求体里也塞它），
+// 所以只需换掉路径那一段。**不改后端**：路径对不上就原样返回，将来后端改了路由，最坏的结果
+// 是退回登录页，而不是打开一个 404。
+function resolveRectoSignUpUrl(loginUrl) {
+	const url = String(loginUrl || "");
+	if (!url.includes("/account/login")) return url;
+	return url.replace("/account/login", "/account/register");
 }
 
 function findChangedExternalConversion(before, after) {
@@ -847,7 +865,6 @@ const BROWSER_LOGIN_STATUS_NOTES = {
 
 const RIBBON_BUTTONS = [
 	{ key: "hub", name: "Recto 论文库", icon: RECTO_ICON_ID, action: "activateRectoHub" },
-	{ key: "repairPdfs", name: "修复 PDF 原文件", icon: "lucide-wrench", action: "repairPdfs" },
 	{ key: "dualPane", name: "对照阅读：原文/译文双栏", icon: "lucide-columns-2", action: "toggleRectoDualPane" },
 	{ key: "pdfCompare", name: "PDF 对照阅读", icon: "lucide-book-open", action: "toggleRectoPdfCompare" },
 	{ key: "externalPdf", name: "转换库外 PDF", icon: "lucide-file-plus", action: "convertExternalPdfsFromCommand" },
@@ -1055,9 +1072,7 @@ function normalizeBackendBaseUrl(raw) {
 
 const BACKEND_OUTPUT_LANGUAGES = ["zh-CN", "en-US"];
 const BACKEND_SUMMARY_DEPTHS = ["brief", "standard", "detailed"];
-const BACKEND_NOTE_STRUCTURES = ["standard", "outline", "qa"];
 const BACKEND_TRANSLATION_TARGET_LANGUAGES = ["zh-CN", "en-US", "ja-JP"];
-const BACKEND_TRANSLATION_STYLES = ["faithful", "readable", "technical"];
 
 function normalizeBackendChoice(value, allowed, fallback) {
 	return allowed.includes(value) ? value : fallback;
@@ -2760,27 +2775,27 @@ function normalizePendingBackendTasks(list) {
 	return out;
 }
 
-// T82-D-R：界面上只剩一个「输出语言」，摘要与译文共用它——分成两个下拉是让人为一件事选两次。
+// T82-D-R：界面上只剩一个语言下拉，摘要与译文共用它——分成两个下拉是让人为一件事选两次。
 // 后端契约保持两个字段，这里把同一个值填给两边；老数据里若残留不一致的译文语言，下一次 PATCH 就被抹平，
 // 不需要迁移。BACKEND_OUTPUT_LANGUAGES 是 BACKEND_TRANSLATION_TARGET_LANGUAGES 的子集，取值永远合法。
+// T86-D-A：`noteStructure` 与 `glossaryEnabled` 不再发——后端**没有任何代码读它们**（唯一的
+// 消费者 `buildPromptContext` 全仓无人调用），发过去只是往 preferences 表里存一个谁也不看的值。
 function getBackendPreferencesPayload(settings) {
 	const s = settings || {};
 	const outputLanguage = normalizeBackendChoice(s.backendOutputLanguage, BACKEND_OUTPUT_LANGUAGES, DEFAULT_SETTINGS.backendOutputLanguage);
 	return {
 		outputLanguage,
 		summaryDepth: normalizeBackendChoice(s.summaryDepth, BACKEND_SUMMARY_DEPTHS, DEFAULT_SETTINGS.summaryDepth),
-		noteStructure: normalizeBackendChoice(s.backendNoteStructure, BACKEND_NOTE_STRUCTURES, DEFAULT_SETTINGS.backendNoteStructure),
 		translationTargetLanguage: normalizeBackendChoice(
 			outputLanguage,
 			BACKEND_TRANSLATION_TARGET_LANGUAGES,
 			DEFAULT_SETTINGS.backendTranslationTargetLanguage
 		),
-		translationStyle: normalizeBackendChoice(
-			s.backendTranslationStyle,
-			BACKEND_TRANSLATION_STYLES,
-			DEFAULT_SETTINGS.backendTranslationStyle
-		),
-		glossaryEnabled: !!s.backendGlossaryEnabled,
+		// T86-D-A：「翻译风格」那个下拉已删（三个塞进 prompt 却没有任何定义的英文单词），但与上面两个
+		// 不同，**后端翻译真的在读这个字段**。只删界面会把曾经选过 technical / readable 的用户永久钉在
+		// 一个再也改不回来的风格上，所以这里钉死默认值：建任务前必 PATCH 一次，下一次转换或翻译就把
+		// 所有人拉回 faithful。
+		translationStyle: "faithful",
 	};
 }
 
@@ -2796,24 +2811,13 @@ function applyBackendPreferencesToSettings(settings, preferences) {
 		BACKEND_SUMMARY_DEPTHS,
 		settings.summaryDepth || DEFAULT_SETTINGS.summaryDepth
 	);
-	settings.backendNoteStructure = normalizeBackendChoice(
-		preferences.noteStructure,
-		BACKEND_NOTE_STRUCTURES,
-		settings.backendNoteStructure || DEFAULT_SETTINGS.backendNoteStructure
-	);
 	settings.backendTranslationTargetLanguage = normalizeBackendChoice(
 		preferences.translationTargetLanguage,
 		BACKEND_TRANSLATION_TARGET_LANGUAGES,
 		settings.backendTranslationTargetLanguage || DEFAULT_SETTINGS.backendTranslationTargetLanguage
 	);
-	settings.backendTranslationStyle = normalizeBackendChoice(
-		preferences.translationStyle,
-		BACKEND_TRANSLATION_STYLES,
-		settings.backendTranslationStyle || DEFAULT_SETTINGS.backendTranslationStyle
-	);
-	if (typeof preferences.glossaryEnabled === "boolean") {
-		settings.backendGlossaryEnabled = preferences.glossaryEnabled;
-	}
+	// T86-D-A：后端仍会在响应里回带 noteStructure / translationStyle / glossaryEnabled（那几列还在表上），
+	// 这里一个都不再收——本地没有对应设置项了，收回来只会在 data.json 里长出一个界面上改不到的键。
 	return settings;
 }
 
@@ -3431,7 +3435,7 @@ function describeBackendPlanAction(card, membership) {
 			// 「日单价」「损失」里的「价」「损」不在子集内，换成等义的说法，不为一句提示
 			// 重跑一遍字体子集化。
 			hint: `当前是 ${active.planName} ${active.cycle === "yearly" ? "年付" : "月付"}会员。`
-				+ `现在换成 ${state.label} 会按新档的每天额度折算剩余时长，你会少掉一部分已买的天数，`
+				+ `现在换成 ${state.label} 会按新档的每天额度折算剩余时长，您会少掉一部分已买的天数，`
 				+ `所以请等当前会员到期后再选。`,
 		};
 	}
@@ -3592,6 +3596,9 @@ function describeHubCreditsBadge(settings) {
 	return {
 		tone: view.meter.tone === "low" ? "low" : "ok",
 		text: `额度 ${view.meter.text}${held}`,
+		// 工具栏挨着圆环显示的短文（T86-A 第四轮）：一个裸圆环不悬停就不知道能点、更不知道点开是账号。
+		// 只给百分比，不给点数——不变量 13。`text` 那份带「额度」前缀与「处理中」括注，工具栏放不下。
+		short: view.meter.text,
 		title: `${view.creditsText}；${suffix}`,
 		known: true,
 		percent: view.meter.percent,
@@ -3603,10 +3610,13 @@ function describeHubCreditsBadge(settings) {
 function buildHubCreditsRingMarkup(percent, heldPercent) {
 	const remaining = Math.max(0, Math.min(100, Number(percent) || 0));
 	const held = Math.max(0, Math.min(100 - remaining, Number(heldPercent) || 0));
+	// 半径与 styles.css 的 stroke-width(4.5) 是一对：r + 描边一半 = 15.75 + 2.25 = 18，
+	// 正好顶到 viewBox 边缘，既不裁切也不留白。改一个必须同时改另一个。
+	// `pathLength="100"` 把周长归一成 100，所以百分比算法与半径无关。
 	const heldArc = held > 0
-		? `<circle class="recto-hub-credits-held" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="0 ${remaining} ${held} ${100 - remaining - held}"/>`
+		? `<circle class="recto-hub-credits-held" cx="18" cy="18" r="15.75" pathLength="100" stroke-dasharray="0 ${remaining} ${held} ${100 - remaining - held}"/>`
 		: "";
-	return `<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="recto-hub-credits-track" cx="18" cy="18" r="15" pathLength="100"/><circle class="recto-hub-credits-fill" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="${remaining} ${100 - remaining}"/>${heldArc}</svg>`;
+	return `<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="recto-hub-credits-track" cx="18" cy="18" r="15.75" pathLength="100"/><circle class="recto-hub-credits-fill" cx="18" cy="18" r="15.75" pathLength="100" stroke-dasharray="${remaining} ${100 - remaining}"/>${heldArc}</svg>`;
 }
 
 // 浏览器登录的等待态：轮询是唯一的传输通道，深链只是「立刻醒一次」的加速信号。
@@ -3830,6 +3840,16 @@ function getUserFacingErrorMessage(error, fallback = "操作未完成，请稍�
 	// 本地校验大多已经是短中文句；纯英文自由文本通常来自运行时或服务端，不能原样进界面。
 	if (!/[\u3400-\u9fff]/.test(message)) return fallback;
 	return message.slice(0, 200);
+}
+
+// T85-R：这道门原来盖在**每一次**后端请求上（`backendRequest` 开头无条件断言），于是登录、
+// 看额度、买套餐、提反馈都会先被「请先同意 Recto 云端处理说明」挡一下——而它们一个字节的
+// 论文内容都不上传。判据收敛到论文处理链路本身：`/api/v1/tasks*` 是创建 / 上传 PDF / 提交 /
+// 轮询 / 领结果 / ack / 取消 / 重试 / 翻译，只有它们会把 PDF 或正文送出去。
+// **按前缀判而不是枚举豁免名单**：将来新增的任务类端点自动落在门内，新增的账号类端点自动豁免，
+// 漏写一条的后果永远是「多问一次」而不是「悄悄上传」。
+function requiresCloudProcessingConsent(path) {
+	return String(path || "").startsWith("/api/v1/tasks");
 }
 
 function createCloudConsentRequiredError() {
@@ -4345,6 +4365,23 @@ function findZoteroCollectionTreeNode(nodes, path) {
 	return null;
 }
 
+/**
+ * 「某个 vault 目录的前缀」——一定带尾斜杠（T86-C 第三轮）。
+ *
+ * **不要写 `obsidian.normalizePath(`${folder}/`)`**：`normalizePath` 会把首尾斜杠一起去掉，
+ * 拼出来的前缀是 `论文库` 而不是 `论文库/`。后果有两层，而且都很安静：
+ *   ① `path.substring(prefix.length)` 会多留一个前导斜杠，`split("/")[0]` 得到空串——
+ *      靠这一步取子目录名的代码全部静默失效；
+ *   ② `startsWith("论文库")` 会连 `论文库2/…` 一起认下。
+ * 真机上表现为「功能就是不工作、但一条错都不报」，`isPaperIndexMarkdownPath` 与
+ * `resolveRecordIdForVaultPath` 各踩过一次。T86-D 起所有 Obsidian 测试壳共用真实语义的
+ * `tools/obsidian-normalize-path.js`，再写出这种调用会在测试里暴露。
+ */
+function toVaultFolderPrefix(folder) {
+	const clean = obsidian.normalizePath(String(folder || ""));
+	return clean === "/" ? "/" : `${clean}/`;
+}
+
 function isZoteroCollectionDescendantPath(path, parentPath) {
 	return !!path && !!parentPath && path !== parentPath && path.startsWith(`${parentPath} / `);
 }
@@ -4354,13 +4391,29 @@ function isZoteroCollectionDescendantPath(path, parentPath) {
 // ═══════════════════════════════════════════════════════════════════
 
 const RECTO_HUB_VIEW_TYPE = "recto-hub";
-const HUB_STATUS_FILTERS = ["all", "reading", "read", "unread"];
-const HUB_CONVERSION_FILTERS = ["all", "converted", "translated", "unconverted", "todo"];
+// 「最近」与其余三项一样是一个可筛的状态（T86-C）：正在读/已读/未读是手动标的，
+// 「最近」是插件自己记的——**我操作过的**（打开过、转换过）。放在同一列里因此说得通，
+// 那一列从头到尾只有一种点击语义（选一个状态，列表跟着变短），不掺排序入口。
+const HUB_STATUS_FILTERS = ["all", "recent", "reading", "read", "unread"];
+// **没有时间窗口**（2026-08-19 用户拍板，第三轮）。第二轮做过一个 30 天的窗口，撤了——
+// 只要「导入」不算操作，「操作过的」本来就是真子集（没打开过没转换过的永远不在里面），
+// 窗口是多余的一层，还得给纯函数层铺一整套 `nowMs` 管道。判据因此退化成「有没有记录」。
+const HUB_STATUS_FILTER_LABELS = { recent: "最近" };
+// 启动恢复打开的标签也会发 file-open，静默这一段把它们挡掉（见 `touchPaperReadAt`）。
+const HUB_ACTIVITY_STARTUP_QUIET_MS = 5000;
+// 同一篇在这段时间内重复打开不重复盖章，省掉来回切标签造成的写盘。
+const HUB_ACTIVITY_RESTAMP_MIN_MS = 60 * 1000;
+// 打开文件是高频动作，攒一下再落盘。
+const HUB_ACTIVITY_SAVE_DEBOUNCE_MS = 2000;
+// T86-B：原来还有一项「未转换」，删了。四个 chip 本来就是互相重叠的集合、不是分区，
+// 而「未转换」是「待处理」的真子集；两个批次动作各自还会再筛一次（转换只取未转换的，
+// 翻译只取「未转换的 + 已转换无译文的」），所以在「待处理」里全选再按，与旧路径逐字等价，
+// 也不会重复计费。未转换的行整条标题压暗，混在「待处理」里仍然一眼分得出。
+const HUB_CONVERSION_FILTERS = ["all", "converted", "translated", "todo"];
 const HUB_CONVERSION_LABELS = {
 	all: "全部",
 	converted: "已转换",
 	translated: "有译文",
-	unconverted: "未转换",
 	todo: "待处理",
 };
 // 详情栏作者列到第几位收起：Zotero 的长作者表在 300px 栏里能铺十几行，
@@ -4375,22 +4428,37 @@ const HUB_QUEUE_KIND_LABELS = {
 };
 // 列表分块渲染的块大小之外，键盘上下键可能一次跨过多个未渲染块，这里限制单次补渲染的块数。
 const HUB_KEYBOARD_CHUNK_LIMIT = 40;
+// PageUp / PageDown 一次跨几行（T86-B）。**是常量，不是按视口高度算的**——行高与可视高度都要
+// 从 DOM 量，而 Hub 视图层不做几何测量（同一条守则挡住了窄栏的宽度判断），常量还能直接被测试钉住。
+const HUB_KEYBOARD_PAGE_STEP = 10;
+// 分类抽屉 hover 关闭的宽限：鼠标从开关走向卡片的路上有一瞬谁都没 hover 到，没有它就会闪。
+const HUB_NAV_HOVER_CLOSE_MS = 250;
 // 列头即排序入口（T69 方案 C 表格分栏），因此排序键与列一一对应。
 const HUB_SORT_KEYS = ["status", "title", "author", "venue", "year"];
-const HUB_SORT_LABELS = { status: "阅读状态", title: "标题", author: "作者", venue: "期刊", year: "年份" };
-// 年份点一下先看最新，其余列点一下先看正序。
-const HUB_SORT_DEFAULT_DESC = { year: true };
+// 「最近」没有列（T86-C）：它排的是「我最近碰过哪些」，不是论文自带的属性，也没地方再塞一列
+// ——五列在窄栏已经摘到只剩标题。**它没有自己的排序入口**：nav 的「最近」是个筛选项，
+// 选中它时顺带把排序切成这一个（永远从新到旧，不给正反序开关）。所以 `renderHead` 只画
+// `HUB_SORT_KEYS`，而校验与 `sortHubEntries` 用两者的并集——写反了要么表格凭空多一列，
+// 要么持久化的「最近」被判非法、回落成按标题。
+const HUB_VIEW_SORT_KEYS = ["recent"];
+const HUB_ALL_SORT_KEYS = [...HUB_SORT_KEYS, ...HUB_VIEW_SORT_KEYS];
+const HUB_SORT_LABELS = { status: "阅读状态", title: "标题", author: "作者", venue: "期刊", year: "年份", recent: "最近" };
+// 年份点一下先看最新，其余列点一下先看正序。「最近」同理——它就是为了看最新才存在的。
+const HUB_SORT_DEFAULT_DESC = { year: true, recent: true };
 const HUB_STATUS_SORT_ORDER = { reading: 0, unread: 1, read: 2 };
 
 function normalizeHubViewState(raw) {
 	const value = raw && typeof raw === "object" ? raw : {};
-	const sort = HUB_SORT_KEYS.includes(value.sort) ? value.sort : HUB_VIEW_STATE_DEFAULT.sort;
+	const sort = HUB_ALL_SORT_KEYS.includes(value.sort) ? value.sort : HUB_VIEW_STATE_DEFAULT.sort;
 	return {
 		collectionPath: typeof value.collectionPath === "string" ? value.collectionPath : "",
 		status: HUB_STATUS_FILTERS.includes(value.status) ? value.status : HUB_VIEW_STATE_DEFAULT.status,
 		conversion: HUB_CONVERSION_FILTERS.includes(value.conversion) ? value.conversion : HUB_VIEW_STATE_DEFAULT.conversion,
 		sort,
 		descending: typeof value.descending === "boolean" ? value.descending : !!HUB_SORT_DEFAULT_DESC[sort],
+		// 三栏档里分类树收没收起（T86-A 第三轮）。它不是筛选条件，只是记住的界面偏好，
+		// 但和其余五项同样是「重开时要恢复」的东西，所以走同一份持久化。
+		navCollapsed: value.navCollapsed === true,
 	};
 }
 
@@ -4503,6 +4571,54 @@ function normalizeHubTranslationQuality(raw, hasTranslation) {
 	return { status: "unknown", fallbackBlockCount: 0 };
 }
 
+// T86-C：「我最近操作过它」。**这不是论文的属性，是我和论文的关系**——年份是出版年，
+// 答不了「上周在读的那篇叫什么」。合成一个派生值而不是几个排序键，是因为列头只有五格、
+// 窄栏还要摘列。
+//
+// **导入不算操作**（2026-08-19 用户拍板，第三轮，有实测支撑）：`zoteroImportedAt` 记的不是
+// 「我什么时候拿到这篇」，而是「插件什么时候第一次见到它」，也就是几次批量同步的时刻。
+// 开发库实测 143 篇只有 **3 个不同的时间戳、最大一簇 87 篇**——把它算进来，结果就是 87 篇
+// 并列第一、并列之后按标题兜底，用户看到的是一整屏字母序。摘掉它之后连锁解决三件事：
+// 排序不再有巨型并列、「操作过的」永远是真子集（于是不需要时间窗口）、这一栏名副其实。
+// `importedAt` 仍然采集、仍然投影出来，只是不进 `lastActivityAt`——将来要做「最近导入」
+// 是另一件事，不该靠污染这一个值来顺带实现。
+//
+// 两个轴的历史都不完整：`convertedAt` 与 `readingTouchedAt` 都是 T86-C 才开始写。缺席一律
+// 是空串（不是 0、不是 now），既不进「最近」也在排序时沉底。**别给存量补值**——能用的只有
+// 文件 mtime，而网盘同步/备份还原/git checkout 都会把它刷成同一批，又是一堵墙（用户拍板不回填）。
+// 净效果：刚发版时「最近」是空的，用一次涨一条。这不是 bug，是没有历史可编。
+//
+// ISO 8601 UTC 字符串定长同格式，字典序即时间序，所以直接比字符串，不 new Date。
+const HUB_ACTIVITY_KIND_LABELS = { reading: "阅读", converted: "转换" };
+
+function resolveHubEntryActivity(entry) {
+	const importedAt = String((entry && entry.importedAt) || "");
+	const convertedAt = String((entry && entry.convertedAt) || "");
+	const readingTouchedAt = String((entry && entry.readingTouchedAt) || "");
+	let lastActivityAt = "";
+	let lastActivityKind = "";
+	// 同一时刻打平时按「阅读 > 转换」取：越靠前越是「我主动做的事」，说给用户听更有信息量。
+	for (const [kind, at] of [["reading", readingTouchedAt], ["converted", convertedAt]]) {
+		if (at && at > lastActivityAt) {
+			lastActivityAt = at;
+			lastActivityKind = kind;
+		}
+	}
+	return { importedAt, convertedAt, readingTouchedAt, lastActivityAt, lastActivityKind };
+}
+
+// 详情栏那行「最近」。「最近」这个排序键没有列头，不说清是哪个轴、多久以前，用户只能自己猜
+// 为什么这几篇排在最上面——而三个轴里有两个（转换、阅读）并不是他刚做的那件事。
+function describeHubActivity(entry, nowMs) {
+	const at = String((entry && entry.lastActivityAt) || "");
+	if (!at) return "";
+	const ms = Date.parse(at);
+	if (!Number.isFinite(ms)) return "";
+	const age = formatHubQueueAge(Math.max(0, (Number(nowMs) || 0) - ms));
+	const label = HUB_ACTIVITY_KIND_LABELS[entry && entry.lastActivityKind] || "";
+	return label ? `${age} · ${label}` : age;
+}
+
 // 标题遵循「原文原型」契约：titleOriginal 恒为原文，展示用译文兜底原文，排序一律用原文。
 function normalizeHubEntry(raw) {
 	const entry = raw || {};
@@ -4513,6 +4629,7 @@ function normalizeHubEntry(raw) {
 	const collections = uniqueStrings(entry.collections);
 	const hasTranslation = !!entry.translationPath;
 	const translationQuality = normalizeHubTranslationQuality(entry.translationQuality, hasTranslation);
+	const activity = resolveHubEntryActivity(entry);
 	return {
 		recordId: String(entry.recordId || entry.folder || stem),
 		stem,
@@ -4544,6 +4661,12 @@ function normalizeHubEntry(raw) {
 		translationPath: String(entry.translationPath || ""),
 		sourcePath: String(entry.sourcePath || ""),
 		pdfPath: String(entry.pdfPath || ""),
+		// T86-C：三个时间戳只以派生值的形式对外——排序、详情栏都只看 lastActivityAt 与 lastActivityKind。
+		importedAt: activity.importedAt,
+		convertedAt: activity.convertedAt,
+		readingTouchedAt: activity.readingTouchedAt,
+		lastActivityAt: activity.lastActivityAt,
+		lastActivityKind: activity.lastActivityKind,
 	};
 }
 
@@ -4567,19 +4690,36 @@ function hubEntryInCollection(entry, collectionPath) {
 	return (entry.collections || []).some(item => item === path || isZoteroCollectionDescendantPath(item, path));
 }
 
+// 「最近」的判定：**有没有操作记录**，不看多久以前。没有窗口就不需要时钟，这一档因此是
+// 纯粹的、可确定测试的谓词。空值（从没打开过也没转换过）永远不在其中——这正是它能长期
+// 保持为真子集的原因。
+function hubEntryHasActivity(entry) {
+	return !!String((entry && entry.lastActivityAt) || "");
+}
+
 function filterHubEntries(entries, filters = {}) {
 	const status = HUB_STATUS_FILTERS.includes(filters.status) ? filters.status : "all";
 	const conversion = HUB_CONVERSION_FILTERS.includes(filters.conversion) ? filters.conversion : "all";
 	return (entries || []).filter(entry => {
-		if (status !== "all" && entry.readingStatus !== status) return false;
+		if (status === "recent" && !hubEntryHasActivity(entry)) return false;
+		if (status !== "all" && status !== "recent" && entry.readingStatus !== status) return false;
 		if (conversion === "converted" && entry.conversionStatus !== "converted") return false;
-		if (conversion === "unconverted" && entry.conversionStatus !== "unconverted") return false;
 		if (conversion === "translated" && !entry.hasTranslation) return false;
 		// 待处理 = 转换/翻译两个操作还能对它做点什么的：未转换的，或已转换但没译文的。
 		if (conversion === "todo" && entry.conversionStatus === "converted" && entry.hasTranslation) return false;
 		if (!hubEntryInCollection(entry, filters.collectionPath)) return false;
 		return hubEntryMatchesQuery(entry, filters.query);
 	});
+}
+
+// 空态专用（T86-B）：搜索词在筛选之外还命中几篇。四个条件是 AND，所以在「电力系统」里搜一篇
+// 归在别的分类下的论文，得到的是「没有匹配的论文」——而它明明在库里，只是被分类挡住了。
+// 这里只数「按搜索词能命中、却被其余条件挡掉」的那些，**不改筛选语义**，改的只是空态怎么说话。
+function countHubEntriesMatchingQueryOnly(entries, filters = {}) {
+	const query = String(filters.query || "").trim();
+	if (!query) return 0;
+	const visible = new Set(filterHubEntries(entries, filters).map(entry => entry.recordId));
+	return (entries || []).filter(entry => hubEntryMatchesQuery(entry, query) && !visible.has(entry.recordId)).length;
 }
 
 // 标题排序一律用原文：切到译文显示时如果跟着中文重排，点一下前后对不上号。
@@ -4610,11 +4750,23 @@ function compareHubOptionalText(valueA, valueB, descending) {
 }
 
 function sortHubEntries(entries, sortKey, descending = false) {
-	const key = HUB_SORT_KEYS.includes(sortKey) ? sortKey : "title";
+	const key = HUB_ALL_SORT_KEYS.includes(sortKey) ? sortKey : "title";
 	const flip = descending ? -1 : 1;
 	const list = (entries || []).slice();
 	const byTitle = (a, b) => compareHubTitles(a, b);
 	if (key === "title") return list.sort((a, b) => byTitle(a, b) * flip);
+	if (key === "recent") {
+		// 没有时间戳的沉底，正反序都沉——倒序时如果它们翻上来，满屏都是「不知道什么时候的」，
+		// 而这一档恰恰是存量论文的常态。与作者/期刊列的空值处理是同一条约定。
+		return list.sort((a, b) => {
+			const atA = String(a.lastActivityAt || "");
+			const atB = String(b.lastActivityAt || "");
+			if (!atA && !atB) return byTitle(a, b);
+			if (!atA) return 1;
+			if (!atB) return -1;
+			return (atA < atB ? -1 : atA > atB ? 1 : 0) * flip || byTitle(a, b);
+		});
+	}
 	if (key === "status") {
 		return list.sort((a, b) =>
 			((HUB_STATUS_SORT_ORDER[a.readingStatus] ?? 3) - (HUB_STATUS_SORT_ORDER[b.readingStatus] ?? 3)) * flip
@@ -4641,11 +4793,12 @@ function sortHubEntries(entries, sortKey, descending = false) {
 }
 
 function summarizeHubEntries(entries) {
-	const summary = { total: 0, converted: 0, unconverted: 0, translated: 0, reading: 0, read: 0, unread: 0 };
+	const summary = { total: 0, converted: 0, unconverted: 0, translated: 0, recent: 0, reading: 0, read: 0, unread: 0 };
 	for (const entry of entries || []) {
 		summary.total++;
 		summary[entry.conversionStatus === "converted" ? "converted" : "unconverted"]++;
 		if (entry.hasTranslation) summary.translated++;
+		if (hubEntryHasActivity(entry)) summary.recent++;
 		summary[normalizeReadingStatus(entry.readingStatus)]++;
 	}
 	return summary;
@@ -4808,7 +4961,9 @@ function describeHubFilterCrumbs(filters = {}) {
 	const crumbs = [];
 	const status = HUB_STATUS_FILTERS.includes(filters.status) ? filters.status : "all";
 	const conversion = HUB_CONVERSION_FILTERS.includes(filters.conversion) ? filters.conversion : "all";
-	if (status !== "all") crumbs.push({ key: "status", label: READING_STATUS_LABELS[status] || status });
+	if (status !== "all") {
+		crumbs.push({ key: "status", label: HUB_STATUS_FILTER_LABELS[status] || READING_STATUS_LABELS[status] || status });
+	}
 	if (conversion !== "all") crumbs.push({ key: "conversion", label: HUB_CONVERSION_LABELS[conversion] || conversion });
 	const collectionPath = String(filters.collectionPath || "");
 	if (collectionPath) crumbs.push({ key: "collection", label: collectionPath });
@@ -5736,6 +5891,20 @@ function describeSetupStatusLights(input = {}) {
 	return { account, zotero: zoteroLight, credits };
 }
 
+// T86-D-B：「开始使用」是否配好的判据（三灯 ready + 已导入）。不用 onboarding.completed——
+// 跳过引导 ≠ 配好。折叠不再拿它去自动收起，只留给测试与将来若要再判断「配好了没有」。
+function isSettingsQuickStartComplete(input = {}) {
+	const lights = describeSetupStatusLights(input);
+	const imported = resolveZoteroLibraryImportOptIn({
+		optedIn: input.optedIn,
+		folderMap: input.folderMap,
+	});
+	return lights.account.state === "ready"
+		&& lights.zotero.state === "ready"
+		&& lights.credits.state === "ready"
+		&& imported === true;
+}
+
 async function dedupeZoteroPdfCandidates(candidates, signal = null) {
 	const all = (candidates || []).map(candidate => ({ ...candidate }));
 	const byParent = new Map();
@@ -5971,11 +6140,12 @@ function allocateExternalPaperStem(desiredStem, outputRoot, exists, reserved) {
  * 重启恢复兼容——恢复时不需要再问一次往哪写。
  */
 function buildExternalPdfTasks(files, options = {}) {
-	const outputRoot = obsidian.normalizePath(String(options.outputRoot || ""));
 	// 空输出根必须**失败关闭**：`isRectoExternalTask` 的判据就是「outputRoot 非空」，
 	// 空串会让这批任务被当成库内任务——写进论文库、还建出论文对象。库根目录经
-	// getVaultRelativePath 正好返回空串，所以这不是假想情况。
-	if (!outputRoot) return [];
+	// getVaultRelativePath 正好返回空串，所以必须在 normalizePath 把它变成 "/" 之前拦住。
+	const rawOutputRoot = String(options.outputRoot || "");
+	if (!rawOutputRoot) return [];
+	const outputRoot = obsidian.normalizePath(rawOutputRoot);
 	const requestTranslation = options.requestTranslation === true;
 	const keepSourcePdf = options.keepSourcePdf === true;
 	const tasks = [];
@@ -6964,6 +7134,9 @@ class RectoPlugin extends obsidian.Plugin {
 		this.convertedFolders = [];
 		this.folderMap = {};
 		this.readingStates = {};
+		this.readingTouchedAt = {};
+		this.paperOpenTrackingFrom = 0;
+		this.paperActivitySaveTimer = null;
 		this.zoteroImportProjectionPending = false;
 		this.zoteroLibraryImportOptedIn = false;
 		this.zoteroLastAutoCheckAt = 0;
@@ -7049,6 +7222,12 @@ class RectoPlugin extends obsidian.Plugin {
 		this.registerPaperJsonlWatchers();
 		this.app.workspace.onLayoutReady(() => {
 			this.applyReaderTheme();
+			// T86-C：「打开过」的信号。**挂在 onLayoutReady 里面**，再加一段静默期——启动恢复
+			// 的标签也会发 file-open，不挡的话每次重启就把所有开着的论文盖成「刚刚读过」。
+			this.paperOpenTrackingFrom = Date.now() + HUB_ACTIVITY_STARTUP_QUIET_MS;
+			this.registerEvent(this.app.workspace.on("file-open", file => {
+				if (file && file.path) this.touchPaperReadAt(file.path);
+			}));
 			void this.restoreRectoCompareSessions().catch((error) => {
 				console.warn("Recto: restore compare sessions failed", getSanitizedErrorMessage(error));
 			});
@@ -7058,15 +7237,18 @@ class RectoPlugin extends obsidian.Plugin {
 			void initializePaperIndexes.catch((error) => {
 				console.warn("Recto: initialize paper indexes failed", getSanitizedErrorMessage(error));
 			});
-			const startupCloudReady = this.ensureCloudProcessingConsent({ interactive: true, startup: true }).then(accepted => {
-				if (!accepted) return;
-				return this.recoverPendingBackendTasks();
-			}).catch((error) => {
-				console.warn("Recto: recover pending backend tasks failed", getSanitizedErrorMessage(error));
-			});
-			// 首装时云端知情确认与 T85 都会弹窗。等前者彻底收掉再开短引导，避免两个 Modal
-			// 叠在一起；拒绝确认也照常显示引导，之后只有用户主动点账号/处理动作才会再问。
-			void startupCloudReady.then(() => this.openOnboardingOnStartup());
+			// T85-R：启动不再无条件弹知情确认。那段话只有在真要上传时才有信息价值——启动就弹
+			// 会被当成 EULA 无脑点掉，反而削弱知情本身；而四个上传入口本来就各自惰性问过。
+			// **只有还压着断点任务时才问**，因为恢复会立刻上传或领取结果。新装用户没有断点
+			// 任务，所以装完打开 Obsidian 一个弹窗都不出现（引导也改到打开论文库时才来）。
+			if (Array.isArray(this.pendingBackendTasks) && this.pendingBackendTasks.length) {
+				void this.ensureCloudProcessingConsent({ interactive: true, startup: true }).then(accepted => {
+					if (!accepted) return;
+					return this.recoverPendingBackendTasks();
+				}).catch((error) => {
+					console.warn("Recto: recover pending backend tasks failed", getSanitizedErrorMessage(error));
+				});
+			}
 			// 与 recoverPendingBackendTasks 错开：启动后再等约 10 秒做一次 Zotero 自动检查。
 			this.zoteroAutoCheckTimer = setTimeout(() => {
 				this.zoteroAutoCheckTimer = null;
@@ -7131,12 +7313,9 @@ class RectoPlugin extends obsidian.Plugin {
 			this.settings.backendMembershipPeriodEnd = String(this.settings.backendMembershipPeriodEnd || "").trim();
 			this.settings.backendOutputLanguage = normalizeBackendChoice(this.settings.backendOutputLanguage, BACKEND_OUTPUT_LANGUAGES, DEFAULT_SETTINGS.backendOutputLanguage);
 			this.settings.summaryDepth = normalizeBackendChoice(this.settings.summaryDepth, BACKEND_SUMMARY_DEPTHS, DEFAULT_SETTINGS.summaryDepth);
-			this.settings.backendNoteStructure = normalizeBackendChoice(this.settings.backendNoteStructure, BACKEND_NOTE_STRUCTURES, DEFAULT_SETTINGS.backendNoteStructure);
 			this.settings.backendTranslationTargetLanguage = normalizeBackendChoice(this.settings.backendTranslationTargetLanguage, BACKEND_TRANSLATION_TARGET_LANGUAGES, DEFAULT_SETTINGS.backendTranslationTargetLanguage);
-			this.settings.backendTranslationStyle = normalizeBackendChoice(this.settings.backendTranslationStyle, BACKEND_TRANSLATION_STYLES, DEFAULT_SETTINGS.backendTranslationStyle);
-			this.settings.backendGlossaryEnabled = !!this.settings.backendGlossaryEnabled;
 			this.settings.ribbonButtons = { ...DEFAULT_SETTINGS.ribbonButtons, ...(d.settings && d.settings.ribbonButtons ? d.settings.ribbonButtons : {}) };
-			for (const legacyKey of ["convertAll", "translateOne", "translateAll", "diagnoseOne", "translateSelected", "singleFile", "convertSelected"]) {
+			for (const legacyKey of ["convertAll", "translateOne", "translateAll", "diagnoseOne", "translateSelected", "singleFile", "convertSelected", "repairPdfs"]) {
 				if (Object.prototype.hasOwnProperty.call(this.settings.ribbonButtons, legacyKey)) {
 					delete this.settings.ribbonButtons[legacyKey];
 					migrated = true;
@@ -7152,6 +7331,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.convertedFolders = d.convertedFolders || [];
 			this.folderMap = d.folderMap || {}; // zoteroFolder → { stem, originalName }
 			this.readingStates = d.readingStates || {}; // zoteroItemKey → reading | read
+			this.readingTouchedAt = d.readingTouchedAt || {}; // readingKey → 上次打开或改阅读状态的 ISO 时间（T86-C）
 			this.zoteroImportProjectionPending = d.zoteroImportProjectionPending === true;
 			const resolvedOptIn = resolveZoteroLibraryImportOptIn({
 				optedIn: d.zoteroLibraryImportOptedIn === true,
@@ -7191,6 +7371,7 @@ class RectoPlugin extends obsidian.Plugin {
 			convertedFolders: this.convertedFolders,
 			folderMap: this.folderMap,
 			readingStates: this.readingStates,
+			readingTouchedAt: this.readingTouchedAt,
 			zoteroImportProjectionPending: this.zoteroImportProjectionPending === true,
 			zoteroLibraryImportOptedIn: this.zoteroLibraryImportOptedIn === true,
 			zoteroLastAutoCheckAt: Number(this.zoteroLastAutoCheckAt) || 0,
@@ -7596,11 +7777,22 @@ class RectoPlugin extends obsidian.Plugin {
 		await this.save();
 		return this.settings.onboarding;
 	}
-	openOnboardingOnStartup() {
+	// T85-R：引导只在用户**主动打开论文库**时出现——点侧边栏那个图标就是「我要用 Recto」的
+	// 明确表达，而 Hub 首屏本来就是空的，引导正是那个空态该说的话。启动时弹等于对着刚打开
+	// 笔记的人糊一层教学。`shouldOpenOnboarding` 是一次性的：本会话关掉就不再纠缠，下次启动
+	// `resolveOnboardingLoadState` 仍会把它置真（关闭不写 completed，见 RectoOnboardingModal.onClose）。
+	maybeOpenOnboarding() {
 		if (!this.shouldOpenOnboarding || this.isUnloading || this.getOnboardingState().completed) return false;
 		this.shouldOpenOnboarding = false;
 		new RectoOnboardingModal(this).open();
 		return true;
+	}
+
+	// T86-D-B：引导关掉之后 `shouldOpenOnboarding` 不再为真，设置页要有一条回得去的路。
+	// 不改 `completed`：已经走完或跳过的人只是再看一遍，不是把配置状态清掉。
+	openOnboardingReplay() {
+		if (this.isUnloading) return;
+		new RectoOnboardingModal(this, { replay: true }).open();
 	}
 
 	getBackendBaseUrl() {
@@ -7611,7 +7803,8 @@ class RectoPlugin extends obsidian.Plugin {
 		return this.cloudProcessingConsentAccepted === true;
 	}
 
-	assertCloudProcessingConsent() {
+	assertCloudProcessingConsent(path) {
+		if (!requiresCloudProcessingConsent(path)) return;
 		if (!this.hasCloudProcessingConsent()) throw createCloudConsentRequiredError();
 	}
 
@@ -7628,7 +7821,7 @@ class RectoPlugin extends obsidian.Plugin {
 				title: "开始使用 Recto 云端处理",
 				intro: "首次启用时只确认这一次。接受后，单篇处理会直接开始，多篇处理仍会显示篇数确认。",
 				details: [
-					"你主动处理论文时，Recto 会上传所选 PDF，或上传论文正文与结构信息。",
+					"您主动处理论文时，Recto 会上传所选 PDF，或上传论文正文与结构信息。",
 					"内容由 Recto 云端处理，并可能由受托第三方协助完成。",
 					`处理结果写回本地后会从云端删除；未领取结果最多保留 ${HUB_QUEUE_RESULT_TTL_HOURS} 小时。`,
 				],
@@ -7651,7 +7844,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async backendRequest(path, options = {}) {
-		this.assertCloudProcessingConsent();
+		this.assertCloudProcessingConsent(path);
 		return await requestBackendJson(this.settings, path, {
 			...options,
 			signal: options.signal || this.getActiveSignal(),
@@ -7659,7 +7852,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async backendMultipartRequest(path, parts, options = {}) {
-		this.assertCloudProcessingConsent();
+		this.assertCloudProcessingConsent(path);
 		return await requestBackendMultipartJson(this.settings, path, parts, {
 			...options,
 			signal: options.signal || this.getActiveSignal(),
@@ -8079,7 +8272,7 @@ class RectoPlugin extends obsidian.Plugin {
 			title: `${RECTO_BRAND_NAME} 有新版本 ${version}`,
 			intro: `当前版本 ${current}，最新版本 ${version}。更新只要几秒，装好当场生效，不用重启 Obsidian。`,
 			details: [
-				"「自动更新」：以后启动时发现新版本就直接装好，不再打扰你。",
+				"「自动更新」：以后启动时发现新版本就直接装好，不再打扰您。",
 				"「仅本次更新」：只更新这一次，下次有新版本还会再问。",
 				"更新包只从 Recto 的公开发布页获取，与社区商店同源；正在处理论文时不会更新。",
 			],
@@ -9059,7 +9252,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	/**
-	 * 库外 PDF 转换的唯一入口实现（命令面板 / 设置页按钮 / 可选侧边栏按钮都调它）。
+	 * 库外 PDF 转换的唯一入口实现（命令面板 / 可选侧边栏按钮都调它）。
 	 *
 	 * **不变量 15 为此改写过**：转换原本只有 Hub 详情栏一条入口，但库外 PDF 不在 Hub 里、
 	 * Hub 无从选中它，那条不变量在这里无法成立。改写后两条入口仍然共用同一份计费与重复提交
@@ -9230,6 +9423,10 @@ class RectoPlugin extends obsidian.Plugin {
 			originalName: task.name,
 			sourceFileName: task.sourceFileName || task.name,
 			conversionStatus: "converted",
+			// T86-C：库内论文此前只记「转没转」，不记「什么时候转的」，Hub 的「最近」因此少一个轴。
+			// **每次转换都覆盖**——要的是最近一次，不是第一次（与 `zoteroImportedAt` 的 first-write-wins
+			// 相反，那个记的是「什么时候进的库」，重导入不该把它刷新）。
+			convertedAt: new Date().toISOString(),
 			...(documentId ? { documentId } : {}),
 			...(sourceRevisionId ? { sourceRevisionId } : {}),
 			...(Number.isInteger(unrecognized) && unrecognized >= 0 ? { unrecognizedSymbolCount: unrecognized } : {}),
@@ -9339,9 +9536,9 @@ class RectoPlugin extends obsidian.Plugin {
 	isPaperIndexMarkdownPath(filePath) {
 		const base = this.getValidatedBaseFolder();
 		const normalized = obsidian.normalizePath(String(filePath || ""));
-		const basePrefix = obsidian.normalizePath(`${base}/`);
-		const legacyNestedPrefix = obsidian.normalizePath(`${base}/${LEGACY_CONVERTED_DIR}/`);
-		const legacyPrefix = obsidian.normalizePath(`${base}/摘要/`);
+		const basePrefix = toVaultFolderPrefix(base);
+		const legacyNestedPrefix = toVaultFolderPrefix(`${base}/${LEGACY_CONVERTED_DIR}`);
+		const legacyPrefix = toVaultFolderPrefix(`${base}/摘要`);
 		if (normalized.startsWith(legacyPrefix) && normalized.toLowerCase().endsWith(".md")) return true;
 		if (!normalized.startsWith(basePrefix) || !normalized.toLowerCase().endsWith(".md")) return false;
 		const fileName = nodePath.basename(normalized);
@@ -9433,16 +9630,30 @@ class RectoPlugin extends obsidian.Plugin {
 		return normalizeReadingStatus(key && this.readingStates ? this.readingStates[key] : "");
 	}
 
+	// T86-C：时间戳走**平行表**而不是把 readingStates 的值改成对象——那份值被 `papers.jsonl`
+	// 的两处写入当裸字符串读（`normalizeReadingStatus(readingStates[key])`），改形状会一起坏。
+	// 两张表同生共死：切回「未读」时 readingStates 是 delete，时间戳也必须删，否则会留下
+	// 「最近读过一篇已经被标回未读的论文」这种自相矛盾的排序结果。
+	//
+	// **反过来不成立**：`touchPaperReadAt` 只写时间戳、不碰阅读状态。打开过 ≠ 我在读，
+	// 圆点是用户自己下的判断，自动翻它之后它就不可信了，而且没法表达「打开过但还没开始读」。
 	setReadingStatus(key, status) {
 		if (!key) return;
 		if (!this.readingStates) this.readingStates = {};
+		if (!this.readingTouchedAt) this.readingTouchedAt = {};
 		const normalized = normalizeReadingStatus(status);
-		if (normalized === "unread") delete this.readingStates[key];
-		else this.readingStates[key] = normalized;
+		if (normalized === "unread") {
+			delete this.readingStates[key];
+			delete this.readingTouchedAt[key];
+		} else {
+			this.readingStates[key] = normalized;
+			this.readingTouchedAt[key] = new Date().toISOString();
+		}
 	}
 
 	pruneReadingStates() {
 		if (!this.readingStates) this.readingStates = {};
+		if (!this.readingTouchedAt) this.readingTouchedAt = {};
 		const validKeys = new Set(
 			Object.entries(this.folderMap || {})
 				.map(([folder, info]) => this.getReadingStateKey(info, folder))
@@ -9450,6 +9661,83 @@ class RectoPlugin extends obsidian.Plugin {
 		);
 		for (const key of Object.keys(this.readingStates)) {
 			if (!validKeys.has(key)) delete this.readingStates[key];
+		}
+		for (const key of Object.keys(this.readingTouchedAt)) {
+			if (!validKeys.has(key)) delete this.readingTouchedAt[key];
+		}
+	}
+
+	// ── 「打开过」这个信号（T86-C 第二轮） ───────────────────────────────
+	//
+	// 在此之前插件**根本不知道用户读了哪篇**：`openHubPaper` 只负责把文件开出来，
+	// 阅读状态圆点是唯一的写入口。于是「打开一篇 PDF 翻到最后」什么都不会记下。
+	// 这一段补的就是那个信号：打开这篇论文的任一文件（PDF / 正文 / 译文 / 摘要 / 笔记）
+	// 都算「碰过它」，与从哪儿打开的无关——Hub、文件树、快速切换、正文里的链接都算。
+
+	// `论文库/<stem>/...` → recordId。stem 就是目录名（数据契约：转换后永不改名），
+	// 所以取 baseFolder 之后的第一段去 folderMap 里反查即可。orphaned 的让位给正常的。
+	resolveRecordIdForVaultPath(filePath) {
+		const normalized = obsidian.normalizePath(String(filePath || ""));
+		if (!normalized) return "";
+		// `getValidatedBaseFolder` 在论文库路径没配好时是**抛异常**的。这里挂在 `file-open` 上，
+		// 抛出去就是 vault 里每打开一个文件报一次错，而这个信号本身完全不重要——配好之前
+		// 安静地什么都不记就是对的。
+		let basePrefix = "";
+		try {
+			basePrefix = toVaultFolderPrefix(this.getValidatedBaseFolder());
+		} catch (error) {
+			return "";
+		}
+		if (!normalized.startsWith(basePrefix)) return "";
+		const stem = normalized.substring(basePrefix.length).split("/")[0];
+		if (!stem) return "";
+		let found = "";
+		for (const [recordId, info] of Object.entries(this.folderMap || {})) {
+			if (!info || info.stem !== stem) continue;
+			if (info.zoteroSyncState !== "orphaned") return recordId;
+			if (!found) found = recordId;
+		}
+		return found;
+	}
+
+	// 打开一篇论文就盖一个时间戳。**不改阅读状态**（见 setReadingStatus 上面那段）。
+	touchPaperReadAt(filePath) {
+		// 启动恢复会把上次开着的标签重新打开，Obsidian 大概率也会为它们发 file-open。
+		// 不挡的话每次重启 Obsidian ＝ 把所有开着的论文全部盖成「刚刚读过」，
+		// 「最近」这一栏当场失去意义。所以监听在 onLayoutReady 之后才挂，再压一段静默期。
+		if (!this.paperOpenTrackingFrom || Date.now() < this.paperOpenTrackingFrom) return;
+		const recordId = this.resolveRecordIdForVaultPath(filePath);
+		if (!recordId) return;
+		const key = this.getReadingStateKey(this.folderMap[recordId], recordId);
+		if (!key) return;
+		if (!this.readingTouchedAt) this.readingTouchedAt = {};
+		// 同一篇短时间内反复打开（来回切标签、对照阅读）不必每次都写盘。
+		const previous = Date.parse(this.readingTouchedAt[key] || "");
+		const now = Date.now();
+		if (Number.isFinite(previous) && now - previous < HUB_ACTIVITY_RESTAMP_MIN_MS) return;
+		this.readingTouchedAt[key] = new Date(now).toISOString();
+		this.schedulePaperActivitySave();
+	}
+
+	// 打开文件是高频动作，每次都 `save()` 等于把整份 data.json（含 folderMap）反复写盘。
+	// 攒一下再写；丢掉最后一次时间戳的代价只是一篇论文晚一点进「最近」。
+	schedulePaperActivitySave() {
+		if (this.paperActivitySaveTimer) clearTimeout(this.paperActivitySaveTimer);
+		this.paperActivitySaveTimer = setTimeout(() => {
+			this.paperActivitySaveTimer = null;
+			void this.save()
+				.then(() => this.refreshHubViewsForActivity())
+				.catch(error => console.warn("Recto: save reading activity failed", getSanitizedErrorMessage(error)));
+		}, HUB_ACTIVITY_SAVE_DEBOUNCE_MS);
+	}
+
+	// **只刷新真的按「最近」在排或在筛的 Hub**。其余情况下这个时间戳不影响任何可见结果，
+	// 而 `reload()` 会把列表滚动位置与分块渲染进度一起清掉——从 Hub 点开一篇论文是最常见的
+	// 操作，不该顺带把用户滚到一半的列表弹回顶部。
+	refreshHubViewsForActivity() {
+		for (const view of this.getOpenHubViews()) {
+			if (typeof view.dependsOnReadingActivity !== "function" || !view.dependsOnReadingActivity()) continue;
+			if (typeof view.reload === "function") view.reload();
 		}
 	}
 
@@ -10429,6 +10717,11 @@ class RectoPlugin extends obsidian.Plugin {
 				conversionStatus: converted ? "converted" : "unconverted",
 				translationQuality: info.translationQuality || null,
 				unrecognizedSymbolCount: info.unrecognizedSymbolCount,
+				// T86-C：Hub 的「最近」三个轴。前两个在论文对象里，第三个在平行表里；
+				// 缺席一律留空，`resolveHubEntryActivity` 会让它沉底。
+				importedAt: info.zoteroImportedAt || "",
+				convertedAt: info.convertedAt || "",
+				readingTouchedAt: (readingKey && this.readingTouchedAt ? this.readingTouchedAt[readingKey] : "") || "",
 			});
 		}
 		return out;
@@ -10492,6 +10785,7 @@ class RectoPlugin extends obsidian.Plugin {
 				void this.maybeRunZoteroAutoCheck().catch((error) => {
 					console.warn("Recto: zotero auto-check failed", getSanitizedErrorMessage(error));
 				});
+				this.maybeOpenOnboarding();
 				return;
 			}
 			if (!this.getValidatedBaseFolderOrNotice()) return;
@@ -10501,21 +10795,19 @@ class RectoPlugin extends obsidian.Plugin {
 			void this.maybeRunZoteroAutoCheck().catch((error) => {
 				console.warn("Recto: zotero auto-check failed", getSanitizedErrorMessage(error));
 			});
+			// 引导在 Hub 铺开之后才弹：先让用户看见自己打开的东西，再说下一步（T85-R）。
+			this.maybeOpenOnboarding();
 		} catch (error) {
 			console.error("Recto: failed to open hub", getSanitizedErrorMessage(error));
 			new obsidian.Notice("打不开论文库，请重试或重启 Obsidian。", 8000);
 		}
 	}
 
+	// T85-R P 段：这里原来压着一道云端知情确认的门，于是点「打开账号面板」会先被弹窗拦一下。
+	// 摘掉它——账号面板里的每个动作（浏览器登录、看额度、买套餐跳网页、登出、反馈）**都不上传
+	// 论文内容**，反馈那条的注释里本来就写着同一个判断。知情确认留在真正会上传的四个入口，
+	// 也就是用户第一次转换或翻译的那一刻，那时候说才有信息价值。
 	openAccountModal(options = {}) {
-		if (!this.hasCloudProcessingConsent()) {
-			void this.ensureCloudProcessingConsent({ interactive: true }).then(accepted => {
-				if (accepted) this.openAccountModal(options);
-				// 点了额度徽章却选「暂不启用」时，面板不会打开——不说一句的话与徽章点不动没区别。
-				else new obsidian.Notice("尚未启用云端处理，账号面板未打开。", 6000);
-			});
-			return;
-		}
 		new RectoAccountModal(this, options).open();
 	}
 
@@ -11791,7 +12083,7 @@ class RectoPlugin extends obsidian.Plugin {
 			intro: `即将处理选中的 ${count} 篇 PDF。`,
 			details: [
 				`处理内容：${content}。`,
-				"请确认选择范围无误，并确保你有权处理这些文件。",
+				"请确认选择范围无误，并确保您有权处理这些文件。",
 			],
 			actions: [
 				{ label: "取消", value: false },
@@ -12038,7 +12330,7 @@ class RectoPlugin extends obsidian.Plugin {
 			// T82-A-S：如实告知豁免。不说补了多少点（不变量 13），只说做完了、额度已用完。
 			if (exemptedCount) {
 				new obsidian.Notice(
-					`其中 ${exemptedCount} 篇的额度差了一点点，已为你补足并把这一篇做完。额度现在已用完，继续处理需要先购买。`,
+					`其中 ${exemptedCount} 篇的额度差了一点点，已为您补足并把这一篇做完。额度现在已用完，继续处理需要先购买。`,
 					12000
 				);
 			}
@@ -12564,6 +12856,16 @@ function createRectoHubViewClass(api) {
 			this.unsubscribeTaskQueue = null;
 			// 「N 篇已退出选择」那条提示：连着改筛选时替换上一条，不叠。
 			this.deselectNotice = null;
+			// 窄栏两个纯状态（T86-A）：哪一栏在前台、分类抽屉开没开。**它们不是宽度判断**——
+			// 断点全写在 styles.css 的 @container 里，宽档下这两个 class 根本没有对应规则，
+			// 于是「返回列表」「关抽屉」在宽档就是视觉无操作，整条链路一次 getComputedStyle 都不需要。
+			this.activePane = "list"; // "list" | "detail"
+			// navOpen 是**窄档**悬浮抽屉的瞬时状态；navCollapsed 是**三栏档**常驻分类树收没收起的
+			// 持久化偏好。两者互不相干、各自只在自己那一档有 CSS 规则——正因为如此，同一个按钮
+			// 点一下把两个都翻一遍是安全的，也就不必在 JS 里问「现在是宽还是窄」。
+			this.navOpen = false;
+			this.navCollapsed = !!(this.filters && this.filters.navCollapsed);
+			this.navHoverTimer = null;
 		}
 
 		getViewType() { return RECTO_HUB_VIEW_TYPE; }
@@ -12575,6 +12877,8 @@ function createRectoHubViewClass(api) {
 			container.empty();
 			container.addClass("recto-hub-host");
 			this.rootEl = container.createDiv({ cls: "recto-ui recto-hub" });
+			// 三栏档的分类树收起状态是记住的；这里只上 class，不回写（回写要留给用户的动作）。
+			this.rootEl.toggleClass("is-nav-collapsed", this.navCollapsed);
 			// 队列条常驻在最底部、横跨整个 Hub，所以 root 是纵向的，三栏收进 body。
 			this.bodyEl = this.rootEl.createDiv({ cls: "recto-hub-body" });
 			this.navEl = this.bodyEl.createDiv({ cls: "recto-hub-nav" });
@@ -12582,12 +12886,20 @@ function createRectoHubViewClass(api) {
 			this.toolbarEl = main.createDiv({ cls: "recto-hub-toolbar" });
 			this.crumbsEl = main.createDiv({ cls: "recto-hub-crumbs" });
 			this.chipsEl = main.createDiv({ cls: "recto-hub-chips" });
-			this.headEl = main.createDiv({ cls: "recto-hub-head" });
+			// 窄栏下详情是栈里的另一屏，这条是通往它的唯一入口（多选面板也只能从这儿进）。
+			// 宽档由 CSS 收起，所以它在那边既点不到也不占位。
+			this.paneJumpEl = main.createEl("button", { cls: "recto-hub-pane-jump" });
 			this.listEl = main.createDiv({ cls: "recto-hub-list" });
+			// 列头在滚动容器**里面**、sticky 在顶部（T86-A 第四轮）。放外面的话行的内容盒比列头窄
+			// 一个滚动条宽度，差额全被 1fr 吃掉——列头的「作者」「年份」会比下面的数据整体右移；
+			// 列宽改成百分比之后这个偏差还会再放大。同一个内容盒里就没有这回事，顺带得到常驻表头。
+			this.headEl = this.listEl.createDiv({ cls: "recto-hub-head" });
 			this.detailEl = this.bodyEl.createDiv({ cls: "recto-hub-detail" });
 			this.queueEl = this.rootEl.createDiv({ cls: "recto-hub-queue" });
 			// 列表本身可聚焦：行不是可聚焦元素，点行时焦点落到这个容器上，键盘导航才有主。
 			this.listEl.tabIndex = 0;
+			// 详情栏只在窄栏切过去时由 setActivePane 主动聚焦，不进 Tab 序。
+			this.detailEl.tabIndex = -1;
 			this.buildToolbar();
 			this.registerDomEvent(this.listEl, "scroll", () => this.handleListScroll());
 			this.registerDomEvent(this.listEl, "click", (event) => this.handleListClick(event));
@@ -12616,6 +12928,37 @@ function createRectoHubViewClass(api) {
 			}
 			this.registerDomEvent(this.detailEl, "click", (event) => this.handleDetailClick(event));
 			this.registerDomEvent(this.queueEl, "click", (event) => this.handleQueueClick(event));
+			this.registerDomEvent(this.paneJumpEl, "click", () => this.setActivePane("detail"));
+			// 详情栏里按 Esc 回列表。宽档下它只是把 activePane 写回 "list"，没有对应 CSS 规则，
+			// 看不出任何变化——列表那条 Esc（收回多选）在 handleListKeydown 里，两者互不相干。
+			this.registerDomEvent(this.detailEl, "keydown", (event) => {
+				if (event.key !== "Escape" && event.key !== "ArrowLeft") return;
+				event.preventDefault();
+				this.setActivePane("list", { focus: true });
+			});
+			// 分类抽屉：点抽屉与开关以外的任何地方就关掉。宽档下 navOpen 无 CSS 对应，翻它没有副作用。
+			this.registerDomEvent(document, "click", (event) => {
+				if (!this.navOpen) return;
+				const inside = event.target && event.target.closest
+					? event.target.closest(".recto-hub-nav, .recto-hub-nav-toggle")
+					: null;
+				if (!inside) this.setNavOpen(false);
+			});
+			this.registerDomEvent(this.navEl, "keydown", (event) => {
+				if (event.key !== "Escape") return;
+				event.preventDefault();
+				this.setNavOpen(false);
+			});
+			// 卡片自己只**取消**待关闭，不负责打开——宽档下分类树是常驻列，鼠标扫过它不该翻任何 class。
+			this.registerDomEvent(this.navEl, "mouseenter", () => this.cancelNavHoverClose());
+			this.registerDomEvent(this.navEl, "mouseleave", () => {
+				if (this.navOpen) this.closeNavAfterHover();
+			});
+			// 布局一变就回到列表（T86-A 第五轮）。宽档下每次点行都会把 activePane 写成 "detail"
+			// （那一档没有对应规则、看不出来），于是把窗口拖窄时单栏显示的是详情栏而不是列表——
+			// 而列表才是「家」。**这不是宽度判断**：它不问「我现在多宽」，只在布局变动时把前台
+			// 复位到主栏，断点仍然只有 styles.css 一处真值。
+			this.registerEvent(this.app.workspace.on("resize", () => this.setActivePane("list")));
 			// 队列条订阅任务状态：切走再回来（甚至重启 Obsidian）都能把在途任务重新画出来。
 			this.unsubscribeTaskQueue = this.plugin.onTaskQueueChanged(() => this.renderQueue());
 			this.reload();
@@ -12624,11 +12967,31 @@ function createRectoHubViewClass(api) {
 		async onClose() {
 			if (this.searchTimer) clearTimeout(this.searchTimer);
 			this.searchTimer = null;
+			this.cancelNavHoverClose();
 			if (this.unsubscribeTaskQueue) this.unsubscribeTaskQueue();
 			this.unsubscribeTaskQueue = null;
 		}
 
 		buildToolbar() {
+			// 分类抽屉的开关。≤900 时左边那栏收成悬浮卡片，这个按钮就是它唯一的入口——
+			// T86-A 之前分类树在窄栏是直接消失的，面包屑只能清不能设，等于一扇单向门。
+			// **排在品牌之前**：品牌只在 <700 隐藏，跟在它后面的话这个按钮在 700–900 与 <700
+			// 两档会落在不同位置，同一个控件两个地方找。放第一个就永远钉在左上角。
+			this.navToggleEl = this.toolbarEl.createEl("button", { cls: "recto-hub-icon-button recto-hub-nav-toggle" });
+			// 汉堡而不是 panel-left：后者是「一个矩形被竖线分成左右两块」，和品牌 mark 的两根竖条
+			// （RECTO_ICON_SVG：左实心 + 右描边）是同一个形状家族，并排放着分不出谁是谁。
+			// 三条横线与那两根竖条方向正交，撞不上，也是最通用的「打开导航」符号。
+			setChromeIcon(this.navToggleEl, "menu");
+			this.registerDomEvent(this.navToggleEl, "click", (event) => {
+				event.stopPropagation();
+				this.toggleNav();
+			});
+			// 悬浮即展开、移开即缩回。延时是必须的——鼠标从按钮走向卡片的路上会有一瞬 hover 落空，
+			// 没有延时就会闪。监听只挂在开关上，而它在宽档 display:none、根本 hover 不到，
+			// 所以宽档下鼠标扫过不会白翻 class——仍然一次宽度判断都没有。
+			this.registerDomEvent(this.navToggleEl, "mouseenter", () => this.openNavOnHover());
+			this.registerDomEvent(this.navToggleEl, "mouseleave", () => this.closeNavAfterHover());
+			this.syncNavToggle();
 			const brand = this.toolbarEl.createDiv({ cls: "recto-brand" });
 			const mark = brand.createSpan({ cls: "recto-brand-mark" });
 			mark.innerHTML = RECTO_MARK_MARKUP;
@@ -12674,6 +13037,10 @@ function createRectoHubViewClass(api) {
 			}
 			const ring = this.creditsEl.createSpan({ cls: "recto-hub-credits-ring" });
 			ring.innerHTML = buildHubCreditsRingMarkup(badge.percent, badge.heldPercent);
+			// 百分比常在 DOM 里，窄栏由 CSS 收起（JS 不判宽度）。没读到分母时没有 short，只剩圆环。
+			if (badge.short) {
+				this.creditsEl.createSpan({ cls: "recto-hub-credits-percent", text: badge.short });
+			}
 		}
 
 		reload(options = {}) {
@@ -12694,6 +13061,13 @@ function createRectoHubViewClass(api) {
 			// 所以选择集缩水不在这里提示——否则批次一结束就跟一串与用户无关的 Notice。
 			this.applyFilters({ quiet: true });
 			this.renderQueue();
+		}
+
+		// 「打开了一篇论文」只影响按「最近」在排或在筛的视图（T86-C）。别的情况下重排一次
+		// 得到的顺序一模一样，却要把滚动位置和分块进度赔进去——而从 Hub 点开一篇论文，
+		// 正是最常触发这个信号的操作。
+		dependsOnReadingActivity() {
+			return this.filters.sort === "recent" || this.filters.status === "recent";
 		}
 
 		// quiet：外部数据变化引起的重排（reload）不提示，只有用户自己改筛选时才提示。
@@ -12729,12 +13103,13 @@ function createRectoHubViewClass(api) {
 			this.renderHead();
 			this.renderList();
 			this.renderDetail();
+			this.renderPaneJump();
 		}
 
 		// applyFilters 是所有筛选/排序变化的汇合点，持久化就挂在这儿。只有值真的变了才落盘——
 		// reload 每次写回、每次批次收尾都会走到这里，无脑 save 等于给 data.json 加一串空写。
 		persistViewState() {
-			const next = JSON.stringify(normalizeHubViewState(this.filters));
+			const next = JSON.stringify(normalizeHubViewState({ ...this.filters, navCollapsed: this.navCollapsed }));
 			if (next === this.persistedViewState) return;
 			this.persistedViewState = next;
 			this.plugin.settings.hubViewState = JSON.parse(next);
@@ -12754,12 +13129,99 @@ function createRectoHubViewClass(api) {
 			return this.selectedIds.size >= 2;
 		}
 
+		// ----- 窄栏形态（T86-A）。这四个方法只翻 class、只改前台是哪一栏，一次宽度判断都没有：
+		// 断点全在 styles.css 的 @container 里，宽档下这些 class 没有任何对应规则。
+		// options.focus 只由**键盘**路径传 true（← / →）。鼠标点行不搬焦点：宽档下详情栏与列表同屏，
+		// 搬过去会把焦点从列表偷走、方向键当场失灵；而鼠标用户本来也不靠焦点，返回按钮就在眼前。
+		setActivePane(pane, options = {}) {
+			const next = pane === "detail" ? "detail" : "list";
+			if (this.activePane === next) return;
+			this.activePane = next;
+			if (this.rootEl) this.rootEl.toggleClass("is-pane-detail", next === "detail");
+			if (!options.focus) return;
+			const target = next === "detail" ? this.detailEl : this.listEl;
+			if (target && typeof target.focus === "function") target.focus();
+		}
+
+		setNavOpen(open) {
+			this.navOpen = !!open;
+			this.cancelNavHoverClose();
+			if (this.rootEl) this.rootEl.toggleClass("is-nav-open", this.navOpen);
+			this.syncNavToggle();
+		}
+
+		setNavCollapsed(collapsed) {
+			this.navCollapsed = !!collapsed;
+			if (this.rootEl) this.rootEl.toggleClass("is-nav-collapsed", this.navCollapsed);
+			this.persistViewState();
+		}
+
+		// 一个按钮管两档：各自独立翻一次。三栏档只读 navCollapsed、窄档只读 navOpen，
+		// 所以在任一档里点它的效果都恰好是「开 ↔ 关」，不管另一个标志当时是什么值。
+		toggleNav() {
+			this.setNavOpen(!this.navOpen);
+			this.setNavCollapsed(!this.navCollapsed);
+		}
+
+		openNavOnHover() {
+			this.setNavOpen(true);
+		}
+
+		cancelNavHoverClose() {
+			if (!this.navHoverTimer) return;
+			clearTimeout(this.navHoverTimer);
+			this.navHoverTimer = null;
+		}
+
+		// 开关与卡片共用这一个计时器：从一个移到另一个时，后到的 mouseenter 会在它到点前把它清掉。
+		closeNavAfterHover() {
+			this.cancelNavHoverClose();
+			this.navHoverTimer = setTimeout(() => {
+				this.navHoverTimer = null;
+				this.setNavOpen(false);
+			}, HUB_NAV_HOVER_CLOSE_MS);
+		}
+
+		// 文案固定：这个按钮在两档管的是两件事（收起常驻树 / 开合悬浮抽屉），而 JS 不知道自己在哪一档，
+		// 所以任何「展开/收起」的措辞都会在另一档说反话。aria-expanded 同理，宁可不给也不给错的。
+		syncNavToggle() {
+			if (!this.navToggleEl) return;
+			this.navToggleEl.setAttribute("aria-label", "分类与阅读状态");
+			this.navToggleEl.setAttribute("title", "分类与阅读状态");
+		}
+
+		// 列表上方那条**只在多选时出现**：单选已经是点行直接进详情，常驻一条按钮既多一步、又在列表和
+		// 表头之间横插一道；而多选面板（含「删除选中（N 篇）」）在单栏下没有它就真够不到。
+		renderPaneJump() {
+			if (!this.paneJumpEl) return;
+			this.paneJumpEl.empty();
+			const batch = this.isBatchMode();
+			this.paneJumpEl.toggleClass("is-hidden", !batch);
+			if (!batch) return;
+			this.paneJumpEl.setAttribute("title", "打开批量面板：转换、翻译、删除选中");
+			this.paneJumpEl.createSpan({
+				cls: "recto-hub-pane-jump-label",
+				text: `已选 ${this.selectedIds.size} 篇 · 处理`,
+			});
+			setChromeIcon(this.paneJumpEl.createSpan(), "chevron-right");
+		}
+
+		// 详情栏顶部的返回。renderDetail 每次都会清空详情栏，所以它只能由 renderDetail 重建，
+		// 不能在 onOpen 里建一次了事。
+		renderPaneBack() {
+			const back = this.detailEl.createEl("button", { cls: "recto-hub-pane-back" });
+			setChromeIcon(back.createSpan(), "chevron-left");
+			back.createSpan({ text: "返回列表" });
+			back.dataset.hubPane = "list";
+		}
+
 		setSelection(recordIds, currentId, options = {}) {
 			this.selectedIds = new Set(recordIds || []);
 			if (currentId) this.selectedRecordId = currentId;
 			if (options.anchor) this.anchorRecordId = options.anchor;
 			this.syncRowSelectionClasses();
 			this.renderDetail();
+			this.renderPaneJump();
 		}
 
 		// recordId 来自 folderMap 的键，可能含任意字符；用遍历取行而不是拼属性选择器，
@@ -12848,9 +13310,17 @@ function createRectoHubViewClass(api) {
 				text: leaf ? `阅读状态 · ${leaf}` : "阅读状态",
 			});
 			if (leaf) section.setAttribute("title", `以下计数只统计「${this.filters.collectionPath}」内的论文`);
-			// 这一列只管阅读状态这一个维度；转换状态全部交给下面的 chips 行，
+			// 这一列只管「这篇论文和我的关系」这一个维度；转换状态全部交给下面的 chips 行，
 			// 不再一列里混两种筛选（原来的「未转换」与 chips 的同名项是同一个筛选的两个入口）。
+			// **「最近」也是这一维**（T86-C）：正在读/已读/未读是手动标的，「最近」是插件自己记的
+			// ——打开过、转换过、导进来过。四项互斥、各带计数，点击语义与其余三项完全一样。
+			// 「最近」排在最前、带时钟图标、下面一条分隔线（T86-C 第四轮，用户拍板）。
+			// **它和下面四行不是一种东西**：那四行是可以和分类叠加的筛选，它是一个独立分类模式
+			// ——进它就清掉分类与转换筛选，点任何分类又会退出它。图标与分隔线就是在点破这件事，
+			// 让人在点之前就有预感，而不是点完发现列表行为不一样。
 			const quick = [
+				{ label: "最近", count: summary.recent, status: "recent", icon: "clock", separate: true,
+					title: "独立视图：打开过、转换过或改过阅读状态的论文，按时间从新到旧排。进入时会清掉分类与转换筛选；点任何分类即退出。导入不算，没有记录的不在其中。" },
 				{ label: "全部论文", count: summary.total, status: "all" },
 				{ label: `${READING_STATUS_SYMBOLS.reading} 正在读`, count: summary.reading, status: "reading" },
 				{ label: `${READING_STATUS_SYMBOLS.read} 已读`, count: summary.read, status: "read" },
@@ -12861,6 +13331,9 @@ function createRectoHubViewClass(api) {
 				row.dataset.hubStatus = item.status;
 				this.markAsButton(row);
 				row.toggleClass("is-active", this.filters.status === item.status);
+				row.toggleClass("is-standalone", !!item.separate);
+				if (item.title) row.setAttribute("title", item.title);
+				if (item.icon) setChromeIcon(row.createSpan({ cls: "recto-hub-nav-icon" }), item.icon);
 				row.createSpan({ cls: "recto-hub-nav-name", text: item.label });
 				row.createSpan({ cls: "recto-hub-nav-count", text: String(item.count) });
 			}
@@ -12889,10 +13362,13 @@ function createRectoHubViewClass(api) {
 			this.markAsButton(clearAll);
 		}
 
+		// `scope`（T86-B）= 清掉搜索词**以外**的三个条件，用于空态那句「全部论文中另有 N 篇」。
+		// 它不是面包屑上的键，面包屑仍然逐条各清各的。
 		clearHubFilter(key) {
-			if (key === "status" || key === "all") this.filters.status = "all";
-			if (key === "conversion" || key === "all") this.filters.conversion = "all";
-			if (key === "collection" || key === "all") this.filters.collectionPath = "";
+			const scope = key === "all" || key === "scope";
+			if (key === "status" || scope) this.filters.status = "all";
+			if (key === "conversion" || scope) this.filters.conversion = "all";
+			if (key === "collection" || scope) this.filters.collectionPath = "";
 			if (key === "query" || key === "all") {
 				this.filters.query = "";
 				if (this.searchInput) this.searchInput.value = "";
@@ -12934,7 +13410,6 @@ function createRectoHubViewClass(api) {
 				{ key: "all", label: HUB_CONVERSION_LABELS.all },
 				{ key: "converted", label: HUB_CONVERSION_LABELS.converted },
 				{ key: "translated", label: HUB_CONVERSION_LABELS.translated },
-				{ key: "unconverted", label: HUB_CONVERSION_LABELS.unconverted },
 				{ key: "todo", label: HUB_CONVERSION_LABELS.todo },
 			];
 			for (const chip of chips) {
@@ -12944,14 +13419,20 @@ function createRectoHubViewClass(api) {
 				el.toggleClass("is-active", this.filters.conversion === chip.key);
 			}
 			const summary = summarizeHubEntries(this.visible);
-			this.chipsEl.createSpan({
-				cls: "recto-hub-chip-count",
-				text: `${summary.total} 篇 · 已转换 ${summary.converted} · 有译文 ${summary.translated}`,
+			// 明细拆成独立 span：窄栏由 CSS 收起，只留总数，位置让给筛选 chip（JS 不判宽度）。
+			const count = this.chipsEl.createSpan({ cls: "recto-hub-chip-count" });
+			count.createSpan({ text: `${summary.total} 篇` });
+			count.createSpan({
+				cls: "recto-hub-chip-count-detail",
+				text: ` · 已转换 ${summary.converted} · 有译文 ${summary.translated}`,
 			});
 		}
 
 		renderList() {
 			this.listEl.empty();
+			// 列头是 listEl 的孩子，empty() 会把它一起摘掉；元素本身还在（内容由 renderHead 填好），
+			// 重新挂回去即可。**必须排在所有分支之前**——空态那两条会提前 return。
+			this.listEl.appendChild(this.headEl);
 			this.listEl.scrollTop = 0;
 			this.listEl.toggleClass("is-multi", this.isBatchMode());
 			this.renderedCount = 0;
@@ -12985,8 +13466,35 @@ function createRectoHubViewClass(api) {
 			}
 			if (!this.visible.length) {
 				const empty = this.listEl.createDiv({ cls: "recto-hub-empty" });
-				empty.createDiv({ text: "没有匹配的论文" });
-				const clear = empty.createEl("button", { cls: "mod-cta", text: "清除筛选" });
+				// 「最近」对**每一个人**第一次打开都是空的（T86-C：两个轴都是这一版才开始记，
+				// 而且明确不给存量回填）。落到下面那句「当前筛选条件下没有匹配」会让人以为坏了，
+				// 所以这一档单独说实话。只在没叠别的条件时说——叠了分类还空，那是筛出来的空。
+				const bareRecent = this.filters.status === "recent"
+					&& !this.filters.collectionPath && !String(this.filters.query || "").trim()
+					&& this.filters.conversion === "all";
+				if (bareRecent) {
+					empty.createDiv({ text: "还没有记录。" });
+					empty.createDiv({ text: "打开任意一篇论文，它就会出现在这里。" });
+					return;
+				}
+				empty.createDiv({ text: "当前筛选条件下没有匹配的论文。" });
+				// T86-B：四个筛选条件是 AND，所以搜索词经常是被分类或状态挡住的，而空态原来只说
+				// 「没有匹配」，不告诉用户别处其实有。另外那个「清除筛选」清的是全部，连搜索词一起
+				// 清掉——用户敲的字得重打。所以主按钮改成「只清其余条件、留着搜索词」。
+				const elsewhere = countHubEntriesMatchingQueryOnly(this.entries, this.filters);
+				if (elsewhere) {
+					const term = String(this.filters.query || "").trim();
+					empty.createDiv({ text: `全部论文中另有 ${elsewhere} 篇匹配「${term}」。` });
+				}
+				const actions = empty.createDiv({ cls: "recto-hub-empty-actions" });
+				if (elsewhere) {
+					const scope = actions.createEl("button", { cls: "mod-cta", text: "在全部论文中搜索" });
+					scope.dataset.hubClearFilters = "scope";
+					scope.setAttribute("title", "保留搜索词，清除分类、阅读状态与转换状态三个筛选条件");
+				}
+				// 有「在全部论文中搜索」时它才是主按钮，否则「清除全部筛选」自己是主按钮。
+				const clear = actions.createEl("button", { text: "清除全部筛选" });
+				if (!elsewhere) clear.addClass("mod-cta");
 				clear.dataset.hubClearFilters = "all";
 				return;
 			}
@@ -13061,6 +13569,8 @@ function createRectoHubViewClass(api) {
 
 		renderDetail() {
 			this.detailEl.empty();
+			// 所有分支（多选面板、空态、单篇）都要有返回按钮，所以排在分流之前。
+			this.renderPaneBack();
 			if (this.isBatchMode()) {
 				this.renderBatchDetail();
 				return;
@@ -13103,6 +13613,10 @@ function createRectoHubViewClass(api) {
 				`${READING_STATUS_SYMBOLS[entry.readingStatus]} ${READING_STATUS_LABELS[entry.readingStatus]}`,
 				entry.conversionStatus === "converted" ? "已转换" : "未转换",
 			].join(" · "));
+			// T86-C：「最近」排序看不见依据，这一行就是那个依据。没有任何时间戳的存量论文不显示这行
+			// ——写「未知」等于给每一篇旧论文加一行噪音，而它们本来就该沉在列表最后。
+			const activity = describeHubActivity(entry, Date.now());
+			if (activity) addRow("最近", activity);
 			const brief = this.plugin.readHubSummaryBrief(entry);
 			if (brief) this.detailEl.createDiv({ cls: "recto-hub-detail-brief", text: brief });
 			this.renderProcessActions(this.detailEl, [entry]);
@@ -13374,7 +13888,8 @@ function createRectoHubViewClass(api) {
 				: null;
 			if (clearFilters) {
 				event.preventDefault();
-				this.clearHubFilter("all");
+				// 空态现在有两个按钮（保留搜索词 / 全清），按钮自己说清要清哪些，这里不再写死 "all"。
+				this.clearHubFilter(clearFilters.dataset.hubClearFilters || "all");
 				return;
 			}
 			const emptyImport = event.target && event.target.closest
@@ -13414,11 +13929,23 @@ function createRectoHubViewClass(api) {
 				this.setSelection(next, next.has(recordId) ? recordId : this.selectedRecordId, { anchor: recordId });
 				return;
 			}
+			// 普通点击 = 选中 + 进详情。Ctrl/Shift 那两条分支已经在上面 return 了，多选不会被推走；
+			// 键盘上下键走的是 setSelection，也不会——**推进是「点击意图」，不是选中状态的副作用**。
+			// 已经选中的行再点一次同样要推进，所以这句排在下面那条早退之前。
+			// 宽档下它只是把 activePane 写成 "detail"，没有对应 CSS 规则，看不出任何变化。
+			this.setActivePane("detail");
 			if (recordId === this.selectedRecordId && this.selectedIds.size <= 1) return;
 			this.setSelection([recordId], recordId, { anchor: recordId });
 		}
 
 		handleListKeydown(event) {
+			// 列头从 listEl 的**兄弟**变成了它的**孩子**（T86-A 第四轮），键盘事件因此会往这儿冒泡。
+			// 列头单元格挂着 tabindex=0，不挡的话在排序列头上按 Enter 会既排序又打开当前选中的论文。
+			if (event.target && event.target.closest && event.target.closest(".recto-hub-head")) return;
+			// 空态里的按钮同样住在 listEl 里，而它们是真 <button>——Enter 的默认动作就是那一下 click。
+			// 下面「按选中行动作」的分支会无条件 preventDefault 把它吃掉（列表这时是空的，那些分支
+			// 一件事也做不成），于是键盘用户按 Enter 毫无反应。这一档空态才有，挡掉最省事。
+			if (event.target && event.target.closest && event.target.closest(".recto-hub-empty")) return;
 			// 焦点在阅读状态圆点上时，Enter / Space 必须作用于**这个圆点所属的行**。
 			// 圆点是 span + role="button" + tabindex="0"，而 span 没有原生 Enter/Space 激活，
 			// 事件会一路冒泡到列表容器、落进下面的 getSelectedEntry() 分支；而点圆点又不会把该行
@@ -13450,6 +13977,25 @@ function createRectoHubViewClass(api) {
 				this.moveSelection(event.key === "ArrowDown" ? 1 : -1, event.shiftKey);
 				return;
 			}
+			// T86-B：整段跳与翻页。moveSelection 的夹取（0 … length-1）本来就在，所以这两条只是
+			// 换一个 step，不需要另一条路径；Shift 连选也是同一个 extend 参数，白送。
+			if (event.key === "Home" || event.key === "End") {
+				event.preventDefault();
+				this.moveSelection(event.key === "End" ? this.visible.length : -this.visible.length, event.shiftKey);
+				return;
+			}
+			if (event.key === "PageDown" || event.key === "PageUp") {
+				event.preventDefault();
+				this.moveSelection(event.key === "PageDown" ? HUB_KEYBOARD_PAGE_STEP : -HUB_KEYBOARD_PAGE_STEP, event.shiftKey);
+				return;
+			}
+			// 单栏下键盘进详情的路。左右键此前没有任何绑定，所以在宽档是纯增量——
+			// 那边详情栏与列表同屏，右键只是把焦点送过去，也说得通。
+			if (event.key === "ArrowRight") {
+				event.preventDefault();
+				this.setActivePane("detail", { focus: true });
+				return;
+			}
 			if (event.key === "Delete") {
 				event.preventDefault();
 				void this.deleteSelectedRecords();
@@ -13472,7 +14018,11 @@ function createRectoHubViewClass(api) {
 		moveSelection(step, extend) {
 			if (!this.visible.length) return;
 			const from = this.visible.findIndex(entry => entry.recordId === this.selectedRecordId);
-			const next = Math.max(0, Math.min(this.visible.length - 1, (from < 0 ? 0 : from + step)));
+			// 一行都没选中时的起点：往下走从 -1 起算，End 才会落到最后一行而不是第一行；
+			// 往上走仍从 0 起算，夹取之后就是第一行——↑↓ 的现有行为一字不变（step ±1 时两种起点
+			// 算出来都是 0）。
+			const base = from >= 0 ? from : (step > 0 ? -1 : 0);
+			const next = Math.max(0, Math.min(this.visible.length - 1, base + step));
 			const target = this.visible[next];
 			if (!target) return;
 			// 列表是分块渲染的，键盘可能走到还没渲染的行；先把它补出来再滚过去。
@@ -13515,13 +14065,32 @@ function createRectoHubViewClass(api) {
 				this.filters.collectionPath = this.filters.collectionPath === row.dataset.hubCollection
 					? ""
 					: row.dataset.hubCollection;
+				// 点分类即退出「最近」（T86-C 第四轮）。它是独立分类模式，不和分类叠加——
+				// 不退的话点完分类看到的是「最近 ∩ 这个分类」，通常是空的，而用户以为自己在看分类。
+				if (this.filters.status === "recent") this.filters.status = "all";
 			} else if (row.dataset.hubStatus !== undefined) {
 				// 只动阅读状态这一维，转换状态归 chips 行——两个控件各管一件事。
 				this.filters.status = row.dataset.hubStatus || "all";
+				// 「最近」不是这一列里的第五个筛选项，是一个**独立分类模式**（T86-C 第四轮，
+				// 用户拍板从「可叠加」改过来）：进它就把分类、转换筛选、搜索词一并清空，只留
+				// 「我操作过的，从新到旧」。理由是这一档通常只剩十几篇，而分类与转换筛选都是
+				// 跨会话记住的——上周选的条件还在，点进来十有八九是空列表，而用户以为功能坏了。
+				// 退出路径在上面那条分支：点任何分类即退出。**不做正反序开关**——「只看最近
+				// 以前的」不是任何人会提的问题。
+				if (this.filters.status === "recent") {
+					this.filters.sort = "recent";
+					this.filters.descending = true;
+					this.filters.collectionPath = "";
+					this.filters.conversion = "all";
+					this.filters.query = "";
+					if (this.searchInput) this.searchInput.value = "";
+				}
 			}
 			this.selectedRecordId = "";
 			this.selectedIds.clear();
 			this.renderNav();
+			// 选中一个分类就收起抽屉（折叠三角走上面那条早退分支，不受影响）。
+			this.setNavOpen(false);
 			this.applyFilters();
 		}
 
@@ -13561,6 +14130,11 @@ function createRectoHubViewClass(api) {
 		handleDetailClick(event) {
 			const target = event.target;
 			const closest = (selector) => (target && target.closest ? target.closest(selector) : null);
+			const pane = closest("[data-hub-pane]");
+			if (pane) {
+				this.setActivePane(pane.dataset.hubPane);
+				return;
+			}
 			const authorsToggle = closest("[data-hub-authors-toggle]");
 			if (authorsToggle) {
 				this.authorsExpanded = !this.authorsExpanded;
@@ -13759,14 +14333,23 @@ class RectoDecisionModal extends obsidian.Modal {
 }
 
 class RectoOnboardingModal extends obsidian.Modal {
-	constructor(plugin) {
+	constructor(plugin, options = {}) {
 		super(plugin.app);
 		this.plugin = plugin;
 		this.busy = false;
 		this.closed = false;
 		this.completed = false;
 		this.finishing = false;
-		this.preferExternal = false;
+		// 交给账号面板时这一位会随着新实例带回来（T85-R 方案 A），否则每次回来都退回 Zotero 路线。
+		this.preferExternal = options.preferExternal === true;
+		this.replay = options.replay === true;
+		// 再看一次时先把欢迎屏拉回来；用户点过「开始」之后就按真实 welcomeSeen 走，
+		// 免得欢迎屏永远钉在第一页。回放中的「跳过这一步」只记在本次弹窗里，
+		// 不写进落盘的 skipped——否则没配完的人回看时随手跳过，会把真引导也改掉。
+		this.replayWelcomeForced = this.replay === true && options.replayWelcomeForced !== false;
+		this.replaySkipped = this.replay
+			? (Array.isArray(options.replaySkipped) ? [...options.replaySkipped] : [])
+			: null;
 		const saved = plugin.getOnboardingState();
 		this.externalResult = findExternalConversionRecord(plugin.externalConversions, saved.externalRecordId);
 	}
@@ -13790,12 +14373,15 @@ class RectoOnboardingModal extends obsidian.Modal {
 	getSnapshot() {
 		const zotero = this.plugin.getZoteroSetupStatusSnapshot();
 		const lights = describeSetupStatusLights({ settings: this.plugin.settings, zotero });
+		const state = this.plugin.getOnboardingState();
 		const flow = describeOnboardingFlow({
 			lights,
 			zotero,
 			hasNodeSqlite: this.plugin.hasNodeSqlite === true,
 			preferExternal: this.preferExternal,
 			externalResult: this.externalResult,
+			welcomeSeen: this.replayWelcomeForced ? false : state.welcomeSeen === true,
+			skipped: this.replaySkipped !== null ? this.replaySkipped : state.skipped,
 		});
 		return { zotero, lights, flow };
 	}
@@ -13807,53 +14393,88 @@ class RectoOnboardingModal extends obsidian.Modal {
 		contentEl.addClass("recto-ui");
 		contentEl.addClass("recto-onboarding-content");
 		const snapshot = this.getSnapshot();
-		const state = this.plugin.getOnboardingState();
-		if (state.currentStep !== snapshot.flow.currentStep) {
-			void this.plugin.updateOnboardingState({ currentStep: snapshot.flow.currentStep }).catch(error => {
-				console.warn("Recto: failed to save onboarding progress", getSanitizedErrorMessage(error));
-			});
+		// 每一步都跳过之后就没有可教的了：收尾关掉，并留一句回得来的话。不这么收的话
+		// 下次打开论文库还会弹一个立刻自闭的空壳。
+		if (snapshot.flow.done) {
+			void this.finishAllSkipped();
+			return;
 		}
+		this.renderStatuses(contentEl, snapshot);
+		const card = contentEl.createDiv({ cls: "recto-onboarding-card" });
+		this.renderStep(card, snapshot);
+	}
 
-		const progress = contentEl.createDiv({ cls: "recto-onboarding-progress" });
-		progress.createSpan({ text: `第 ${snapshot.flow.currentStep + 1} / 3 步` });
-		const track = progress.createDiv({ cls: "recto-onboarding-progress-track" });
-		const value = track.createDiv({ cls: "recto-onboarding-progress-value" });
-		value.style.width = `${((snapshot.flow.currentStep + 1) / 3) * 100}%`;
-
+	// T85-R 撤掉了进度条：分母写死 3，而账号与额度共用一个步骤号——跑完一整趟浏览器登录
+	// 回来，进度条纹丝不动；分支路径的真实步数本来也不一样。状态灯已经能说清哪件事办好了。
+	renderStatuses(contentEl, snapshot) {
+		// 欢迎屏只讲这插件是干嘛的，先不摆三盏待办灯。
+		if (snapshot.flow.id === "welcome") return;
+		// 库外路线不画 Zotero 灯：灯是用来说「还差什么」的，用户没选的另一条路不算缺口，
+		// 让它一直黄着只会让人以为自己没配完。
+		const externalRoute = this.preferExternal === true
+			|| snapshot.flow.id === "external"
+			|| snapshot.flow.id === "external-result";
+		const lights = [snapshot.lights.account, snapshot.lights.credits];
+		if (!externalRoute) lights.push(snapshot.lights.zotero);
 		const statuses = contentEl.createDiv({ cls: "recto-onboarding-statuses" });
-		for (const light of [snapshot.lights.account, snapshot.lights.credits, snapshot.lights.zotero]) {
+		for (const light of lights) {
 			const status = statuses.createDiv({ cls: `recto-onboarding-status is-${light.state || "unknown"}` });
 			const icon = status.createSpan({ cls: "rc-icon" });
 			setChromeIcon(icon, light.icon || "circle-dashed");
 			status.createSpan({ text: light.text || "" });
 		}
-
-		const card = contentEl.createDiv({ cls: "recto-onboarding-card" });
-		this.renderStep(card, snapshot);
 	}
 
 	renderStep(card, snapshot) {
 		const id = snapshot.flow.id;
+		if (id === "welcome") {
+			// 标题只写在窗口标题栏（onOpen 里的 setTitle），这里不再重复一遍。四条与其它
+			// 步骤同一套版式：图标 + 粗体小标题 + 同字号正文，一屏之内不出现第三种字号。
+			this.renderFeatureList(card, [
+				{ icon: "library", title: "从 Zotero 精准转换", text: "论文转成 Markdown，库外的其他 PDF 同样可以转。" },
+				{ icon: "languages", title: "翻译与双栏对照", text: "内置翻译一键生成译文，可与原文并排对照阅读。" },
+				{ icon: "sparkles", title: "为 AI 阅读铺路", text: "论文变成能被 AI 读懂、能检索引用的笔记，长成您自己的知识库。" },
+				{ icon: "gift", title: "免费开始", text: "全功能免费，每月都有免费额度；需要更多用量时再按需升级套餐。" },
+			]);
+			// 演示视频的位置就在下面这一行动作里（次按钮位），等有稳定地址了再补，
+			// 现在不画占位也不放假链接——见 T85-R 的移交后续。
+			this.renderActions(card, [
+				{ label: "开始设置", cta: true, action: () => this.markWelcomeSeen() },
+				{ label: "稍后再说", action: () => this.close() },
+			], { skippable: false });
+			return;
+		}
 		if (id === "account") {
-			this.renderStepHeader(card, "user-round", "先登录 Recto 账号", "登录、注册和找回密码都在系统浏览器完成，密码不会进入 Obsidian 插件。");
+			// 连不上时状态灯只会是一片 unknown，流程永远停在这一步；不说这一句，
+			// 用户只能对着一个必然失败的按钮反复点。
+			const offline = !!String(this.plugin.settings.backendLastError || "").trim();
+			this.renderStepHeader(
+				card,
+				"user-round",
+				"登录 Recto 账号",
+				offline
+					? "连不上 Recto 服务时，可以先跳过这一步，稍后在设置页继续。"
+					: "在浏览器里完成，密码不进入插件。",
+			);
 			this.renderActions(card, [{
-				label: "打开账号面板",
+				label: "在浏览器中登录",
 				cta: true,
-				action: () => this.plugin.openAccountModal({ onChange: () => this.render() }),
+				action: () => this.startBrowserSignIn(),
 			}]);
 			return;
 		}
 		if (id === "credits") {
-			this.renderStepHeader(card, "gauge", "确认可用额度", "账号已经登录；请在账号面板确认免费额度，或选择适合你的套餐。");
+			this.renderStepHeader(card, "gauge", "确认可用额度", "账号已经登录。在账号面板里可以看到当前额度，也可以选择适合您的套餐。");
 			this.renderActions(card, [{
 				label: "查看账号与额度",
 				cta: true,
-				action: () => this.plugin.openAccountModal({ onChange: () => this.render() }),
+				action: () => this.handOffToAccountModal(),
 			}]);
 			return;
 		}
 		if (id === "zotero") {
-			this.renderStepHeader(card, "library", "导入第一篇论文", "已检测到 Zotero 数据目录。导入只在本地复制 PDF、建立论文对象，不转换，也不扣额度。");
+			this.renderStepHeader(card, "library", "从 Zotero 导入论文", "已经检测到本地的 Zotero 数据目录。导入只在本地复制 PDF 并建立论文条目，不转换，也不消耗额度。");
+			this.renderBaseFolderField(card, "命名您的论文库文件夹");
 			this.renderActions(card, [
 				{ label: "一键导入 Zotero", cta: true, action: () => this.importZotero() },
 				{ label: "改用库外 PDF", action: () => { this.preferExternal = true; this.render(); } },
@@ -13865,7 +14486,12 @@ class RectoOnboardingModal extends obsidian.Modal {
 			this.renderActions(card, [{
 				label: "打开论文库，选择一篇转换",
 				cta: true,
-				action: () => this.complete(() => { void this.plugin.activateRectoHub(); }),
+				action: () => this.complete(() => {
+					void this.plugin.activateRectoHub();
+					// 教学到这里就撒手了，而转换按钮在**详情栏**里——不先选中一篇，右侧
+					// 什么都不出现。这是整条链最容易掉队的一跳，值这一句话。
+					new obsidian.Notice("在列表里选中一篇论文，右侧详情栏就有「转换」。", 10000);
+				}),
 			}]);
 			return;
 		}
@@ -13886,10 +14512,67 @@ class RectoOnboardingModal extends obsidian.Modal {
 				? "没有检测到可用的 Zotero 数据目录。可以先选一篇本地 PDF 转换，也可以去设置页手动配置 Zotero。"
 				: "当前运行环境不能读取 Zotero 数据库，但仍可直接选择本地 PDF 完成第一次转换。"
 		);
+		this.renderBaseFolderField(card, "命名您的论文库文件夹");
 		this.renderActions(card, [
 			{ label: "选择 PDF 并转换", cta: true, action: () => this.convertExternalPdf() },
 			{ label: "配置 Zotero", action: () => this.complete(() => this.plugin.openRectoSettings()) },
 		]);
+	}
+
+	// T85-R：引导全程不提论文库文件夹，用户就只能落进默认的「论文库」。而 Zotero 一键导入
+	// 会**立刻**按它建目录复制 PDF，事后改名又不搬旧目录（正文里的图片 wikilink 与摘要
+	// frontmatter 都写死了 base，见 T85-D G 段），所以必须在动手之前问这一次。校验口径照抄
+	// 设置页那套：失焦（或回车）才落盘，无效退回上一个好值并标红，不另发明一套。
+	renderBaseFolderField(card, label) {
+		// 输入框上下原来各挂一行小字，等于在标题、正文之外又开了第三级字号（L 段）。
+		// 现在只留一行说明，与正文同级；「改名后旧论文不会自动搬家」那句也删了——
+		// 说这话的时候论文库还是空的，搬家问题此刻并不存在，那是设置页改名的场景（T85-B 已有）。
+		const field = card.createDiv({ cls: "recto-onboarding-field" });
+		field.createEl("label", { text: label });
+		const input = field.createEl("input", { cls: "recto-onboarding-field-input" });
+		input.setAttr("type", "text");
+		input.setAttr("placeholder", "论文库");
+		input.value = String(this.plugin.settings.baseFolder || "");
+		input.disabled = this.busy;
+		input.addEventListener("blur", () => { void this.commitBaseFolder(input); });
+		input.addEventListener("keydown", event => { if (event && event.key === "Enter") input.blur(); });
+		return field;
+	}
+
+	async commitBaseFolder(input) {
+		const previous = String(this.plugin.settings.baseFolder || "");
+		const raw = String(input.value || "");
+		if (raw.trim() === previous) return;
+		let next = "";
+		try {
+			next = validateVaultRelativeFolder(raw);
+		} catch (error) {
+			new obsidian.Notice(`论文库文件夹无效：${getUserFacingErrorMessage(error, "请选择 Vault 内的文件夹。")}`, 6000);
+			input.value = previous;
+			input.toggleClass("is-rejected", true);
+			return;
+		}
+		input.toggleClass("is-rejected", false);
+		input.value = next;
+		// 归一化之后其实没变（如多打了个斜杠）：只把输入框写规整，不落盘。
+		if (next === previous) return;
+		this.plugin.settings.baseFolder = next;
+		await this.plugin.save();
+	}
+
+	// L 段：每屏只有两级文字。这套「图标 + 粗体小标题 + 同字号正文」与 renderStepHeader
+	// 是同一个版式，所以欢迎屏与后面几步看起来是一家人，而不是另起一套排版。
+	renderFeatureList(card, items) {
+		const list = card.createDiv({ cls: "recto-onboarding-features" });
+		for (const item of items) {
+			const row = list.createDiv({ cls: "recto-onboarding-feature" });
+			const icon = row.createSpan({ cls: "rc-icon recto-onboarding-feature-icon" });
+			setChromeIcon(icon, item.icon);
+			const copy = row.createDiv({ cls: "recto-onboarding-feature-copy" });
+			copy.createEl("strong", { text: item.title });
+			copy.createSpan({ text: item.text });
+		}
+		return list;
 	}
 
 	renderStepHeader(card, iconName, title, description) {
@@ -13901,7 +14584,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 		copy.createEl("p", { text: description });
 	}
 
-	renderActions(card, actions) {
+	renderActions(card, actions, options = {}) {
 		const row = card.createDiv({ cls: "recto-onboarding-actions" });
 		let primary = null;
 		for (const item of actions) {
@@ -13914,11 +14597,75 @@ class RectoOnboardingModal extends obsidian.Modal {
 			button.addEventListener("click", () => void this.runAction(item.action));
 			if (!primary && item.cta) primary = button;
 		}
-		const skip = row.createEl("button", { text: "跳过引导", cls: "recto-onboarding-skip" });
-		skip.setAttr("type", "button");
-		skip.disabled = this.busy;
-		skip.addEventListener("click", () => void this.complete());
+		// T85-R：跳过分成两件事。「跳过这一步」只把这一步记进 skipped，流程接着往下走——
+		// 想先看看东西长什么样、暂时不想充值、此刻连不上服务，都属于这一类；「跳过引导」
+		// 才是永久结束。此前只有后者，于是任何一处不想现在弄，代价都是整条引导。
+		// 两种跳过与主按钮**同一排**（靠 margin-inline-start:auto 推到右端）：单独占一行会
+		// 把每一屏都拉高一截，而它们只是退路，不值那个高度。
+		if (options.skippable !== false) {
+			const foot = row.createDiv({ cls: "recto-onboarding-foot" });
+			const skipStep = foot.createEl("button", { text: "跳过这一步", cls: "recto-onboarding-skip" });
+			skipStep.setAttr("type", "button");
+			skipStep.disabled = this.busy;
+			skipStep.addEventListener("click", () => void this.runAction(() => this.skipCurrentStep()));
+			const skipAll = foot.createEl("button", { text: "跳过引导", cls: "recto-onboarding-skip" });
+			skipAll.setAttr("type", "button");
+			skipAll.disabled = this.busy;
+			skipAll.addEventListener("click", () => void this.complete());
+		}
 		if (primary && typeof primary.focus === "function") primary.focus();
+	}
+
+	async markWelcomeSeen() {
+		this.replayWelcomeForced = false;
+		await this.plugin.updateOnboardingState({ welcomeSeen: true });
+	}
+
+	async skipCurrentStep() {
+		const id = this.getSnapshot().flow.id;
+		if (!id) return;
+		if (this.replaySkipped !== null) {
+			if (this.replaySkipped.includes(id)) return;
+			this.replaySkipped = [...this.replaySkipped, id];
+			if (id === "welcome") this.replayWelcomeForced = false;
+			return;
+		}
+		const saved = this.plugin.getOnboardingState().skipped;
+		const skipped = Array.isArray(saved) ? saved : [];
+		if (skipped.includes(id)) return;
+		await this.plugin.updateOnboardingState({ skipped: [...skipped, id] });
+	}
+
+	// T85-R 方案 A：第 1、2 步本质只是账号面板的转发器，却各自占着一层弹窗——于是两层叠着
+	// 去浏览器，回来时 Obsidian 的 protocolHandler.dispatch 又无条件把焦点交给 rootSplit，
+	// 观感就是「回到主界面、引导不见了」（实际是被压在下面）。这里先把自己收起来让账号面板
+	// 独占一层，等它关掉再带着本地态回来。收起走的是 close()，**不写 completed**。
+	handOffToAccountModal() {
+		const carry = {
+			preferExternal: this.preferExternal,
+			replay: this.replay,
+			replaySkipped: this.replaySkipped,
+			replayWelcomeForced: false,
+		};
+		const plugin = this.plugin;
+		this.close();
+		plugin.openAccountModal({
+			onClose: () => {
+				if (plugin.isUnloading || plugin.getOnboardingState().completed) return;
+				new RectoOnboardingModal(plugin, carry).open();
+			},
+		});
+	}
+
+	// N 段：第一步对新用户实际上是**注册**，此前却要先开一层账号面板才点得到跳转。
+	// 这里一次点击就把浏览器打开，账号面板同时开着接住回跳（它此刻是「等待浏览器完成」态，
+	// 轮询、超时、失败不重试那一整套照旧，一个字没动）。交接单先拿到手再开面板：
+	// 拿失败就什么都不关，把错误留在引导里说，用户不至于对着一个空面板发愣。
+	async startBrowserSignIn() {
+		const handoff = await this.plugin.startBackendBrowserLogin({ timeout: 30000 });
+		const loginUrl = String((handoff && handoff.loginUrl) || "");
+		this.plugin.openExternalUrl(resolveRectoSignUpUrl(loginUrl));
+		this.handOffToAccountModal();
 	}
 
 	async runAction(action) {
@@ -13944,10 +14691,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 		await this.plugin.convertExternalPdfsFromCommand();
 		this.externalResult = findChangedExternalConversion(before, this.plugin.externalConversions);
 		if (this.externalResult) {
-			await this.plugin.updateOnboardingState({
-				currentStep: 2,
-				externalRecordId: this.externalResult.recordId,
-			});
+			await this.plugin.updateOnboardingState({ externalRecordId: this.externalResult.recordId });
 		}
 	}
 
@@ -13955,7 +14699,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 		if (this.finishing) return;
 		this.finishing = true;
 		try {
-			await this.plugin.updateOnboardingState({ completed: true, currentStep: 2 });
+			await this.plugin.updateOnboardingState({ completed: true });
 		} catch (error) {
 			this.finishing = false;
 			new obsidian.Notice("未能保存引导状态，请重试。", 6000);
@@ -13974,14 +14718,30 @@ class RectoOnboardingModal extends obsidian.Modal {
 		}
 	}
 
-	onClose() {
-		this.closed = true;
-		if (!this.completed && !this.finishing) {
-			this.finishing = true;
-			void this.plugin.updateOnboardingState({ completed: true, currentStep: 2 }).catch(error => {
-				console.warn("Recto: failed to skip onboarding", getSanitizedErrorMessage(error));
-			});
+	// 每一步都被跳过之后走这条：等同完成（否则下次打开论文库还会弹一个立刻自闭的空壳），
+	// 但要留一句话说明去哪儿接着弄——设置页「开始使用」本来就是那份真实的配置清单。
+	async finishAllSkipped() {
+		if (this.finishing) return;
+		this.finishing = true;
+		try {
+			await this.plugin.updateOnboardingState({ completed: true });
+		} catch (error) {
+			this.finishing = false;
+			console.warn("Recto: failed to finish onboarding", getSanitizedErrorMessage(error));
+			return;
 		}
+		this.completed = true;
+		this.close();
+		new obsidian.Notice("引导已结束。需要时可在 设置 → Recto → 开始使用 里继续配置。", 8000);
+	}
+
+	onClose() {
+		// T85-R：关闭**什么都不写**。此前这里无条件标 completed，且不像同文件的登录轮询那样
+		// 检查 isUnloading——于是退出 Obsidian、重载或禁用插件、自更新重载，全都会把引导标成
+		// 「已完成」，用户什么都没做错，引导就永久消失了。现在 Esc / 右上角 X / 点遮罩 / 应用
+		// 退出一律只是「这次先不弄」，下次启动打开论文库时接着上一步。永久结束只有两条路：
+		//「跳过引导」按钮（complete）与全部步骤都跳完（finishAllSkipped）。
+		this.closed = true;
 		this.contentEl.empty();
 	}
 }
@@ -14155,6 +14915,8 @@ class RectoAccountModal extends obsidian.Modal {
 		super(plugin.app);
 		this.plugin = plugin;
 		this.onChange = typeof options.onChange === "function" ? options.onChange : null;
+		// T85-R：引导把自己收起来之后靠这个回调回来（方案 A）。只响一次，之后置空。
+		this.onCloseHook = typeof options.onClose === "function" ? options.onClose : null;
 		this.loginTimer = null;
 		this.loginAttempt = 0;
 		this.loginBlocked = false;
@@ -14200,6 +14962,12 @@ class RectoAccountModal extends obsidian.Modal {
 		this.unsubscribeBrowserLogin = this.plugin.onBrowserLoginChanged(() => {
 			if (this.closed) return;
 			this.render();
+			// T85-R：回跳时 Obsidian 的 protocolHandler.dispatch 会**无条件**执行
+			// getFocusedContainer().focus()（返回 rootSplit），把焦点从这个弹窗交给编辑器；
+			// 它发生在插件 handler 之前，所以这里抢得回来。notifyBrowserLoginChanged 的
+			// 写者只有 handleBrowserLoginCallback 一处，这个回调等价于「深链刚回来」，
+			// 不会在别的时机误抢用户正在别处的输入焦点。
+			this.focusSelf();
 		});
 		this.render();
 		if (this.plugin.hasBackendAccountSession()) void this.refreshAccountQuietly();
@@ -14213,6 +14981,23 @@ class RectoAccountModal extends obsidian.Modal {
 		if (this.unsubscribeBrowserLogin) this.unsubscribeBrowserLogin();
 		this.unsubscribeBrowserLogin = null;
 		this.contentEl.empty();
+		const hook = this.onCloseHook;
+		this.onCloseHook = null;
+		if (hook) {
+			try {
+				hook();
+			} catch (error) {
+				console.warn("Recto: account modal close hook failed", getSanitizedErrorMessage(error));
+			}
+		}
+	}
+
+	// 只在深链回跳后调用，见 onOpen 里那条订阅。
+	focusSelf() {
+		const host = this.modalEl || this.contentEl;
+		if (!host || typeof host.querySelector !== "function") return;
+		const target = host.querySelector("button.mod-cta") || host.querySelector("button");
+		if (target && typeof target.focus === "function") target.focus();
 	}
 
 	notifyChanged() {
@@ -14905,7 +15690,7 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 		contentEl.addClass("recto-ui");
 		contentEl.addClass("recto-multi-pdf-content");
 		contentEl.createEl("p", {
-			text: "以下 Zotero 条目包含多个不同内容的 PDF（可能来自多个附件目录）。已识别正式附件或既有对象时会默认选中它；你也可以改选其他版本、全部处理或跳过。",
+			text: "以下 Zotero 条目包含多个不同内容的 PDF（可能来自多个附件目录）。已识别正式附件或既有对象时会默认选中它；您也可以改选其他版本、全部处理或跳过。",
 			cls: "setting-item-description",
 		});
 		for (const group of this.groups) {
@@ -15233,20 +16018,25 @@ class StatusBarProgress {
 // ═══════════════════════════════════════════════════════════════════
 
 
-function createSettingsSection(container, title, description) {
-	const section = container.createDiv({ cls: "recto-settings-section" });
-	const header = section.createDiv({ cls: "recto-settings-section-header" });
-	header.createEl("h3", { text: title });
-	if (description) header.createEl("p", { text: description, cls: "setting-item-description" });
-	return section.createDiv({ cls: "recto-settings-section-body" });
+// 两种折叠皮不要混用。目录级分区折起来也还是大标题，只在字后加一个小箭头
+// （createFoldableSettingsSection）；页底「高级设置」才用带夹心线和「展开/收起」
+// 的抽屉（createCollapsibleSettingsSection）。说明写进 body，收起时只留标题。
+function createFoldableSettingsSection(container, title, description) {
+	const details = container.createEl("details", { cls: "recto-settings-section recto-settings-fold" });
+	const summary = details.createEl("summary", { cls: "recto-settings-section-header" });
+	summary.createEl("h3", { text: title });
+	const body = details.createDiv({ cls: "recto-settings-section-body" });
+	if (description) body.createEl("p", { text: description, cls: "setting-item-description" });
+	return { details, summary, body };
 }
 
-function createAdvancedSettingsSection(container, title, description) {
+function createCollapsibleSettingsSection(container, title, description) {
 	const details = container.createEl("details", { cls: "recto-settings-advanced" });
 	const summary = details.createEl("summary");
 	summary.createSpan({ text: title, cls: "recto-settings-advanced-title" });
 	if (description) summary.createSpan({ text: description, cls: "recto-settings-advanced-desc" });
-	return details.createDiv({ cls: "recto-settings-advanced-body" });
+	const body = details.createDiv({ cls: "recto-settings-advanced-body" });
+	return { details, summary, body };
 }
 
 class RectoSettingTab extends obsidian.PluginSettingTab {
@@ -15338,42 +16128,81 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 
 		// 段落说明只写「名字说不出来的那半句」（T82-D-R）：开始使用的步骤号自己会数，
 		// 原来那句「三步配好」在认不出 Zotero 时还是错的，删掉比修准更省事。
-		this.renderQuickStart(createSettingsSection(c, "开始使用"), s, autoDetectedZoteroSource);
+		this.renderQuickStart(
+			this.openFoldableSection(c, "开始使用", null, "quickStartOpen", true),
+			s,
+			autoDetectedZoteroSource
+		);
 		// 阅读体验排在处理偏好前面：改了立刻能在预览里看见效果，是最容易上手的一段；
 		// 处理偏好要等下一次转换才看得出差别，放后面更合节奏。
-		this.renderReaderTheme(createSettingsSection(
+		this.renderReaderTheme(this.openFoldableSection(
 			c,
 			"阅读体验",
-			"切换立即生效，不修改任何文件内容。"
+			"切换立即生效，不修改任何文件内容。",
+			"readerOpen",
+			true
 		), s);
-		this.renderBackendPreferences(createSettingsSection(
+		this.renderBackendPreferences(this.openFoldableSection(
 			c,
 			"处理偏好",
-			"改动在下一次转换或翻译时生效。"
+			"改动在下一次转换或翻译时生效。",
+			"prefsOpen",
+			true
 		), s);
-		// T84：库外 PDF 独立成一段而不是塞进高级设置——它是一条主路径（Hub 之外唯一的转换入口），
-		// 埋进折叠区就没人找得到。
-		this.renderExternalPdf(createSettingsSection(
+		this.renderRibbonButtons(this.openFoldableSection(c, "侧边栏按钮", null, "ribbonOpen", true), s);
+		// T86-D-B：库外 PDF 与翻译 Markdown 合成一节。不塞进高级设置——
+		// 那是 Hub 之外仅有的转换入口，和「侧边栏 / 后处理」不是一类东西。
+		// 排在侧边栏后面：先看到自己常用的入口，再用得到时才打开这一节。
+		// 默认同其它目录级大类一样展开，折不折由用户点标题决定。
+		const externalBody = this.openFoldableSection(
 			c,
-			"库外 PDF",
-			"转换不在 Zotero 库里的 PDF。产物是普通文件夹，不进论文库索引。"
-		), s);
-		// T84-S：与「库外 PDF」同理，翻译任意 Markdown 也是 Hub 之外的一条主路径，不埋进折叠区。
-		this.renderMarkdownTranslation(createSettingsSection(
-			c,
-			"翻译 Markdown",
-			"用命令「翻译当前 Markdown 文件」翻译任意文档，比如 Web Clipper 的剪藏。"
-		), s);
-		const advanced = createAdvancedSettingsSection(
+			"Zotero 之外的文件",
+			"转换不在论文库里的 PDF，或翻译任意 Markdown。",
+			"externalFilesOpen",
+			true
+		);
+		this.renderExternalPdf(externalBody, s);
+		this.renderMarkdownTranslation(externalBody, s);
+		const advanced = createCollapsibleSettingsSection(
 			c,
 			"高级设置",
-			"PDF 转换优化、本地笔记、对照阅读与侧边栏按钮"
+			"PDF 转换优化、本地笔记、对照阅读与插件更新"
 		);
-		advanced.parentElement.open = !!this.advancedOpen;
-		advanced.parentElement.addEventListener("toggle", () => {
-			this.advancedOpen = advanced.parentElement.open;
+		this.bindCollapsibleState(advanced.details, "advancedOpen", false);
+		this.renderAdvancedSettings(advanced.body, s, autoDetectedZoteroSource);
+		this.renderSettingsFooter(c);
+	}
+
+	openFoldableSection(container, title, description, key, defaultOpen) {
+		const section = createFoldableSettingsSection(container, title, description);
+		this.bindCollapsibleState(section.details, key, defaultOpen);
+		return section.body;
+	}
+
+	bindCollapsibleState(details, key, defaultOpen = false) {
+		if (!details) return;
+		if (this[key] === undefined) this[key] = !!defaultOpen;
+		details.open = !!this[key];
+		details.addEventListener("toggle", () => {
+			this[key] = !!details.open;
 		});
-		this.renderAdvancedSettings(advanced, s, autoDetectedZoteroSource);
+	}
+
+	renderSettingsFooter(container) {
+		const footer = container.createDiv({ cls: "recto-settings-footer" });
+		const version = this.plugin.manifest && this.plugin.manifest.version
+			? String(this.plugin.manifest.version)
+			: "";
+		footer.createSpan({
+			text: version ? `Recto ${version}` : RECTO_BRAND_NAME,
+			cls: "recto-settings-footer-version",
+		});
+		const feedback = footer.createEl("button", {
+			text: "问题反馈",
+			cls: "recto-settings-quiet",
+		});
+		if (feedback.setAttr) feedback.setAttr("type", "button");
+		feedback.addEventListener("click", () => this.plugin.openHelpFeedbackModal());
 	}
 
 	isSetupConfigured(key) {
@@ -15465,7 +16294,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			+ (Number(this.plugin.zoteroPendingOrphaned) || 0);
 		const wasVisible = !el.hasClass("rc-hidden");
 		setting.setDesc(pending > 0
-			? `当前有 ${pending} 项需要你选择：多 PDF 条目或 Zotero 里已删除的论文。自动同步不会删文件。`
+			? `当前有 ${pending} 项需要您选择：多 PDF 条目或 Zotero 里已删除的论文。自动同步不会删文件。`
 			: "");
 		el.toggleClass("rc-hidden", pending <= 0);
 		// 只在「从无到有」时淡入：状态没变还播动画，看着才像闪。
@@ -15503,39 +16332,29 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		}
 	}
 
-	// T84：库外 PDF。三条设置 + 一行动作按钮。输出目录一律校验在 vault 内（wikilink 只在库内解析）。
-	//
-	// **这一段刻意一次 display() 都不调**：设置页的 display() 是整页重绘，会把滚动位置与焦点
-	// 甩回页首——真机实测过（点了「选择 PDF…」再取消，整页跳到最上）。所以① 当前值只做定点
-	// 回填；② 「固定目录」常显而不按模式增删（它在「PDF 所在目录」模式下本来就是回退位置，
-	// 常显比条件渲染更准，也就不需要重绘）。
 	// T84-S：只有一个开关，因为其余的都不该问用户——落点固定在原文同目录、计费由后端算。
 	renderMarkdownTranslation(container, s) {
 		new obsidian.Setting(container).setName("写入对照锚点")
-			.setDesc("开启后会往你的原文里写入隐藏锚点，翻译完就能双栏对照。默认关：不改你自己写的文件。")
+			.setDesc("开启后会往您的原文里写入隐藏锚点，翻译完就能双栏对照。默认关：不改您自己写的文件。")
 			.addToggle(t => t.setValue(s.markdownTranslationWriteAnchors === true)
 				.onChange(async value => { s.markdownTranslationWriteAnchors = value; await this.plugin.save(); }));
 	}
 
 	renderExternalPdf(container, s) {
-		new obsidian.Setting(container).setName("输出位置")
-			.setDesc("产物写进所选目录下的同名子文件夹，必须在库内。")
-			.addDropdown(d => {
-				for (const [key, label] of Object.entries(EXTERNAL_OUTPUT_MODES)) d.addOption(key, label);
-				return d.setValue(EXTERNAL_OUTPUT_MODES[s.externalOutputMode] ? s.externalOutputMode : "fixed")
-					.onChange(async value => { s.externalOutputMode = value; await this.plugin.save(); });
-			});
-		const folderSetting = new obsidian.Setting(container).setName("固定目录")
-			.setDesc("库内相对路径，也是「PDF 所在目录」的回退位置。");
-		// 这一行不放输入框：控件区里「输入框 + 按钮」两件挤一起，输入框会盖住说明文字、
-		// 按钮被压成一条（真机实测）。目录既然只能是库内路径，用目录选择器就够了；
-		// 当前值定点回填到说明里——这一段不调 display()。
-		folderSetting.descEl.createEl("br");
-		folderSetting.descEl.createSpan({ text: "当前目录：" });
-		const folderValueEl = folderSetting.descEl.createEl("code", {
+		const folderSetting = new obsidian.Setting(container).setName("输出位置")
+			.setDesc("产物写进所选目录下的同名子文件夹，必须在库内。固定目录也是「PDF 所在目录」的回退位置。");
+		if (folderSetting.settingEl && folderSetting.settingEl.addClass) {
+			folderSetting.settingEl.addClass("recto-settings-output");
+		}
+		const pathLine = folderSetting.descEl.createDiv({ cls: "recto-settings-path-line" });
+		pathLine.createSpan({ text: "当前目录：" });
+		const folderValueEl = pathLine.createEl("code", {
+			cls: "recto-settings-path-value",
 			text: s.externalOutputFolder || DEFAULT_EXTERNAL_OUTPUT_FOLDER,
 		});
-		folderSetting.addButton(b => b.setButtonText("选择文件夹").onClick(async () => {
+		const pick = pathLine.createEl("button", { text: "选择文件夹", cls: "recto-settings-quiet" });
+		if (pick.setAttr) pick.setAttr("type", "button");
+		pick.addEventListener("click", async () => {
 			const picked = await this.plugin.pickDirectory("选择库外 PDF 的输出目录（必须在库内）", this.plugin.app.vault.adapter.basePath);
 			if (!picked) return;
 			const relative = this.plugin.getVaultRelativePath(picked);
@@ -15549,43 +16368,31 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			}
 			s.externalOutputFolder = sanitizeExternalOutputFolder(relative);
 			await this.plugin.save();
-			folderValueEl.setText(s.externalOutputFolder);
-		}));
+			if (folderValueEl.setText) folderValueEl.setText(s.externalOutputFolder);
+			else folderValueEl.text = s.externalOutputFolder;
+		});
+		folderSetting.addDropdown(d => {
+			for (const [key, label] of Object.entries(EXTERNAL_OUTPUT_MODES)) d.addOption(key, label);
+			return d.setValue(EXTERNAL_OUTPUT_MODES[s.externalOutputMode] ? s.externalOutputMode : "fixed")
+				.onChange(async value => { s.externalOutputMode = value; await this.plugin.save(); });
+		});
 		new obsidian.Setting(container).setName("保留 PDF 副本与结构信息")
 			.setDesc("PDF 对照阅读需要它们；关掉时只有正文、译文与图片。")
 			.addToggle(t => t.setValue(s.externalKeepSourcePdf === true)
 				.onChange(async value => { s.externalKeepSourcePdf = value; await this.plugin.save(); }));
-		// 两个动作分开摆，与两条命令一一对应。转换与翻译是两段独立计费，所以「要不要译文」
-		// 必须是用户按下去的那个按钮说的，不能由默认值替他决定。
-		new obsidian.Setting(container).setName("现在转换")
-			.setDesc("可以一次选多个。命令面板里也有这两条命令。")
-			.addButton(b => {
-				const busy = !!this.plugin.activeOperation;
-				b.setButtonText(busy ? "有任务进行中" : "选择 PDF…").setCta();
-				if (b.setDisabled) b.setDisabled(busy);
-				return b.onClick(() => {
-					if (this.plugin.activeOperation) return;
-					void this.plugin.convertExternalPdfsFromCommand();
-				});
-			})
-			.addButton(b => {
-				const busy = !!this.plugin.activeOperation;
-				b.setButtonText("转换并翻译…");
-				if (b.setDisabled) b.setDisabled(busy);
-				return b.onClick(() => {
-					if (this.plugin.activeOperation) return;
-					void this.plugin.convertExternalPdfsFromCommand({ requestTranslation: true });
-				});
-			});
 	}
 
 	// 下拉一改就落库（本地 + 已登录时同步到后端），所以这里没有「保存」按钮——
 	// T82-D 删掉的那两个手动同步按钮是内部调试遗留，普通用户按不出任何额外结果。
 	renderBackendPreferences(container, s) {
-		// 一个语言下拉管到底：摘要、笔记与译文都用它（合并见 getBackendPreferencesPayload）。
-		// 代码注释早就写着「一个语言下拉管到底」，界面上却一个字没说，用户以为它只管摘要。
-		new obsidian.Setting(container).setName("输出语言")
-			.setDesc("摘要、笔记与译文共用这一项。")
+		// T86-D-A：原名「输出语言」，**名字比它管得宽**。它同时填后端的 `outputLanguage` 与
+		// `translationTargetLanguage`（合并见 getBackendPreferencesPayload），但后端只有后者进得了
+		// 提示词——摘要模板是写死的中文（`byok-prompts.ts`），`outputLanguage` 全仓没有消费者。
+		// 所以选 English 的真实结果是「中文摘要 + 英文译文」。名字改窄、说明如实交代摘要那一半，
+		// 是在 T87-4 把摘要语言真正接通之前唯一不骗人的写法。**这一项不能删**：中文论文译成英文
+		// 这条路是真的能走通的。
+		new obsidian.Setting(container).setName("译文语言")
+			.setDesc("摘要目前固定输出中文。")
 			.addDropdown(d => d
 				.addOption("zh-CN", "中文")
 				.addOption("en-US", "English")
@@ -15596,34 +16403,25 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		new obsidian.Setting(container).setName("转换后生成摘要")
 			.setDesc("关掉后只出正文，不生成摘要文件；正文、译文与对照阅读都不受影响。")
 			.addToggle(t => t.setValue(s.generateSummaryOnConvert !== false)
-				.onChange(async value => { s.generateSummaryOnConvert = value; await this.plugin.save(); }));
-		new obsidian.Setting(container).setName("摘要详略")
-			.setDesc("不影响正文转换；关掉「转换后生成摘要」时这项不起作用。")
-			.addDropdown(d => d
-				.addOption("brief", "简略")
-				.addOption("standard", "标准")
-				.addOption("detailed", "详细")
-				.setValue(s.summaryDepth || "standard")
-				.onChange(async value => this.persistBackendPreferenceChange(() => { s.summaryDepth = value; })));
-		new obsidian.Setting(container).setName("笔记结构")
-			.setDesc("摘要的组织方式；不影响正文与译文。")
-			.addDropdown(d => d
-				.addOption("standard", "标准研究笔记")
-				.addOption("outline", "大纲式")
-				.addOption("qa", "问题导向")
-				.setValue(s.backendNoteStructure || "standard")
-				.onChange(async value => this.persistBackendPreferenceChange(() => { s.backendNoteStructure = value; })));
-		new obsidian.Setting(container).setName("翻译风格")
-			.addDropdown(d => d
-				.addOption("faithful", "忠实")
-				.addOption("readable", "通顺")
-				.addOption("technical", "术语优先")
-				.setValue(s.backendTranslationStyle || "faithful")
-				.onChange(async value => this.persistBackendPreferenceChange(() => { s.backendTranslationStyle = value; })));
-		new obsidian.Setting(container).setName("生成术语表")
-			.setDesc("在摘要里附一份本篇关键术语的中外文对照。")
-			.addToggle(t => t.setValue(!!s.backendGlossaryEnabled)
-				.onChange(async value => this.persistBackendPreferenceChange(() => { s.backendGlossaryEnabled = value; })));
+				.onChange(async value => {
+					s.generateSummaryOnConvert = value;
+					await this.plugin.save();
+					this.display();
+				}));
+		if (s.generateSummaryOnConvert !== false) {
+			new obsidian.Setting(container).setName("摘要详略")
+				.addDropdown(d => d
+					.addOption("brief", "简略")
+					.addOption("standard", "标准")
+					.addOption("detailed", "详细")
+					.setValue(s.summaryDepth || "standard")
+					.onChange(async value => this.persistBackendPreferenceChange(() => { s.summaryDepth = value; })));
+		}
+		// T86-D-A：「笔记结构」「翻译风格」「生成术语表」三行整条删除，**因为它们对输出零影响**——
+		// 摘要只吃 `summaryDepth`（模板写死在 `byok-prompts.ts`），术语一致性是 T84-D 起默认全程生效的
+		// 内部机制（`harvestGlossary`，从不落盘、不进摘要），而翻译风格只是塞进提示词的一个没有定义的
+		// 英文单词。三者唯一的后端消费者 `buildPromptContext` 全仓无人调用。**别顺手补回来**：要恢复
+		// 任何一项，先让它在后端真的改变输出，再谈界面。
 	}
 
 	renderQuickStart(container, s, autoDetectedZoteroSource = null) {
@@ -15722,7 +16520,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			});
 		// 这一行**常显但按需隐藏**，不再条件渲染：点「立即检查」发现新的待确认项时它要能当场
 		// 出现，而条件渲染的行只有整页重绘才长得出来。重绘（display()）会把滚动位置与焦点甩回
-		// 页首（T84 真机实测过），所以这里与上面「库外 PDF」那一段同一个口径——定点更新，
+		// 页首（T84 真机实测过），所以这里与库外 PDF 输出目录那一行同一个口径——定点更新，
 		// 一次 display() 都不调。出现时走一条极短的淡入，避免凭空跳一行出来。
 		this.zoteroPendingSetting = new obsidian.Setting(container).setName("待确认的 Zotero 变化")
 			.addButton(b => b.setButtonText("处理待确认").setCta()
@@ -15734,16 +16532,11 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		this.refreshZoteroPendingRow({ animate: false });
 
 		// 这一句留着：转换入口只在 Hub，不说清楚用户会在设置页里找按钮。
-		new obsidian.Setting(container).setName("打开论文库")
+		// 「打开论文库」也占步骤号（T86-D-B）；「待确认」不给号——它是异常态提示，不是步骤。
+		new obsidian.Setting(container).setName(stepName("打开论文库"))
 			.setDesc("转换、翻译与对照阅读都在这里完成。")
-			.addButton(b => b.setButtonText("打开").setCta().onClick(() => { void this.plugin.activateRectoHub(); }));
-
-		new obsidian.Setting(container)
-			.setName("问题反馈")
-			.setDesc("提交问题或建议，也可以复制 QQ 联系。")
-			.addButton(button => button
-				.setButtonText("打开")
-				.onClick(() => this.plugin.openHelpFeedbackModal()));
+			.addButton(b => b.setButtonText("打开").setCta().onClick(() => { void this.plugin.activateRectoHub(); }))
+			.addButton(b => b.setButtonText("再看一次引导").onClick(() => this.plugin.openOnboardingReplay()));
 	}
 
 	renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, name) {
@@ -15937,15 +16730,6 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					this.plugin.applyReaderTheme();
 				});
 			});
-		new obsidian.Setting(container).setName("恢复默认排版")
-			.addButton(b => b.setButtonText("恢复默认").onClick(async () => {
-				s.readerWidthPx = DEFAULT_SETTINGS.readerWidthPx;
-				s.readerLineHeight = DEFAULT_SETTINGS.readerLineHeight;
-				s.readerFontScale = DEFAULT_SETTINGS.readerFontScale;
-				await this.plugin.save();
-				this.plugin.applyReaderTheme();
-				this.display();
-			}));
 	}
 
 	renderReaderPresetSetting(container, name, desc, presets, getValue, applyValue) {
@@ -16001,6 +16785,38 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		this.setElementText(this.readerPreviewNoteEl, describeReaderPreviewNote(s));
 	}
 
+	renderRibbonButtons(container, s) {
+		s.ribbonButtons = { ...DEFAULT_SETTINGS.ribbonButtons, ...(s.ribbonButtons || {}) };
+		const setting = new obsidian.Setting(container).setName("显示在左侧边栏");
+		if (setting.settingEl && setting.settingEl.addClass) setting.settingEl.addClass("recto-reader-presets");
+		const chips = {
+			hub: "论文库",
+			dualPane: "双栏对照",
+			pdfCompare: "PDF 对照",
+			externalPdf: "库外 PDF",
+		};
+		const buttons = [];
+		for (const btn of RIBBON_BUTTONS) {
+			setting.addButton(button => {
+				buttons.push({ button, key: btn.key });
+				button.setButtonText(chips[btn.key] || btn.name);
+				if (typeof button.setTooltip === "function") button.setTooltip(btn.name);
+				if (s.ribbonButtons[btn.key]) button.setCta();
+				button.onClick(async () => {
+					s.ribbonButtons[btn.key] = !s.ribbonButtons[btn.key];
+					await this.plugin.save();
+					this.plugin.registerRibbonButtons();
+					for (const item of buttons) {
+						const el = item.button.buttonEl;
+						const on = !!s.ribbonButtons[item.key];
+						if (el && el.classList) el.classList.toggle("mod-cta", on);
+						else if (el && typeof el.toggleClass === "function") el.toggleClass("mod-cta", on);
+					}
+				});
+			});
+		}
+	}
+
 	renderAdvancedSettings(container, s, autoDetectedZoteroSource = null) {
 		// 自动认出来的 Zotero 路径落在这里：绝大多数人一辈子不用看它，
 		// 但换库、搬盘、多 profile 的人必须找得到地方改。认不出来时它在「开始使用」里，这里就不重复。
@@ -16011,19 +16827,17 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 
 		// T83-N-R：后处理只有这一个入口。它默认开着，绝大多数人不必看见；关掉是排错与效果对比用的，
 		// 所以放高级设置而不是「处理偏好」——但改了之后必须在上传确认弹窗里如实告知当前档位。
-		container.createEl("h4", { text: "PDF 转换" });
+		container.createEl("h4", { text: "转换" });
 		new obsidian.Setting(container).setName("PDF 转换后处理")
 			.setDesc("开启后会进一步清理页眉页脚与伪标题、粘合跨页断句，并修正常见的上下标和词内空格问题。关掉后仅保留基础处理，适合排错与效果对比。")
 			.addToggle(t => t.setValue(s.enhancedPostprocess !== false)
 				.onChange(async value => { s.enhancedPostprocess = value; await this.plugin.save(); }));
-
-		container.createEl("h4", { text: "本地写回" });
 		new obsidian.Setting(container).setName("自动创建笔记框架")
 			.setDesc("论文处理完成后创建“note-论文名.md”；已有文件不会覆盖。")
 			.addToggle(t => t.setValue(!!s.autoCreateNoteOutline)
 				.onChange(async value => { s.autoCreateNoteOutline = value; await this.plugin.save(); }));
 
-		container.createEl("h4", { text: "PDF 对照阅读" });
+		container.createEl("h4", { text: "阅读" });
 		// 名字原来写的是「跳页时在 PDF 上叠高亮框」，与实际不符：这个开关管的是**每次点击**都画的
 		// 那个框，而点击默认只高亮、不跳页（轮显的 phase 0），所以「跳页时」三个字是错的。
 		new obsidian.Setting(container).setName("点击段落时在 PDF 上标出对应位置")
@@ -16034,8 +16848,9 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			}));
 
 		// T84-E-A：自动更新的开关**只此一处**。通知栏上那颗「自动更新」按钮开的就是它，
-		// 关只能来这里——只有开、没有关是缺陷，不是精简。
-		container.createEl("h4", { text: "插件更新" });
+		// 关只能来这里——只有开、没有关是缺陷，不是精简。检查更新挂在同一行，
+		// 通知栏同一版本只提示一次，随手关掉的人得有条回头路。
+		container.createEl("h4", { text: "更新" });
 		new obsidian.Setting(container).setName("自动更新 Recto")
 			.setDesc("开启后，启动时发现新版本会自动下载并当场生效，不再询问；关闭则只提醒一次。更新包始终只从 Recto 的公开发布页获取，与社区商店同源。")
 			.addToggle(t => t.setValue(normalizeRectoPluginUpdateState(s.pluginUpdate).autoUpdate)
@@ -16047,25 +16862,10 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 						ignoredVersion: "",
 					});
 					await this.plugin.save();
-				}));
-		// 通知栏同一版本只提示一次，随手关掉的人得有条回头路。
-		new obsidian.Setting(container).setName("检查更新")
-			.setDesc("立即查一次是否有新版本。")
+				}))
 			.addButton(b => b.setButtonText("检查更新").onClick(async () => {
 				await this.plugin.checkRectoPluginUpdateFromSettings();
 			}));
-
-		container.createEl("h4", { text: "侧边栏按钮" });
-		s.ribbonButtons = { ...DEFAULT_SETTINGS.ribbonButtons, ...(s.ribbonButtons || {}) };
-		for (const btn of RIBBON_BUTTONS) {
-			new obsidian.Setting(container).setName(btn.name)
-				.addToggle(t => t.setValue(!!s.ribbonButtons[btn.key]).onChange(async value => {
-					s.ribbonButtons[btn.key] = value;
-					await this.plugin.save();
-					this.plugin.registerRibbonButtons();
-				}));
-		}
-
 	}
 
 }
@@ -16120,7 +16920,9 @@ if (process.env.NODE_ENV === "test") {
 		buildHubCreditsRingMarkup,
 		describeCreditsMeter,
 		describeSetupStatusLights,
+		isSettingsQuickStartComplete,
 		describeOnboardingFlow,
+		resolveRectoSignUpUrl,
 		describeBaseFolderMismatch,
 		describeBaseFolderMismatchText,
 		describeZoteroSyncPreviewRow,
@@ -16192,7 +16994,12 @@ if (process.env.NODE_ENV === "test") {
 		buildRectoUnknownGlyphSkipRanges,
 		isRectoUnknownGlyphSkipped,
 		extractHubTranslationQuality,
+		toVaultFolderPrefix,
 		filterHubEntries,
+		hubEntryHasActivity,
+		countHubEntriesMatchingQueryOnly,
+		resolveHubEntryActivity,
+		describeHubActivity,
 		formatHubAuthors,
 		hubEntryInCollection,
 		hubEntryMatchesQuery,
@@ -16205,6 +17012,7 @@ if (process.env.NODE_ENV === "test") {
 		summarizeHubEntries,
 		summarizeHubSelection,
 		HUB_SORT_KEYS,
+		HUB_ALL_SORT_KEYS,
 		HUB_STATUS_FILTERS,
 		HUB_CONVERSION_FILTERS,
 		HUB_CONVERSION_LABELS,
@@ -16262,6 +17070,7 @@ if (process.env.NODE_ENV === "test") {
 		getUserFacingErrorMessage,
 		getZoteroUserFacingErrorMessage,
 		createCloudConsentRequiredError,
+		requiresCloudProcessingConsent,
 		isBackendTaskNotFoundError,
 		isRetryableBackendRequestError,
 		isCancellationError,
