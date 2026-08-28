@@ -2003,7 +2003,7 @@ label.recto-sync-preview-row {
 	margin-inline: auto;
 }
 
-/* 未识别符号（T83-L）：MinerU 解不出字形时留下 U+FFFD，后端原样保留、绝不猜字。
+/* 未识别符号（T83-L）：解析器解不出字形时留下 U+FFFD，后端原样保留、绝不猜字。
    这里只做显示层——把它标成一眼可辨的「这里丢了一个字」，而不是让它以问号方块的样子冒充正文。
    span 里仍是原字符，复制出去的还是原文；color: transparent 把那个字形藏掉，? 由伪元素画。
    **不许加 padding / border / margin / font-size**：双栏与 PDF 对照靠 CM6 的 coordsAtPos 量位置，

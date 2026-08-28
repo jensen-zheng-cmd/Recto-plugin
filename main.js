@@ -253,9 +253,9 @@ const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", status: "all", conversion: 
 
 const DEFAULT_BACKEND_BASE_URL = "https://api.rectoai.uk";
 
-// T84：库外 PDF 的输出位置，沿用旧 BYOK（T49A 删掉的那套）的三种口径。**三种模式的结果
+// T84：库外 PDF 的输出位置，沿用旧本地处理路径（T49A 已删除）的三种口径。**三种模式的结果
 // 都必须落在 vault 内**——写回把正文里的图片改写成 `![[<folder>/images/x.png]]`，而 wikilink
-// 只在 vault 内解析：写到 vault 外，正文里每一张图都是死链。旧 BYOK 能写 vault 外，是因为
+// 只在 vault 内解析：写到 vault 外，正文里每一张图都是死链。旧本地路径能写 vault 外，是因为
 // 它当年用的是相对路径 `![](images/x.png)`，那条路已经不在了。
 const EXTERNAL_OUTPUT_MODES = {
 	source: "PDF 所在目录",
@@ -669,7 +669,7 @@ function createRectoAnchorExtension() {
 	return [repairFilter, anchorViewPlugin];
 }
 
-// 未识别符号（T83-L）。MinerU 解不出字形时留下 U+FFFD；同一篇里它分别代表过 ξ、x、y、μ、ε，
+// 未识别符号（T83-L）。解析器解不出字形时留下 U+FFFD；同一篇里它分别代表过 ξ、x、y、μ、ε，
 // 而 PDF 文本层在这些位置是空的——没有任何本地证据能定出是哪个字，所以后端**原样保留**这个字符、
 // 只报数量（`metadata.unrecognizedSymbolCount`），翻译 prompt 也明令模型不得据上下文补字。
 // 保留原字符是有代价考量的：文本一个字节都没变，Sidecar 契约、`^rc-` 锚点与双栏对齐全不受影响；
@@ -1038,21 +1038,21 @@ function isBackendAdmin(settings) {
 	return String((settings && settings.backendAccountRole) || "").trim().toLowerCase() === "admin";
 }
 
-const LEGACY_BYOK_SETTING_KEYS = [
-	"processingMode", "mineruApiKey", "providerApiKeys", "aiApiKey", "translationApiKey",
+const OBSOLETE_LOCAL_SETTING_KEYS = new Set([
+	"processingMode", "providerApiKeys", "aiApiKey", "translationApiKey",
 	"modelVersion", "language", "uploadConcurrency", "aiConcurrency",
 	"aiProvider", "aiBaseUrl", "aiModel", "summaryPrompt",
 	"translationProvider", "translationBaseUrl", "translationModel", "translationTargetLanguage",
 	"translationPrompt", "translationRepairPrompt", "translationChineseRepairPrompt",
 	"translationRepairMarkdown", "translationRepairChinese", "translationOverwriteExisting",
 	"translationSkipChinese", "singleFileOutputMode", "singleFileOutputFolder", "resultConcurrency",
-];
+]);
 
-function stripLegacyByokSettings(settings) {
+function stripObsoleteLocalSettings(settings) {
 	if (!settings || typeof settings !== "object") return false;
 	let changed = false;
-	for (const key of LEGACY_BYOK_SETTING_KEYS) {
-		if (!Object.prototype.hasOwnProperty.call(settings, key)) continue;
+	for (const key of Object.keys(settings)) {
+		if (!OBSOLETE_LOCAL_SETTING_KEYS.has(key) && !/apiKey$/i.test(key)) continue;
 		delete settings[key];
 		changed = true;
 	}
@@ -1084,14 +1084,14 @@ function shouldRejectBackendMockResult(result, requireRealResult) {
 	return requireRealResult === true && result && result.mockOnly === true;
 }
 
-const BACKEND_TERMINAL_NON_READY_STATUSES = new Set(["failed", "mineru_failed", "canceled", "expired"]);
+const BACKEND_TERMINAL_NON_READY_STATUSES = new Set(["failed", "canceled", "expired"]);
 const BACKEND_ABANDONED_PRE_SUBMIT_STATUSES = new Set(["awaiting_upload", "uploaded"]);
 // 同一个写回错误连续出现这么多轮，就当成确定性失败：停止 15 秒一轮的空转，
 // 改为在 Hub 里明确标出并给「放弃这个任务」的出口。瞬时错误（网络、没登录）远达不到这个次数。
 const PENDING_BACKEND_DETERMINISTIC_FAILURES = 3;
 const RECTO_METADATA_DIRECTORY = "recto";
 const RECTO_SIDECAR_FILE = "sidecar-v1.json";
-const RECTO_EVIDENCE_FILE = "evidence-v1.json.gz";
+const RECTO_EVIDENCE_FILE = "evidence-v2.json.gz";
 const RECTO_ANCHOR_WIDTH = 6;
 const RECTO_DOCUMENT_ID_KEY = "recto-document-id";
 const RECTO_SOURCE_REVISION_ID_KEY = "recto-source-revision-id";
@@ -1551,7 +1551,7 @@ function readRectoTranslationSourcePath(markdown) {
 //
 // **无页 Sidecar 是契约合法的**，所以不需要 Sidecar v2、不触碰 Ship order 那条「契约级变更必须
 // 插件先发」的红线：`validateRectoSidecar` 对 `block.pageIndex` 与 `block.bbox` 都是「!== null
-// 才校验」，`pages` 也只要求是数组。（`tools/sidecar-v1.js` 那句 no pages 是 MinerU 适配器的
+// 才校验」，`pages` 也只要求是数组。（`tools/sidecar-v1.js` 那句 no pages 是解析适配器的
 // 约束，不是消费端契约。）
 //
 // **合成器刻意粗糙，那是优点不是妥协**：不做 reference_list 判别、不把表格对象化、不追求
@@ -1756,20 +1756,19 @@ function buildRectoSidecarFromMarkdown(markdown, options = {}) {
 			resources: [],
 			relations: [],
 			derivations: [],
-			// 11 维能力状态**如实全部 missing**：这份 sidecar 除了文本什么都没有。不是走过场——
+			// 能力状态**如实全部 missing**：这份 sidecar 除了文本什么都没有。不是走过场——
 			// validateRectoSidecar 会校验取值域，而下游（PDF 对照、跨页粘合）本来就该从这里
 			// 看出「这条路不通」。
 			capabilities: {
 				pageAnchors: "missing",
 				bboxAnchors: "missing",
 				pageSizes: "missing",
-				v2Semantics: "missing",
+				semanticEnrichment: "missing",
 				layoutReadingOrder: "missing",
 				layoutGroups: "missing",
 				blockFragments: "missing",
-				modelTitleMetadata: "missing",
+				titleDetectionMetadata: "missing",
 				resourceReferences: "missing",
-				providerMetadata: "missing",
 				evidenceSnapshot: "missing",
 			},
 			degradedReasons: ["synthesized-from-markdown"],
@@ -2013,6 +2012,31 @@ function buildRectoPdfLineIndex(markdown) {
 	return { bySourceLine };
 }
 
+const RECTO_PRIVATE_ARTIFACT_KEYS = new Set([
+	"provider", "provideraccount", "providercalls", "providermetadata", "providertype", "providerusagesummary",
+	"vendor", "vendorname", "requested", "actual", "requestedmodel", "actualmodel", "model",
+	"modelangle", "modelcategory", "modelconfidence", "modeltitlemetadata", "providerlevel",
+]);
+
+function assertRectoPublicArtifactContract(value) {
+	const stack = [value];
+	const seen = new Set();
+	while (stack.length) {
+		const current = stack.pop();
+		if (!current || typeof current !== "object" || seen.has(current)) continue;
+		seen.add(current);
+		if (Array.isArray(current)) {
+			for (const item of current) stack.push(item);
+			continue;
+		}
+		for (const [key, nested] of Object.entries(current)) {
+			if (RECTO_PRIVATE_ARTIFACT_KEYS.has(String(key).toLowerCase())) throw new Error(`Recto 公共产物包含后端字段: ${key}`);
+			stack.push(nested);
+		}
+	}
+	return value;
+}
+
 function validateRectoSidecar(sidecar) {
 	if (!sidecar || typeof sidecar !== "object" || sidecar.schema !== "recto-sidecar" || sidecar.version !== 1) throw new Error("Sidecar schema/version 不受支持");
 	const documentId = normalizeRectoUuid(sidecar.document && sidecar.document.id);
@@ -2128,7 +2152,7 @@ function validateRectoSidecar(sidecar) {
 }
 
 // 与 tools/text-structure-v1.js 的 formulaSourceLatex 同一份口径（T84-D-A）。
-// MinerU 的 `content.math` 是裸 LaTeX，`content.text` **自带 `$$` 定界符**；回退到 text 时不剥掉，
+// 当前解析输入的 `content.math` 是裸 LaTeX，`content.text` **自带 `$$` 定界符**；回退到 text 时不剥掉，
 // 渲染时再包一层就成了 `$$\n$$…$$\n$$`，整块无法渲染（全库 1429 个行间公式里 507 个撞上）。
 // 形状不是「首尾恰好一对定界符」就原样返回，宁可维持旧行为也不切坏没见过的形态。
 function stripRectoFormulaDelimiters(value) {
@@ -2432,8 +2456,8 @@ function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
 	if (!alignment || alignment.schema !== RECTO_TRANSLATION_ALIGNMENT_SCHEMA || alignment.version !== 1
 		|| alignment.ruleset !== RECTO_TRANSLATION_ALIGNMENT_RULESET || !Array.isArray(alignment.derivations) || !alignment.derivations.length) fail("契约或派生关系缺失");
 	if (!sidecar || !sidecar.document || !sidecar.sourceRevision || alignment.documentId !== sidecar.document.id || alignment.sourceRevisionId !== sidecar.sourceRevision.id) fail("文档或来源修订不匹配");
-	if (!/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{2,8})?$/.test(String(alignment.language || "")) || !String(alignment.model || "").trim()
-		|| !String(alignment.templateVersion || "").trim() || String(alignment.model).length > 200 || String(alignment.templateVersion).length > 200) fail("语言、模型或模板版本无效");
+	if (!/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{2,8})?$/.test(String(alignment.language || ""))
+		|| !String(alignment.templateVersion || "").trim() || String(alignment.templateVersion).length > 200) fail("语言或模板版本无效");
 	const blocks = (sidecar.blocks || []).filter(block => block && block.normalized && block.normalized.visible)
 		.sort((left, right) => Number(left.normalized.outputOrder) - Number(right.normalized.outputOrder));
 	const metadataPreserveIds = getRectoTranslationMetadataPreserveBlockIds(blocks);
@@ -2450,7 +2474,7 @@ function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
 	for (const [index, item] of alignment.derivations.entries()) {
 		if (!item || item.kind !== "translation" || ids.has(item.id) || targets.has(item.targetBlockId) || item.outputOrder !== index
 			|| !Array.isArray(item.derived_from) || !item.derived_from.length || !Array.isArray(item.segments)) fail("派生身份、顺序或结构错误");
-		if (item.language !== alignment.language || item.model !== alignment.model || item.templateVersion !== alignment.templateVersion
+		if (item.language !== alignment.language || item.templateVersion !== alignment.templateVersion
 			|| !["translated", "partial", "preserved", "source-fallback"].includes(item.status)) fail("派生元数据错误");
 		const expectedId = `${alignment.sourceRevisionId}:derivation:translation:${String(index).padStart(RECTO_ANCHOR_WIDTH, "0")}`;
 		const expectedTarget = `${alignment.sourceRevisionId}:translation:${alignment.language.toLowerCase()}:${String(index).padStart(RECTO_ANCHOR_WIDTH, "0")}`;
@@ -2537,7 +2561,7 @@ function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
 		|| (!alignmentHasQuality && alignment.derivations.some(item => item.status === "partial"))) fail("翻译质量摘要不一致");
 	if (alignment.status !== expectedStatus || !sidecar.translationAlignment || sidecar.translationAlignment.ruleset !== RECTO_TRANSLATION_ALIGNMENT_RULESET
 		|| sidecar.translationAlignment.language !== alignment.language || sidecar.translationAlignment.status !== alignment.status
-		|| sidecar.translationAlignment.model !== alignment.model || sidecar.translationAlignment.templateVersion !== alignment.templateVersion
+		|| sidecar.translationAlignment.templateVersion !== alignment.templateVersion
 		|| sidecar.translationAlignment.derivationCount !== alignment.derivations.length) fail("翻译能力统计不一致");
 	return { status: alignment.status, derivationCount: alignment.derivations.length, anchors: seenAnchors };
 }
@@ -2685,15 +2709,19 @@ async function normalizeBackendSidecarBundle(result, writableResources, markdown
 	const preparedSidecar = formulaPrepared.sidecar;
 	const preparedMarkdown = formulaPrepared.markdown;
 	const validated = validateRectoSidecar(preparedSidecar);
+	assertRectoPublicArtifactContract(preparedSidecar);
 	const evidence = result.evidenceSnapshot;
 	if (!evidence || typeof evidence !== "object" || !evidence.contentBase64) throw new Error("Sidecar 证据快照缺失");
+	const evidenceManifest = evidence.manifest;
+	if (!evidenceManifest || evidenceManifest.format !== "recto-evidence" || evidenceManifest.version !== 2 || evidenceManifest.codec !== "gzip") throw new Error("Evidence 公共契约版本无效");
 	const buffer = Buffer.from(String(evidence.contentBase64), "base64");
 	if (!buffer.length || buffer.length > RECTO_EVIDENCE_MAX_BYTES) throw new Error("Sidecar 证据快照大小无效");
 	if (buffer.length < 2 || buffer[0] !== 0x1f || buffer[1] !== 0x8b) throw new Error("Sidecar 证据快照不是 gzip");
 	const sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
 	if (sha256 !== String(evidence.sha256 || "").toLowerCase() || Number(evidence.sizeBytes) !== buffer.length) throw new Error("Sidecar 证据快照校验失败");
 	const sidecarManifest = preparedSidecar.sourceRevision && preparedSidecar.sourceRevision.evidenceSnapshot;
-	if (!sidecarManifest || sidecarManifest.sha256 !== sha256) throw new Error("Sidecar 与证据快照不匹配");
+	if (!sidecarManifest || sidecarManifest.format !== "recto-evidence" || sidecarManifest.version !== 2
+		|| sidecarManifest.codec !== "gzip" || sidecarManifest.sha256 !== sha256) throw new Error("Sidecar 与证据快照不匹配");
 	const writablePaths = new Set(writableResources.map(resource => resource.relativePath));
 	for (const resourcePath of validated.resourcePaths) if (!writablePaths.has(resourcePath)) throw new Error(`Sidecar 引用资源缺失: ${resourcePath}`);
 	const writableByPath = new Map(writableResources.map(resource => [resource.relativePath, resource]));
@@ -3814,7 +3842,7 @@ function getSanitizedErrorMessage(error) {
 	return sanitizeLogText(error && error.message ? error.message : error);
 }
 
-const USER_FACING_TECHNICAL_ERROR_PATTERN = /(?:\b(?:backend|http|json|api|endpoint|route|url|task\s*id|stack|trace|token|bearer|hmac|signature|sqlite|postgres(?:ql)?|mysql|redis|prisma|nestjs?|nginx|cloudflare|mineru|deepseek|sidecar)\b|后端|接口地址|任务\s*ID|服务端原文|供应商|上游服务|\[redacted-|<\/?html|https?:\/\/|[A-Za-z]:[\\/]|\\\\[^\\\s]+\\|\/(?:Users|home|var|tmp|www|etc)\/)/i;
+const USER_FACING_TECHNICAL_ERROR_PATTERN = /(?:\b(?:backend|http|json|api|endpoint|route|url|task\s*id|stack|trace|token|bearer|hmac|signature|sqlite|postgres(?:ql)?|mysql|redis|prisma|nestjs?|nginx|cloudflare|provider|model|sidecar)\b|后端|接口地址|任务\s*ID|服务端原文|供应商|上游服务|模型|\[redacted-|<\/?html|https?:\/\/|[A-Za-z]:[\\/]|\\\\[^\\\s]+\\|\/(?:Users|home|var|tmp|www|etc)\/)/i;
 
 function getUserFacingErrorMessage(error, fallback = "操作未完成，请稍后重试。") {
 	const code = String((error && error.code) || "").trim().toUpperCase();
@@ -4810,13 +4838,13 @@ function normalizeReadingStatus(value) {
 
 // ── 批次进度模型（T81 第三轮） ───────────────────────────────────────
 //
-// 权重取 T81-C 基线的量级：解析（MinerU）是压倒性的长阶段，翻译次之，其余都很短。
+// 权重取 T81-C 基线的量级：解析是压倒性的长阶段，翻译次之，其余都很短。
 // 不要译文时把翻译那份摊给解析，否则进度条会在 83% 处直接跳到底。
-const BATCH_PHASE_WEIGHTS = { submit: 0.02, upload: 0.08, mineru: 0.55, summary: 0.15, translation: 0.17, write: 0.03 };
+const BATCH_PHASE_WEIGHTS = { submit: 0.02, upload: 0.08, processing: 0.55, summary: 0.15, translation: 0.17, write: 0.03 };
 const BATCH_PHASE_LABELS = {
 	submit: "提交",
 	upload: "上传",
-	mineru: "解析",
+	processing: "解析",
 	summary: "摘要",
 	translation: "翻译",
 	write: "写回",
@@ -4824,21 +4852,21 @@ const BATCH_PHASE_LABELS = {
 // 后端公开状态 → 本地阶段。queued 归到解析：用户视角里排队就是「等解析」。
 const BACKEND_STATUS_PHASES = {
 	awaiting_upload: "upload",
-	uploaded: "mineru",
-	queued: "mineru",
-	mineru_submitted: "mineru",
-	mineru_running: "mineru",
+	uploaded: "processing",
+	queued: "processing",
+	processing_submitted: "processing",
+	processing: "processing",
 	summary_running: "summary",
 	translation_running: "translation",
 	ready: "write",
 };
-const BATCH_PHASE_ORDER = ["submit", "upload", "mineru", "summary", "translation", "write"];
+const BATCH_PHASE_ORDER = ["submit", "upload", "processing", "summary", "translation", "write"];
 // setStage 传的中文阶段名 → 权重键。导入等非转换任务传别的字符串，取不到就保持原阶段。
 const BATCH_STAGE_PHASES = {
 	提交: "submit",
 	上传: "upload",
-	排队: "mineru",
-	解析: "mineru",
+	排队: "processing",
+	解析: "processing",
 	摘要: "summary",
 	翻译: "translation",
 	取结果: "write",
@@ -4867,12 +4895,12 @@ const BATCH_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "
 function computeBatchItemFraction(phase, wantsTranslation, sub, wantsSummary = true) {
 	const weights = { ...BATCH_PHASE_WEIGHTS };
 	if (!wantsTranslation) {
-		weights.mineru += weights.translation;
+		weights.processing += weights.translation;
 		weights.translation = 0;
 	}
 	// T83-I：关掉摘要时同理——不摊掉这 0.15，进度条会在摘要那一格空等再直接跳到底。
 	if (!wantsSummary) {
-		weights.mineru += weights.summary;
+		weights.processing += weights.summary;
 		weights.summary = 0;
 	}
 	const total = BATCH_PHASE_ORDER.reduce((sum, key) => sum + weights[key], 0) || 1;
@@ -4922,7 +4950,7 @@ function describeBatchStatusLine(progress, tick = 0) {
 	if (!snapshot.phase) return `${spinner} ${snapshot.label}${counter}${snapshot.stage ? ` · ${snapshot.stage}` : ""}`;
 	const phaseLabel = BATCH_PHASE_LABELS[snapshot.phase] || snapshot.stage || "";
 	const sub = snapshot.sub && Number(snapshot.sub.total) > 0
-		? ` ${snapshot.sub.done}/${snapshot.sub.total}${snapshot.phase === "mineru" ? " 页" : ""}`
+		? ` ${snapshot.sub.done}/${snapshot.sub.total}${snapshot.phase === "processing" ? " 页" : ""}`
 		: "";
 	const failed = snapshot.failed ? ` · 失败 ${snapshot.failed}` : "";
 	return `${spinner} ${snapshot.label}${counter} ${renderBatchBar(fraction)} ${Math.round(fraction * 100)}% · ${phaseLabel}${sub}${failed}`;
@@ -7327,7 +7355,7 @@ class RectoPlugin extends obsidian.Plugin {
 				this.settings.readerTheme = normalizedTheme;
 				migrated = true;
 			}
-			migrated = stripLegacyByokSettings(this.settings) || migrated;
+			migrated = stripObsoleteLocalSettings(this.settings) || migrated;
 			this.convertedFolders = d.convertedFolders || [];
 			this.folderMap = d.folderMap || {}; // zoteroFolder → { stem, originalName }
 			this.readingStates = d.readingStates || {}; // zoteroItemKey → reading | read
@@ -7363,7 +7391,7 @@ class RectoPlugin extends obsidian.Plugin {
 		if (migrated) await this.save();
 	}
 	async save() {
-		stripLegacyByokSettings(this.settings);
+		stripObsoleteLocalSettings(this.settings);
 		await this.saveData({
 			settings: this.settings,
 			cloudProcessingConsentAccepted: this.cloudProcessingConsentAccepted === true,
@@ -9275,7 +9303,7 @@ class RectoPlugin extends obsidian.Plugin {
 			outputRoot,
 			keepSourcePdf: this.settings.externalKeepSourcePdf === true,
 			// **默认不带翻译**：转换与翻译是两段独立计费，默认带上会让用户点一次被扣两段费。
-			// 与旧 BYOK（转换 / 转换并翻译两个动作）和 Hub（两个显式按钮）保持同一个口径：
+			// 与旧本地处理路径（转换 / 转换并翻译两个动作）和 Hub（两个显式按钮）保持同一个口径：
 			// 要译文必须由用户明确选那条命令。
 			requestTranslation: options.requestTranslation === true,
 		});
@@ -11248,7 +11276,7 @@ class RectoPlugin extends obsidian.Plugin {
 	// T83-I：摘要是可选产出。关掉时后端跳过整段摘要生成、也不返回占位摘要，
 	// 于是 `writeBackendTaskResult` 里那条 `if (summaryRaw)` 自然不会落 br-*.md。
 	getBackendRequestedOutputs(task = null) {
-		const outputs = ["mineruMarkdown"];
+		const outputs = ["markdown"];
 		// T84：库外 PDF 一律不出摘要（用户拍板）——「整理一个已有的 md」现成插件能做，不重复；
 		// 而库外产物没有 papers.jsonl，摘要在那里只会是一个孤立的 md。
 		if (!isRectoExternalTask(task) && this.shouldGenerateSummaryOnConvert()) outputs.push("summary");
@@ -11328,7 +11356,7 @@ class RectoPlugin extends obsidian.Plugin {
 		});
 	}
 
-	// T81-S：译文任务。唯一输入是 sidecar——不需要 PDF、不需要 MinerU、不需要摘要。
+	// T81-S：译文任务。唯一输入是 sidecar——不需要 PDF、不需要重新解析、不需要摘要。
 	// 建任务时后端还不知道待译字符数，所以额度是在 sidecar 上传解析完之后才冻结的。
 	async createBackendTranslationTask(task) {
 		await this.saveBackendPreferences({ timeout: 30000 });
@@ -11521,7 +11549,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async pollBackendTaskStatus(taskId, modal, options = {}) {
-		const finalStatuses = new Set(["ready", "failed", "mineru_failed", "canceled", "expired"]);
+		const finalStatuses = new Set(["ready", "failed", "canceled", "expired"]);
 		const waitMs = Math.min(getPollIntervalMs(this.settings), 5000);
 		const maxTransientErrors = 8;
 		let transientErrors = 0;
@@ -11790,6 +11818,9 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 
 		validateRectoSidecar(result.sidecar);
+		assertRectoPublicArtifactContract(alignment);
+		assertRectoPublicArtifactContract(result.sidecar.translationAlignment);
+		assertRectoPublicArtifactContract((result.sidecar.derivations || []).filter(item => item && item.kind === "translation" && item.language === alignment.language));
 		const prepared = applyObsidianTranslationFormulaFallbacks(
 			result.sidecar,
 			alignment,
@@ -16387,7 +16418,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	renderBackendPreferences(container, s) {
 		// T86-D-A：原名「输出语言」，**名字比它管得宽**。它同时填后端的 `outputLanguage` 与
 		// `translationTargetLanguage`（合并见 getBackendPreferencesPayload），但后端只有后者进得了
-		// 提示词——摘要模板是写死的中文（`byok-prompts.ts`），`outputLanguage` 全仓没有消费者。
+		// 提示词——摘要模板当前是写死的中文，`outputLanguage` 全仓没有消费者。
 		// 所以选 English 的真实结果是「中文摘要 + 英文译文」。名字改窄、说明如实交代摘要那一半，
 		// 是在 T87-4 把摘要语言真正接通之前唯一不骗人的写法。**这一项不能删**：中文论文译成英文
 		// 这条路是真的能走通的。
@@ -16418,7 +16449,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					.onChange(async value => this.persistBackendPreferenceChange(() => { s.summaryDepth = value; })));
 		}
 		// T86-D-A：「笔记结构」「翻译风格」「生成术语表」三行整条删除，**因为它们对输出零影响**——
-		// 摘要只吃 `summaryDepth`（模板写死在 `byok-prompts.ts`），术语一致性是 T84-D 起默认全程生效的
+		// 摘要只吃 `summaryDepth`（模板当前写死中文），术语一致性是 T84-D 起默认全程生效的
 		// 内部机制（`harvestGlossary`，从不落盘、不进摘要），而翻译风格只是塞进提示词的一个没有定义的
 		// 英文单词。三者唯一的后端消费者 `buildPromptContext` 全仓无人调用。**别顺手补回来**：要恢复
 		// 任何一项，先让它在后端真的改变输出，再谈界面。
@@ -17117,7 +17148,8 @@ if (process.env.NODE_ENV === "test") {
 		scanRectoBlockAnchors,
 		serializePaperJsonl,
 		shouldRejectBackendMockResult,
-		stripLegacyByokSettings,
+		stripObsoleteLocalSettings,
+		assertRectoPublicArtifactContract,
 		validateRectoSidecar,
 		// T84-S 翻译任意 Markdown 的纯核。**只此一份**——合成器要在 Obsidian 运行时里跑，
 		// 而 `tools/` 不进分发包，放那边就得在这里再内联一份拷贝，那正是 T84-D 留下的漂移。
