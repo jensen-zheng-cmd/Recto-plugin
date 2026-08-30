@@ -2191,16 +2191,7 @@ function getRectoTranslationSourceSegments(block) {
 		return [make("body", body, false, "body")];
 	}
 	if (["table", "image", "chart"].includes(block.type)) {
-		let parts = block.contentObject && Array.isArray(block.contentObject.parts) ? block.contentObject.parts : null;
-		if (!parts) {
-			parts = [];
-			for (const kind of ["caption", "footnote"]) {
-				const key = kind === "caption" ? "captions" : "footnotes";
-				for (const [index, text] of (block.content && Array.isArray(block.content[key]) ? block.content[key] : []).entries()) {
-					if (String(text || "").trim()) parts.push({ id: `${block.id}:${kind}:${String(index).padStart(2, "0")}`, kind, text: String(text).trim() });
-				}
-			}
-		}
+		const parts = getRectoTranslationObjectParts(block);
 		return parts.map(part => make(`part:${part.id}`, part.text, true, part.kind));
 	}
 	if (block.type === "list") {
@@ -2225,6 +2216,13 @@ function getRectoTranslationPlainMetadataText(value) {
 
 function containsRectoTranslationEmailAddress(value) {
 	return /@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/.test(String(value || ""));
+}
+
+function hasRectoTranslatableTextOutsideEmail(value) {
+	const withoutEmail = String(value || "")
+		.replace(/\S*@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/g, " ")
+		.replace(/[{}\[\],;:()]/g, " ");
+	return /[A-Za-z]{3,}/.test(withoutEmail);
 }
 
 function looksLikeRectoTranslationFrontMatterAuthorLine(value) {
@@ -2295,8 +2293,8 @@ function getRectoTranslationMetadataPreserveBlockIds(blocks) {
 			&& index > documentTitleIndex
 			&& (nextTitleIndex < 0 || index < nextTitleIndex)
 			&& block.pageIndex === 0;
-		if (inFrontMatter && (containsRectoTranslationEmailAddress(text)
-			|| looksLikeRectoTranslationFrontMatterAuthorLine(text))) ids.add(block.id);
+		if (inFrontMatter && (looksLikeRectoTranslationFrontMatterAuthorLine(text)
+			|| (containsRectoTranslationEmailAddress(text) && !hasRectoTranslatableTextOutsideEmail(text)))) ids.add(block.id);
 	}
 	return ids;
 }
@@ -2311,7 +2309,18 @@ function getRectoTranslationBlockStrategy(block, metadataPreserveIds) {
 }
 
 function getRectoTranslationObjectParts(block) {
-	if (block && block.contentObject && Array.isArray(block.contentObject.parts)) return block.contentObject.parts;
+	if (block && block.contentObject && Array.isArray(block.contentObject.parts)) {
+		const parts = block.contentObject.parts.map(part => ({ ...part }));
+		for (const [kind, key] of [["caption", "captions"], ["footnote", "footnotes"]]) {
+			const values = Array.isArray(block.content && block.content[key])
+				? block.content[key].map(value => String(value == null ? "" : value).replace(/\r\n?/g, "\n").trim()).filter(Boolean)
+				: [];
+			const matching = parts.filter(part => part && part.kind === kind);
+			if (matching.length !== values.length) continue;
+			matching.forEach((part, index) => { part.text = values[index]; });
+		}
+		return parts;
+	}
 	const parts = [];
 	for (const kind of ["caption", "footnote"]) {
 		const key = kind === "caption" ? "captions" : "footnotes";
@@ -2433,11 +2442,19 @@ function renderRectoTranslationMarkdown(sidecar, alignment, blockById) {
 	].join("\n");
 }
 
+function normalizeRectoTranslationIssueCodes(value) {
+	if (!Array.isArray(value)) return [];
+	return Array.from(new Set(value
+		.map(item => String(item || "").trim())
+		.filter(code => /^[A-Z][A-Z0-9_]{0,63}$/.test(code))))
+		.sort();
+}
+
 function getRectoTranslationQuality(derivations) {
 	const fallbackSourceBlockIds = Array.from(new Set((derivations || [])
 		.filter(item => item && ["partial", "source-fallback"].includes(item.status))
 		.flatMap(item => item.derived_from || [])));
-	return {
+	const quality = {
 		translatedDerivationCount: (derivations || []).filter(item => item.status === "translated").length,
 		preservedDerivationCount: (derivations || []).filter(item => item.status === "preserved").length,
 		partialDerivationCount: (derivations || []).filter(item => item.status === "partial").length,
@@ -2445,6 +2462,27 @@ function getRectoTranslationQuality(derivations) {
 		fallbackBlockCount: fallbackSourceBlockIds.length,
 		fallbackSourceBlockIds,
 	};
+	const fallbackIssueMap = new Map();
+	for (const item of (derivations || []).filter(item => item && ["partial", "source-fallback"].includes(item.status))) {
+		const issues = normalizeRectoTranslationIssueCodes(item.issues);
+		if (!issues.length) continue;
+		for (const sourceBlockId of item.derived_from || []) {
+			fallbackIssueMap.set(sourceBlockId, normalizeRectoTranslationIssueCodes([
+				...(fallbackIssueMap.get(sourceBlockId) || []),
+				...issues,
+			]));
+		}
+	}
+	if (fallbackIssueMap.size) {
+		quality.fallbackIssues = fallbackSourceBlockIds
+			.filter(sourceBlockId => fallbackIssueMap.has(sourceBlockId))
+			.map(sourceBlockId => ({ sourceBlockId, issues: fallbackIssueMap.get(sourceBlockId) }));
+		quality.fallbackIssueCounts = {};
+		for (const item of quality.fallbackIssues) {
+			for (const issue of item.issues) quality.fallbackIssueCounts[issue] = (quality.fallbackIssueCounts[issue] || 0) + 1;
+		}
+	}
+	return quality;
 }
 
 function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
@@ -2476,6 +2514,11 @@ function validateRectoTranslationAlignment(sidecar, alignment, markdown) {
 			|| !Array.isArray(item.derived_from) || !item.derived_from.length || !Array.isArray(item.segments)) fail("派生身份、顺序或结构错误");
 		if (item.language !== alignment.language || item.templateVersion !== alignment.templateVersion
 			|| !["translated", "partial", "preserved", "source-fallback"].includes(item.status)) fail("派生元数据错误");
+		if (item.issues != null) {
+			const issues = normalizeRectoTranslationIssueCodes(item.issues);
+			if (!["partial", "source-fallback"].includes(item.status) || !issues.length || issues.length > 16
+				|| JSON.stringify(issues) !== JSON.stringify(item.issues)) fail("回退原因无效");
+		}
 		const expectedId = `${alignment.sourceRevisionId}:derivation:translation:${String(index).padStart(RECTO_ANCHOR_WIDTH, "0")}`;
 		const expectedTarget = `${alignment.sourceRevisionId}:translation:${alignment.language.toLowerCase()}:${String(index).padStart(RECTO_ANCHOR_WIDTH, "0")}`;
 		if (item.id !== expectedId || item.targetBlockId !== expectedTarget) fail("派生目标身份错误");
