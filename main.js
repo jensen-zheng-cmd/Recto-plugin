@@ -277,6 +277,12 @@ const DEFAULT_SETTINGS = {
 	backendLastAvailableCredits: null,
 	backendLastHeldCredits: null,
 	backendLastGrantedCredits: null,
+	// T87-B：额度制只把“页”作为用户界面的投影，POINT 仍是后端账本真值。旧后端不带这些键时
+	// 安全留在 membership；切换后由 /me 与 /plans 两条路都能把模式带进来，无需再发插件。
+	backendBillingMode: "membership",
+	backendCreditsPerTranslationPage: 0,
+	backendAvailableTranslationPages: null,
+	backendHeldTranslationPages: null,
 	// T84-R-A：点数 → 篇数的换算常数由后端随额度一起下发。0 = 后端还没说过，那时回退到
 	// RECTO_CREDITS_PER_PAPER。**退出登录不清它**——它是后端的计价口径而不是账号私有数据，
 	// 与 backendPlansCache 同理（套餐卡片在未登录时照样要画「每期约 N 篇」）。
@@ -1478,6 +1484,33 @@ function estimateRectoMarkdownTranslationPages(markdown) {
 		.filter(piece => piece.kind !== "code" && piece.kind !== "formula")
 		.reduce((total, piece) => total + piece.text.length, 0);
 	return { chars, pages: chars > 0 ? Math.max(1, Math.ceil(chars / RECTO_TRANSLATION_CHARS_PER_PAGE)) : 0 };
+}
+
+function estimateRectoSidecarTranslationPages(sidecarText) {
+	try {
+		const sidecar = typeof sidecarText === "string" ? JSON.parse(sidecarText) : sidecarText;
+		const pages = sidecar && Array.isArray(sidecar.pages) ? sidecar.pages.length : 0;
+		return pages > 0 ? pages : null;
+	} catch {
+		return null;
+	}
+}
+
+function describeTranslationQuote(settings, requiredPages) {
+	const view = describeBackendAccountView(settings);
+	const required = Number(requiredPages);
+	if (!view.creditPackMode || !Number.isFinite(required) || required <= 0) {
+		return { active: false, known: false, required: 0, available: null, shortfall: 0, text: "" };
+	}
+	const balance = view.translationPages;
+	const known = !!(balance && balance.known);
+	const available = known ? balance.available : null;
+	const shortfall = known ? Math.max(0, required - available) : 0;
+	const requiredText = formatTranslationPages(required);
+	let text = `本篇 ${requiredText} 页，预计消耗 ${requiredText} 页`;
+	if (known) text += `；现有 ${formatTranslationPages(available)} 页`;
+	if (shortfall > 0) text += `，还差 ${formatTranslationPages(shortfall)} 页`;
+	return { active: true, known, required, available, shortfall, text };
 }
 
 function buildRectoMarkdownRecordId(markdownPath) {
@@ -2910,6 +2943,13 @@ function normalizeBackendPlansCache(value) {
 			description: String(item.description || "").trim(),
 			quotaAmount: Number.isFinite(Number(item.quotaAmount)) ? Number(item.quotaAmount) : 0,
 			unit: String(item.unit || "点").trim(),
+			billingMode: String(item.billingMode || "").trim().toLowerCase(),
+			translationPages: item.translationPages !== null
+				&& item.translationPages !== undefined
+				&& item.translationPages !== ""
+				&& Number.isFinite(Number(item.translationPages))
+				? Number(item.translationPages)
+				: null,
 			mockOnly: item.mockOnly === true,
 			priceCents: Number.isFinite(Number(item.priceCents)) ? Number(item.priceCents) : 0,
 			currency: String(item.currency || "CNY").trim(),
@@ -2931,6 +2971,7 @@ function applyBackendPlansToSettings(settings, payload) {
 	if (!settings) return [];
 	const plans = normalizeBackendPlansCache(payload);
 	settings.backendPlansCache = plans;
+	if (plans.length) settings.backendBillingMode = resolveBackendBillingMode(plans[0].billingMode, plans);
 	const selected = getBackendSelectedPlan(settings);
 	settings.backendSelectedPlanCode = selected ? selected.code : "";
 	return plans;
@@ -2945,8 +2986,34 @@ function formatBackendPlanPrice(plan) {
 	return currency === "CNY" ? `¥${amount}` : `${amount} ${currency}`;
 }
 
-// ── T82-A-A 套餐目录与额度进度条 ──────────────────────────────────
-// T81-S 把点数定为内部计费单位，界面不再暴露它：额度改成百分比进度条，套餐卡片改说「约几篇」。
+function resolveBackendBillingMode(value, plans = []) {
+	const clean = String(value || "").trim().toLowerCase();
+	if (clean === "credit_pack") return "credit_pack";
+	if (clean === "membership") return "membership";
+	const normalized = normalizeBackendPlansCache(plans);
+	if (normalized.some(plan => plan.billingMode === "credit_pack" || /^translation_\d+$/.test(plan.code))) {
+		return "credit_pack";
+	}
+	return "membership";
+}
+
+function formatTranslationPages(value) {
+	if (value === null || value === undefined || value === "") return "—";
+	const pages = Number(value);
+	if (!Number.isFinite(pages)) return "—";
+	const normalized = Math.max(0, pages);
+	return String(Number(normalized.toFixed(3)));
+}
+
+function projectTranslationPagesFromCredits(credits, perPage) {
+	const amount = toBackendCreditNumber(credits);
+	const unit = Number(perPage);
+	if (amount === null || !Number.isFinite(unit) || unit <= 0) return null;
+	return amount / unit;
+}
+
+// ── T82-A-A 套餐目录与额度显示；T87-B 起按后端模式在旧百分比与翻译页之间切换 ─────────
+// 点数始终是内部计费单位。会员兼容模式显示百分比与「约几篇」，额度制显示精确翻译页。
 // 折算依据（T82-A-S / T82-A-S-U）：转换 = ceil(真实页数/4) 点，翻译 = 真实页数 × 1 点，
 // 真实语料里一篇含译文中位 21 点、均值 25 点，取 25（比中位保守 = 少承诺）。
 // 后端 account-web.page.ts 的支付页里是同一个数字，改一边必须改两边。
@@ -3024,14 +3091,70 @@ function resolveBackendPlanCycle(code) {
 	return "";
 }
 
+const CREDIT_PACK_PRESENTATION = {
+	translation_20: {
+		tier: "basic",
+		icon: PLAN_ICON_BASIC,
+		kicker: "临时小包",
+		papersText: "约 1 篇普通论文",
+		features: ["20 个翻译页", "长期有效，可叠加"],
+	},
+	translation_400: {
+		tier: "pro",
+		icon: PLAN_ICON_PRO,
+		kicker: "多数人的选择",
+		papersText: "约 20 篇普通论文",
+		features: ["400 个翻译页", "长期有效，可叠加"],
+		badge: "推荐",
+	},
+	translation_1000: {
+		tier: "max",
+		icon: PLAN_ICON_MAX,
+		kicker: "单页最便宜",
+		papersText: "约 50 篇普通论文",
+		features: ["1000 个翻译页", "长期有效，可叠加"],
+	},
+};
+
+function buildBackendCreditPackCatalog(plans) {
+	const normalized = normalizeBackendPlansCache(plans);
+	return Object.keys(CREDIT_PACK_PRESENTATION).map(code => {
+		const plan = normalized.find(item => item.code === code);
+		if (!plan) return null;
+		const preset = CREDIT_PACK_PRESENTATION[code];
+		const pages = plan.translationPages !== null
+			? plan.translationPages
+			: projectTranslationPagesFromCredits(plan.quotaAmount, 1000);
+		return {
+			kind: "credit-pack",
+			tier: preset.tier,
+			code: plan.code,
+			label: `${formatTranslationPages(pages)} 页`,
+			kicker: preset.kicker,
+			icon: preset.icon,
+			price: formatBackendPlanPrice(plan),
+			priceCents: Number(plan.priceCents) || 0,
+			period: "",
+			papersText: preset.papersText,
+			free: false,
+			features: preset.features.slice(),
+			badge: preset.badge || "",
+			translationPages: pages,
+		};
+	}).filter(Boolean);
+}
+
 // 三档 × 两周期的目录：给定周期挑出该周期的档，免费档没有周期、两栏都出现。
 // 返回的每一项就是一张卡片要显示的全部内容，渲染层只管往 DOM 上放。
 // T82-A-R：原来这里还有一个 currentPlanCode 参数与 isCurrent 字段，语义是「用户选中的那张卡」，
 // 自 T82-A-A 把购买按钮放进卡片后就没人读了。「当前」现在指**已购买的档位**，由
 // describeBackendPlanAction 按后端返回的 membership 判定，所以那对同名的死字段一并移除，
 // 免得两个「current」并存、下一个人读到哪个算哪个。
-function buildBackendPlanCatalog(plans, cycle = "monthly", perPaper = 0) {
+function buildBackendPlanCatalog(plans, cycle = "monthly", perPaper = 0, billingMode = "") {
 	const normalized = normalizeBackendPlansCache(plans);
+	if (resolveBackendBillingMode(billingMode, normalized) === "credit_pack") {
+		return buildBackendCreditPackCatalog(normalized);
+	}
 	const wanted = cycle === "yearly" ? "yearly" : "monthly";
 	const cards = [];
 
@@ -3470,6 +3593,9 @@ function isBackendPlanDowngrade(card, membership) {
  */
 function describeBackendPlanAction(card, membership) {
 	const state = card && typeof card === "object" ? card : {};
+	if (state.kind === "credit-pack") {
+		return { kind: "buy", label: `购买 ${state.label}`, disabled: false, badge: state.badge || "" };
+	}
 	const active = membership && membership.active ? membership : null;
 
 	if (state.free) {
@@ -3593,6 +3719,30 @@ function isBackendSessionExpired(expiresAt, now = Date.now()) {
 	return time <= (Number.isFinite(now) ? now : Date.now());
 }
 
+function describeTranslationPageBalance(input = {}) {
+	const loggedIn = input.loggedIn === true;
+	const unknown = { known: false, available: null, held: null, availableText: "—", heldText: "—", tone: "unknown" };
+	if (!loggedIn) return { ...unknown, tone: "signed-out" };
+	const perPage = Number(input.creditsPerTranslationPage);
+	const projectedAvailable = projectTranslationPagesFromCredits(input.availableCredits, perPage);
+	const projectedHeld = projectTranslationPagesFromCredits(input.heldCredits, perPage);
+	const available = projectedAvailable !== null
+		? projectedAvailable
+		: toBackendCreditNumber(input.availableTranslationPages);
+	const held = projectedHeld !== null
+		? projectedHeld
+		: (toBackendCreditNumber(input.heldTranslationPages) ?? 0);
+	if (available === null) return unknown;
+	return {
+		known: true,
+		available,
+		held,
+		availableText: formatTranslationPages(available),
+		heldText: formatTranslationPages(held),
+		tone: available <= 0 ? "empty" : (available < 5 ? "low" : "ok"),
+	};
+}
+
 function describeBackendAccountView(settings, now = Date.now()) {
 	const s = settings && typeof settings === "object" ? settings : {};
 	const loggedIn = !!String(s.backendSessionToken || "").trim();
@@ -3602,17 +3752,34 @@ function describeBackendAccountView(settings, now = Date.now()) {
 	const availableCredits = toBackendCreditNumber(s.backendLastAvailableCredits);
 	const heldCredits = toBackendCreditNumber(s.backendLastHeldCredits);
 	const grantedCredits = toBackendCreditNumber(s.backendLastGrantedCredits);
+	const billingMode = resolveBackendBillingMode(s.backendBillingMode, s.backendPlansCache);
+	const creditPackMode = billingMode === "credit_pack";
+	const creditsPerTranslationPage = Number(s.backendCreditsPerTranslationPage) > 0
+		? Number(s.backendCreditsPerTranslationPage)
+		: 0;
 	// T84-R-A：点数 → 篇数的换算常数。0 表示后端没说过，estimatePapersFromCredits 会回退。
 	// 不看 loggedIn——套餐卡片在未登录时照样要画「每期约 N 篇」。
 	const creditsPerPaper = Number(s.backendCreditsPerPaper) > 0 ? Number(s.backendCreditsPerPaper) : 0;
 	const creditsKnown = loggedIn && availableCredits !== null;
 	const plans = normalizeBackendPlansCache(s.backendPlansCache);
 	// 未登录时不谈会员：settings 里可能还留着上一个账号的残值，退出登录会清但顺序不保证。
-	const membership = loggedIn ? describeBackendMembership(s) : null;
+	const membership = loggedIn && !creditPackMode ? describeBackendMembership(s) : null;
 	// 点数是内部计费单位（T81-S），所以对外的这句话只说百分比，不说数字。
 	const meter = describeCreditsMeter({ loggedIn, availableCredits, heldCredits, grantedCredits });
+	const translationPages = describeTranslationPageBalance({
+		loggedIn,
+		availableCredits,
+		heldCredits,
+		creditsPerTranslationPage,
+		availableTranslationPages: s.backendAvailableTranslationPages,
+		heldTranslationPages: s.backendHeldTranslationPages,
+	});
 	let creditsText = "尚未登录 Recto 账号";
-	if (loggedIn && !meter.known) creditsText = "额度尚未读取";
+	if (creditPackMode && loggedIn && !translationPages.known) creditsText = "翻译页尚未读取";
+	else if (creditPackMode && translationPages.known) {
+		creditsText = `可用 ${translationPages.availableText} 页`;
+		if (translationPages.held > 0) creditsText += `，冻结 ${translationPages.heldText} 页`;
+	} else if (loggedIn && !meter.known) creditsText = "额度尚未读取";
 	else if (meter.known) {
 		creditsText = `剩余额度 ${meter.text}`;
 		if (meter.heldPercent > 0) creditsText += `，另有 ${meter.heldPercent}% 处理中`;
@@ -3626,10 +3793,16 @@ function describeBackendAccountView(settings, now = Date.now()) {
 		availableCredits,
 		heldCredits,
 		grantedCredits,
+		billingMode,
+		creditPackMode,
+		creditsPerTranslationPage,
+		translationPages,
 		creditsPerPaper,
 		meter,
 		creditsKnown,
-		creditsEmpty: creditsKnown && availableCredits <= 0,
+		creditsEmpty: creditPackMode
+			? (translationPages.known && translationPages.available <= 0)
+			: (creditsKnown && availableCredits <= 0),
 		creditsText,
 		lastError: s.backendLastError
 			? getUserFacingErrorMessage(s.backendLastError, "账号操作未完成，请稍后重试。")
@@ -3644,7 +3817,7 @@ function describeBackendAccountView(settings, now = Date.now()) {
 }
 
 // Hub 工具栏的常驻额度徽章：未登录时它就是登录入口，额度为零时要看得出来。
-// 已知态用圆环画剩余百分比（Claude 上下文窗口那种），文案只进 title / aria-label。
+// 会员兼容模式用百分比圆环；额度制直接显示翻译页，两者都只渲染后端下发的账本投影。
 function describeHubCreditsBadge(settings) {
 	const view = describeBackendAccountView(settings);
 	if (!view.loggedIn) {
@@ -3656,6 +3829,21 @@ function describeHubCreditsBadge(settings) {
 		return { tone: "signed-out", text: "登录", title: `${RECTO_BRAND_NAME} 账号登录已过期，点击重新登录`, known: false, percent: 0, heldPercent: 0 };
 	}
 	const suffix = `${view.email ? `已登录：${view.email}；` : ""}点击打开账号面板`;
+	if (view.creditPackMode) {
+		const pages = view.translationPages;
+		if (!pages || !pages.known) {
+			return { mode: "pages", tone: "unknown", text: "翻译页 —", title: `翻译页尚未读取；${suffix}`, known: false };
+		}
+		const held = pages.held > 0 ? `，冻结 ${pages.heldText} 页` : "";
+		return {
+			mode: "pages",
+			tone: pages.tone,
+			text: `${pages.availableText} 页`,
+			short: `${pages.availableText} 页`,
+			title: `可用 ${pages.availableText} 页${held}；PDF 转换当前免费；${suffix}`,
+			known: true,
+		};
+	}
 	if (view.creditsEmpty) {
 		return { tone: "empty", text: "额度 0%", title: `额度已用完，需要购买后才能继续转换；${suffix}`, known: true, percent: 0, heldPercent: 0 };
 	}
@@ -5945,6 +6133,17 @@ function describeSetupStatusLights(input = {}) {
 	let credits;
 	if (!view.loggedIn || view.sessionExpired) {
 		credits = { key: "credits", state: "unknown", text: "额度未知", icon: "circle-dashed" };
+	} else if (view.creditPackMode && (!view.translationPages || !view.translationPages.known)) {
+		credits = { key: "credits", state: "unknown", text: "翻译页未知", icon: "circle-dashed" };
+	} else if (view.creditPackMode && view.creditsEmpty) {
+		credits = { key: "credits", state: "warning", text: "翻译页不足", icon: "circle-alert" };
+	} else if (view.creditPackMode) {
+		credits = {
+			key: "credits",
+			state: "ready",
+			text: `可用 ${view.translationPages.availableText} 个翻译页`,
+			icon: "check",
+		};
 	} else if (!view.meter || !view.meter.known) {
 		credits = { key: "credits", state: "unknown", text: "额度未知", icon: "circle-dashed" };
 	} else if (view.creditsEmpty || view.availableCredits <= 0) {
@@ -7963,6 +8162,17 @@ class RectoPlugin extends obsidian.Plugin {
 		if (credits && Number(credits.creditsPerPaper) > 0) {
 			this.settings.backendCreditsPerPaper = Number(credits.creditsPerPaper);
 		}
+		if (credits && typeof credits === "object") {
+			this.settings.backendBillingMode = resolveBackendBillingMode(
+				credits.billingMode,
+				this.settings.backendPlansCache,
+			);
+			if (Number(credits.creditsPerTranslationPage) > 0) {
+				this.settings.backendCreditsPerTranslationPage = Number(credits.creditsPerTranslationPage);
+			}
+			this.settings.backendAvailableTranslationPages = toBackendCreditNumber(credits.availableTranslationPages);
+			this.settings.backendHeldTranslationPages = toBackendCreditNumber(credits.heldTranslationPages);
+		}
 		// 当前会员（T82-A-R）。只有 /api/v1/me 会带这个键，登录/注册的响应不带——所以用
 		// 「键在不在」判断，而不是「值真不真」：null 是有意义的答案（= 权益回到 Basic），
 		// 用 falsy 判断会让登录后的一次刷新把刚读到的档位又抹掉。
@@ -7993,6 +8203,8 @@ class RectoPlugin extends obsidian.Plugin {
 		this.settings.backendLastAvailableCredits = null;
 		this.settings.backendLastHeldCredits = null;
 		this.settings.backendLastGrantedCredits = null;
+		this.settings.backendAvailableTranslationPages = null;
+		this.settings.backendHeldTranslationPages = null;
 		this.settings.backendLastCheckedAt = "";
 	}
 
@@ -11467,6 +11679,12 @@ class RectoPlugin extends obsidian.Plugin {
 			new obsidian.Notice("这份文档没有可翻译的内容", 6000);
 			return;
 		}
+		const quote = describeTranslationQuote(this.settings, estimate.pages);
+		if (quote.active && quote.shortfall > 0) {
+			new obsidian.Notice(`${quote.text}。请先购买翻译页。`, 10000);
+			this.openAccountModal();
+			return;
+		}
 		if (this.app.vault.getAbstractFileByPath(target.targetPath)) {
 			const replace = await this.openDecision({
 				title: "这份文档已经有译文",
@@ -11482,7 +11700,10 @@ class RectoPlugin extends obsidian.Plugin {
 		const writeAnchors = this.settings.markdownTranslationWriteAnchors === true;
 		// 单篇零确认是 T84-F 的既有决定，所以量级用 Notice 说而不是再弹一次窗——但**必须说**：
 		// 额度是按字符扣的，用户事先看不见量级就等于蒙着眼花钱。
-		new obsidian.Notice(`开始翻译《${file.basename}》，约合 ${estimate.pages} 页。`, 6000);
+		new obsidian.Notice(
+			quote.active ? `${quote.text}。` : `开始翻译《${file.basename}》，约合 ${estimate.pages} 页。`,
+			6000,
+		);
 		await this.runBackendBatchWithTasks([{
 			name: file.name,
 			// 没有它就没有重复提交防护（守卫的键就是 recordId），连点两次命令会扣两次费。
@@ -11491,6 +11712,7 @@ class RectoPlugin extends obsidian.Plugin {
 			translateOnly: true,
 			markdownPath: file.path,
 			markdownDocumentId: createRectoDocumentId(),
+			translationQuotePages: estimate.pages,
 			// 提交那一刻的选择随任务走，与 postprocessProfile 同理：用户中途改设置，
 			// 重启恢复的那一篇也不会突然往原文里补写一批当时没答应的锚点。
 			markdownWriteAnchors: writeAnchors,
@@ -12128,10 +12350,19 @@ class RectoPlugin extends obsidian.Plugin {
 	// 多篇操作保留一次篇数确认；单篇由明确按钮直接开始。
 	async confirmBackendTranslationRun(tasks) {
 		const count = (tasks || []).length;
+		const quotedPages = (tasks || []).reduce(
+			(total, task) => total + (Number(task && task.translationQuotePages) || 0),
+			0,
+		);
+		const quote = describeTranslationQuote(this.settings, quotedPages);
+		const details = ["使用已有论文正文与当前翻译设置，不会再次复制 PDF。"];
+		if (quote.active && quotedPages > 0) {
+			details.unshift(`本批预计消耗 ${formatTranslationPages(quotedPages)} 个翻译页；当前可用 ${formatTranslationPages(quote.available)} 页。`);
+		}
 		return await this.openDecision({
 			title: "批量翻译",
 			intro: `即将翻译选中的 ${count} 篇论文。`,
-			details: ["使用已有论文正文与当前翻译设置，不会再次复制 PDF。"],
+			details,
 			actions: [
 				{ label: "取消", value: false },
 				{ label: `翻译 ${count} 篇`, value: true, cta: true },
@@ -12152,13 +12383,17 @@ class RectoPlugin extends obsidian.Plugin {
 		const content = parts.length === 1
 			? parts[0]
 			: `${parts.slice(0, -1).join("、")}与${parts[parts.length - 1]}`;
+		const details = [`处理内容：${content}。`];
+		if (describeBackendAccountView(this.settings).creditPackMode) {
+			details.push(wantsTranslation
+				? "PDF 转换当前免费；转换完成后按实际页数消耗翻译页。"
+				: "PDF 转换当前免费，不消耗翻译页。");
+		}
+		details.push("请确认选择范围无误，并确保您有权处理这些文件。");
 		return await this.openDecision({
 			title: wantsTranslation ? "批量转换并翻译" : "批量转换",
 			intro: `即将处理选中的 ${count} 篇 PDF。`,
-			details: [
-				`处理内容：${content}。`,
-				"请确认选择范围无误，并确保您有权处理这些文件。",
-			],
+			details,
 			actions: [
 				{ label: "取消", value: false },
 				{ label: `${wantsTranslation ? "转换并翻译" : "转换"} ${count} 篇`, value: true, cta: true },
@@ -12181,6 +12416,16 @@ class RectoPlugin extends obsidian.Plugin {
 		const sidecarText = markdownTask
 			? await this.buildMarkdownTranslationSidecarText(task)
 			: await this.readLocalPaperSidecarText(stem, task);
+		const quotePages = Number(task && task.translationQuotePages) > 0
+			? Number(task.translationQuotePages)
+			: estimateRectoSidecarTranslationPages(sidecarText);
+		const quote = describeTranslationQuote(this.settings, quotePages);
+		if (quote.active) {
+			log(quote.text);
+			if (quote.shortfall > 0) {
+				throw new Error(`${quote.text}。请先购买翻译页。`);
+			}
+		}
 		setStage("提交译文");
 		const created = await this.createBackendTranslationTask(task);
 		const translationTaskId = created.taskId;
@@ -12518,6 +12763,25 @@ class RectoPlugin extends obsidian.Plugin {
 			translateOnly: true,
 			requestTranslation: true,
 		}));
+		for (const task of tasks) {
+			try {
+				const sidecarText = await this.readLocalPaperSidecarText(task.stem, task);
+				task.translationQuotePages = estimateRectoSidecarTranslationPages(sidecarText);
+			} catch {
+				// 正式执行会给出原有的 Sidecar 错误；报价失败不能把错误吞掉或另造一条路径。
+			}
+		}
+		const quotedPages = tasks.reduce((total, task) => total + (Number(task.translationQuotePages) || 0), 0);
+		const quote = describeTranslationQuote(this.settings, quotedPages);
+		if (quote.active && quote.shortfall > 0) {
+			new obsidian.Notice(
+				`${tasks.length === 1 ? quote.text : `本批预计消耗 ${formatTranslationPages(quotedPages)} 页；现有 ${formatTranslationPages(quote.available)} 页，还差 ${formatTranslationPages(quote.shortfall)} 页`}。请先购买翻译页。`,
+				10000,
+			);
+			this.openAccountModal();
+			return null;
+		}
+		if (quote.active && tasks.length === 1) new obsidian.Notice(`${quote.text}。`, 6000);
 		return await this.runBatchWithTasks(tasks);
 	}
 
@@ -13105,8 +13369,13 @@ function createRectoHubViewClass(api) {
 			this.creditsEl.setAttribute("title", badge.title);
 			this.creditsEl.setAttribute("aria-label", badge.text);
 			this.creditsEl.dataset.hubCredits = badge.tone;
+			this.creditsEl.dataset.hubCreditsMode = badge.mode || "meter";
 			if (badge.tone === "signed-out") {
 				this.creditsEl.setText(badge.text);
+				return;
+			}
+			if (badge.mode === "pages") {
+				this.creditsEl.createSpan({ cls: "recto-hub-credits-pages", text: badge.text });
 				return;
 			}
 			const ring = this.creditsEl.createSpan({ cls: "recto-hub-credits-ring" });
@@ -15407,36 +15676,47 @@ class RectoAccountModal extends obsidian.Modal {
 
 	renderSignedIn(container, view) {
 		const card = container.createDiv({ cls: "recto-account-card" });
-		// T82-A-A：点数是内部计费单位（T81-S），额度改成百分比进度条，不再摆一个「20 点」的大数字。
 		const credits = card.createDiv({ cls: "recto-account-credits" });
-		const meter = view.meter || { known: false, percent: 0, heldPercent: 0, text: "—", tone: "unknown" };
-		const top = credits.createDiv({ cls: "recto-account-meter-top" });
-		top.createSpan({ cls: "recto-account-meter-label", text: "剩余额度" });
-		top.createSpan({ cls: `recto-account-meter-value is-${meter.tone}`, text: meter.text });
-		// 额度读不到时轨道空着会看起来像「余额为零」，所以未知态自己有一套虚底纹。
-		const track = credits.createDiv({ cls: `recto-account-meter-track${meter.known ? "" : " is-unknown"}` });
-		const fill = track.createDiv({ cls: `recto-account-meter-fill is-${meter.tone}` });
-		fill.style.width = `${meter.known ? meter.percent : 0}%`;
-		if (meter.known && meter.heldPercent > 0) {
-			const held = track.createDiv({ cls: "recto-account-meter-held" });
-			held.style.width = `${Math.min(100 - meter.percent, meter.heldPercent)}%`;
-			held.style.insetInlineStart = `${meter.percent}%`;
-		}
-		// T82-A-R：会员到期时间。「还剩多少」与「还能用到几号」是两个独立的问题——
-		// 缺后者，用户根本不知道额度什么时候会清零（产品到期不自动续费）。
-		if (view.membershipLine) {
-			credits.createDiv({
-				cls: `recto-account-membership${view.membership && !view.membership.active ? " is-lapsed" : ""}`,
-				text: view.membershipLine,
-			});
-		}
-		// 只在真有话说的时候才留一行小字：处理中的额度，或读不到额度。平时进度条自己就够。
-		const footNote = meter.known
-			? (meter.heldPercent > 0 ? `另有 ${meter.heldPercent}% 正在处理中` : "")
-			: "额度读取失败，重新打开面板会再试一次。";
-		if (footNote) credits.createDiv({ cls: "recto-account-hint", text: footNote });
-		if (view.creditsEmpty) {
-			card.createDiv({ cls: "recto-account-hint", text: "额度已用完，购买后才能继续转换与翻译。" });
+		if (view.creditPackMode) {
+			const pages = view.translationPages || { known: false, availableText: "—", heldText: "—", held: 0, tone: "unknown" };
+			const pageGrid = credits.createDiv({ cls: "recto-account-page-balance" });
+			const available = pageGrid.createDiv({ cls: "recto-account-page-balance-item" });
+			available.createSpan({ cls: "recto-account-meter-label", text: "可用翻译页" });
+			available.createEl("strong", { cls: `recto-account-page-value is-${pages.tone}`, text: `${pages.availableText} 页` });
+			const held = pageGrid.createDiv({ cls: "recto-account-page-balance-item" });
+			held.createSpan({ cls: "recto-account-meter-label", text: "冻结翻译页" });
+			held.createEl("strong", { cls: "recto-account-page-value", text: `${pages.heldText} 页` });
+			credits.createDiv({ cls: "recto-account-hint", text: "翻译按实际页数消耗；PDF 转换当前免费。余额长期有效，可叠加。" });
+			if (!pages.known) {
+				credits.createDiv({ cls: "recto-account-hint", text: "翻译页读取失败，重新打开面板会再试一次。" });
+			} else if (view.creditsEmpty) {
+				card.createDiv({ cls: "recto-account-hint", text: "翻译页已用完，购买后可继续翻译；PDF 转换当前免费。" });
+			}
+		} else {
+			// 旧会员模式继续诚实显示本期百分比；切换后不会进入这一支。
+			const meter = view.meter || { known: false, percent: 0, heldPercent: 0, text: "—", tone: "unknown" };
+			const top = credits.createDiv({ cls: "recto-account-meter-top" });
+			top.createSpan({ cls: "recto-account-meter-label", text: "剩余额度" });
+			top.createSpan({ cls: `recto-account-meter-value is-${meter.tone}`, text: meter.text });
+			const track = credits.createDiv({ cls: `recto-account-meter-track${meter.known ? "" : " is-unknown"}` });
+			const fill = track.createDiv({ cls: `recto-account-meter-fill is-${meter.tone}` });
+			fill.style.width = `${meter.known ? meter.percent : 0}%`;
+			if (meter.known && meter.heldPercent > 0) {
+				const held = track.createDiv({ cls: "recto-account-meter-held" });
+				held.style.width = `${Math.min(100 - meter.percent, meter.heldPercent)}%`;
+				held.style.insetInlineStart = `${meter.percent}%`;
+			}
+			if (view.membershipLine) {
+				credits.createDiv({
+					cls: `recto-account-membership${view.membership && !view.membership.active ? " is-lapsed" : ""}`,
+					text: view.membershipLine,
+				});
+			}
+			const footNote = meter.known
+				? (meter.heldPercent > 0 ? `另有 ${meter.heldPercent}% 正在处理中` : "")
+				: "额度读取失败，重新打开面板会再试一次。";
+			if (footNote) credits.createDiv({ cls: "recto-account-hint", text: footNote });
+			if (view.creditsEmpty) card.createDiv({ cls: "recto-account-hint", text: "额度已用完，购买后才能继续转换与翻译。" });
 		}
 		if (!view.emailVerified) {
 			const row = card.createDiv({ cls: "recto-account-verify-row" });
@@ -15466,7 +15746,9 @@ class RectoAccountModal extends obsidian.Modal {
 					throw new Error("当前环境不支持复制");
 				}, "邀请码已复制");
 			}, "recto-account-invite-copy");
-			copyBtn.setAttr("title", "好友注册时填写，双方各得 7 天 Pro 试用。");
+			copyBtn.setAttr("title", view.creditPackMode
+				? "好友注册并验证邮箱后，双方各得 60 个翻译页。"
+				: "好友注册时填写，双方各得 7 天 Pro 试用。");
 		} else {
 			footer.createDiv({ cls: "recto-account-invite is-empty" });
 		}
@@ -15495,7 +15777,7 @@ class RectoAccountModal extends obsidian.Modal {
 			return;
 		}
 
-		const cards = buildBackendPlanCatalog(view.plans, this.planCycle, view.creditsPerPaper);
+		const cards = buildBackendPlanCatalog(view.plans, this.planCycle, view.creditsPerPaper, view.billingMode);
 		if (!cards.length) {
 			// 后端返回的套餐一个都认不出来（code 约定对不上）时，宁可说清楚，也不要画一片空白。
 			box.createDiv({ cls: "recto-account-hint", text: "套餐信息暂时无法显示，请联系我们。" });
@@ -15517,7 +15799,12 @@ class RectoAccountModal extends obsidian.Modal {
 		}
 
 		// 目录里真有年付档才给切换器——只有免费档时摆一个月/年开关是假的。
-		if (view.plans.some(plan => resolveBackendPlanCycle(plan.code) === "yearly")) {
+		if (view.creditPackMode) {
+			box.createDiv({
+				cls: "recto-account-hint recto-account-pack-note",
+				text: "一次购买，长期有效，不按月清零。约几篇按普通论文估算，实际按翻译页数消耗。",
+			});
+		} else if (view.plans.some(plan => resolveBackendPlanCycle(plan.code) === "yearly")) {
 			this.renderPlanCycleSwitch(box, view);
 		}
 
@@ -15534,8 +15821,9 @@ class RectoAccountModal extends obsidian.Modal {
 	// T82-A-R：按钮文案与角标由 describeBackendPlanAction 定，这里只负责画。
 	renderPlanCard(grid, card, membership) {
 		const action = describeBackendPlanAction(card, membership);
+		const owned = !!action.badge && card.kind !== "credit-pack";
 		const cell = grid.createDiv({
-			cls: `recto-account-plan is-${card.tier}${action.badge ? " is-owned" : ""}`,
+			cls: `recto-account-plan is-${card.tier}${owned ? " is-owned" : ""}`,
 		});
 		cell.dataset.accountPlan = card.code;
 		// 角标挂在卡片右上角，不占内容位——「当前套餐」是状态标注，不该把价格或按钮挤走。
@@ -15586,7 +15874,9 @@ class RectoAccountModal extends obsidian.Modal {
 		cell.createDiv({ cls: "recto-account-plan-rule" });
 		// 「约」字在文案里，完整口径挂 title——底下那行灰色小字太占观感，但估算的前提不能不交代。
 		const quota = cell.createDiv({ cls: "recto-account-plan-quota", text: card.papersText });
-		quota.setAttr("title", "按平均页数折算的估计值。转换按论文页数计费，翻译按字符量另计，实际篇数会随论文长短浮动。");
+		quota.setAttr("title", card.kind === "credit-pack"
+			? "按每篇约 20 页估算。实际消耗始终以翻译页数为准；PDF 转换当前免费。"
+			: "按平均页数折算的估计值。转换按论文页数计费，翻译按字符量另计，实际篇数会随论文长短浮动。");
 		const list = cell.createEl("ul", { cls: "recto-account-plan-feats" });
 		for (const feature of card.features) list.createEl("li", { text: feature });
 	}
@@ -16993,6 +17283,11 @@ if (process.env.NODE_ENV === "test") {
 		describeHubCreditsBadge,
 		buildHubCreditsRingMarkup,
 		describeCreditsMeter,
+		describeTranslationPageBalance,
+		describeTranslationQuote,
+		formatTranslationPages,
+		projectTranslationPagesFromCredits,
+		resolveBackendBillingMode,
 		describeSetupStatusLights,
 		isSettingsQuickStartComplete,
 		describeOnboardingFlow,
@@ -17010,6 +17305,7 @@ if (process.env.NODE_ENV === "test") {
 		ZOTERO_AUTO_CHECK_COOLDOWN_MS,
 		ZOTERO_AUTO_CHECK_STARTUP_DELAY_MS,
 		buildBackendPlanCatalog,
+		buildBackendCreditPackCatalog,
 		describeBackendPlanYearlySaving,
 		describeBackendPlanAction,
 		describeBackendMembership,
