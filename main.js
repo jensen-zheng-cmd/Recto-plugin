@@ -3091,29 +3091,13 @@ function resolveBackendPlanCycle(code) {
 	return "";
 }
 
+// T87-1-A 额度包卡片的展示预设（方案 B：行式价目真机看过后改回卡片）：卡 = 页数 +
+// 价格 + 约 N 篇 + 按钮，无图标、无 kicker、无特性列表——卖点「长期有效，可叠加」整页
+// 只在购买区顶部说一次。推荐档带角标与描边高亮；图标与档位色是会员卡的语言，不再使用。
 const CREDIT_PACK_PRESENTATION = {
-	translation_20: {
-		tier: "basic",
-		icon: PLAN_ICON_BASIC,
-		kicker: "临时小包",
-		papersText: "约 1 篇普通论文",
-		features: ["20 个翻译页", "长期有效，可叠加"],
-	},
-	translation_400: {
-		tier: "pro",
-		icon: PLAN_ICON_PRO,
-		kicker: "多数人的选择",
-		papersText: "约 20 篇普通论文",
-		features: ["400 个翻译页", "长期有效，可叠加"],
-		badge: "推荐",
-	},
-	translation_1000: {
-		tier: "max",
-		icon: PLAN_ICON_MAX,
-		kicker: "单页最便宜",
-		papersText: "约 50 篇普通论文",
-		features: ["1000 个翻译页", "长期有效，可叠加"],
-	},
+	translation_20: { papersText: "约 1 篇普通论文" },
+	translation_400: { badge: "推荐", featured: true, papersText: "约 20 篇普通论文" },
+	translation_1000: { papersText: "约 50 篇普通论文" },
 };
 
 function buildBackendCreditPackCatalog(plans) {
@@ -3127,18 +3111,13 @@ function buildBackendCreditPackCatalog(plans) {
 			: projectTranslationPagesFromCredits(plan.quotaAmount, 1000);
 		return {
 			kind: "credit-pack",
-			tier: preset.tier,
 			code: plan.code,
 			label: `${formatTranslationPages(pages)} 页`,
-			kicker: preset.kicker,
-			icon: preset.icon,
+			badge: preset.badge || "",
+			featured: !!preset.featured,
+			papersText: preset.papersText,
 			price: formatBackendPlanPrice(plan),
 			priceCents: Number(plan.priceCents) || 0,
-			period: "",
-			papersText: preset.papersText,
-			free: false,
-			features: preset.features.slice(),
-			badge: preset.badge || "",
 			translationPages: pages,
 		};
 	}).filter(Boolean);
@@ -3777,8 +3756,8 @@ function describeBackendAccountView(settings, now = Date.now()) {
 	let creditsText = "尚未登录 Recto 账号";
 	if (creditPackMode && loggedIn && !translationPages.known) creditsText = "翻译页尚未读取";
 	else if (creditPackMode && translationPages.known) {
+		// T87-1-A：冻结不对用户显示——任务在途时可用页数已按预扣下降，失败退回时数字自然回升。
 		creditsText = `可用 ${translationPages.availableText} 页`;
-		if (translationPages.held > 0) creditsText += `，冻结 ${translationPages.heldText} 页`;
 	} else if (loggedIn && !meter.known) creditsText = "额度尚未读取";
 	else if (meter.known) {
 		creditsText = `剩余额度 ${meter.text}`;
@@ -3834,13 +3813,13 @@ function describeHubCreditsBadge(settings) {
 		if (!pages || !pages.known) {
 			return { mode: "pages", tone: "unknown", text: "翻译页 —", title: `翻译页尚未读取；${suffix}`, known: false };
 		}
-		const held = pages.held > 0 ? `，冻结 ${pages.heldText} 页` : "";
+		// T87-1-A：title 里同样不提冻结——徽章、账号面板、设置摘要对同一份余额只说一句话。
 		return {
 			mode: "pages",
 			tone: pages.tone,
 			text: `${pages.availableText} 页`,
 			short: `${pages.availableText} 页`,
-			title: `可用 ${pages.availableText} 页${held}；PDF 转换当前免费；${suffix}`,
+			title: `可用 ${pages.availableText} 页；PDF 转换当前免费；${suffix}`,
 			known: true,
 		};
 	}
@@ -15408,15 +15387,19 @@ class RectoAccountModal extends obsidian.Modal {
 		// 邮箱挪到底部与「退出登录」同排——它们本来就是一组。
 		// 会话过期的账号画成登录侧：登录侧才有「在浏览器中登录」这个唯一的出路，
 		// 画成已登录只会摆出一屏点了就 401 的按钮。凭据不在这里清（那归后端 401）。
-		if (view.loggedIn && !view.sessionExpired) this.renderSignedIn(contentEl, view);
+		const signedIn = view.loggedIn && !view.sessionExpired;
+		if (signedIn) this.renderSignedIn(contentEl, view);
 		else this.renderSignedOut(contentEl, view);
-		const support = contentEl.createEl("button", {
-			cls: "recto-account-support-link",
-			text: "问题反馈",
-		});
-		support.setAttr("type", "button");
-		if (this.busy) support.disabled = true;
-		support.addEventListener("click", () => this.plugin.openHelpFeedbackModal());
+		// T87-1-A：已登录侧「问题反馈」并进页脚左端；未登录侧没有页脚，保持底部原位。
+		if (!signedIn) {
+			const support = contentEl.createEl("button", {
+				cls: "recto-account-support-link",
+				text: "问题反馈",
+			});
+			support.setAttr("type", "button");
+			if (this.busy) support.disabled = true;
+			support.addEventListener("click", () => this.plugin.openHelpFeedbackModal());
+		}
 		this.syncBrowserLoginPolling(view);
 		this.syncCheckoutBillingPolling();
 	}
@@ -15675,51 +15658,13 @@ class RectoAccountModal extends obsidian.Modal {
 	}
 
 	renderSignedIn(container, view) {
-		const card = container.createDiv({ cls: "recto-account-card" });
-		const credits = card.createDiv({ cls: "recto-account-credits" });
-		if (view.creditPackMode) {
-			const pages = view.translationPages || { known: false, availableText: "—", heldText: "—", held: 0, tone: "unknown" };
-			const pageGrid = credits.createDiv({ cls: "recto-account-page-balance" });
-			const available = pageGrid.createDiv({ cls: "recto-account-page-balance-item" });
-			available.createSpan({ cls: "recto-account-meter-label", text: "可用翻译页" });
-			available.createEl("strong", { cls: `recto-account-page-value is-${pages.tone}`, text: `${pages.availableText} 页` });
-			const held = pageGrid.createDiv({ cls: "recto-account-page-balance-item" });
-			held.createSpan({ cls: "recto-account-meter-label", text: "冻结翻译页" });
-			held.createEl("strong", { cls: "recto-account-page-value", text: `${pages.heldText} 页` });
-			credits.createDiv({ cls: "recto-account-hint", text: "翻译按实际页数消耗；PDF 转换当前免费。余额长期有效，可叠加。" });
-			if (!pages.known) {
-				credits.createDiv({ cls: "recto-account-hint", text: "翻译页读取失败，重新打开面板会再试一次。" });
-			} else if (view.creditsEmpty) {
-				card.createDiv({ cls: "recto-account-hint", text: "翻译页已用完，购买后可继续翻译；PDF 转换当前免费。" });
-			}
-		} else {
-			// 旧会员模式继续诚实显示本期百分比；切换后不会进入这一支。
-			const meter = view.meter || { known: false, percent: 0, heldPercent: 0, text: "—", tone: "unknown" };
-			const top = credits.createDiv({ cls: "recto-account-meter-top" });
-			top.createSpan({ cls: "recto-account-meter-label", text: "剩余额度" });
-			top.createSpan({ cls: `recto-account-meter-value is-${meter.tone}`, text: meter.text });
-			const track = credits.createDiv({ cls: `recto-account-meter-track${meter.known ? "" : " is-unknown"}` });
-			const fill = track.createDiv({ cls: `recto-account-meter-fill is-${meter.tone}` });
-			fill.style.width = `${meter.known ? meter.percent : 0}%`;
-			if (meter.known && meter.heldPercent > 0) {
-				const held = track.createDiv({ cls: "recto-account-meter-held" });
-				held.style.width = `${Math.min(100 - meter.percent, meter.heldPercent)}%`;
-				held.style.insetInlineStart = `${meter.percent}%`;
-			}
-			if (view.membershipLine) {
-				credits.createDiv({
-					cls: `recto-account-membership${view.membership && !view.membership.active ? " is-lapsed" : ""}`,
-					text: view.membershipLine,
-				});
-			}
-			const footNote = meter.known
-				? (meter.heldPercent > 0 ? `另有 ${meter.heldPercent}% 正在处理中` : "")
-				: "额度读取失败，重新打开面板会再试一次。";
-			if (footNote) credits.createDiv({ cls: "recto-account-hint", text: footNote });
-			if (view.creditsEmpty) card.createDiv({ cls: "recto-account-hint", text: "额度已用完，购买后才能继续转换与翻译。" });
-		}
+		// T87-1-A：两个模式的余额区分开渲染——额度制不包卡片盒（整页去盒中盒），
+		// 返回的宿主承接其后的验证行与错误行。
+		const creditHost = view.creditPackMode
+			? this.renderCreditPackBalance(container, view)
+			: this.renderMembershipBalance(container, view);
 		if (!view.emailVerified) {
-			const row = card.createDiv({ cls: "recto-account-verify-row" });
+			const row = creditHost.createDiv({ cls: "recto-account-verify-row" });
 			row.createSpan({ cls: "recto-account-hint", text: "邮箱尚未验证。" });
 			this.createButton(row, "发送验证邮件", () => {
 				void this.runAction("发送验证邮件", async () => {
@@ -15727,12 +15672,16 @@ class RectoAccountModal extends obsidian.Modal {
 				}, "验证邮件已请求，请检查邮箱。");
 			});
 		}
-		this.renderActionError(card, view);
+		this.renderActionError(creditHost, view);
 		this.renderPlans(container, view);
-		// T82-E-R：页脚三栏——左邮箱、中邀请码、右退出；权益只挂复制按钮 title。
+		// T87-1-A：页脚一行——左「问题反馈」、中邀请码、右退出登录（原页脚与底部反馈行
+		// 两行并一行；邮箱显示六轮拍板删掉——用户自己知道账号，右格不再挤）；权益仍只挂复制按钮 title。
 		const footer = container.createDiv({ cls: "recto-account-footer" });
-		const meta = footer.createDiv({ cls: "recto-account-footer-meta" });
-		if (view.email) meta.createSpan({ cls: "recto-account-user", text: view.email });
+		const supportHost = footer.createDiv({ cls: "recto-account-footer-meta" });
+		const support = supportHost.createEl("button", { cls: "recto-account-support-link", text: "问题反馈" });
+		support.setAttr("type", "button");
+		if (this.busy) support.disabled = true;
+		support.addEventListener("click", () => this.plugin.openHelpFeedbackModal());
 		if (view.inviteCode) {
 			const invite = footer.createDiv({ cls: "recto-account-invite" });
 			invite.createSpan({ cls: "recto-account-invite-label", text: "邀请码" });
@@ -15760,6 +15709,58 @@ class RectoAccountModal extends obsidian.Modal {
 				this.loginNote = "";
 			}, "已退出 Recto 账号");
 		});
+	}
+
+	// T87-1-A：额度制余额直接排在页面上——「可用翻译页 ?」后面直接跟大数字
+	// （一行，2026-09-03 拍板），不包卡片盒、不加内边框。
+	// 冻结格已删除：预扣只体现在可用页数下降，失败退回时数字自然回升。
+	// 说明（卖点 + 计价规则）全部收进标签旁「?」的悬浮（三轮拍板），页面不留说明行。
+	renderCreditPackBalance(container, view) {
+		const credits = container.createDiv({ cls: "recto-account-credits" });
+		const pages = view.translationPages || { known: false, availableText: "—", tone: "unknown" };
+		const available = credits.createDiv({ cls: "recto-account-page-balance-item" });
+		const label = available.createDiv({ cls: "recto-account-page-label" });
+		label.createSpan({ cls: "recto-account-meter-label", text: "可用翻译页" });
+		const help = label.createSpan({ cls: "recto-account-pack-help rc-icon" });
+		setChromeIcon(help, "circle-help");
+		help.setAttr("title", "一次购买，长期有效，可叠加。翻译按实际页数消耗；约几篇按普通论文估算；PDF 转换当前免费。");
+		available.createEl("strong", { cls: `recto-account-page-value is-${pages.tone}`, text: `${pages.availableText} 页` });
+		if (!pages.known) {
+			credits.createDiv({ cls: "recto-account-hint", text: "翻译页读取失败，重新打开面板会再试一次。" });
+		} else if (view.creditsEmpty) {
+			credits.createDiv({ cls: "recto-account-hint", text: "翻译页已用完，购买后可继续翻译；PDF 转换当前免费。" });
+		}
+		return credits;
+	}
+
+	// 旧会员模式继续诚实显示本期百分比；切换后不会进入这一支。
+	renderMembershipBalance(container, view) {
+		const card = container.createDiv({ cls: "recto-account-card" });
+		const credits = card.createDiv({ cls: "recto-account-credits" });
+		const meter = view.meter || { known: false, percent: 0, heldPercent: 0, text: "—", tone: "unknown" };
+		const top = credits.createDiv({ cls: "recto-account-meter-top" });
+		top.createSpan({ cls: "recto-account-meter-label", text: "剩余额度" });
+		top.createSpan({ cls: `recto-account-meter-value is-${meter.tone}`, text: meter.text });
+		const track = credits.createDiv({ cls: `recto-account-meter-track${meter.known ? "" : " is-unknown"}` });
+		const fill = track.createDiv({ cls: `recto-account-meter-fill is-${meter.tone}` });
+		fill.style.width = `${meter.known ? meter.percent : 0}%`;
+		if (meter.known && meter.heldPercent > 0) {
+			const held = track.createDiv({ cls: "recto-account-meter-held" });
+			held.style.width = `${Math.min(100 - meter.percent, meter.heldPercent)}%`;
+			held.style.insetInlineStart = `${meter.percent}%`;
+		}
+		if (view.membershipLine) {
+			credits.createDiv({
+				cls: `recto-account-membership${view.membership && !view.membership.active ? " is-lapsed" : ""}`,
+				text: view.membershipLine,
+			});
+		}
+		const footNote = meter.known
+			? (meter.heldPercent > 0 ? `另有 ${meter.heldPercent}% 正在处理中` : "")
+			: "额度读取失败，重新打开面板会再试一次。";
+		if (footNote) credits.createDiv({ cls: "recto-account-hint", text: footNote });
+		if (view.creditsEmpty) card.createDiv({ cls: "recto-account-hint", text: "额度已用完，购买后才能继续转换与翻译。" });
+		return card;
 	}
 
 	// T82-A-A：三档横排（Basic / Pro / Max）+ 月付年付切换。选中只是本地状态，
@@ -15799,13 +15800,18 @@ class RectoAccountModal extends obsidian.Modal {
 		}
 
 		// 目录里真有年付档才给切换器——只有免费档时摆一个月/年开关是假的。
-		if (view.creditPackMode) {
-			box.createDiv({
-				cls: "recto-account-hint recto-account-pack-note",
-				text: "一次购买，长期有效，不按月清零。约几篇按普通论文估算，实际按翻译页数消耗。",
-			});
-		} else if (view.plans.some(plan => resolveBackendPlanCycle(plan.code) === "yearly")) {
+		// 额度包的卖点与计价规则全部收进余额标签旁的「?」悬浮（T87-1-A），购买区直接是卡片。
+		if (!view.creditPackMode && view.plans.some(plan => resolveBackendPlanCycle(plan.code) === "yearly")) {
 			this.renderPlanCycleSwitch(box, view);
+		}
+
+		// 额度包走精简卡片（T87-1-A 方案 B）：复用会员网格的等宽三列与窄屏纵排规则，
+		// 卡内没有图标、kicker、特性列表与分割线。
+		if (view.creditPackMode) {
+			const grid = box.createDiv({ cls: "recto-account-plans" });
+			grid.style.gridTemplateColumns = `repeat(${Math.min(cards.length, 3)}, minmax(0, 1fr))`;
+			for (const card of cards) this.renderPackCard(grid, card);
+			return;
 		}
 
 		const grid = box.createDiv({ cls: "recto-account-plans" });
@@ -15852,23 +15858,7 @@ class RectoAccountModal extends obsidian.Modal {
 		if (action.disabled || this.busy) {
 			cta.disabled = true;
 		} else {
-			// T82-A：支付页地址由后端现给（它自己知道账号网页域名），插件不再拼 URL、
-			// 也不再缓存域名。地址的 fragment 里带一次性认领密钥，打开即用完，绝不落盘。
-			// 续期与换档走的是同一个下单接口，语义差异（顺延 / 折算）由后端按档位判定。
-			cta.addEventListener("click", () => {
-				void this.runAction(action.label, async () => {
-					this.plugin.settings.backendSelectedPlanCode = card.code;
-					const url = await this.plugin.startBackendCheckout(card.code, { timeout: 30000 });
-					this.plugin.openExternalUrl(url);
-					// 不轮询订单（T82-A 决策 2）：认领密钥在网页 fragment 里，插件从不持有。
-					// 付完款网页自己会显示「已到账」；插件这边反复读 /api/v1/me，
-					// 会员或额度一变就停表重画——不必再关开一次面板。
-					this.checkoutSnapshot = snapshotCheckoutBilling(this.plugin.settings);
-					this.checkoutStarted = true;
-					this.checkoutPaid = false;
-					this.checkoutAttempt = 0;
-				}, "支付页已在浏览器打开，请在浏览器里完成付款。");
-			});
+			cta.addEventListener("click", () => { void this.startPlanCheckout(card, action); });
 		}
 
 		cell.createDiv({ cls: "recto-account-plan-rule" });
@@ -15879,6 +15869,50 @@ class RectoAccountModal extends obsidian.Modal {
 			: "按平均页数折算的估计值。转换按论文页数计费，翻译按字符量另计，实际篇数会随论文长短浮动。");
 		const list = cell.createEl("ul", { cls: "recto-account-plan-feats" });
 		for (const feature of card.features) list.createEl("li", { text: feature });
+	}
+
+	// T82-A：支付页地址由后端现给（它自己知道账号网页域名），插件不再拼 URL、
+	// 也不再缓存域名。地址的 fragment 里带一次性认领密钥，打开即用完，绝不落盘。
+	// 续期与换档走的是同一个下单接口，语义差异（顺延 / 折算）由后端按档位判定。
+	// 不轮询订单（T82-A 决策 2）：认领密钥在网页 fragment 里，插件从不持有。
+	// 付完款网页自己会显示「已到账」；插件这边反复读 /api/v1/me，
+	// 会员或额度一变就停表重画——不必再关开一次面板。
+	// T87-1-A 起会员卡片与额度包行共用这一个动作。
+	startPlanCheckout(card, action) {
+		return this.runAction(action.label, async () => {
+			this.plugin.settings.backendSelectedPlanCode = card.code;
+			const url = await this.plugin.startBackendCheckout(card.code, { timeout: 30000 });
+			this.plugin.openExternalUrl(url);
+			this.checkoutSnapshot = snapshotCheckoutBilling(this.plugin.settings);
+			this.checkoutStarted = true;
+			this.checkoutPaid = false;
+			this.checkoutAttempt = 0;
+		}, "支付页已在浏览器打开，请在浏览器里完成付款。");
+	}
+
+	// T87-1-A 方案 B：一张额度包卡片——页数、价格、「约 N 篇」、按钮，仅此四件；推荐档带
+	// 角标与品牌色描边。请求中的那张卡按钮自己变「购买…」——runAction 的标签仍用
+	// describeBackendPlanAction 的唯一文案（「购买 400 页」）区分是哪张卡在请求。
+	renderPackCard(grid, card) {
+		const action = describeBackendPlanAction(card, null);
+		const cell = grid.createDiv({ cls: `recto-account-pack-card${card.featured ? " is-featured" : ""}` });
+		if (card.badge) cell.createDiv({ cls: "recto-account-plan-badge", text: card.badge });
+		cell.createDiv({ cls: "recto-account-pack-pages", text: card.label });
+		cell.createSpan({ cls: "recto-account-pack-price", text: card.price });
+		cell.createSpan({ cls: "recto-account-pack-papers", text: card.papersText });
+		const pending = this.pendingLabel === action.label;
+		const cta = cell.createEl("button", {
+			cls: `recto-account-pack-cta${action.disabled ? "" : " mod-cta"}`,
+			text: pending ? "购买…" : "购买",
+		});
+		cta.setAttr("type", "button");
+		if (pending) cta.addClass("is-pending");
+		if (action.hint) cta.setAttr("title", action.hint);
+		if (action.disabled || this.busy) {
+			cta.disabled = true;
+		} else {
+			cta.addEventListener("click", () => { void this.startPlanCheckout(card, action); });
+		}
 	}
 
 	// 胶囊分段控件：选中的一段浮起来，年付那段挂一枚由真实价差算出的省钱徽章。
