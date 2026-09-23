@@ -338,6 +338,7 @@ const DEFAULT_SETTINGS = {
 	readerWidthPx: 760,
 	readerLineHeight: 1.75,
 	readerFontScale: 1,
+	dualPaneHighlight: true,
 	pdfCompareHighlight: true,
 	// T83-O：Hub 上次看到哪（分类 / 筛选 / 排序），下次打开照旧。纯 UI 状态，见 normalizeHubViewState。
 	hubViewState: { ...HUB_VIEW_STATE_DEFAULT },
@@ -584,6 +585,128 @@ function createReaderCaretLayerExtension() {
 			}
 			return markers;
 		},
+	});
+}
+
+function matchesReaderSelectionRect(rect, style) {
+	return ["left", "top", "width", "height"].every(key => Math.abs(parseFloat(style[key]) - rect[key]) < 0.5);
+}
+
+function isReaderSelectionColorVisible(color) {
+	const value = String(color || "").trim().toLowerCase();
+	if (!value || value === "transparent") return false;
+	const alpha = value.match(/\/\s*([\d.]+)(%)?\s*\)$/) || value.match(/^rgba\([^)]*,\s*([\d.]+)(%)?\s*\)$/);
+	return !alpha || Number(alpha[1]) > 0;
+}
+
+// T87-1-E: keep the browser's active selection when YOLO switches to its persisted
+// rectangles on pointerup. Only matching plain rectangles are hidden; pinned
+// ranges elsewhere and pending/updated/rewrite feedback remain owned by YOLO.
+function createReaderYoloSelectionExtension() {
+	const { ViewPlugin, RectangleMarker } = require("@codemirror/view");
+	const { EditorSelection } = require("@codemirror/state");
+	return ViewPlugin.fromClass(class {
+		constructor(view) {
+			this.view = view;
+			this.hidden = new Set();
+			this.queued = false;
+			this.destroyed = false;
+			this.schedule = () => {
+				if (this.queued || this.destroyed) return;
+				this.queued = true;
+				queueMicrotask(() => {
+					this.queued = false;
+					if (!this.destroyed) this.sync();
+				});
+			};
+			const doc = view.dom.ownerDocument;
+			this.observer = new doc.defaultView.MutationObserver(this.schedule);
+			this.layerObserver = new doc.defaultView.MutationObserver(this.schedule);
+			// The marker attributes written below are deliberately not observed.
+			this.observer.observe(view.dom, { attributes: true, attributeFilter: ["class"] });
+			this.observer.observe(view.scrollDOM, { childList: true });
+			this.themeHost = view.dom.closest(".workspace-leaf-content");
+			if (this.themeHost) this.observer.observe(this.themeHost, { attributes: true, attributeFilter: ["class", "style", "data-rc-theme"] });
+			doc.addEventListener("selectionchange", this.schedule);
+			this.schedule();
+		}
+		update(update) {
+			if (update.selectionSet || update.docChanged || update.geometryChanged || update.viewportChanged || update.focusChanged) this.schedule();
+		}
+		sync() {
+			const view = this.view, doc = view.dom.ownerDocument;
+			const layer = view.scrollDOM.querySelector(":scope > .yolo-selection-highlight-layer");
+			const rewriteLayer = view.scrollDOM.querySelector(":scope > .yolo-selection-rewrite-layer");
+			if (layer !== this.layer || rewriteLayer !== this.rewriteLayer) {
+				this.layerObserver.disconnect();
+				if (layer) this.layerObserver.observe(layer, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class"] });
+				if (rewriteLayer) this.layerObserver.observe(rewriteLayer, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+				this.layer = layer;
+				this.rewriteLayer = rewriteLayer;
+			}
+			const range = view.state.selection.main;
+			const native = doc.getSelection();
+			const nativeRange = native && native.rangeCount === 1 && !native.isCollapsed ? native.getRangeAt(0) : null;
+			const nativeNode = nativeRange && nativeRange.commonAncestorContainer;
+			const nativeElement = nativeNode && (nativeNode.nodeType === 1 ? nativeNode : nativeNode.parentElement);
+			let active = Boolean(layer && view.hasFocus && !range.empty && view.state.selection.ranges.length === 1 &&
+				view.dom.closest(`.${READER_THEME_CLASS}`) && !doc.body.classList.contains("is-mobile") &&
+				!view.dom.closest(".cm-table-widget") && nativeElement && nativeElement.closest(".cm-editor") === view.dom &&
+				view.contentDOM.contains(nativeNode));
+			const hide = new Set();
+			if (active) {
+				try {
+					// A nested table/input or a DOM-only selection must keep its own renderer.
+					active = view.posAtDOM(nativeRange.startContainer, nativeRange.startOffset) === range.from &&
+						view.posAtDOM(nativeRange.endContainer, nativeRange.endOffset) === range.to;
+					const markers = Array.from(layer.children);
+					if (markers.some(el => el.matches(".yolo-selection-persisted-layer-pending, .yolo-selection-persisted-layer-updated")) ||
+						view.dom.querySelector(".yolo-selection-rewrite-outline, .yolo-selection-rewrite-candidate-overlay")) active = false;
+					if (active) {
+						const rects = [];
+						const from = Math.max(range.from, view.viewport.from), to = Math.min(range.to, view.viewport.to);
+						if (from < to) for (let number = view.state.doc.lineAt(from).number; number <= view.state.doc.lineAt(to).number; number++) {
+							const line = view.state.doc.line(number), start = Math.max(from, line.from), end = Math.min(to, line.to);
+							if (start < end) rects.push(...RectangleMarker.forRange(view, "", EditorSelection.range(start, end)));
+						}
+						for (const marker of markers) {
+							if (!marker.classList.contains("yolo-selection-persisted-layer")) continue;
+							if (rects.some(rect => matchesReaderSelectionRect(rect, marker.style))) hide.add(marker);
+						}
+					}
+				} catch (_) {
+					// A stale/detached DOM range must never interfere with native/plugin UI.
+					active = false;
+					hide.clear();
+				}
+			}
+			// Restore native paint first, then verify the effective pseudo style on
+			// selected text before hiding anything. Obsidian wraps contentDOM in
+			// cm-sizer/cm-contentContainer; stale CSS or a stronger plugin rule must
+			// fall back to YOLO rather than leave BOTH renderers invisible.
+			view.dom.toggleAttribute("data-rc-native-yolo-selection", active);
+			if (active) {
+				try {
+					const selectedElement = nativeRange.startContainer.nodeType === 1 ? nativeRange.startContainer : nativeRange.startContainer.parentElement;
+					active = isReaderSelectionColorVisible(doc.defaultView.getComputedStyle(selectedElement, "::selection").backgroundColor);
+				} catch (_) { active = false; }
+				if (!active) hide.clear();
+			}
+			// These paint-only changes settle before the browser's next frame.
+			for (const marker of this.hidden) if (!hide.has(marker)) marker.removeAttribute("data-rc-selection-duplicate");
+			for (const marker of hide) marker.setAttribute("data-rc-selection-duplicate", "");
+			this.hidden = hide;
+			view.dom.toggleAttribute("data-rc-native-yolo-selection", active);
+		}
+		destroy() {
+			this.destroyed = true;
+			this.observer.disconnect();
+			this.layerObserver.disconnect();
+			this.view.dom.ownerDocument.removeEventListener("selectionchange", this.schedule);
+			this.view.dom.removeAttribute("data-rc-native-yolo-selection");
+			for (const marker of this.hidden) marker.removeAttribute("data-rc-selection-duplicate");
+			this.hidden.clear();
+		}
 	});
 }
 
@@ -6850,7 +6973,9 @@ class RectoDualPaneSession {
 		const pair = lookupRectoAlignmentByOrdinal(this.map, ordinal);
 		if (!pair) return;
 		this.claimDriver(side);
-		this.applyHighlight(side === "source" ? "translation" : "source", pair);
+		if (this.plugin.settings.dualPaneHighlight !== false) {
+			this.applyHighlight(side === "source" ? "translation" : "source", pair);
+		}
 		this.queueSync(side);
 	}
 
@@ -7465,6 +7590,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.registerEvent(this.app.workspace.on("file-open", () => this.applyReaderTheme()));
 		this.registerEvent(this.app.workspace.on("layout-change", () => this.applyReaderTheme()));
 		this.registerEditorExtension(createReaderCaretLayerExtension());
+		this.registerEditorExtension(createReaderYoloSelectionExtension());
 		this.registerEditorExtension(createRectoAnchorExtension());
 		this.registerEditorExtension(createRectoUnknownGlyphExtension());
 		this.registerReadingStatusClickHandler();
@@ -17236,6 +17362,13 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				.onChange(async value => { s.autoCreateNoteOutline = value; await this.plugin.save(); }));
 
 		container.createEl("h4", { text: "阅读" });
+		new obsidian.Setting(container).setName("点击段落时在另一栏标出对应段落")
+			.setDesc("原文与译文双栏对照时，对侧为阅读视图才显示高亮。关掉后仍会联动定位和同步滚动。")
+			.addToggle(t => t.setValue(s.dualPaneHighlight !== false).onChange(async value => {
+				s.dualPaneHighlight = value;
+				if (!value && this.plugin.dualPaneSession) this.plugin.dualPaneSession.clearHighlight();
+				await this.plugin.save();
+			}));
 		// 名字原来写的是「跳页时在 PDF 上叠高亮框」，与实际不符：这个开关管的是**每次点击**都画的
 		// 那个框，而点击默认只高亮、不跳页（轮显的 phase 0），所以「跳页时」三个字是错的。
 		new obsidian.Setting(container).setName("点击段落时在 PDF 上标出对应位置")
@@ -17297,6 +17430,7 @@ if (process.env.NODE_ENV === "test") {
 		READER_THEMES,
 		RIBBON_BUTTONS,
 		RectoSettingTab,
+		RectoDualPaneSession,
 		RectoDecisionModal,
 		RectoOnboardingModal,
 		RectoHelpFeedbackModal,
@@ -17432,6 +17566,8 @@ if (process.env.NODE_ENV === "test") {
 		buildRectoAnchorRepairs,
 		createRectoAnchorExtension,
 		createReaderCaretLayerExtension,
+		matchesReaderSelectionRect,
+		isReaderSelectionColorVisible,
 		createSanitizedDistributionZip,
 		extractMarkdownHeadingOutline,
 		extractRectoTranslatedTitle,

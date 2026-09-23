@@ -1377,6 +1377,14 @@ label.recto-sync-preview-row {
 /* 阅读面 accent bridge：Obsidian 1.13 的 tag、任务框、折叠、嵌入和表格控件都消费
    这些局部变量。只挂在 preview / Live Preview 根上，不改 body，也不覆盖 Callout、公式和警告语义色。 */
 .recto-reader :is(.markdown-preview-view, .markdown-source-view.mod-cm6) {
+	/* 表格字号原本固定读取宿主正文大小，缩放正文时两种模式的单元格都没跟上。 */
+	--table-text-size: calc(var(--font-text-size, 16px) * var(--rc-font-scale) * var(--rc-theme-font-scale, 1));
+	--table-header-size: var(--table-text-size);
+	--table-line-height: var(--rc-line-height);
+	--table-header-border-color: var(--rc-rule);
+	/* Callout 的语义色仍由宿主决定；只撤掉整个盒子的混合模式。
+	   浅色宿主的 darken 会把夜读主题的正文混成近黑，反向搭配的 lighten 也会洗白。 */
+	--callout-blend-mode: normal;
 	--text-faint: var(--rc-faint);
 	--text-accent: var(--rc-accent-ink);
 	--text-accent-hover: var(--rc-accent-ink-hover);
@@ -1434,6 +1442,18 @@ label.recto-sync-preview-row {
 	color: var(--rc-accent-ink);
 }
 
+/* T87-1-C：保留 Callout 类型色、底色与图标；标题文字向当前阅读前景色靠拢。
+   只取消 blend 还不够：浅色宿主的蓝色放到夜读底色上仅约 3:1。
+   在各个 callout 上计算，确保嵌套/自定义类型仍用自己的 --callout-color。 */
+.recto-reader :is(.markdown-preview-view, .markdown-source-view.mod-cm6) .callout {
+	--callout-title-color: color-mix(in srgb, var(--callout-color) 40%, var(--rc-heading));
+}
+
+/* 宿主直接给 th 设紧凑行高，只覆盖 table 的变量不会传到表头。 */
+.recto-reader :is(.markdown-preview-view, .markdown-source-view.mod-cm6) :is(th, td) {
+	line-height: var(--rc-line-height);
+}
+
 .recto-reader .markdown-preview-view :is(.footnote-link, .footnote-backref):hover {
 	color: var(--rc-accent-ink-hover);
 }
@@ -1485,6 +1505,19 @@ label.recto-sync-preview-row {
 
 .recto-reader .markdown-source-view.mod-cm6 .cm-focused .recto-caret {
 	display: block;
+}
+
+/* T87-1-E: YOLO hides native selection on pointerup. While the editor still owns
+   that selection, retain its original geometry and hide only matching plain
+   YOLO rectangles. The extension removes both attributes on blur/AI feedback.
+   No line-box changes and no overrides of YOLO's controls or selection state. */
+.recto-reader .markdown-source-view.mod-cm6 .cm-editor.yolo-hide-native-selection[data-rc-native-yolo-selection] > .cm-scroller .cm-content::selection,
+.recto-reader .markdown-source-view.mod-cm6 .cm-editor.yolo-hide-native-selection[data-rc-native-yolo-selection] > .cm-scroller .cm-content ::selection {
+	background-color: var(--text-selection) !important;
+}
+
+.recto-reader .markdown-source-view.mod-cm6 .cm-editor[data-rc-native-yolo-selection] > .cm-scroller > .yolo-selection-highlight-layer > [data-rc-selection-duplicate] {
+	visibility: hidden;
 }
 
 /* 表格单元格是嵌套 CM：自绘 caret 在空单元格上经常量不到几何，且主题字体度量差异会放大
@@ -1567,24 +1600,9 @@ label.recto-sync-preview-row {
 	text-wrap: pretty;
 }
 
-.recto-reader .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-1 {
-	padding-top: 0.4em;
-	padding-bottom: 0.9em;
-	line-height: 1.28;
-}
-
-.recto-reader .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-2 {
-	padding-top: 1.9em;
-	padding-bottom: 0.65em;
-	border-bottom: var(--rc-h2-border, none);
-	line-height: 1.34;
-}
-
-.recto-reader .markdown-source-view.mod-cm6.is-live-preview :is(.HyperMD-header-3, .HyperMD-header-4, .HyperMD-header-5, .HyperMD-header-6) {
-	padding-top: 1.45em;
-	padding-bottom: 0.45em;
-	line-height: 1.38;
-}
+/* T87-1-B：标题几何交回宿主（含源码态、连续标题与 inline-title）。
+   Obsidian 1.13.7 app.css 已区分段后标题、连续标题、CM6 源码空行；额外的 em
+   padding / margin 会按标题字号放大并叠加真实空行，不能用同一套数值覆盖两种模式。 */
 
 @supports (text-autospace: normal) {
 	.recto-reader .markdown-preview-view,
@@ -1605,27 +1623,6 @@ label.recto-sync-preview-row {
 	color: var(--rc-heading, inherit);
 	letter-spacing: 0;
 	text-wrap: pretty;
-}
-
-.recto-reader .markdown-preview-view h1,
-.recto-reader .markdown-preview-view .inline-title {
-	margin-top: 0.4em;
-	margin-bottom: 0.9em;
-	line-height: 1.28;
-}
-
-.recto-reader .markdown-preview-view h2 {
-	margin-top: 1.9em;
-	margin-bottom: 0.65em;
-	padding-bottom: 0.25em;
-	border-bottom: var(--rc-h2-border, none);
-	line-height: 1.34;
-}
-
-.recto-reader .markdown-preview-view :is(h3, h4, h5, h6) {
-	margin-top: 1.45em;
-	margin-bottom: 0.45em;
-	line-height: 1.38;
 }
 
 .recto-reader .markdown-preview-view p {
@@ -1663,14 +1660,8 @@ label.recto-sync-preview-row {
 	max-width: 100%;
 }
 
-.recto-reader .markdown-preview-view :is(ul, ol) {
-	margin-block: 0.75em 1em;
-	padding-inline-start: 1.55em;
-}
-
-.recto-reader .markdown-preview-view li + li {
-	margin-top: 0.24em;
-}
+/* 列表缩进与块间距使用宿主规则：它已在 li 上留出 marker 空间，并将嵌套列表
+   的 margin 归零。再给 ul/ol 加 padding 与 margin 会每层重复缩进、撑开子列表。 */
 
 .recto-reader .markdown-preview-view a {
 	overflow-wrap: anywhere;
@@ -1696,9 +1687,14 @@ label.recto-sync-preview-row {
 }
 
 .recto-reader .markdown-preview-view img {
-	display: block;
 	max-width: 100%;
 	height: auto;
+}
+
+/* 仅给 Obsidian 图片嵌入保留图块排版；普通 HTML img（含链接内图标）按宿主行内显示。
+   不能用 img:only-child 判独立图片：它会忽略相邻文本节点，把句中小图标也当作整张插图。 */
+.recto-reader .markdown-preview-view .image-embed img {
+	display: block;
 	margin: 1.2em auto;
 }
 
@@ -1767,7 +1763,6 @@ label.recto-sync-preview-row {
 	--rc-math-bracket-2: #397626;
 	--rc-math-delimiter: #4b4f52;
 	--rc-font-body: Georgia, "Source Serif 4", "Times New Roman", "Noto Serif SC", "Source Han Serif SC", SimSun, serif;
-	--rc-h2-border: 1px solid #e5e0d3;
 }
 
 .recto-reader[data-rc-theme="latex"] {
@@ -1840,7 +1835,6 @@ label.recto-sync-preview-row {
 	--rc-math-bracket-2: #7cdd6b;
 	--rc-math-delimiter: #e4e0d8;
 	--rc-font-body: Georgia, "Times New Roman", "Noto Serif SC", "Source Han Serif SC", SimSun, serif;
-	--rc-h2-border: 1px solid #3a3a40;
 }
 
 .recto-reader-preview {
