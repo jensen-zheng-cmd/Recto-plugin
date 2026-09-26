@@ -8,6 +8,1703 @@ const http = require("http");
 const crypto = require("crypto");
 const zlib = require("zlib");
 
+const RECTO_UI_LANGUAGES = Object.freeze(["zh-CN", "en"]);
+const RECTO_UI_LANGUAGE_NAMES = Object.freeze({
+	"zh-CN": "简体中文", en: "English",
+});
+const RECTO_UI_MESSAGES = Object.freeze({
+	"zh-CN": {
+		"command.openHub": "打开 Recto 论文库",
+		"command.openAccount": "Recto 账号与额度",
+		"command.repairPdfs": "修复：重新复制所有 PDF 原文件",
+		"command.importZotero": "一键导入 Zotero 论文库",
+		"command.convertExternalPdf": "转换库外 PDF",
+		"command.translateMarkdown": "翻译当前 Markdown 文件",
+		"command.convertAndTranslateExternalPdf": "转换并翻译库外 PDF",
+		"command.syncZotero": "同步 Zotero 数据",
+		"command.recoverPending": "恢复未完成的云端处理",
+		"command.cancelQueued": "取消未开始的任务",
+		"command.cycleReaderTheme": "切换论文阅读主题",
+		"command.toggleDualPane": "对照阅读：原文/译文双栏",
+		"command.togglePdfCompare": "PDF 对照阅读：原文 PDF/译文",
+		"settings.interface": "界面",
+		"settings.uiLanguage": "界面语言",
+		"settings.uiLanguageDesc": "默认跟随 Obsidian。手动选择只改变 Recto 界面，不改变论文处理语言。",
+		"settings.followObsidian": "跟随 Obsidian",
+		"settings.intro": "登录账号、指好 Zotero 文件夹，然后把论文导入论文库，就可以开始转换与翻译。",
+		"settings.getStarted": "开始使用",
+		"settings.readingExperience": "阅读体验",
+		"settings.readingDesc": "切换立即生效，不修改任何文件内容。",
+		"settings.processingPreferences": "处理偏好",
+		"settings.processingDesc": "改动在下一次转换或翻译时生效。",
+		"settings.sidebarButtons": "侧边栏按钮",
+		"settings.externalFiles": "Zotero 之外的文件",
+		"settings.externalFilesDesc": "转换不在论文库里的 PDF，或翻译任意 Markdown。",
+		"settings.advanced": "高级设置",
+		"settings.advancedDesc": "界面语言、PDF 转换优化、本地笔记、对照阅读与插件更新",
+		"settings.feedback": "问题反馈",
+		"settings.pendingZotero": "当前有 {count} 项需要您选择：多 PDF 条目或 Zotero 里已删除的论文。自动同步不会删文件。",
+		"settings.account": "Recto 账号",
+		"settings.loggedIn": "已登录：{email}{verification}；{credits}。",
+		"settings.emailUnverified": "（邮箱未验证）",
+		"settings.openAccount": "打开账号面板",
+		"settings.signInOrRegister": "登录 / 注册",
+		"settings.preferenceSyncFailed": "处理偏好同步未完成，请稍后重试。",
+		"settings.writeAnchors": "写入对照锚点",
+		"settings.writeAnchorsDesc": "开启后会往您的原文里写入隐藏锚点，翻译完就能双栏对照。默认关：不改您自己写的文件。",
+		"settings.outputLocation": "输出位置",
+		"settings.outputLocationDesc": "产物写进所选目录下的同名子文件夹，必须在库内。固定目录也是「PDF 所在目录」的回退位置。",
+		"settings.currentFolder": "当前目录：",
+		"settings.chooseFolder": "选择文件夹",
+		"settings.chooseOutputFolder": "选择库外 PDF 的输出目录（必须在库内）",
+		"settings.outputOutsideVault": "输出目录必须在当前库里，否则正文里的图片会全部失效。",
+		"settings.outputAtVaultRoot": "请选择库里的一个子文件夹，不要直接用库根目录。",
+		"settings.keepPdf": "保留 PDF 副本与结构信息",
+		"settings.keepPdfDesc": "PDF 对照阅读需要它们；关掉时只有正文、译文与图片。",
+		"settings.translationLanguage": "译文语言",
+		"settings.summaryChinese": "摘要目前固定输出中文。",
+		"settings.chinese": "中文",
+		"settings.generateSummary": "转换后生成摘要",
+		"settings.generateSummaryDesc": "关掉后只出正文，不生成摘要文件；正文、译文与对照阅读都不受影响。",
+		"settings.summaryDetail": "摘要详略",
+		"settings.brief": "简略",
+		"settings.standard": "标准",
+		"settings.detailed": "详细",
+		"settings.zoteroSource": "Zotero 源文件夹",
+		"settings.libraryFolder": "论文库文件夹",
+		"settings.libraryPlaceholder": "论文库",
+		"settings.libraryInvalid": "论文库文件夹无效：{error}",
+		"settings.chooseVaultFolder": "请选择 Vault 内的文件夹。",
+		"settings.libraryMoved": "论文库文件夹已改为「{folder}」。旧目录不会自动改名，里面的论文仍在原处。",
+		"settings.importLibrary": "导入 Zotero 论文库",
+		"settings.autoSyncOn": "已开启自动同步：新的单 PDF 条目会静默入库；多 PDF 与已删除条目只记待确认，不自动删文件。点「立即检查」可立刻强制同步。",
+		"settings.autoSyncOff": "首次点「一键导入」并完成后才会开启自动同步。导入只在本地建文件夹与复制 PDF，不转换、不扣额度。",
+		"settings.checkNow": "立即检查",
+		"settings.checking": "检查中…",
+		"settings.importNow": "一键导入",
+		"settings.runtimeUnsupported": "当前运行时不支持",
+		"settings.importing": "导入中…",
+		"settings.pendingChanges": "待确认的 Zotero 变化",
+		"settings.resolvePending": "处理待确认",
+		"settings.processing": "处理中…",
+		"settings.openLibrary": "打开论文库",
+		"settings.libraryActionsDesc": "转换、翻译与对照阅读都在这里完成。",
+		"settings.open": "打开",
+		"settings.replayOnboarding": "再看一次引导",
+		"settings.zoteroDetectedDesc": "已自动检测并填入 Zotero 数据目录；云端附件未下载时，转换会显示缺失。",
+		"settings.zoteroMissingDesc": "未自动检测到 Zotero 数据目录。请手动选择 Zotero 数据目录；云端附件未下载时，转换会显示缺失。",
+		"settings.zoteroFindHint": "查找方法：在 Zotero 中右键任意 PDF 附件，打开文件所在位置后返回上一级，选择名为 storage 的文件夹。",
+		"settings.currentDataFolder": "当前数据目录：",
+		"settings.chooseZoteroFolder": "选择 Zotero 数据目录（可直接选择名为 storage 的文件夹）",
+		"settings.detected": "已检测",
+		"settings.zoteroDetected": "已检测到 Zotero 数据目录",
+		"settings.folderRenameHint": "在 Obsidian 文件浏览器里给这个文件夹改名或移动即可，这里会自动同步（正文里的链接也由 Obsidian 一并更新）。",
+		"settings.vaultRelativePath": "Vault 内的相对路径。",
+		"settings.zoteroInaccessible": "Zotero 数据目录不可访问",
+		"settings.changeZoteroLibrary": "更换 Zotero 论文库",
+		"settings.zoteroSourceChanged": "检测到 Zotero 源文件夹已改变。",
+		"settings.zoteroChangeWarning": "如果这是另一个 Zotero 库，建议清空旧论文记录，避免状态混淆。",
+		"settings.cancelChange": "取消更换",
+		"settings.keepRecords": "保留现有记录",
+		"settings.clearRecords": "清空记录并更换",
+		"settings.readerExampleTitle": "3.2 分布式一致性",
+		"settings.readerExampleFirst": "交替方向乘子法（ADMM）把全局最优潮流拆成区域子问题，只交换边界变量即可",
+		"settings.readerExampleLink": "迭代收敛",
+		"settings.readerExampleSecond": "自适应罚参数可将迭代次数降低约三成，且对初值不敏感。",
+		"settings.theme": "主题",
+		"settings.themeDesc": "安装思源宋体、霞鹜文楷等字体可获得更好效果，缺失时自动回退系统字体。",
+		"settings.textWidth": "正文栏宽",
+		"settings.lineHeight": "行高",
+		"settings.fontScale": "字号缩放",
+		"settings.scope": "作用范围",
+		"settings.libraryOnly": "仅论文库",
+		"settings.wholeVault": "整个库",
+		"settings.showSidebarButtons": "显示在左侧边栏",
+		"settings.ribbonHub": "论文库",
+		"settings.ribbonDualPane": "双栏对照",
+		"settings.ribbonPdfCompare": "PDF 对照",
+		"settings.ribbonExternalPdf": "库外 PDF",
+		"settings.conversion": "转换",
+		"settings.pdfCleanup": "PDF 转换后处理",
+		"settings.pdfCleanupDesc": "开启后会进一步清理页眉页脚与伪标题、粘合跨页断句，并修正常见的上下标和词内空格问题。关掉后仅保留基础处理，适合排错与效果对比。",
+		"settings.autoNote": "自动创建笔记框架",
+		"settings.autoNoteDesc": "论文处理完成后创建“note-论文名.md”；已有文件不会覆盖。",
+		"settings.reading": "阅读",
+		"settings.dualPaneHighlight": "点击段落时在另一栏标出对应段落",
+		"settings.dualPaneHighlightDesc": "原文与译文双栏对照时，对侧为阅读视图才显示高亮。关掉后仍会联动定位和同步滚动。",
+		"settings.pdfHighlight": "点击段落时在 PDF 上标出对应位置",
+		"settings.pdfHighlightDesc": "关掉后仍然会跳页定位，只是不显示高亮框。",
+		"settings.updates": "更新",
+		"settings.autoUpdate": "自动更新 Recto",
+		"settings.autoUpdateDesc": "开启后，启动时发现新版本会自动下载并当场生效，不再询问；关闭则只提醒一次。更新包始终只从 Recto 的公开发布页获取，与社区商店同源。",
+		"settings.checkUpdates": "检查更新",
+		"settings.externalMode.source": "PDF 所在目录",
+		"settings.externalMode.fixed": "固定目录",
+		"settings.externalMode.ask": "每次询问",
+		"settings.readerTheme.off": "关闭",
+		"settings.readerTheme.warm": "Recto 暖纸",
+		"settings.readerTheme.latex": "LaTeX 学术",
+		"settings.readerTheme.wenkai": "文楷护眼",
+		"settings.readerTheme.night": "暗色夜读",
+		"settings.readerPreset.窄": "窄",
+		"settings.readerPreset.较窄": "较窄",
+		"settings.readerPreset.标准": "标准",
+		"settings.readerPreset.较宽": "较宽",
+		"settings.readerPreset.宽": "宽",
+		"settings.readerPreset.紧凑": "紧凑",
+		"settings.readerPreset.较紧": "较紧",
+		"settings.readerPreset.宽松": "宽松",
+		"settings.readerPreset.疏朗": "疏朗",
+		"settings.readerPreset.小": "小",
+		"settings.readerPreset.较小": "较小",
+		"settings.readerPreset.较大": "较大",
+		"settings.readerPreset.大": "大",
+		"settings.readerPreviewOff": "已关闭：论文按 Obsidian 原生排版显示。",
+		"settings.readerPreviewCurrent": "当前：栏宽 {width}px · 行高 {lineHeight} · 字号 {fontScale}×；预览框比正文窄，栏宽按比例示意。",
+		"time.justNow": "刚刚",
+		"time.minutesAgo": "{count} 分钟前",
+		"time.hoursAgo": "{count} 小时前",
+		"time.daysAgo": "{count} 天前",
+		"account.signedOut": "尚未登录 Recto 账号",
+		"account.pagesUnknown": "翻译页尚未读取",
+		"account.pagesAvailable": "可用 {count} 页",
+		"account.creditsUnknown": "额度尚未读取",
+		"account.creditsRemaining": "剩余额度 {percent}",
+		"account.creditsProcessing": "，另有 {percent}% 处理中",
+		"account.actionFailed": "账号操作未完成，请稍后重试。",
+		"account.signIn": "登录",
+		"account.signInHint": "尚未登录 Recto 账号，点击打开账号面板",
+		"account.sessionExpired": "Recto 账号登录已过期",
+		"account.sessionExpiredHint": "Recto 账号登录已过期，点击重新登录",
+		"account.signedInEmail": "已登录：{email}；",
+		"account.openPanelHint": "点击打开账号面板",
+		"account.pagesLabel": "翻译页 —",
+		"account.pagesCount": "{count} 页",
+		"account.pagesHint": "可用 {count} 页；PDF 转换当前免费；{suffix}",
+		"account.creditsEmpty": "额度 0%",
+		"account.creditsEmptyHint": "额度已用完，需要购买后才能继续转换；{suffix}",
+		"account.creditsLabel": "额度 —",
+		"account.creditsLabelValue": "额度 {percent}{held}",
+		"account.heldSuffix": "（{percent}% 处理中）",
+		"account.statusSignedIn": "Recto 账号已登录",
+		"account.statusSignedOut": "Recto 账号未登录",
+		"account.statusZoteroSetup": "Zotero 待配置",
+		"account.statusZoteroPending": "Zotero {count} 项待确认",
+		"account.statusZoteroCheck": "Zotero 待检查",
+		"account.statusZoteroSynced": "Zotero 已同步",
+		"account.statusZoteroSyncedAt": "Zotero 已同步 · {time}",
+		"account.statusZoteroImport": "Zotero 待导入",
+		"account.statusCreditsUnknown": "额度未知",
+		"account.statusPagesUnknown": "翻译页未知",
+		"account.statusPagesLow": "翻译页不足",
+		"account.statusPagesAvailable": "可用 {count} 个翻译页",
+		"account.statusCreditsLow": "额度不足",
+		"account.statusCreditsAvailable": "额度可用",
+		"account.statusCreditsPapers": "额度可用 · 约 {count} 篇",
+		"account.modalTitle": "Recto 账号与额度",
+		"account.refreshFailed": "账号信息暂时无法刷新，请稍后重试。",
+		"account.operationPending": "{label}未完成，请稍后重试。",
+		"account.operationFailed": "{label}失败：{error}",
+		"account.browserWaitingTitle": "浏览器登录 · 等待中",
+		"account.browserAccountTitle": "Recto 账号",
+		"account.browserReturn": "浏览器登录后，自动回到这里。",
+		"account.browserIntro": "把登录交给浏览器。",
+		"account.browserWaitingDesc": "Recto 正在安全等待浏览器完成认证。这个面板可以保持打开，也可以稍后再回来。",
+		"account.browserDesc": "使用系统浏览器完成登录、注册或找回密码；密码管理器可以正常工作，密码不会进入 Obsidian 插件。",
+		"account.browserWaiting": "正在等待浏览器完成登录",
+		"account.sessionExpiredDesc": "上次登录的会话已过期，重新登录即可继续使用。",
+		"account.reopenLogin": "重新打开登录页",
+		"account.loginInBrowser": "在浏览器中登录",
+		"account.browserLoggedIn": "已在浏览器登录",
+		"account.checkLogin": "检查登录状态",
+		"account.loginSuccess": "已登录 Recto 账号",
+		"account.loginNotFinished": "浏览器那边还没完成登录。",
+		"account.cancel": "取消",
+		"account.copyLoginLink": "复制登录链接",
+		"account.loginLinkCopied": "登录链接已复制，可在任意浏览器打开。",
+		"account.loginLinkCopyFailed": "复制失败，请手动打开账号网页。",
+		"account.browserReturnHint": "完成网页操作后返回 Obsidian，Recto 会自动继续。",
+		"account.browserOnlyHint": "登录、注册与找回密码都在浏览器完成。",
+		"account.loginTimeout": "登录页已超时，请重新点「在浏览器中登录」。",
+		"account.loginConsumed": "这次登录已经被接管过了，若仍未登录请重新发起。",
+		"account.loginIdle": "还没有发起浏览器登录。",
+		"account.loginFailed": "登录未完成，请稍后重试。",
+		"account.loginAutoCheckFailed": "自动检查登录状态失败，已停止；在浏览器登录后请点「已在浏览器登录」。",
+		"account.emailUnverified": "邮箱尚未验证。",
+		"account.sendVerification": "发送验证邮件",
+		"account.verificationRequested": "验证邮件已请求，请检查邮箱。",
+		"account.inviteCode": "邀请码",
+		"account.copyInvite": "复制邀请码",
+		"account.clipboardUnavailable": "当前环境不支持复制",
+		"account.inviteCopied": "邀请码已复制",
+		"account.invitePagesHint": "好友注册并验证邮箱后，双方各得 60 个翻译页。",
+		"account.inviteTrialHint": "好友注册时填写，双方各得 7 天 Pro 试用。",
+		"account.signOut": "退出登录",
+		"account.signedOutNotice": "已退出 Recto 账号",
+		"account.availablePagesLabel": "可用翻译页",
+		"account.packHelp": "一次购买，长期有效，可叠加。翻译按实际页数消耗；约几篇按普通论文估算；PDF 转换当前免费。",
+		"account.pagesReadFailed": "翻译页读取失败，重新打开面板会再试一次。",
+		"account.pagesDepleted": "翻译页已用完，购买后可继续翻译；PDF 转换当前免费。",
+		"account.remainingCreditsLabel": "剩余额度",
+		"account.heldProcessing": "另有 {percent}% 正在处理中",
+		"account.creditsReadFailed": "额度读取失败，重新打开面板会再试一次。",
+		"account.creditsDepleted": "额度已用完，购买后才能继续转换与翻译。",
+		"account.plansReadFailed": "套餐读取失败，重新打开面板会再试一次。",
+		"account.plansLoading": "正在读取套餐…",
+		"account.plansUnavailable": "套餐信息暂时无法显示，请联系我们。",
+		"account.paymentWaiting": "正在等待浏览器完成付款，额度会自动更新。",
+		"account.paymentTimeout": "还没等到付款结果。关掉这个面板再打开一次也会刷新；插件不会查询订单本身。",
+		"account.packEstimateHint": "按每篇约 20 页估算。实际消耗始终以翻译页数为准；PDF 转换当前免费。",
+		"account.planEstimateHint": "按平均页数折算的估计值。转换按论文页数计费，翻译按字符量另计，实际篇数会随论文长短浮动。",
+		"account.paymentOpened": "支付页已在浏览器打开，请在浏览器里完成付款。",
+		"account.buy": "购买",
+		"account.buyPending": "购买…",
+		"account.billingCycle": "计费周期",
+		"account.monthly": "月付",
+		"account.yearly": "年付",
+		"account.saveMonths": "省 {count} 个月",
+		"plan.basicKicker": "先试试",
+		"plan.free": "免费",
+		"plan.proKicker": "持续读论文",
+		"plan.maxKicker": "重度使用",
+		"plan.basicFeatureConvert": "PDF 转换与结构还原",
+		"plan.basicFeatureCompare": "原文译文双栏对照",
+		"plan.basicFeatureZotero": "Zotero 库导入与索引",
+		"plan.proFeature": "Basic 的全部能力",
+		"plan.maxFeature": "Pro 的全部能力",
+		"plan.packEstimate.1": "约 1 篇普通论文",
+		"plan.packEstimate.20": "约 20 篇普通论文",
+		"plan.packEstimate.50": "约 50 篇普通论文",
+		"plan.recommended": "推荐",
+		"plan.pages": "{count} 页",
+		"plan.perYear": "/年",
+		"plan.perMonth": "/月",
+		"plan.papersPerCycle": "每期约 {count} 篇",
+		"plan.creditsPending": "额度待定",
+		"plan.quotaMultiple": "额度约为 Basic 的 {count} 倍",
+		"plan.membershipExpired": "{plan} 会员已到期，权益已回到 Basic。",
+		"plan.trial": "试用",
+		"plan.membership": "会员",
+		"plan.membershipActive": "{plan} {kind}生效中",
+		"plan.membershipExpires": "{plan} {kind}有效期至 {date}{soon}",
+		"plan.expiresSoon": "，还有 {days} 天。到期不会自动续费",
+		"plan.buy": "购买 {plan}",
+		"plan.fallback": "到期后回到此档",
+		"plan.freeActive": "免费使用中",
+		"plan.current": "当前套餐",
+		"plan.renew": "续期 {plan}",
+		"plan.trialActive": "试用中",
+		"plan.upgrade": "升级到 {plan}",
+		"plan.switchAfterExpiry": "到期后可切换",
+		"plan.downgradeHint": "当前是 {plan} {cycle}会员。现在换成 {next} 会按新档的每天额度折算剩余时长，您会少掉一部分已买的天数，所以请等当前会员到期后再选。",
+		"plan.switchYearly": "换成年付",
+		"plan.switchMonthly": "换成月付",
+		"plan.switch": "切换到 {plan}",
+		"onboarding.title": "欢迎使用 Recto",
+		"onboarding.zoteroFeature": "从 Zotero 精准转换",
+		"onboarding.zoteroFeatureDesc": "论文转成 Markdown，库外的其他 PDF 同样可以转。",
+		"onboarding.translationFeature": "翻译与双栏对照",
+		"onboarding.translationFeatureDesc": "内置翻译一键生成译文，可与原文并排对照阅读。",
+		"onboarding.aiFeature": "为 AI 阅读铺路",
+		"onboarding.aiFeatureDesc": "论文变成能被 AI 读懂、能检索引用的笔记，长成您自己的知识库。",
+		"onboarding.freeFeature": "免费开始",
+		"onboarding.freeFeatureDesc": "全功能免费，每月都有免费额度；需要更多用量时再按需升级套餐。",
+		"onboarding.startSetup": "开始设置",
+		"onboarding.later": "稍后再说",
+		"onboarding.signIn": "登录 Recto 账号",
+		"onboarding.offline": "连不上 Recto 服务时，可以先跳过这一步，稍后在设置页继续。",
+		"onboarding.browserOnly": "在浏览器里完成，密码不进入插件。",
+		"onboarding.signInBrowser": "在浏览器中登录",
+		"onboarding.checkCredits": "确认可用额度",
+		"onboarding.checkCreditsDesc": "账号已经登录。在账号面板里可以看到当前额度，也可以选择适合您的套餐。",
+		"onboarding.viewAccount": "查看账号与额度",
+		"onboarding.importZotero": "从 Zotero 导入论文",
+		"onboarding.importZoteroDesc": "已经检测到本地的 Zotero 数据目录。导入只在本地复制 PDF 并建立论文条目，不转换，也不消耗额度。",
+		"onboarding.nameLibrary": "命名您的论文库文件夹",
+		"onboarding.importNow": "一键导入 Zotero",
+		"onboarding.useExternal": "改用库外 PDF",
+		"onboarding.ready": "材料已经就绪",
+		"onboarding.readyDesc": "打开论文库，选择一篇论文，在右侧完成转换；转换完成后从同一处打开正文或译文阅读。",
+		"onboarding.openLibrary": "打开论文库，选择一篇转换",
+		"onboarding.selectPaperHint": "在列表里选中一篇论文，右侧详情栏就有「转换」。",
+		"onboarding.firstConverted": "第一篇已经转换",
+		"onboarding.firstConvertedDesc": "正文已经写回当前 Vault。现在可以直接打开阅读，之后也能从文件列表再次找到它。",
+		"onboarding.readSource": "打开正文阅读",
+		"onboarding.choosePdf": "选择第一篇 PDF",
+		"onboarding.zoteroNotFound": "没有检测到可用的 Zotero 数据目录。可以先选一篇本地 PDF 转换，也可以去设置页手动配置 Zotero。",
+		"onboarding.zoteroUnavailable": "当前运行环境不能读取 Zotero 数据库，但仍可直接选择本地 PDF 完成第一次转换。",
+		"onboarding.convertPdf": "选择 PDF 并转换",
+		"onboarding.configureZotero": "配置 Zotero",
+		"onboarding.skipStep": "跳过这一步",
+		"onboarding.skipAll": "跳过引导",
+		"onboarding.stepFailed": "这一步没有完成，请稍后重试。",
+		"onboarding.saveFailed": "未能保存引导状态，请重试。",
+		"onboarding.openFailed": "引导已完成，但目标页面没有打开，请从设置页继续。",
+		"onboarding.finished": "引导已结束。需要时可在 设置 → Recto → 开始使用 里继续配置。",
+		"feedback.signIn": "打开账号登录",
+		"feedback.contact": "Contact us：",
+		"feedback.qqCopied": "QQ 号已复制",
+		"feedback.qqCopyFailed": "复制失败，请手动记录 QQ：{qq}",
+		"feedback.type": "反馈类型",
+		"feedback.issue": "故障",
+		"feedback.feature": "建议",
+		"feedback.other": "其他",
+		"feedback.placeholder": "请描述问题或建议…",
+		"feedback.submit": "提交反馈",
+		"feedback.tooShort": "请至少填写 5 个字。",
+		"feedback.submitting": "正在提交…",
+		"feedback.received": "反馈已收到，谢谢。",
+		"feedback.submitFailed": "提交失败，请稍后重试或通过 QQ 联系。",
+		"hub.folderMissing": "论文库文件夹「{folder}」不在了，但本地仍有 {count} 篇论文的记录。多半是它被改名或移动过——请把下面的路径改成它现在的位置。",
+		"hub.folderEmpty": "论文库文件夹「{folder}」里没有任何论文，但本地仍有 {count} 篇的记录。多半是路径指错了——请把下面的路径改成论文实际所在的文件夹。",
+		"hub.viewTitle": "Recto 论文库",
+		"hub.searchPlaceholder": "搜索标题、作者、期刊、分类、Note…",
+		"hub.settings": "Recto 设置",
+		"hub.readingStatus": "阅读状态",
+		"hub.readingStatusIn": "阅读状态 · {collection}",
+		"hub.countScope": "以下计数只统计「{collection}」内的论文",
+		"hub.recent": "最近",
+		"hub.recentHint": "独立视图：打开过、转换过或改过阅读状态的论文，按时间从新到旧排。进入时会清掉分类与转换筛选；点任何分类即退出。导入不算，没有记录的不在其中。",
+		"hub.allPapers": "全部论文",
+		"hub.reading": "正在读",
+		"hub.read": "已读",
+		"hub.unread": "未读",
+		"hub.zoteroCollections": "Zotero 分类",
+		"hub.filters": "筛选",
+		"hub.clearFilter": "清除这个筛选条件：{label}",
+		"hub.clearAll": "全部清除",
+		"hub.expandCollection": "展开：{name}",
+		"hub.collapseCollection": "折叠：{name}",
+		"hub.totalCount": "{count} 篇",
+		"hub.countDetail": " · 已转换 {converted} · 有译文 {translated}",
+		"hub.loadFailed": "读取失败：{error}",
+		"hub.noPapers": "还没有论文",
+		"hub.importHint": "把 Zotero 论文库导进来就能开始。",
+		"hub.noRecent": "还没有记录。",
+		"hub.recentHintEmpty": "打开任意一篇论文，它就会出现在这里。",
+		"hub.noMatches": "当前筛选条件下没有匹配的论文。",
+		"hub.matchesElsewhere": "全部论文中另有 {count} 篇匹配「{query}」。",
+		"hub.searchAll": "在全部论文中搜索",
+		"hub.searchAllHint": "保留搜索词，清除分类、阅读状态与转换状态三个筛选条件",
+		"hub.clearFilters": "清除全部筛选",
+		"hub.conversion.all": "全部",
+		"hub.conversion.converted": "已转换",
+		"hub.conversion.translated": "有译文",
+		"hub.conversion.todo": "待处理",
+		"hub.statusToggle": "阅读状态：{status}（点击切换）",
+		"hub.notConverted": "未转换",
+		"hub.choosePaper": "选择一篇论文",
+		"hub.source": "来源",
+		"hub.url": "网址",
+		"hub.openUrl": "在浏览器打开 {url}",
+		"hub.copy": "复制",
+		"hub.collection": "分类",
+		"hub.status": "状态",
+		"hub.notePlaceholder": "记录阅读要点",
+		"hub.noteConflict": "Note 已在别处修改，本次输入已保留。",
+		"hub.noteReadFailed": "Note 暂时无法读取。",
+		"hub.noteSaveFailed": "Note 尚未保存，本次输入已保留。",
+		"hub.saveMyNote": "保存我的版本",
+		"hub.retry": "重试",
+		"hub.noOpenFile": "这篇还没有可打开的文件",
+		"hub.readAction": "阅读",
+		"hub.read.source": "阅读原文",
+		"hub.read.translation": "阅读译文",
+		"hub.read.pdf": "阅读 PDF",
+		"hub.readChoice.source": "原文",
+		"hub.readChoice.translation": "译文",
+		"hub.readChoice.pdf": "PDF",
+		"hub.chooseReadAction": "选择阅读类型",
+		"hub.readPreferenceFailed": "阅读类型暂未保存，重启后可能恢复原设置。",
+		"hub.openTranslation": "打开译文",
+		"hub.openSource": "打开原文",
+		"hub.openSummary": "打开摘要",
+		"hub.translationSummary": "同时生成摘要（已有摘要将跳过）",
+		"hub.translationSummaryHint": "每次翻译默认关闭；摘要从原文生成，不额外扣翻译页。",
+		"hub.summaryExists": "{count} 篇已有摘要，已保留并跳过生成。",
+		"hub.summaryFailed": "{stem}：摘要生成失败，译文仍可使用。",
+		"hub.translationFailedSummarySaved": "{stem}：译文未完成，已保存摘要；翻译额度已释放。",
+		"hub.translationRejectedSummarySaved": "{stem}：译文未通过本地校验，摘要已保存；翻译任务已结算。",
+		"hub.openPdf": "打开 PDF",
+		"hub.openUnconvertedPdf": "打开 PDF（未转换）",
+		"hub.dualPane": "原文/译文双栏对照",
+		"hub.pdfCompare": "PDF 对照阅读",
+		"hub.copyCitation": "复制引用",
+		"hub.deletePaper": "删除本篇（移入系统回收站）",
+		"hub.authors": "作者",
+		"hub.collapseAuthors": "收起",
+		"hub.moreAuthors": "更多 {count}",
+		"hub.collapseAuthorsHint": "收起作者列表",
+		"hub.expandAuthorsHint": "共 {count} 位作者，点击展开全部",
+		"hub.unconvertedTitle": "{title}（未转换）",
+		"hub.selectionDropped": "已选的 {count} 篇不在当前筛选内，已退出选择。",
+		"hub.navToggle": "分类与阅读状态",
+		"hub.openBatchPane": "打开批量面板：转换、翻译、删除选中",
+		"hub.batchPaneJump": "已选 {count} 篇 · 处理",
+		"hub.backToList": "返回列表",
+		"hub.sort.status": "阅读状态",
+		"hub.sort.title": "标题",
+		"hub.sort.author": "作者",
+		"hub.sort.venue": "期刊",
+		"hub.sort.year": "年份",
+		"hub.sort.recent": "最近",
+		"hub.sortBy": "按{label}排序",
+		"hub.showOriginalTitle": "当前显示中文标题，点击切换为英文标题",
+		"hub.showTranslatedTitle": "当前显示英文标题，点击切换为中文标题",
+		"hub.convertSelected": "转换选中（{count} 篇）",
+		"hub.convertThis": "转换本篇",
+		"hub.convertHint": "上传未转换的 PDF 并解析为 Markdown 与摘要",
+		"hub.translateSelected": "翻译选中（{count} 篇）",
+		"hub.translateThis": "翻译本篇",
+		"hub.translateMixedHint": "未转换的会先转换再翻译；已转换的只翻译，不重复转换、不重复计费",
+		"hub.translateUnconvertedHint": "未转换的论文会转换并一并产出译文",
+		"hub.translateOnlyHint": "只翻译，不重复转换",
+		"hub.translateMixedNote": "选中的 {total} 篇里，{convert} 篇需要先转换再翻译，{translate} 篇已转换、只需翻译。",
+		"hub.partialSelected": "另有 {count} 篇只译出了一部分，暂不支持重译。",
+		"hub.partialThis": "这篇只译出了一部分，暂不支持重译。",
+		"hub.selectedCount": "已选 {count} 篇",
+		"hub.escapeHint": "按 Esc 收回",
+		"hub.batchSummary": "未转换 {unconverted} · 已转换无译文 {withoutTranslation} · 完整/旧版译文 {translated} · 部分未翻译 {partial}",
+		"hub.deleteSelected": "删除选中（{count} 篇）",
+		"hub.deleteSelectedHint": "选中论文的文件夹与摘要移入系统回收站；删前会再确认一次",
+		"hub.morePapers": "另有 {count} 篇",
+		"hub.collapseQueue": "折叠待写回列表",
+		"hub.expandQueue": "展开待写回列表",
+		"hub.writebackFailedCount": "⚠ {count} 篇写回失败，已停止自动重试",
+		"hub.pendingWritebackCount": "{count} 篇已提交待写回",
+		"hub.oldest": "最早 {age}",
+		"hub.tryAgain": "再试一次",
+		"hub.recoverNow": "立即恢复",
+		"hub.recoverHint": "立即检查并写回已完成的论文结果",
+		"hub.writebackFailed": "写回失败",
+		"hub.abandon": "放弃",
+		"hub.abandonHint": "清掉本地登记，这篇论文可以重新转换；本次已扣的额度不会退回",
+		"hub.writebackFailureDetail": "写回失败原因：{error}。处理结果最多保留 {hours} 小时；修复问题后可点「再试一次」，或选择「放弃」后重新转换。",
+		"hub.recoveryFailure": "最近一次恢复未成功：{error}",
+		"dialog.confirm": "请确认",
+		"dialog.continue": "继续",
+		"dialog.cancel": "取消",
+		"consent.title": "开始使用 Recto 云端处理",
+		"consent.intro": "首次启用时只确认这一次。接受后，单篇处理会直接开始，多篇处理仍会显示篇数确认。",
+		"consent.upload": "您主动处理论文时，Recto 会上传所选 PDF，或上传论文正文与结构信息。",
+		"consent.process": "内容由 Recto 云端处理，并可能由受托第三方协助完成。",
+		"consent.retention": "处理结果写回本地后会从云端删除；未领取结果最多保留 {hours} 小时。",
+		"consent.later": "暂不启用",
+		"consent.agree": "同意并继续",
+		"update.newVersion": "{brand} 有新版本 {version}",
+		"update.intro": "当前版本 {current}，最新版本 {version}。更新只要几秒，装好当场生效，不用重启 Obsidian。",
+		"update.autoDesc": "「自动更新」：以后启动时发现新版本就直接装好，不再打扰您。",
+		"update.onceDesc": "「仅本次更新」：只更新这一次，下次有新版本还会再问。",
+		"update.sourceDesc": "更新包只从 Recto 的公开发布页获取，与社区商店同源；正在处理论文时不会更新。",
+		"update.skip": "跳过此版本",
+		"update.once": "仅本次更新",
+		"update.auto": "自动更新",
+		"update.required": "{brand} 需要先更新",
+		"update.requiredDesc": "当前版本已经太旧，继续处理论文可能拿不到正确的结果。更新后即可继续。",
+		"update.now": "立即更新",
+		"external.duplicateTitle": "这个 PDF 已经转换过",
+		"external.moreDuplicates": "（另有 {count} 篇同样已转换过）",
+		"external.selectedPdf": "所选 PDF",
+		"external.duplicateIntro": "{name} 之前已经转换过{more}。再转一次会重新计费，并另建一个新目录。",
+		"external.previousOutput": "上次的产物在：{path}",
+		"external.previousOutputUnknown": "上次的产物目录已无记录。",
+		"external.translateInstead": "如果只是想要译文，打开上次的正文用命令「翻译当前 Markdown 文件」直接翻，不必重转。",
+		"external.convertAgain": "仍然转换 {count} 篇",
+		"import.confirmTitle": "导入 Zotero 论文库",
+		"import.confirmIntro": "即将导入 {count} 篇论文。",
+		"import.objectCounts": "新建 {created} 个，更新 {updated} 个。",
+		"import.pdfCounts": "复制 {count} 篇 PDF，约 {size} MB。",
+		"import.unreadable": "{count} 篇源 PDF 暂时不可读取，将跳过。",
+		"import.localOnly": "导入只会在本地建立论文对象，不会开始转换或翻译。",
+		"import.confirmAction": "导入 {count} 篇",
+		"markdown.replaceTitle": "这份文档已经有译文",
+		"markdown.replaceIntro": "{path} 已经存在。再翻一次会重新计费，并覆盖这份译文。",
+		"markdown.pageEstimate": "这份文档约合 {count} 页。",
+		"markdown.sourceSafe": "原文不受影响。",
+		"markdown.retranslate": "重新翻译",
+		"batch.translateReuse": "使用已有论文正文与当前翻译设置，不会再次复制 PDF。",
+		"batch.quote": "本批预计消耗 {needed} 个翻译页；当前可用 {available} 页。",
+		"batch.shortfall": "本批预计消耗 {needed} 页；现有 {available} 页，还差 {shortfall} 页",
+		"batch.translateTitle": "批量翻译",
+		"batch.translateIntro": "即将翻译选中的 {count} 篇论文。",
+		"batch.translateAction": "翻译 {count} 篇",
+		"batch.content": "处理内容：{content}。",
+		"batch.summaryPart": "已启用的摘要",
+		"batch.partsJoin": "{first}、{second}",
+		"batch.partsFinal": "{first}与{last}",
+		"batch.freeTranslate": "PDF 转换当前免费；转换完成后按实际页数消耗翻译页。",
+		"batch.freeConvert": "PDF 转换当前免费，不消耗翻译页。",
+		"batch.rights": "请确认选择范围无误，并确保您有权处理这些文件。",
+		"batch.convertTranslateTitle": "批量转换并翻译",
+		"batch.convertTitle": "批量转换",
+		"batch.convertIntro": "即将处理选中的 {count} 篇 PDF。",
+		"batch.convertAction": "{action} {count} 篇",
+		"batch.deleteTitle": "批量删除论文",
+		"batch.deleteIntro": "即将删除选中的 {count} 篇论文。",
+		"batch.deleteMore": "另有 {count} 篇",
+		"batch.deleteDesc": "论文文件夹与摘要会移入系统回收站。",
+		"batch.deleteAction": "删除 {count} 篇",
+		"recovery.abandoned": "已放弃{paper}，这篇论文可以重新转换；本次已扣的额度不会退回。",
+		"recovery.paperName": "「{name}」",
+		"recovery.task": "该任务",
+		"recovery.none": "当前没有等待写回的论文。",
+		"recovery.noConsent": "尚未启用云端处理，恢复已取消。",
+		"recovery.signIn": "请先重新登录 Recto，再恢复论文结果。",
+		"recovery.active": "已有任务正在运行：{label}",
+		"recovery.start": "正在恢复 {count} 篇论文的处理结果，请勿重复提交……",
+		"recovery.done": "已恢复并写回 {count} 篇论文。",
+		"recovery.dropped": "已清理 {count} 个不可恢复的旧任务，现在可以重新提交论文。",
+		"recovery.reason": "原因：{error}。",
+		"recovery.blocked": "有 {count} 个任务反复写回失败，已停止自动重试。{reason}请在论文库底部的队列条里选择「再试一次」或「放弃这个任务」。",
+		"recovery.lastError": " 最近错误：{error}",
+		"recovery.pending": "暂未恢复成功，任务仍已保留，不要重复提交。{detail}",
+		"recovery.failed": "结果恢复未完成：{error}",
+		"update.waitForBatch": "正在处理论文，请等这一批跑完再更新。",
+		"update.latest": "{brand} 已是最新版本。",
+		"update.checkFailed": "暂时查不到新版本，请稍后重试。",
+		"update.installing": "正在更新 {brand}……",
+		"update.restartNeeded": "{brand} {version} 已下载，重启 Obsidian 后生效。",
+		"update.installFailed": "{brand} 更新失败，请稍后重试。",
+		"batch.noActiveTask": "当前没有正在运行的任务。",
+		"batch.cancelAlreadyRequested": "已经请求过取消，正在跑的这一篇会跑完。",
+		"batch.onlyCurrent": "只剩正在跑的这一篇了，它会跑完；万一卡住会自动放弃并退回额度。",
+		"batch.cancelledQueued": "已取消尚未开始的 {count} 篇；正在跑的这一篇会跑完。",
+		"filePicker.folderUnavailable": "当前运行时打不开文件夹选择框，请把路径直接粘贴到输入框里。",
+		"filePicker.folderTitle": "选择文件夹",
+		"filePicker.folderFailed": "文件夹选择框未能打开，请稍后重试。",
+		"filePicker.pdfUnavailable": "当前运行时打不开文件选择框，无法选择库外 PDF。",
+		"filePicker.pdfTitle": "选择要转换的 PDF（可多选）",
+		"filePicker.pdfFailed": "文件选择框未能打开，请稍后重试。",
+		"external.outputFallback": "这些 PDF 不在库内，没有「所在目录」可用，已改为写入「{folder}」。",
+		"external.chooseOutput": "选择本次转换的输出目录（必须在库内）",
+		"external.outputOutside": "输出目录必须在当前库（vault）里，否则正文里的图片会全部失效。请重新选择。",
+		"external.outputAtRoot": "请选择库里的一个子文件夹，不要直接用库根目录。",
+		"external.noConsent": "尚未启用云端处理，库外 PDF 转换已取消。",
+		"external.signIn": "请先登录 Recto 账号",
+		"external.busy": "有任务正在进行，请等它跑完再转换库外 PDF。",
+		"external.noPdf": "没有可处理的 PDF。",
+		"external.cancelled": "已取消。",
+		"compare.openPaper": "请先打开论文的 PDF、原文、译文或摘要",
+		"compare.wrongFile": "当前文件不是 Recto 的论文文件",
+		"compare.sourceMissing": "找不到该论文的原文或译文",
+		"compare.unavailable": "对照阅读不可用：{error}",
+		"compare.switchedDual": "已切换到双栏对照，PDF 对照已关闭。",
+		"compare.dualBindFailed": "对照阅读启动失败：无法绑定视图",
+		"compare.unmapped": "对照阅读已启动：{detail}，这些段落不会联动滚动。",
+		"compare.dualClosed": "对照阅读已退出：有一栏被关闭或切换到了别的文件",
+		"compare.alignmentLost": "对照阅读已退出：锚点或修订绑定不再可用",
+		"compare.markdownMissing": "找不到中文 Markdown，无法进入 PDF 对照",
+		"compare.pdfMissing": "找不到 PDF 原文件，无法进入 PDF 对照",
+		"compare.pdfUnavailable": "PDF 对照不可用：{error}",
+		"compare.switchedPdf": "已切换到 PDF 对照，原文译文双栏已关闭。",
+		"compare.pdfBindFailed": "PDF 对照启动失败：无法绑定视图",
+		"compare.pdfClosed": "PDF 对照已退出：有一栏被关闭或切换到了别的文件",
+		"compare.noPage": "该段落缺少 PDF 页码，未跳转",
+		"compare.notInStructure": "该段落不在结构信息里，未跳转",
+		"compare.alignmentBindingMissing": "缺少 Recto 修订绑定，可能是旧论文",
+		"compare.alignmentDocumentMismatch": "原文与译文不属于同一篇论文",
+		"compare.alignmentRevisionMismatch": "原文与译文的来源修订不一致",
+		"compare.alignmentNoAnchors": "两侧没有可对齐的锚点",
+		"compare.translationMissing": "没有找到译文，保持单栏",
+		"compare.sourcePartnerMissing": "没有找到原文，保持单栏",
+		"compare.chineseNoTranslation": "中文论文没有译文，保持单栏",
+		"compare.unmatchedSource": "原文 {count} 块无对应",
+		"compare.unmatchedTranslation": "译文 {count} 块无对应",
+		"compare.pdfBindingInvalid": "论文定位信息缺失或格式不受支持",
+		"compare.pdfBindingMissing": "缺少论文定位信息，可能是旧论文",
+		"compare.pdfDocumentMismatch": "PDF 与当前 Markdown 不属于同一篇论文",
+		"compare.pdfRevisionMismatch": "PDF 来源修订与当前 Markdown 不一致",
+		"compare.pdfNoPageInfo": "这篇论文没有可用的页码定位信息",
+		"import.runtimeUnsupported": "当前环境无法读取 Zotero 论文库。请更新 Obsidian 后重试。",
+		"import.chooseSource": "请先设置 Zotero 源文件夹",
+		"import.cancelled": "已取消导入，未导入任何论文。",
+		"import.noPdf": "没有找到可读的本地 Zotero PDF，未导入任何内容",
+		"import.failed": "Zotero 导入未完成，请稍后重试。",
+		"import.dbBusy": "Zotero 数据库正在被占用。请关闭 Zotero 后重试导入或检查。",
+		"import.runtimeUpgrade": "当前环境无法读取 Zotero 论文库，请更新 Obsidian 后重试。",
+		"import.folderMissing": "找不到或无法读取 Zotero 论文库文件夹。请在 Recto 设置中重新选择 Zotero 数据目录。",
+		"import.autoSync": "Zotero 自动同步",
+		"import.autoAdded": "新增 {count} 篇",
+		"import.pending": "{count} 项待确认",
+		"import.autoSummary": "Zotero 自动同步：{summary}",
+		"import.noChanges": "Zotero 已检查：没有需要处理的变化",
+		"import.checkFailed": "Zotero 检查未完成，请稍后重试。",
+		"markdown.openFirst": "请先打开要翻译的 Markdown 文件",
+		"markdown.invalidSource": "这个文件不能作为翻译原文（译文文件不会再翻一次）",
+		"markdown.readFailed": "读取文档失败：{error}",
+		"markdown.alreadyChinese": "这份文档已经是中文，不需要翻译",
+		"markdown.empty": "这份文档没有可翻译的内容",
+		"markdown.buyPages": "{quote}。请先购买翻译页。",
+		"markdown.start": "开始翻译《{name}》，约合 {count} 页。",
+		"markdown.quote": "本篇 {required} 页，预计消耗 {required} 页",
+		"markdown.quoteAvailable": "；现有 {available} 页",
+		"markdown.quoteShortfall": "，还差 {shortfall} 页",
+		"markdown.anchorHint": "想要双栏对照？在设置「翻译 Markdown」里开启「写入对照锚点」后重新翻译一次。",
+		"hub.noSelection": "请先在列表里选择论文",
+		"hub.noConvertible": "选中的论文里没有可提交的未转换 PDF；已转换的论文请看右栏说明。",
+		"hub.skippedConversion": "选中 {total} 篇，其中 {ready} 篇可提交，{skipped} 篇已转换或源 PDF 不可读取，已跳过。",
+		"hub.chineseSkipped": "{count} 篇原文就是中文，已跳过翻译（这类论文不需要译文，也不会扣额度）。",
+		"hub.status.unread": "未读",
+		"hub.status.reading": "正在读",
+		"hub.status.read": "已读",
+		"hub.linkFailed": "链接暂时无法打开，请稍后重试。",
+		"hub.allConverted": "选中的论文都已转换。",
+		"hub.allTranslated": "选中的论文都已经有译文了。",
+		"hub.copied": "已复制",
+		"hub.copyUnavailable": "当前环境不支持复制",
+		"hub.copyFailed": "复制失败",
+		"account.loginSuccessNotice": "已登录 {brand} 账号",
+		"account.noLoginUrl": "后端未返回可用的登录地址。",
+		"account.invalidLoginUrl": "登录地址不合法。",
+		"account.browserUnavailable": "无法在此环境中打开浏览器，请手动复制登录链接。",
+		"account.signInRequired": "请先登录 Recto 账号。",
+		"account.choosePlan": "请先选择要购买的套餐。",
+		"account.noCheckoutUrl": "后端未返回可用的支付页地址。",
+		"feedback.signInRequired": "请先登录 Recto 账号再提交反馈。",
+		"update.installedNotice": "{brand} 已更新到 {version}",
+		"settings.librarySynced": "论文库文件夹已同步为「{folder}」。",
+		"settings.readingStatusFailed": "阅读状态切换未完成，请稍后重试。",
+		"import.unreadablePdfs": "有 {count} 篇已导入论文的源 PDF 当前不可读取，已跳过",
+		"import.copiedCount": "本地 PDF 新复制 {count}",
+		"import.repairedCount": "修复不完整 {count}",
+		"import.copyFailedCount": "复制失败 {count}",
+		"import.mismatchCount": "与源大小不一致未覆盖 {count}",
+		"import.interruptedSummary": "Zotero 导入已中断：论文对象已保存 {count} 篇，{copyNote}；重跑会从中断处继续",
+		"import.incompleteSummary": "Zotero 论文对象已保存，但有 {count} 项未完成（{copyNote}）；重跑导入或重启 Obsidian 会自动修复",
+		"import.completedSummary": "Zotero 导入完成：新增 {imported}，已存在 {existing}，共 {total}；{copyNote}",
+		"import.syncedSummary": "Zotero 已同步：正常 {matched}，PDF 缺失 {missing}，本地孤立 {orphaned}，移入回收站 {trashed}",
+		"task.translationSkipped": "{stem}：正文与摘要已保存，但译文未写入（{reason}）。这篇会显示为「已转换无译文」。",
+		"task.summaryUnsupported": "当前服务暂不支持翻译时生成摘要，尚未冻结翻译额度。请更新服务后重试。",
+		"task.translationFailedExternal": "{stem}：转换已完成并保存，但翻译未成功（{reason}）。转换的额度已扣、翻译的没有扣。",
+		"task.translationFailedHub": "{stem}：转换已完成并保存，但翻译未成功（{reason}）。转换的额度已扣、翻译的没有扣，这篇现在是「已转换无译文」，可以在 Hub 里单独重试翻译。",
+		"task.batchSummary": "Recto：成功 {success} 篇，失败 {failed} 篇{stopped}{log}",
+		"task.stoppedSuffix": "，已取消未开始的 {count} 篇",
+		"task.logSaveFailed": "，失败日志保存失败",
+		"pdfRepair.done": "PDF 修复完成：{fixed}/{total} 个文件已重新复制",
+		"pdfRepair.none": "没有找到需要重新复制的 PDF：还没有导入过论文，或 Zotero 源文件当前不可读。",
+		"import.collectionReadFailed": "Zotero 分类暂时无法读取，将按普通列表显示。{error}",
+		"import.metadataReadFailed": "Zotero 论文信息暂时无法读取，将按文件名选择 PDF。",
+		"import.trashFailed": "未能移入回收站，请稍后重试。",
+		"import.trashDone": "已移入回收站 {count} 篇",
+		"import.pendingFailed": "待确认项处理未完成，请稍后重试。",
+		"import.syncPaused": "当前环境无法读取 Zotero 论文库，已暂停同步。请更新 Obsidian 后重试。",
+		"import.syncFailed": "Zotero 同步未完成，请稍后重试。",
+		"import.trashPartial": "部分论文未能移入回收站，记录已保留：{titles}",
+		"hub.recordMissing": "找不到对应的 Zotero 论文记录",
+		"hub.openFailed": "打不开论文库，请重试或重启 Obsidian。",
+		"hub.settingsPath": "请从 Obsidian 设置 → 第三方插件 → Recto 打开设置页。",
+		"hub.resultMissing": "找不到刚才的转换结果，请从文件列表打开输出目录。",
+		"hub.resultSaved": "正文已保存到「{folder}」，请从文件列表打开。",
+		"hub.fileMissing": "找不到要打开的文件，请关闭再打开 Hub 后重试",
+		"task.retryMissing": "该任务不在本机待恢复列表中，已阻止重试以避免结果无法写回。",
+		"task.retrySubmitted": "已重新提交，请等待结果写回。",
+		"task.retryFailed": "重试未完成，请稍后再试。",
+		"task.noConsent": "尚未启用云端处理，本次处理已取消。",
+		"task.noTasks": "没有选择需要提交到 Recto 的任务",
+		"task.cloudProcessing": "论文云端处理",
+		"task.pdfPathMissing": "转换任务需要本地 PDF 路径才能上传",
+		"task.blockedDuplicate": "有 {count} 篇论文仍在恢复或已经完成，已阻止重复提交并启动恢复检查。请勿重复上传；也可在命令面板运行“Recto: 恢复未完成的云端处理”。",
+		"task.failed": "Recto 任务失败：{error}{log}",
+		"task.exemption": "其中 {count} 篇的额度差了一点点，已为您补足并把这一篇做完。额度现在已用完，继续处理需要先购买。",
+		"task.failureLog": "，请查看 {path}",
+		"delete.missing": "这些论文已经不在库里了",
+		"delete.preflightFailed": "删除预检失败: {error}",
+		"delete.done": "删除完成：成功 {success}，失败 {failed}",
+		"delete.sourceMissing": "源文件夹不存在",
+		"distribution.done": "脱敏分发包已生成: {file}",
+		"distribution.failed": "分发包生成未完成，请稍后重试。",
+		"zotero.itemType.journalArticle": "期刊论文",
+		"zotero.itemType.conferencePaper": "会议论文",
+		"zotero.itemType.bookSection": "图书章节",
+		"zotero.itemType.book": "图书",
+		"zotero.itemType.thesis": "学位论文",
+		"zotero.itemType.report": "报告",
+		"zotero.itemType.preprint": "预印本",
+		"zotero.itemType.manuscript": "手稿",
+		"zotero.itemType.document": "文档",
+		"sync.title": "预览 Zotero 同步差异",
+		"sync.summary": "正常 {matched}；PDF 暂时缺失 {missing}；Zotero 已删除但 Obsidian 仍保留 {orphaned}。",
+		"sync.missingTitle": "Zotero 条目仍存在，但本地 PDF 缺失",
+		"sync.missingDesc": "这些论文不会从索引删除，也不会删除 Obsidian 文件。请检查 Zotero 云附件是否尚未下载。",
+		"sync.orphanedTitle": "Zotero 中已删除的论文",
+		"sync.orphanedDesc": "同步后它们会标记为已从 Zotero 删除，但 Obsidian 文件默认保留。仅勾选的论文会移入系统回收站。",
+		"sync.selectAll": "全选",
+		"sync.selectNone": "全不选",
+		"sync.moveToTrash": "移入回收站：{title}",
+		"sync.cancel": "取消同步",
+		"sync.indexOnly": "仅同步索引",
+		"sync.indexAndTrash": "同步并移入回收站",
+		"pdfChoice.title": "选择多 PDF 条目的处理方式",
+		"pdfChoice.intro": "以下 Zotero 条目包含多个不同内容的 PDF（可能来自多个附件目录）。已识别正式附件或既有对象时会默认选中它；您也可以改选其他版本、全部处理或跳过。",
+		"pdfChoice.versions": "{count} 个 PDF 版本",
+		"pdfChoice.mode": "处理方式",
+		"pdfChoice.one": "选择一个 PDF",
+		"pdfChoice.all": "全部分别处理",
+		"pdfChoice.skip": "本次跳过",
+		"pdfChoice.file": "使用文件",
+		"pdfChoice.recommended": " [推荐]",
+		"pdfChoice.version": " [版本 {count}]",
+		"pdfChoice.cancel": "取消",
+		"progress.defaultLabel": "Recto 任务",
+		"progress.prefix": "Recto：{status}",
+		"progress.finished": "已完成",
+		"progress.completedOne": "已完成一篇",
+		"progress.previousFailed": "上一篇失败",
+		"progress.phase.submit": "提交",
+		"progress.phase.upload": "上传",
+		"progress.phase.processing": "解析",
+		"progress.phase.summary": "摘要",
+		"progress.phase.translation": "翻译",
+		"progress.phase.write": "写回",
+		"progress.pages": " 页",
+		"progress.failed": "失败 {count}",
+		"progress.cancelQueued": "取消未开始的 {count} 篇",
+		"progress.cancelRequested": "已请求取消剩余任务",
+		"progress.currentWillFinish": "这一篇会跑完；万一卡住会自动放弃并退回额度",
+		"progress.inProgress": "进行中",
+		"progress.importZotero": "一键导入 Zotero 论文库",
+		"progress.convert": "转换",
+		"progress.convertTranslate": "转换并翻译",
+		"progress.translate": "翻译",
+		"progress.scanZotero": "扫描 Zotero",
+		"progress.scan": "扫描",
+		"progress.waitChoice": "等待选择",
+		"progress.createObjects": "建立论文对象",
+		"progress.createRecord": "建档",
+		"progress.waitConfirm": "等待确认",
+		"progress.saveObjects": "保存论文对象",
+		"progress.importPdf": "导入本地 PDF",
+		"progress.copyPdf": "复制 PDF",
+		"progress.writeIndex": "写入索引",
+		"progress.importDone": "Zotero 导入完成",
+		"progress.importIncomplete": "Zotero 导入待修复",
+		"progress.importCancelled": "Zotero 导入已中断",
+		"progress.submitTranslation": "提交译文",
+		"progress.uploadContent": "上传论文内容",
+		"progress.queue": "排队",
+		"progress.fetchTranslation": "取译文",
+		"progress.writeTranslation": "写回译文",
+		"progress.fetchResult": "取结果",
+		"progress.stopped": "已中止",
+		"progress.failedStatus": "已失败",
+		"progress.finishedWithFailures": "完成，{count} 篇失败",
+		"progress.pdfGroups": "{count} 组多 PDF",
+		"progress.paperCount": "{count} 篇",
+		"progress.pendingCopy": "{count} 篇待复制",
+		"error.default": "操作未完成，请稍后重试。",
+		"error.cloudConsent": "请先同意 Recto 云端处理说明。",
+		"error.remoteTask": "处理未完成，请稍后重试。",
+		"error.sessionExpired": "登录状态已失效，请重新登录 Recto。",
+		"error.taskExpired": "这项处理已失效，请重新提交。",
+		"error.busy": "服务繁忙，请稍后重试。",
+		"error.unavailable": "服务暂时不可用，请稍后重试。",
+		"error.invalidSubmission": "提交内容未通过检查，请返回论文库后重试。",
+		"error.cancelled": "操作已取消。",
+		"error.network": "网络连接不稳定，请稍后重试。",
+		"error.insufficientCredits": "翻译页不足，请先购买。",
+		"error.taskNotReady": "结果仍在处理中，请稍后重试。",
+		"error.noTranslatableContent": "这份文档没有可翻译的文字。",
+		"error.sameTargetLanguage": "这份文档已经是目标语言。",
+		"error.languageConfirmation": "请先确认原文和目标语言，再提交翻译。",
+		"error.ocrLanguage": "当前 OCR 语言不受支持，请重新选择。",
+		"error.ocrSourceUnsupported": "暂不支持这份文档的文字识别，请先将文档转换为 Markdown。",
+		"error.ocrUnreadable": "未能可靠识别正文，请提供更清晰的 PDF 或 Markdown。",
+		"error.languageContract": "请更新 Recto 和服务后使用文档语言功能。",
+		"error.sourceRevision": "原文版本不一致，请重新提交当前原文。",
+		"error.pdfRequired": "请先选择 PDF 文件。",
+		"error.pdfInvalid": "请选择有效的 PDF 文件。",
+		"error.pdfTooLarge": "PDF 超过 50 MB 上限。",
+		"error.planUnavailable": "这档额度包暂不可用，请重新选择。",
+		"error.planNotPurchasable": "这档额度包无法购买，请重新选择。",
+		"error.checkoutExpired": "支付链接已失效，请从 Recto 重新打开。",
+		"error.orderNotFound": "找不到这笔订单，请重新检查账号。",
+		"error.paymentUnavailable": "支付暂时不可用，请稍后重试。",
+		"error.paymentMethodUnavailable": "此支付方式暂不可用。",
+		"error.taskStateConflict": "任务处于{status}状态，暂不能进行此操作。",
+		"error.pageLimitExceeded": "文档超过 {limit} 页上限。",
+		"error.translationPageLimitExceeded": "文档相当于 {pages} 个翻译页，超过 {limit} 页上限。",
+		"error.requestInvalid": "请求未完成，请检查输入后重试。",
+		"error.resourceUnavailable": "请求的内容暂不可用。",
+		"error.writeback": "结果写回未完成，请稍后重试。",
+		"error.folderEmpty": "论文库文件夹不能为空。",
+		"error.folderRelative": "论文库文件夹必须是 Vault 内的相对路径。",
+		"error.folderSegments": "论文库文件夹不能包含 . 或 .. 路径段。",
+		"update.applying": "{brand} 正在应用更新……",
+		"recovery.operationRunning": "已有任务正在运行：{label}",
+		"recovery.writeUnavailable": "处理结果暂时无法写入，请稍后重试。",
+		"hub.untitledPaper": "未命名论文",
+		"hub.queueStatus.pending": "处理中",
+		"hub.queueStatus.ready": "等待写回",
+		"hub.queueStatus.terminal": "已失败",
+		"hub.queueStatus.abandoned": "未提交",
+		"hub.authorsEtAl": "{name} 等",
+	},
+	en: {
+		"command.openHub": "Open Recto paper library",
+		"command.openAccount": "Recto account and credits",
+		"command.repairPdfs": "Repair: recopy all original PDFs",
+		"command.importZotero": "Import Zotero library",
+		"command.convertExternalPdf": "Convert PDF outside library",
+		"command.translateMarkdown": "Translate current Markdown file",
+		"command.convertAndTranslateExternalPdf": "Convert and translate PDF outside library",
+		"command.syncZotero": "Sync Zotero data",
+		"command.recoverPending": "Recover unfinished cloud tasks",
+		"command.cancelQueued": "Cancel tasks not yet started",
+		"command.cycleReaderTheme": "Switch paper reading theme",
+		"command.toggleDualPane": "Compare original and translation side by side",
+		"command.togglePdfCompare": "Compare original PDF and translation",
+		"settings.interface": "Interface",
+		"settings.uiLanguage": "Interface language",
+		"settings.uiLanguageDesc": "Follows Obsidian by default. A manual choice changes only the Recto interface, not paper processing languages.",
+		"settings.followObsidian": "Follow Obsidian",
+		"settings.intro": "Sign in, choose your Zotero folder, then import papers into your library to start converting and translating.",
+		"settings.getStarted": "Get started",
+		"settings.readingExperience": "Reading experience",
+		"settings.readingDesc": "Changes take effect immediately and do not modify file contents.",
+		"settings.processingPreferences": "Processing preferences",
+		"settings.processingDesc": "Changes apply to the next conversion or translation.",
+		"settings.sidebarButtons": "Sidebar buttons",
+		"settings.externalFiles": "Files outside Zotero",
+		"settings.externalFilesDesc": "Convert PDFs outside the paper library or translate any Markdown file.",
+		"settings.advanced": "Advanced settings",
+		"settings.advancedDesc": "Interface language, PDF cleanup, local notes, comparison reading, and plugin updates",
+		"settings.feedback": "Send feedback",
+		"settings.pendingZotero": "{count} Zotero changes need your choice: entries with multiple PDFs or papers deleted from Zotero. Automatic sync will not delete files.",
+		"settings.account": "Recto account",
+		"settings.loggedIn": "Signed in: {email}{verification}; {credits}.",
+		"settings.emailUnverified": " (email not verified)",
+		"settings.openAccount": "Open account panel",
+		"settings.signInOrRegister": "Sign in / Register",
+		"settings.preferenceSyncFailed": "Could not sync processing preferences. Please try again later.",
+		"settings.writeAnchors": "Write comparison anchors",
+		"settings.writeAnchorsDesc": "Add hidden anchors to your original Markdown for side by side reading after translation. Off by default so your own files stay untouched.",
+		"settings.outputLocation": "Output location",
+		"settings.outputLocationDesc": "Results go into a same named subfolder of the selected location, which must be inside this vault. The fixed folder is also the fallback for “PDF folder”.",
+		"settings.currentFolder": "Current folder:",
+		"settings.chooseFolder": "Choose folder",
+		"settings.chooseOutputFolder": "Choose an output folder for external PDFs (inside this vault)",
+		"settings.outputOutsideVault": "The output folder must be inside this vault, or images in the document will break.",
+		"settings.outputAtVaultRoot": "Choose a subfolder in this vault, not the vault root.",
+		"settings.keepPdf": "Keep PDF copy and structural data",
+		"settings.keepPdfDesc": "PDF comparison needs these files. When off, only the original text, translation, and images are kept.",
+		"settings.translationLanguage": "Translation language",
+		"settings.summaryChinese": "Summaries currently remain in Chinese.",
+		"settings.chinese": "Chinese",
+		"settings.generateSummary": "Generate a summary after conversion",
+		"settings.generateSummaryDesc": "When off, only the source text is generated; no summary file is created. Translations and comparison reading are unaffected.",
+		"settings.summaryDetail": "Summary detail",
+		"settings.brief": "Brief",
+		"settings.standard": "Standard",
+		"settings.detailed": "Detailed",
+		"settings.zoteroSource": "Zotero source folder",
+		"settings.libraryFolder": "Paper library folder",
+		"settings.libraryPlaceholder": "Paper library",
+		"settings.libraryInvalid": "Invalid paper library folder: {error}",
+		"settings.chooseVaultFolder": "Choose a folder inside this vault.",
+		"settings.libraryMoved": "Paper library folder changed to “{folder}”. The old folder was not renamed; its papers remain in their original location.",
+		"settings.importLibrary": "Import Zotero library",
+		"settings.autoSyncOn": "Automatic sync is on. New entries with one PDF are imported silently; entries with multiple PDFs and deleted entries await your choice. Files are never deleted automatically. Use “Check now” to sync immediately.",
+		"settings.autoSyncOff": "Automatic sync starts after your first successful import. Import creates folders and copies PDFs locally; it does not convert papers or use credits.",
+		"settings.checkNow": "Check now",
+		"settings.checking": "Checking…",
+		"settings.importNow": "Import now",
+		"settings.runtimeUnsupported": "Not supported in this runtime",
+		"settings.importing": "Importing…",
+		"settings.pendingChanges": "Zotero changes needing review",
+		"settings.resolvePending": "Review changes",
+		"settings.processing": "Processing…",
+		"settings.openLibrary": "Open paper library",
+		"settings.libraryActionsDesc": "Convert, translate, and compare papers here.",
+		"settings.open": "Open",
+		"settings.replayOnboarding": "Replay onboarding",
+		"settings.zoteroDetectedDesc": "The Zotero data folder was detected and filled in. Conversion will report any cloud attachments that have not been downloaded.",
+		"settings.zoteroMissingDesc": "The Zotero data folder was not detected. Choose it manually. Conversion will report any cloud attachments that have not been downloaded.",
+		"settings.zoteroFindHint": "To find it, right click any PDF attachment in Zotero and open its file location. Go up one level and choose the folder named storage.",
+		"settings.currentDataFolder": "Current data folder:",
+		"settings.chooseZoteroFolder": "Choose the Zotero data folder (you can select the folder named storage)",
+		"settings.detected": "Detected",
+		"settings.zoteroDetected": "Zotero data folder detected",
+		"settings.folderRenameHint": "Rename or move this folder in Obsidian's file explorer. This path will update automatically, along with links in your documents.",
+		"settings.vaultRelativePath": "Path relative to this vault.",
+		"settings.zoteroInaccessible": "Zotero data folder is not accessible",
+		"settings.changeZoteroLibrary": "Change Zotero library",
+		"settings.zoteroSourceChanged": "The Zotero source folder has changed.",
+		"settings.zoteroChangeWarning": "If this is a different Zotero library, clearing old paper records is recommended to avoid mixing states.",
+		"settings.cancelChange": "Cancel change",
+		"settings.keepRecords": "Keep existing records",
+		"settings.clearRecords": "Clear records and change",
+		"settings.readerExampleTitle": "3.2 Distributed consensus",
+		"settings.readerExampleFirst": "The alternating direction method of multipliers (ADMM) splits global optimal power flow into regional subproblems and exchanges only boundary variables to ",
+		"settings.readerExampleLink": "converge",
+		"settings.readerExampleSecond": "Adaptive penalties can reduce the number of iterations by about 30% and are less sensitive to the initial values.",
+		"settings.theme": "Theme",
+		"settings.themeDesc": "Install fonts such as Source Han Serif or LXGW WenKai for the best result; system fonts are used when they are unavailable.",
+		"settings.textWidth": "Text width",
+		"settings.lineHeight": "Line height",
+		"settings.fontScale": "Font size",
+		"settings.scope": "Apply to",
+		"settings.libraryOnly": "Paper library only",
+		"settings.wholeVault": "Entire vault",
+		"settings.showSidebarButtons": "Show in left sidebar",
+		"settings.ribbonHub": "Paper library",
+		"settings.ribbonDualPane": "Side by side",
+		"settings.ribbonPdfCompare": "PDF comparison",
+		"settings.ribbonExternalPdf": "External PDF",
+		"settings.conversion": "Conversion",
+		"settings.pdfCleanup": "PDF postprocessing",
+		"settings.pdfCleanupDesc": "Further remove headers, footers, and false headings; join sentences across pages; and fix common superscript, subscript, and word spacing issues. Turn off to use basic processing for troubleshooting or comparison.",
+		"settings.autoNote": "Create note outline automatically",
+		"settings.autoNoteDesc": "Create “note-paper-name.md” after processing a paper; existing files are never overwritten.",
+		"settings.reading": "Reading",
+		"settings.dualPaneHighlight": "Highlight matching paragraphs in the other pane",
+		"settings.dualPaneHighlightDesc": "In side by side reading, the opposite pane highlights a match only in Reading view. Turning this off keeps linked positioning and scroll sync.",
+		"settings.pdfHighlight": "Mark matching positions in the PDF",
+		"settings.pdfHighlightDesc": "Turning this off still navigates to the page, but hides the highlight box.",
+		"settings.updates": "Updates",
+		"settings.autoUpdate": "Update Recto automatically",
+		"settings.autoUpdateDesc": "When enabled, new versions download and take effect at startup without asking. When disabled, Recto shows one reminder. Updates come only from Recto's public release page, the same source as the community store.",
+		"settings.checkUpdates": "Check for updates",
+		"settings.externalMode.source": "Same folder as PDF",
+		"settings.externalMode.fixed": "Fixed folder",
+		"settings.externalMode.ask": "Ask every time",
+		"settings.readerTheme.off": "Off",
+		"settings.readerTheme.warm": "Recto warm paper",
+		"settings.readerTheme.latex": "LaTeX academic",
+		"settings.readerTheme.wenkai": "WenKai eye comfort",
+		"settings.readerTheme.night": "Dark night reading",
+		"settings.readerPreset.窄": "Narrow",
+		"settings.readerPreset.较窄": "Slightly narrow",
+		"settings.readerPreset.标准": "Standard",
+		"settings.readerPreset.较宽": "Slightly wide",
+		"settings.readerPreset.宽": "Wide",
+		"settings.readerPreset.紧凑": "Compact",
+		"settings.readerPreset.较紧": "Slightly tight",
+		"settings.readerPreset.宽松": "Relaxed",
+		"settings.readerPreset.疏朗": "Spacious",
+		"settings.readerPreset.小": "Small",
+		"settings.readerPreset.较小": "Slightly small",
+		"settings.readerPreset.较大": "Slightly large",
+		"settings.readerPreset.大": "Large",
+		"settings.readerPreviewOff": "Off: papers use Obsidian's native layout.",
+		"settings.readerPreviewCurrent": "Current: text width {width}px · line height {lineHeight} · font size {fontScale}×. The narrower preview scales text width proportionally.",
+		"time.justNow": "Just now",
+		"time.minutesAgo": "{count} minutes ago",
+		"time.hoursAgo": "{count} hours ago",
+		"time.daysAgo": "{count} days ago",
+		"account.signedOut": "Not signed in to Recto",
+		"account.pagesUnknown": "Translation pages not loaded yet",
+		"account.pagesAvailable": "{count} pages available",
+		"account.creditsUnknown": "Credits not loaded yet",
+		"account.creditsRemaining": "Remaining credits {percent}",
+		"account.creditsProcessing": ", with another {percent}% processing",
+		"account.actionFailed": "Could not complete the account action. Please try again later.",
+		"account.signIn": "Sign in",
+		"account.signInHint": "Not signed in to Recto; click to open the account panel",
+		"account.sessionExpired": "Recto sign in has expired",
+		"account.sessionExpiredHint": "Recto sign in has expired; click to sign in again",
+		"account.signedInEmail": "Signed in: {email}; ",
+		"account.openPanelHint": "Click to open account panel",
+		"account.pagesLabel": "Pages —",
+		"account.pagesCount": "{count} pages",
+		"account.pagesHint": "{count} pages available; PDF conversion is currently free; {suffix}",
+		"account.creditsEmpty": "Credits 0%",
+		"account.creditsEmptyHint": "No credits left. Purchase more to continue converting; {suffix}",
+		"account.creditsLabel": "Credits —",
+		"account.creditsLabelValue": "Credits {percent}{held}",
+		"account.heldSuffix": " ({percent}% processing)",
+		"account.statusSignedIn": "Signed in to Recto",
+		"account.statusSignedOut": "Not signed in to Recto",
+		"account.statusZoteroSetup": "Zotero needs setup",
+		"account.statusZoteroPending": "{count} Zotero changes to review",
+		"account.statusZoteroCheck": "Zotero needs checking",
+		"account.statusZoteroSynced": "Zotero synced",
+		"account.statusZoteroSyncedAt": "Zotero synced · {time}",
+		"account.statusZoteroImport": "Zotero needs import",
+		"account.statusCreditsUnknown": "Credits unknown",
+		"account.statusPagesUnknown": "Translation pages unknown",
+		"account.statusPagesLow": "Not enough translation pages",
+		"account.statusPagesAvailable": "{count} translation pages available",
+		"account.statusCreditsLow": "Not enough credits",
+		"account.statusCreditsAvailable": "Credits available",
+		"account.statusCreditsPapers": "Credits available · about {count} papers",
+		"account.modalTitle": "Recto account and credits",
+		"account.refreshFailed": "Could not refresh account information. Please try again later.",
+		"account.operationPending": "{label} did not complete. Please try again later.",
+		"account.operationFailed": "{label} failed: {error}",
+		"account.browserWaitingTitle": "Browser sign in · Waiting",
+		"account.browserAccountTitle": "Recto account",
+		"account.browserReturn": "Return here automatically after signing in through your browser.",
+		"account.browserIntro": "Sign in through your browser.",
+		"account.browserWaitingDesc": "Recto is securely waiting for browser authentication. You can keep this panel open or return later.",
+		"account.browserDesc": "Use your system browser to sign in, register, or reset your password. Password managers work there; your password never enters the Obsidian plugin.",
+		"account.browserWaiting": "Waiting for browser sign in",
+		"account.sessionExpiredDesc": "Your last sign in has expired. Sign in again to continue.",
+		"account.reopenLogin": "Reopen sign in page",
+		"account.loginInBrowser": "Sign in in browser",
+		"account.browserLoggedIn": "I signed in in the browser",
+		"account.checkLogin": "Check sign in status",
+		"account.loginSuccess": "Signed in to Recto",
+		"account.loginNotFinished": "Browser sign in is not finished yet.",
+		"account.cancel": "Cancel",
+		"account.copyLoginLink": "Copy sign in link",
+		"account.loginLinkCopied": "Sign in link copied. Open it in any browser.",
+		"account.loginLinkCopyFailed": "Could not copy the link. Open the account page manually.",
+		"account.browserReturnHint": "Return to Obsidian after finishing in your browser. Recto will continue automatically.",
+		"account.browserOnlyHint": "Sign in, registration, and password reset happen in your browser.",
+		"account.loginTimeout": "The sign in page timed out. Click “Sign in in browser” again.",
+		"account.loginConsumed": "This sign in was already handled. Start again if you are still signed out.",
+		"account.loginIdle": "Browser sign in has not started yet.",
+		"account.loginFailed": "Sign in did not finish. Please try again later.",
+		"account.loginAutoCheckFailed": "Automatic sign in checking stopped after an error. After signing in, click “I signed in in the browser”.",
+		"account.emailUnverified": "Email not verified yet.",
+		"account.sendVerification": "Send verification email",
+		"account.verificationRequested": "Verification email requested. Check your inbox.",
+		"account.inviteCode": "Invite code",
+		"account.copyInvite": "Copy invite code",
+		"account.clipboardUnavailable": "Clipboard is unavailable here",
+		"account.inviteCopied": "Invite code copied",
+		"account.invitePagesHint": "When a friend registers and verifies their email, both of you get 60 translation pages.",
+		"account.inviteTrialHint": "When a friend registers with this code, both of you get a 7 day Pro trial.",
+		"account.signOut": "Sign out",
+		"account.signedOutNotice": "Signed out of Recto",
+		"account.availablePagesLabel": "Available translation pages",
+		"account.packHelp": "Buy once, keep indefinitely, and stack packs. Translation uses actual pages; estimated paper counts assume typical papers. PDF conversion is currently free.",
+		"account.pagesReadFailed": "Could not load translation pages. Reopen this panel to retry.",
+		"account.pagesDepleted": "No translation pages left. Buy more to continue translating. PDF conversion is currently free.",
+		"account.remainingCreditsLabel": "Remaining credits",
+		"account.heldProcessing": "Another {percent}% is processing",
+		"account.creditsReadFailed": "Could not load credits. Reopen this panel to retry.",
+		"account.creditsDepleted": "No credits left. Buy more to continue converting and translating.",
+		"account.plansReadFailed": "Could not load plans. Reopen this panel to retry.",
+		"account.plansLoading": "Loading plans…",
+		"account.plansUnavailable": "Plan information is temporarily unavailable. Please contact us.",
+		"account.paymentWaiting": "Waiting for payment in your browser. Credits will update automatically.",
+		"account.paymentTimeout": "No payment result yet. Reopening this panel will refresh it. The plugin does not query the order itself.",
+		"account.packEstimateHint": "Estimated at about 20 pages per paper. Actual use is based on translation pages; PDF conversion is currently free.",
+		"account.planEstimateHint": "An estimate based on average paper length. Conversion is charged by paper pages; translation by character count. Actual paper counts vary.",
+		"account.paymentOpened": "Payment page opened in your browser. Complete payment there.",
+		"account.buy": "Buy",
+		"account.buyPending": "Buying…",
+		"account.billingCycle": "Billing cycle",
+		"account.monthly": "Monthly",
+		"account.yearly": "Yearly",
+		"account.saveMonths": "Save {count} months",
+		"plan.basicKicker": "Try it out",
+		"plan.free": "Free",
+		"plan.proKicker": "For regular reading",
+		"plan.maxKicker": "For heavy use",
+		"plan.basicFeatureConvert": "PDF conversion and structure recovery",
+		"plan.basicFeatureCompare": "Original and translation side by side",
+		"plan.basicFeatureZotero": "Zotero library import and indexing",
+		"plan.proFeature": "Everything in Basic",
+		"plan.maxFeature": "Everything in Pro",
+		"plan.packEstimate.1": "About 1 typical paper",
+		"plan.packEstimate.20": "About 20 typical papers",
+		"plan.packEstimate.50": "About 50 typical papers",
+		"plan.recommended": "Recommended",
+		"plan.pages": "{count} pages",
+		"plan.perYear": "/year",
+		"plan.perMonth": "/month",
+		"plan.papersPerCycle": "About {count} papers per cycle",
+		"plan.creditsPending": "Credits pending",
+		"plan.quotaMultiple": "About {count}× the Basic allowance",
+		"plan.membershipExpired": "{plan} membership expired. Benefits returned to Basic.",
+		"plan.trial": "trial",
+		"plan.membership": "membership",
+		"plan.membershipActive": "{plan} {kind} active",
+		"plan.membershipExpires": "{plan} {kind} valid until {date}{soon}",
+		"plan.expiresSoon": ". {days} days remain. Renewal is not automatic",
+		"plan.buy": "Buy {plan}",
+		"plan.fallback": "Returns to this plan at expiry",
+		"plan.freeActive": "Free plan active",
+		"plan.current": "Current plan",
+		"plan.renew": "Renew {plan}",
+		"plan.trialActive": "Trial active",
+		"plan.upgrade": "Upgrade to {plan}",
+		"plan.switchAfterExpiry": "Switch after expiry",
+		"plan.downgradeHint": "Your current membership is {plan} {cycle}. Changing to {next} now would recalculate the remaining time using the new plan's daily allowance and forfeit some prepaid days. Wait until your membership expires.",
+		"plan.switchYearly": "Switch to yearly",
+		"plan.switchMonthly": "Switch to monthly",
+		"plan.switch": "Switch to {plan}",
+		"onboarding.title": "Welcome to Recto",
+		"onboarding.zoteroFeature": "Precise conversion from Zotero",
+		"onboarding.zoteroFeatureDesc": "Turn papers into Markdown. PDFs outside Zotero work too.",
+		"onboarding.translationFeature": "Translation and side by side reading",
+		"onboarding.translationFeatureDesc": "Generate a translation in one step and read it alongside the original.",
+		"onboarding.aiFeature": "Ready for AI assisted reading",
+		"onboarding.aiFeatureDesc": "Turn papers into notes that AI can read, search, and cite as part of your own library.",
+		"onboarding.freeFeature": "Start for free",
+		"onboarding.freeFeatureDesc": "All features are free to start, with a monthly allowance. Upgrade only when you need more.",
+		"onboarding.startSetup": "Start setup",
+		"onboarding.later": "Maybe later",
+		"onboarding.signIn": "Sign in to Recto",
+		"onboarding.offline": "If Recto is unavailable, skip this step and continue later in settings.",
+		"onboarding.browserOnly": "Complete this in your browser. Your password never enters the plugin.",
+		"onboarding.signInBrowser": "Sign in in browser",
+		"onboarding.checkCredits": "Check available credits",
+		"onboarding.checkCreditsDesc": "You're signed in. View your available credits or choose a plan in the account panel.",
+		"onboarding.viewAccount": "View account and credits",
+		"onboarding.importZotero": "Import papers from Zotero",
+		"onboarding.importZoteroDesc": "A local Zotero data folder was found. Import only copies PDFs locally and creates paper entries; it does not convert files or use credits.",
+		"onboarding.nameLibrary": "Name your paper library folder",
+		"onboarding.importNow": "Import Zotero now",
+		"onboarding.useExternal": "Use an external PDF instead",
+		"onboarding.ready": "Your papers are ready",
+		"onboarding.readyDesc": "Open the paper library, select a paper, and convert it on the right. Then open the source or translation from the same place.",
+		"onboarding.openLibrary": "Open library and choose a paper",
+		"onboarding.selectPaperHint": "Select a paper in the list to find Convert in its details on the right.",
+		"onboarding.firstConverted": "Your first paper is converted",
+		"onboarding.firstConvertedDesc": "The source text is saved in this vault. Open it now or find it later in the file list.",
+		"onboarding.readSource": "Open source text",
+		"onboarding.choosePdf": "Choose your first PDF",
+		"onboarding.zoteroNotFound": "No usable Zotero data folder was found. Convert a local PDF first, or set up Zotero manually in settings.",
+		"onboarding.zoteroUnavailable": "This runtime cannot read the Zotero database, but you can still convert a local PDF.",
+		"onboarding.convertPdf": "Choose PDF and convert",
+		"onboarding.configureZotero": "Configure Zotero",
+		"onboarding.skipStep": "Skip this step",
+		"onboarding.skipAll": "Skip onboarding",
+		"onboarding.stepFailed": "This step did not finish. Please try again later.",
+		"onboarding.saveFailed": "Could not save onboarding status. Please try again.",
+		"onboarding.openFailed": "Onboarding finished, but the destination did not open. Continue from settings.",
+		"onboarding.finished": "Onboarding is finished. You can continue in Settings → Recto → Get started at any time.",
+		"feedback.signIn": "Open account sign in",
+		"feedback.contact": "Contact us:",
+		"feedback.qqCopied": "QQ number copied",
+		"feedback.qqCopyFailed": "Could not copy. Write down QQ: {qq}",
+		"feedback.type": "Feedback type",
+		"feedback.issue": "Issue",
+		"feedback.feature": "Suggestion",
+		"feedback.other": "Other",
+		"feedback.placeholder": "Describe your issue or suggestion…",
+		"feedback.submit": "Send feedback",
+		"feedback.tooShort": "Enter at least 5 characters.",
+		"feedback.submitting": "Sending…",
+		"feedback.received": "Thanks. Your feedback was received.",
+		"feedback.submitFailed": "Could not send feedback. Try again later or contact us on QQ.",
+		"hub.folderMissing": "Paper library folder “{folder}” is missing, but local records for {count} papers remain. It may have been renamed or moved. Update the path below to its current location.",
+		"hub.folderEmpty": "Paper library folder “{folder}” contains no papers, but local records for {count} papers remain. The path may be wrong. Update it below to the folder containing your papers.",
+		"hub.viewTitle": "Recto paper library",
+		"hub.searchPlaceholder": "Search titles, authors, journals, collections, notes…",
+		"hub.settings": "Recto settings",
+		"hub.readingStatus": "Reading status",
+		"hub.readingStatusIn": "Reading status · {collection}",
+		"hub.countScope": "Counts include only papers in “{collection}”",
+		"hub.recent": "Recent",
+		"hub.recentHint": "Separate view of papers you opened, converted, or marked with a reading status, newest first. Entering clears collection and conversion filters; selecting a collection exits. Imports and papers without recorded activity are excluded.",
+		"hub.allPapers": "All papers",
+		"hub.reading": "Reading",
+		"hub.read": "Read",
+		"hub.unread": "Unread",
+		"hub.zoteroCollections": "Zotero collections",
+		"hub.filters": "Filters",
+		"hub.clearFilter": "Clear this filter: {label}",
+		"hub.clearAll": "Clear all",
+		"hub.expandCollection": "Expand: {name}",
+		"hub.collapseCollection": "Collapse: {name}",
+		"hub.totalCount": "{count} papers",
+		"hub.countDetail": " · {converted} converted · {translated} with translations",
+		"hub.loadFailed": "Could not load papers: {error}",
+		"hub.noPapers": "No papers yet",
+		"hub.importHint": "Import your Zotero library to get started.",
+		"hub.noRecent": "No activity yet.",
+		"hub.recentHintEmpty": "Open any paper and it will appear here.",
+		"hub.noMatches": "No papers match the current filters.",
+		"hub.matchesElsewhere": "Another {count} papers match “{query}” across the whole library.",
+		"hub.searchAll": "Search all papers",
+		"hub.searchAllHint": "Keep the search term and clear the collection, reading status, and conversion filters",
+		"hub.clearFilters": "Clear all filters",
+		"hub.conversion.all": "All",
+		"hub.conversion.converted": "Converted",
+		"hub.conversion.translated": "Translated",
+		"hub.conversion.todo": "To process",
+		"hub.statusToggle": "Reading status: {status} (click to change)",
+		"hub.notConverted": "Not converted",
+		"hub.choosePaper": "Select a paper",
+		"hub.source": "Source",
+		"hub.url": "URL",
+		"hub.openUrl": "Open {url} in browser",
+		"hub.copy": "Copy",
+		"hub.collection": "Collection",
+		"hub.status": "Status",
+		"hub.notePlaceholder": "Record reading notes",
+		"hub.noteConflict": "This note changed elsewhere. Your edits have been kept.",
+		"hub.noteReadFailed": "Could not read this note right now.",
+		"hub.noteSaveFailed": "This note was not saved. Your edits have been kept.",
+		"hub.saveMyNote": "Save my version",
+		"hub.retry": "Retry",
+		"hub.noOpenFile": "This paper has no file to open yet",
+		"hub.readAction": "Read",
+		"hub.read.source": "Read original",
+		"hub.read.translation": "Read translation",
+		"hub.read.pdf": "Read PDF",
+		"hub.readChoice.source": "Original",
+		"hub.readChoice.translation": "Translation",
+		"hub.readChoice.pdf": "PDF",
+		"hub.chooseReadAction": "Choose reading type",
+		"hub.readPreferenceFailed": "Reading preference could not be saved and may reset after restarting.",
+		"hub.openTranslation": "Open translation",
+		"hub.openSource": "Open original",
+		"hub.openSummary": "Open summary",
+		"hub.translationSummary": "Generate a summary too (skip papers with an existing summary)",
+		"hub.translationSummaryHint": "Off for each translation. The summary uses the source text and costs no extra translation pages.",
+		"hub.summaryExists": "{count} papers already have summaries; their files were kept.",
+		"hub.summaryFailed": "{stem}: summary generation failed; the translation remains available.",
+		"hub.translationFailedSummarySaved": "{stem}: translation failed, but the summary was saved and translation pages released.",
+		"hub.translationRejectedSummarySaved": "{stem}: the translation failed local validation; the summary was saved and the translation task was settled.",
+		"hub.openPdf": "Open PDF",
+		"hub.openUnconvertedPdf": "Open PDF (not converted)",
+		"hub.dualPane": "Compare original and translation side by side",
+		"hub.pdfCompare": "Compare PDF and translation",
+		"hub.copyCitation": "Copy citation",
+		"hub.deletePaper": "Delete this paper (move to Recycle Bin)",
+		"hub.authors": "Authors",
+		"hub.collapseAuthors": "Show less",
+		"hub.moreAuthors": "{count} more",
+		"hub.collapseAuthorsHint": "Collapse author list",
+		"hub.expandAuthorsHint": "{count} authors in total; click to show all",
+		"hub.unconvertedTitle": "{title} (not converted)",
+		"hub.selectionDropped": "{count} selected papers are outside the current filters and have been deselected.",
+		"hub.navToggle": "Collections and reading status",
+		"hub.openBatchPane": "Open batch panel to convert, translate, or delete selected papers",
+		"hub.batchPaneJump": "{count} selected · Process",
+		"hub.backToList": "Back to list",
+		"hub.sort.status": "Reading status",
+		"hub.sort.title": "Title",
+		"hub.sort.author": "Author",
+		"hub.sort.venue": "Journal",
+		"hub.sort.year": "Year",
+		"hub.sort.recent": "Recent",
+		"hub.sortBy": "Sort by {label}",
+		"hub.showOriginalTitle": "Showing Chinese titles; click to show English titles",
+		"hub.showTranslatedTitle": "Showing English titles; click to show Chinese titles",
+		"hub.convertSelected": "Convert selected ({count} papers)",
+		"hub.convertThis": "Convert this paper",
+		"hub.convertHint": "Upload unconverted PDFs and extract Markdown and summaries",
+		"hub.translateSelected": "Translate selected ({count} papers)",
+		"hub.translateThis": "Translate this paper",
+		"hub.translateMixedHint": "Unconverted papers will be converted and translated; converted papers will only be translated, without another conversion or charge",
+		"hub.translateUnconvertedHint": "Unconverted papers will be converted and translated",
+		"hub.translateOnlyHint": "Translate only, without converting again",
+		"hub.translateMixedNote": "Of {total} selected papers, {convert} need conversion and translation; {translate} are converted and need only translation.",
+		"hub.partialSelected": "Another {count} papers were only partly translated; retranslating them is not supported yet.",
+		"hub.partialThis": "This paper was only partly translated; retranslating it is not supported yet.",
+		"hub.selectedCount": "{count} selected",
+		"hub.escapeHint": "Press Esc to close",
+		"hub.batchSummary": "Not converted {unconverted} · Converted without translation {withoutTranslation} · Complete/legacy translation {translated} · Partly untranslated {partial}",
+		"hub.deleteSelected": "Delete selected ({count} papers)",
+		"hub.deleteSelectedHint": "Move selected paper folders and summaries to the Recycle Bin; confirmation comes first",
+		"hub.morePapers": "Another {count} papers",
+		"hub.collapseQueue": "Collapse pending writeback list",
+		"hub.expandQueue": "Expand pending writeback list",
+		"hub.writebackFailedCount": "⚠ Writeback failed for {count} papers; automatic retries stopped",
+		"hub.pendingWritebackCount": "{count} papers submitted and awaiting writeback",
+		"hub.oldest": "Oldest: {age}",
+		"hub.tryAgain": "Try again",
+		"hub.recoverNow": "Recover now",
+		"hub.recoverHint": "Check completed papers and write their results now",
+		"hub.writebackFailed": "Writeback failed",
+		"hub.abandon": "Abandon",
+		"hub.abandonHint": "Clear the local record so this paper can be converted again; credits already spent will not be refunded",
+		"hub.writebackFailureDetail": "Writeback failed: {error}. Results are kept for at most {hours} hours. Fix the problem and try again, or abandon this entry and convert the paper again.",
+		"hub.recoveryFailure": "The last recovery attempt failed: {error}",
+		"dialog.confirm": "Please confirm",
+		"dialog.continue": "Continue",
+		"dialog.cancel": "Cancel",
+		"consent.title": "Start using Recto cloud processing",
+		"consent.intro": "Confirm this once to get started. Single-paper jobs will then start directly; multi-paper jobs will still show a count for confirmation.",
+		"consent.upload": "When you choose to process a paper, Recto uploads the selected PDF or the paper text and structure.",
+		"consent.process": "Recto processes the content in the cloud, possibly with contracted third parties.",
+		"consent.retention": "Results are deleted from the cloud after they are written locally. Unclaimed results are kept for at most {hours} hours.",
+		"consent.later": "Not now",
+		"consent.agree": "Agree and continue",
+		"update.newVersion": "{brand} version {version} is available",
+		"update.intro": "Current version: {current}. Latest version: {version}. Installation takes a few seconds and applies immediately without restarting Obsidian.",
+		"update.autoDesc": "Auto update: install future versions on startup without asking again.",
+		"update.onceDesc": "Update once: install this version only and ask again next time.",
+		"update.sourceDesc": "Updates come from Recto's public release page, the same source as the community listing. Updates wait until paper processing is idle.",
+		"update.skip": "Skip this version",
+		"update.once": "Update once",
+		"update.auto": "Auto update",
+		"update.required": "Update {brand} first",
+		"update.requiredDesc": "This version is too old to process papers reliably. Update to continue.",
+		"update.now": "Update now",
+		"external.duplicateTitle": "This PDF was already converted",
+		"external.moreDuplicates": " ({count} other papers were also converted)",
+		"external.selectedPdf": "Selected PDF",
+		"external.duplicateIntro": "{name} was converted before{more}. Converting it again will be charged again and create a new folder.",
+		"external.previousOutput": "Previous output: {path}",
+		"external.previousOutputUnknown": "No previous output folder is recorded.",
+		"external.translateInstead": "If you only need a translation, open the previous Markdown source and use Translate current Markdown. There is no need to convert it again.",
+		"external.convertAgain": "Convert {count} papers again",
+		"import.confirmTitle": "Import Zotero library",
+		"import.confirmIntro": "Import {count} papers now.",
+		"import.objectCounts": "Create {created} records and update {updated}.",
+		"import.pdfCounts": "Copy {count} PDFs, about {size} MB.",
+		"import.unreadable": "Skip {count} source PDFs that cannot be read right now.",
+		"import.localOnly": "Import creates paper records locally. It does not start conversion or translation.",
+		"import.confirmAction": "Import {count} papers",
+		"markdown.replaceTitle": "This document already has a translation",
+		"markdown.replaceIntro": "{path} already exists. Translating again will be charged again and overwrite this translation.",
+		"markdown.pageEstimate": "This document is about {count} pages.",
+		"markdown.sourceSafe": "The source document will not change.",
+		"markdown.retranslate": "Translate again",
+		"batch.translateReuse": "Use the existing paper text and current translation settings. PDFs will not be copied again.",
+		"batch.quote": "Estimated use: {needed} translation pages. Available now: {available} pages.",
+		"batch.shortfall": "Estimated use: {needed} pages; {available} available; {shortfall} more needed",
+		"batch.translateTitle": "Translate selected papers",
+		"batch.translateIntro": "Translate the {count} selected papers now.",
+		"batch.translateAction": "Translate {count} papers",
+		"batch.content": "Processing: {content}.",
+		"batch.summaryPart": "enabled summaries",
+		"batch.partsJoin": "{first}, {second}",
+		"batch.partsFinal": "{first} and {last}",
+		"batch.freeTranslate": "PDF conversion is currently free. Translation pages are charged after conversion according to actual length.",
+		"batch.freeConvert": "PDF conversion is currently free and uses no translation pages.",
+		"batch.rights": "Check your selection and make sure you have permission to process these files.",
+		"batch.convertTranslateTitle": "Convert and translate selected PDFs",
+		"batch.convertTitle": "Convert selected PDFs",
+		"batch.convertIntro": "Process the {count} selected PDFs now.",
+		"batch.convertAction": "{action} {count} papers",
+		"batch.deleteTitle": "Delete selected papers",
+		"batch.deleteIntro": "Delete the {count} selected papers now.",
+		"batch.deleteMore": "{count} more papers",
+		"batch.deleteDesc": "Paper folders and summaries will move to the system trash.",
+		"batch.deleteAction": "Delete {count} papers",
+		"recovery.abandoned": "Abandoned {paper}. This paper can be converted again; pages already spent will not be refunded.",
+		"recovery.paperName": "{name}",
+		"recovery.task": "this task",
+		"recovery.none": "No papers are waiting for results to be written.",
+		"recovery.noConsent": "Cloud processing is not enabled. Recovery was cancelled.",
+		"recovery.signIn": "Sign in to Recto again before recovering paper results.",
+		"recovery.active": "A task is already running: {label}",
+		"recovery.start": "Recovering results for {count} papers. Do not submit them again…",
+		"recovery.done": "Recovered and wrote results for {count} papers.",
+		"recovery.dropped": "Cleared {count} old tasks that could not be recovered. You can submit those papers again.",
+		"recovery.reason": "Reason: {error}. ",
+		"recovery.blocked": "Writeback failed repeatedly for {count} tasks, so automatic retries stopped. {reason}Use Try again or Abandon in the queue at the bottom of the paper library.",
+		"recovery.lastError": " Last error: {error}",
+		"recovery.pending": "Recovery has not succeeded yet. Tasks were kept; do not submit them again.{detail}",
+		"recovery.failed": "Recovery did not finish: {error}",
+		"update.waitForBatch": "Wait until the current batch finishes before updating.",
+		"update.latest": "{brand} is up to date.",
+		"update.checkFailed": "Could not check for a new version. Try again later.",
+		"update.installing": "Updating {brand}…",
+		"update.restartNeeded": "{brand} {version} was downloaded. Restart Obsidian to apply it.",
+		"update.installFailed": "Could not update {brand}. Try again later.",
+		"batch.noActiveTask": "No task is running.",
+		"batch.cancelAlreadyRequested": "Cancellation was already requested. The current paper will finish.",
+		"batch.onlyCurrent": "Only the current paper remains. It will finish; if it stalls, processing stops automatically and reserved pages are returned.",
+		"batch.cancelledQueued": "Cancelled {count} queued papers. The current paper will finish.",
+		"filePicker.folderUnavailable": "This runtime cannot open the folder picker. Paste the path into the input instead.",
+		"filePicker.folderTitle": "Select folder",
+		"filePicker.folderFailed": "Could not open the folder picker. Try again later.",
+		"filePicker.pdfUnavailable": "This runtime cannot open the file picker for external PDFs.",
+		"filePicker.pdfTitle": "Select PDFs to convert (multiple allowed)",
+		"filePicker.pdfFailed": "Could not open the file picker. Try again later.",
+		"external.outputFallback": "These PDFs are outside the vault, so their source folder cannot be used. Output will go to {folder}.",
+		"external.chooseOutput": "Choose an output folder for this conversion (inside the vault)",
+		"external.outputOutside": "The output folder must be inside this vault; otherwise images in the text will break. Choose again.",
+		"external.outputAtRoot": "Choose a subfolder in the vault instead of the vault root.",
+		"external.noConsent": "Cloud processing is not enabled. External PDF conversion was cancelled.",
+		"external.signIn": "Sign in to Recto first",
+		"external.busy": "A task is running. Wait for it to finish before converting external PDFs.",
+		"external.noPdf": "No PDFs can be processed.",
+		"external.cancelled": "Cancelled.",
+		"compare.openPaper": "Open a paper PDF, source, translation, or summary first",
+		"compare.wrongFile": "This file is not a Recto paper file",
+		"compare.sourceMissing": "Could not find this paper's source or translation",
+		"compare.unavailable": "Side by side reading is unavailable: {error}",
+		"compare.switchedDual": "Switched to side by side reading; PDF comparison was closed.",
+		"compare.dualBindFailed": "Could not start side by side reading: failed to bind the views",
+		"compare.unmapped": "Side by side reading started, but {detail}; those paragraphs will not scroll in sync.",
+		"compare.dualClosed": "Side by side reading ended because a pane closed or opened another file",
+		"compare.alignmentLost": "Side by side reading ended because alignment anchors or revision bindings are unavailable",
+		"compare.markdownMissing": "Could not find the Chinese Markdown needed for PDF comparison",
+		"compare.pdfMissing": "Could not find the original PDF needed for PDF comparison",
+		"compare.pdfUnavailable": "PDF comparison is unavailable: {error}",
+		"compare.switchedPdf": "Switched to PDF comparison; source and translation side by side reading was closed.",
+		"compare.pdfBindFailed": "Could not start PDF comparison: failed to bind the views",
+		"compare.pdfClosed": "PDF comparison ended because a pane closed or opened another file",
+		"compare.noPage": "This paragraph has no PDF page number, so Recto did not jump",
+		"compare.notInStructure": "This paragraph is missing from the structure data, so Recto did not jump",
+		"compare.alignmentBindingMissing": "Recto revision binding is missing; this may be an older paper",
+		"compare.alignmentDocumentMismatch": "Source and translation belong to different papers",
+		"compare.alignmentRevisionMismatch": "Source and translation have different source revisions",
+		"compare.alignmentNoAnchors": "The two panes have no matching alignment anchors",
+		"compare.translationMissing": "Translation not found; keeping a single pane",
+		"compare.sourcePartnerMissing": "Source not found; keeping a single pane",
+		"compare.chineseNoTranslation": "This Chinese paper has no translation; keeping a single pane",
+		"compare.unmatchedSource": "{count} source blocks have no match",
+		"compare.unmatchedTranslation": "{count} translated blocks have no match",
+		"compare.pdfBindingInvalid": "Paper location data is missing or unsupported",
+		"compare.pdfBindingMissing": "Paper location data is missing; this may be an older paper",
+		"compare.pdfDocumentMismatch": "The PDF and current Markdown belong to different papers",
+		"compare.pdfRevisionMismatch": "The PDF source revision differs from the current Markdown",
+		"compare.pdfNoPageInfo": "This paper has no usable PDF page location data",
+		"import.runtimeUnsupported": "This environment cannot read the Zotero library. Update Obsidian and try again.",
+		"import.chooseSource": "Choose a Zotero source folder first",
+		"import.cancelled": "Import cancelled. No papers were imported.",
+		"import.noPdf": "No readable local Zotero PDFs were found; nothing was imported",
+		"import.failed": "Zotero import did not finish. Try again later.",
+		"import.dbBusy": "The Zotero database is in use. Close Zotero and retry import or check.",
+		"import.runtimeUpgrade": "This environment cannot read the Zotero library. Update Obsidian and try again.",
+		"import.folderMissing": "Could not find or read the Zotero library folder. Choose the Zotero data directory again in Recto settings.",
+		"import.autoSync": "Zotero automatic sync",
+		"import.autoAdded": "Added {count} papers",
+		"import.pending": "{count} changes need confirmation",
+		"import.autoSummary": "Zotero automatic sync: {summary}",
+		"import.noChanges": "Zotero checked: no changes need attention",
+		"import.checkFailed": "Zotero check did not finish. Try again later.",
+		"markdown.openFirst": "Open a Markdown file to translate first",
+		"markdown.invalidSource": "This file cannot be used as a translation source. A translated file cannot be translated again.",
+		"markdown.readFailed": "Could not read the document: {error}",
+		"markdown.alreadyChinese": "This document is already in Chinese and does not need translation",
+		"markdown.empty": "This document has no translatable content",
+		"markdown.buyPages": "{quote}. Purchase translation pages first.",
+		"markdown.start": "Starting translation of {name}, about {count} pages.",
+		"markdown.quote": "This document is {required} pages and is expected to use {required} translation pages",
+		"markdown.quoteAvailable": "; {available} pages available",
+		"markdown.quoteShortfall": "; {shortfall} more pages needed",
+		"markdown.anchorHint": "Want side by side reading? Enable alignment anchors under Translate Markdown in settings, then translate again.",
+		"hub.noSelection": "Select papers from the list first",
+		"hub.noConvertible": "None of the selected papers has an unconverted PDF ready to submit. Check the right pane for already converted papers.",
+		"hub.skippedConversion": "Selected {total} papers: {ready} can be submitted; {skipped} were already converted or have unreadable source PDFs and were skipped.",
+		"hub.chineseSkipped": "Skipped translation for {count} papers already in Chinese. They need no translation and use no pages.",
+		"hub.status.unread": "Unread",
+		"hub.status.reading": "Reading",
+		"hub.status.read": "Read",
+		"hub.linkFailed": "Could not open the link. Try again later.",
+		"hub.allConverted": "All selected papers have been converted.",
+		"hub.allTranslated": "All selected papers already have translations.",
+		"hub.copied": "Copied",
+		"hub.copyUnavailable": "Copying is unavailable in this environment",
+		"hub.copyFailed": "Could not copy",
+		"account.loginSuccessNotice": "Signed in to {brand}",
+		"account.noLoginUrl": "The service did not return a usable sign-in URL.",
+		"account.invalidLoginUrl": "The sign-in URL is invalid.",
+		"account.browserUnavailable": "Could not open a browser here. Copy the sign-in link manually.",
+		"account.signInRequired": "Sign in to your Recto account first.",
+		"account.choosePlan": "Choose a package to purchase first.",
+		"account.noCheckoutUrl": "The service did not return a usable checkout URL.",
+		"feedback.signInRequired": "Sign in to Recto before submitting feedback.",
+		"update.installedNotice": "{brand} updated to {version}",
+		"settings.librarySynced": "Paper library folder updated to {folder}.",
+		"settings.readingStatusFailed": "Could not change reading status. Try again later.",
+		"import.unreadablePdfs": "Skipped {count} imported papers whose source PDFs cannot be read right now",
+		"import.copiedCount": "New local PDFs copied: {count}",
+		"import.repairedCount": "Incomplete PDFs repaired: {count}",
+		"import.copyFailedCount": "Copies failed: {count}",
+		"import.mismatchCount": "Not overwritten because source size differed: {count}",
+		"import.interruptedSummary": "Zotero import stopped: {count} paper records were saved; {copyNote}. Run import again to continue from where it stopped.",
+		"import.incompleteSummary": "Zotero paper records were saved, but {count} items remain unfinished ({copyNote}). Run import again or restart Obsidian to repair them automatically.",
+		"import.completedSummary": "Zotero import finished: {imported} new, {existing} existing, {total} total; {copyNote}",
+		"import.syncedSummary": "Zotero sync finished: {matched} matched, {missing} PDFs missing, {orphaned} local orphans, {trashed} moved to trash",
+		"task.translationSkipped": "{stem}: the source and summary were saved, but the translation was not written ({reason}). This paper will show as Converted without translation.",
+		"task.summaryUnsupported": "This service does not yet support a summary with translation. No translation pages were held. Update the service and try again.",
+		"task.translationFailedExternal": "{stem}: conversion finished and was saved, but translation failed ({reason}). Conversion was charged; translation was not.",
+		"task.translationFailedHub": "{stem}: conversion finished and was saved, but translation failed ({reason}). Conversion was charged; translation was not. This paper now shows as Converted without translation and can be translated again from the Hub.",
+		"task.batchSummary": "Recto: {success} succeeded, {failed} failed{stopped}{log}",
+		"task.stoppedSuffix": "; {count} queued papers cancelled",
+		"task.logSaveFailed": "; could not save the failure log",
+		"pdfRepair.done": "PDF repair finished: recopied {fixed}/{total} files",
+		"pdfRepair.none": "No PDFs need recopying: no papers have been imported yet, or the Zotero source files cannot currently be read.",
+		"import.collectionReadFailed": "Could not read Zotero collections; showing a regular list instead. {error}",
+		"import.metadataReadFailed": "Could not read Zotero metadata; PDFs will be selected by file name.",
+		"import.trashFailed": "Could not move the papers to the trash. Try again later.",
+		"import.trashDone": "Moved {count} papers to the trash",
+		"import.pendingFailed": "Could not process the pending changes. Try again later.",
+		"import.syncPaused": "Zotero sync is paused because this environment cannot read the library. Update Obsidian and try again.",
+		"import.syncFailed": "Zotero sync did not finish. Try again later.",
+		"import.trashPartial": "Some papers could not be moved to the trash. Their records were kept: {titles}",
+		"hub.recordMissing": "Could not find the matching Zotero paper record",
+		"hub.openFailed": "Could not open the paper library. Try again or restart Obsidian.",
+		"hub.settingsPath": "Open Recto from Obsidian Settings → Community plugins.",
+		"hub.resultMissing": "Could not find the conversion result. Open the output folder from the file list.",
+		"hub.resultSaved": "The source text was saved to {folder}. Open it from the file list.",
+		"hub.fileMissing": "Could not find the file. Close and reopen the Hub, then try again.",
+		"task.retryMissing": "This task is not in the local recovery list. Retrying was blocked because its result could not be written back.",
+		"task.retrySubmitted": "Submitted again. Wait for the result to be written back.",
+		"task.retryFailed": "Retry did not finish. Try again later.",
+		"task.noConsent": "Cloud processing is not enabled. This task was cancelled.",
+		"task.noTasks": "No tasks were selected for Recto",
+		"task.cloudProcessing": "Paper cloud processing",
+		"task.pdfPathMissing": "A conversion task needs a local PDF path for upload",
+		"task.blockedDuplicate": "{count} papers are still being recovered or already finished, so duplicate submissions were blocked and recovery started. Do not upload them again. You can also run Recto: Recover unfinished cloud processing from the command palette.",
+		"task.failed": "Recto task failed: {error}{log}",
+		"task.exemption": "Recto covered the small page shortfall for {count} papers and finished them. Your balance is now empty; purchase more pages to continue.",
+		"task.failureLog": "; see {path}",
+		"delete.missing": "These papers are no longer in the library",
+		"delete.preflightFailed": "Deletion check failed: {error}",
+		"delete.done": "Deletion finished: {success} succeeded, {failed} failed",
+		"delete.sourceMissing": "Source folder does not exist",
+		"distribution.done": "Sanitized distribution package created: {file}",
+		"distribution.failed": "Could not create the distribution package. Try again later.",
+		"zotero.itemType.journalArticle": "Journal article",
+		"zotero.itemType.conferencePaper": "Conference paper",
+		"zotero.itemType.bookSection": "Book chapter",
+		"zotero.itemType.book": "Book",
+		"zotero.itemType.thesis": "Thesis",
+		"zotero.itemType.report": "Report",
+		"zotero.itemType.preprint": "Preprint",
+		"zotero.itemType.manuscript": "Manuscript",
+		"zotero.itemType.document": "Document",
+		"sync.title": "Preview Zotero sync changes",
+		"sync.summary": "Matched {matched}; PDF missing {missing}; deleted in Zotero but retained in Obsidian {orphaned}.",
+		"sync.missingTitle": "Zotero item found, but local PDF is missing",
+		"sync.missingDesc": "These papers and their Obsidian files will stay in the index. Check whether their Zotero cloud attachments have downloaded.",
+		"sync.orphanedTitle": "Papers deleted from Zotero",
+		"sync.orphanedDesc": "Sync will mark them as deleted from Zotero but keep their Obsidian files by default. Only selected papers will move to the system trash.",
+		"sync.selectAll": "Select all",
+		"sync.selectNone": "Select none",
+		"sync.moveToTrash": "Move to trash: {title}",
+		"sync.cancel": "Cancel sync",
+		"sync.indexOnly": "Sync index only",
+		"sync.indexAndTrash": "Sync and move to trash",
+		"pdfChoice.title": "Choose how to handle items with multiple PDFs",
+		"pdfChoice.intro": "These Zotero items have PDFs with different contents, possibly from several attachment folders. Recto selects an identified primary attachment or existing record by default. You can choose another version, process all, or skip the item.",
+		"pdfChoice.versions": "{count} PDF versions",
+		"pdfChoice.mode": "How to process",
+		"pdfChoice.one": "Choose one PDF",
+		"pdfChoice.all": "Process each PDF",
+		"pdfChoice.skip": "Skip this time",
+		"pdfChoice.file": "Use file",
+		"pdfChoice.recommended": " [Recommended]",
+		"pdfChoice.version": " [Version {count}]",
+		"pdfChoice.cancel": "Cancel",
+		"progress.defaultLabel": "Recto task",
+		"progress.prefix": "Recto: {status}",
+		"progress.finished": "Finished",
+		"progress.completedOne": "One paper finished",
+		"progress.previousFailed": "Previous paper failed",
+		"progress.phase.submit": "Submit",
+		"progress.phase.upload": "Upload",
+		"progress.phase.processing": "Parse",
+		"progress.phase.summary": "Summary",
+		"progress.phase.translation": "Translate",
+		"progress.phase.write": "Write results",
+		"progress.pages": " pages",
+		"progress.failed": "Failed: {count}",
+		"progress.cancelQueued": "Cancel {count} queued papers",
+		"progress.cancelRequested": "Cancellation requested for queued tasks",
+		"progress.currentWillFinish": "This paper will finish; if it stalls, processing will stop automatically and the reserved pages will be returned",
+		"progress.inProgress": "In progress",
+		"progress.importZotero": "Import Zotero library",
+		"progress.convert": "Convert",
+		"progress.convertTranslate": "Convert and translate",
+		"progress.translate": "Translate",
+		"progress.scanZotero": "Scan Zotero",
+		"progress.scan": "Scan",
+		"progress.waitChoice": "Waiting for a choice",
+		"progress.createObjects": "Create paper records",
+		"progress.createRecord": "Create record",
+		"progress.waitConfirm": "Waiting for confirmation",
+		"progress.saveObjects": "Save paper records",
+		"progress.importPdf": "Import local PDFs",
+		"progress.copyPdf": "Copy PDF",
+		"progress.writeIndex": "Write index",
+		"progress.importDone": "Zotero import finished",
+		"progress.importIncomplete": "Zotero import needs repair",
+		"progress.importCancelled": "Zotero import stopped",
+		"progress.submitTranslation": "Submit translation",
+		"progress.uploadContent": "Upload paper content",
+		"progress.queue": "Queued",
+		"progress.fetchTranslation": "Fetch translation",
+		"progress.writeTranslation": "Write translation",
+		"progress.fetchResult": "Fetch result",
+		"progress.stopped": "Stopped",
+		"progress.failedStatus": "Failed",
+		"progress.finishedWithFailures": "Finished, {count} papers failed",
+		"progress.pdfGroups": "{count} groups with multiple PDFs",
+		"progress.paperCount": "{count} papers",
+		"progress.pendingCopy": "{count} papers awaiting copy",
+		"error.default": "Could not complete the operation. Try again later.",
+		"error.cloudConsent": "Accept Recto's cloud processing notice first.",
+		"error.remoteTask": "Processing did not finish. Try again later.",
+		"error.sessionExpired": "Your session expired. Sign in to Recto again.",
+		"error.taskExpired": "This task expired. Submit it again.",
+		"error.busy": "The service is busy. Try again later.",
+		"error.unavailable": "The service is temporarily unavailable. Try again later.",
+		"error.invalidSubmission": "The submission did not pass validation. Return to the paper library and try again.",
+		"error.cancelled": "Operation cancelled.",
+		"error.network": "The network connection is unstable. Try again later.",
+		"error.insufficientCredits": "Not enough translation pages. Purchase more to continue.",
+		"error.taskNotReady": "The result is still processing. Try again later.",
+		"error.noTranslatableContent": "This document has no text to translate.",
+		"error.sameTargetLanguage": "This document is already in the target language.",
+		"error.languageConfirmation": "Confirm the source and target languages before translating.",
+		"error.ocrLanguage": "This OCR language is unsupported. Choose another language.",
+		"error.ocrSourceUnsupported": "This document writing system is not supported for OCR. Convert the document to Markdown first.",
+		"error.ocrUnreadable": "The document text could not be reliably extracted. Provide a clearer PDF or Markdown.",
+		"error.languageContract": "Update Recto and the service to use document languages.",
+		"error.sourceRevision": "The source version does not match. Submit the current source again.",
+		"error.pdfRequired": "Choose a PDF to upload.",
+		"error.pdfInvalid": "Choose a valid PDF file.",
+		"error.pdfTooLarge": "The PDF exceeds the 50 MB limit.",
+		"error.planUnavailable": "This plan is unavailable. Choose another plan.",
+		"error.planNotPurchasable": "This plan cannot be purchased.",
+		"error.checkoutExpired": "This checkout link expired. Open it again from Recto.",
+		"error.orderNotFound": "This order could not be found. Check your account again.",
+		"error.paymentUnavailable": "Payment is temporarily unavailable. Try again later.",
+		"error.paymentMethodUnavailable": "This payment method is unavailable.",
+		"error.taskStateConflict": "This action is unavailable while the task is {status}.",
+		"error.pageLimitExceeded": "The document exceeds the {limit} page limit.",
+		"error.translationPageLimitExceeded": "The document has {pages} equivalent translation pages, above the {limit}-page limit.",
+		"error.requestInvalid": "The request could not be completed. Check your input and try again.",
+		"error.resourceUnavailable": "The requested item is unavailable.",
+		"error.writeback": "Could not write the result. Try again later.",
+		"error.folderEmpty": "The paper library folder cannot be empty.",
+		"error.folderRelative": "Use a path inside this vault for the paper library folder.",
+		"error.folderSegments": "The paper library folder path cannot contain . or .. segments.",
+		"update.applying": "Applying the {brand} update…",
+		"recovery.operationRunning": "Another task is running: {label}",
+		"recovery.writeUnavailable": "The result cannot be written right now. Try again later.",
+		"hub.untitledPaper": "Untitled paper",
+		"hub.queueStatus.pending": "Processing",
+		"hub.queueStatus.ready": "Waiting to write results",
+		"hub.queueStatus.terminal": "Failed",
+		"hub.queueStatus.abandoned": "Not submitted",
+		"hub.authorsEtAl": "{name} et al.",
+	},
+});
+let activeRectoUiLocale = "zh-CN";
+
+function normalizeRectoUiPreference(value) {
+	return RECTO_UI_LANGUAGES.includes(value) ? value : "follow";
+}
+
+function resolveRectoUiLocale(preference, hostLanguage) {
+	const selected = normalizeRectoUiPreference(preference);
+	if (selected !== "follow") return selected;
+	const tag = String(hostLanguage || "").trim().replace(/_/g, "-").toLowerCase();
+	if (tag === "zh" || tag === "zh-cn" || tag === "zh-sg" || tag === "zh-my" || tag === "zh-hans" || tag.startsWith("zh-hans-")) return "zh-CN";
+	if (tag.startsWith("zh-")) return "en";
+	const base = tag.split("-")[0];
+	return RECTO_UI_LANGUAGES.includes(base) ? base : "en";
+}
+
+function translateRectoUi(locale, key, params = {}) {
+	const lang = resolveRectoUiLocale(locale, locale);
+	const template = RECTO_UI_MESSAGES[lang][key] || RECTO_UI_MESSAGES.en[key] || "Text unavailable.";
+	return template.replace(/\{([A-Za-z][A-Za-z0-9]*)\}/g, (_, name) =>
+		params[name] == null ? "—" : String(params[name]));
+}
+
+function rectoUiText(key, params) {
+	return translateRectoUi(activeRectoUiLocale, key, params);
+}
+function createRectoUiError(key, params) {
+	const error = new Error(rectoUiText(key, params));
+	error.rectoUiKey = key;
+	error.rectoUiParams = params || {};
+	return error;
+}
+const RECTO_UI_ZH_STATIC_KEYS = new Map(Object.entries(RECTO_UI_MESSAGES["zh-CN"])
+	.filter(([, value]) => !/\{[A-Za-z][A-Za-z0-9]*\}/.test(value))
+	.map(([key, value]) => [value, key]));
+const RECTO_UI_EN_STATIC_KEYS = new Map(Object.entries(RECTO_UI_MESSAGES.en)
+	.filter(([, value]) => !/\{[A-Za-z][A-Za-z0-9]*\}/.test(value))
+	.map(([key, value]) => [value, key]));
+
 const PDF_CONFIRM_BYTES = 30 * 1024 * 1024;
 const PDF_MAX_BYTES = 50 * 1024 * 1024; // 与后端 nginx client_max_body_size 50m 对齐，避免大文件上传被 413
 
@@ -249,7 +1946,7 @@ const DEFAULT_ONBOARDING_STATE = {
 // 排序列与升降序。搜索词不记（重开时看到一份被过滤的短列表，很容易以为论文丢了），
 // 选中行、分类树折叠、标题中/英也不记。归一在 normalizeHubViewState：任何一项脏了就退回默认，
 // 不让一份坏状态卡住整个视图。
-const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", status: "all", conversion: "all", sort: "title", descending: false, navCollapsed: false };
+const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", status: "all", conversion: "all", sort: "title", descending: false };
 
 const DEFAULT_BACKEND_BASE_URL = "https://api.rectoai.uk";
 
@@ -265,6 +1962,7 @@ const EXTERNAL_OUTPUT_MODES = {
 const DEFAULT_EXTERNAL_OUTPUT_FOLDER = "Recto 转换";
 
 const DEFAULT_SETTINGS = {
+	uiLanguage: "follow",
 	backendBaseUrl: DEFAULT_BACKEND_BASE_URL,
 	backendUserId: "",
 	backendSessionToken: "",
@@ -315,8 +2013,7 @@ const DEFAULT_SETTINGS = {
 	sourceFolder: "",
 	baseFolder: "论文库",
 	pollIntervalMs: 5000,
-	// T83-I：摘要与转换是两件事，勾掉就只出正文。默认开着，老用户行为不变。
-	generateSummaryOnConvert: true,
+	// 旧版 generateSummaryOnConvert 只在旧 data.json 中兼容保留；新转换不读取它。
 	// T83-N：PDF 增强后处理总开关。开 = standard profile（已过评测台双门的确定性规则），
 	// 关 = basic profile（只剩安全底座）。开关只在 Hub 转换区，设置页不重复放一份。
 	enhancedPostprocess: true,
@@ -342,6 +2039,7 @@ const DEFAULT_SETTINGS = {
 	pdfCompareHighlight: true,
 	// T83-O：Hub 上次看到哪（分类 / 筛选 / 排序），下次打开照旧。纯 UI 状态，见 normalizeHubViewState。
 	hubViewState: { ...HUB_VIEW_STATE_DEFAULT },
+	hubReadAction: "translation",
 	onboarding: { ...DEFAULT_ONBOARDING_STATE },
 	// 侧边栏默认只放论文库这一个入口（T82-D）。对照阅读与 PDF 对照都是在论文里才用得上的动作，
 	// 在 Hub 和命令面板里都够得着；默认全塞进侧边栏只会让新装的插件占掉四格图标。
@@ -541,11 +2239,11 @@ function getReaderPreviewMeasure(settings) {
 }
 
 function describeReaderPreviewNote(settings) {
-	if (!isReaderThemeActive(settings)) return "已关闭：论文按 Obsidian 原生排版显示。";
+	if (!isReaderThemeActive(settings)) return rectoUiText("settings.readerPreviewOff");
 	const width = getReaderWidthPx(settings);
 	const lineHeight = getReaderLineHeight(settings);
 	const fontScale = getReaderFontScale(settings);
-	return `当前：栏宽 ${width}px · 行高 ${lineHeight} · 字号 ${fontScale.toFixed(2).replace(/\.?0+$/, "")}×；预览框比正文窄，栏宽按比例示意。`;
+	return rectoUiText("settings.readerPreviewCurrent", { width, lineHeight, fontScale: fontScale.toFixed(2).replace(/\.?0+$/, "") });
 }
 
 // 编辑态光标：Obsidian 空选区时用浏览器原生 caret（宽高不可定制），选中时才画 .cm-cursor，两种状态几何不一致。
@@ -968,7 +2666,34 @@ const RECTO_MARK_MARKUP = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2
 // Chrome 图标统一走 Obsidian 内置 Lucide（T82-C）：一处入口，将来换图标集只改这里。
 // setIcon 会把宿主元素内容换成对应 SVG（stroke=currentColor，颜色随宿主样式）。
 function setChromeIcon(el, name) {
+	if (HUB_READING_ICON_PATHS[name] && el.ownerDocument) {
+		el.replaceChildren();
+		const svg = el.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "svg");
+		for (const [key, value] of Object.entries({ viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.7", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) svg.setAttribute(key, value);
+		for (const d of HUB_READING_ICON_PATHS[name]) {
+			const path = el.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path");
+			path.setAttribute("d", d);
+			svg.appendChild(path);
+		}
+		el.appendChild(svg);
+		return;
+	}
 	if (typeof obsidian.setIcon === "function") obsidian.setIcon(el, name);
+}
+
+// T88-B: authored geometry, shared by the primary action, menu and icon row.
+const HUB_READING_ICON_PATHS = {
+	"recto-source": ["M6 5V3h12v2M12 3v14M9 17h6M7 21h10"],
+	"recto-pdf": ["M5 2h9l5 5v15H5zM14 2v5h5", "M7 16v-5h1a1.25 1.25 0 0 1 0 2.5H7M11 16v-5h1c2 0 2 5 0 5zM16 16v-5h2M16 13.5h1.5"],
+	"recto-pdf-compare": ["M2 4h8v16H2zM4.5 10h3M4.5 14h3", "M14 4h4l4 4v12h-8zM18 4v4h4"],
+};
+const HUB_READ_ACTIONS = ["source", "translation", "pdf"];
+const HUB_READ_ICONS = { source: "recto-source", translation: "languages", pdf: "recto-pdf" };
+function resolveHubReadActions(entry, preference) {
+	const available = HUB_READ_ACTIONS.filter(action => !!entry[`${action}Path`]);
+	const primary = available.includes(preference) ? preference
+		: ["translation", "source", "pdf"].find(action => available.includes(action)) || null;
+	return { primary, available, secondary: available.filter(action => action !== primary) };
 }
 
 // 浏览器登录回跳的深链动作：obsidian://recto-auth?handoff=<公开 id>。
@@ -986,10 +2711,10 @@ const BROWSER_LOGIN_POLL_MAX_ATTEMPTS = 300;
 const CHECKOUT_BILLING_POLL_INTERVAL_MS = 3000;
 const CHECKOUT_BILLING_POLL_MAX_ATTEMPTS = 200;
 const BROWSER_LOGIN_STATUS_NOTES = {
-	pending: "浏览器那边还没完成登录。",
-	expired: "登录页已超时，请重新点「在浏览器中登录」。",
-	consumed: "这次登录已经被接管过了，若仍未登录请重新发起。",
-	idle: "还没有发起浏览器登录。",
+	pending: "account.loginNotFinished",
+	expired: "account.loginTimeout",
+	consumed: "account.loginConsumed",
+	idle: "account.loginIdle",
 };
 
 const RIBBON_BUTTONS = [
@@ -1048,12 +2773,12 @@ function bufferToArrayBuffer(buf) {
 function validateVaultRelativeFolder(raw) {
 	const original = String(raw || "").trim();
 	const text = original.replace(/\\/g, "/");
-	if (!text) throw new Error("论文库文件夹不能为空");
+	if (!text) throw createRectoUiError("error.folderEmpty");
 	if (nodePath.isAbsolute(original) || /^[A-Za-z]:/.test(text) || text.startsWith("//"))
-		throw new Error("论文库文件夹必须是 Vault 内相对路径");
+		throw createRectoUiError("error.folderRelative");
 	const clean = obsidian.normalizePath(text).replace(/^\/+|\/+$/g, "");
 	if (!clean || clean === "." || clean.split("/").some(part => part === "." || part === ".."))
-		throw new Error("论文库文件夹不能包含 . 或 .. 路径段");
+		throw createRectoUiError("error.folderSegments");
 	return clean;
 }
 
@@ -1236,7 +2961,7 @@ const RECTO_MAX_RESOURCES = 4096;
 
 const ZOTERO_TASK_FIELDS = [
 	"zoteroAttachmentKey", "zoteroItemKey", "zoteroTitle", "zoteroAttachmentPath",
-	"zoteroAttachmentFileName", "year", "authors", "venue", "zoteroCollections", "zoteroCollectionPaths",
+	"zoteroAttachmentFileName", "year", "authors", "venue", "zoteroCollections", "zoteroCollectionPaths", "zoteroCollectionPathParts",
 	"zoteroMetadata",
 ];
 
@@ -1255,8 +2980,11 @@ const RECTO_POSTPROCESS_PROFILE_BASIC = "basic";
 // 就不知道往哪写。**降级风险记在这里**：`sanitizePersistedPendingTask` 按白名单裁剪，
 // 用户降回不认识这两个字段的旧插件版本时它们会被裁掉（见 AGENT_WORKFLOW.md 的 Ship order）。
 const PENDING_BACKEND_TASK_FIELDS = [
+	"languageContract", "sourcePath", "translationPath", "sourceContentHash", "sourceRevisionId", "namingVersion",
 	"name", "recordId", "folder", "path", "fileSize", "sourceFileName", "documentId", "requestTranslation",
 	"translateOnly", "stem", "postprocessProfile", "outputRoot", "keepSourcePdf",
+	"requestSummary", "summaryLanguage", "summaryDepth", "protectExistingTranslation",
+	"resumeTranslationSubmit",
 	// T84-S：翻译任意 Markdown。`markdownPath` 是这条分叉的唯一判据，也是写回落点的来源；
 	// `markdownDocumentId` 用于写回时的身份校验（本地没有 sidecar 文件可比对）；
 	// `markdownWriteAnchors` 是提交那一刻的选择，与 postprocessProfile 同理——用户中途改了
@@ -1268,6 +2996,90 @@ const PENDING_BACKEND_TASK_FIELDS = [
 function normalizeRectoUuid(value) {
 	const clean = String(value || "").trim().toLowerCase();
 	return /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(clean) ? clean : "";
+}
+
+// 文档语言独立保存；仅全新安装时由 Obsidian 语言初始化。
+function normalizeDocumentLanguage(value) {
+	const input = typeof value === "string" ? { id: value } : value;
+	if (!input || typeof input.id !== "string") return null;
+	const raw = input.id.trim();
+	if (/^custom-[a-f0-9]{64}$/.test(raw)) {
+		const name = String(input.name || "").normalize("NFC").trim();
+		if (!name || name.length > 120 || /[\x00-\x1f\x7f]/.test(name) || input.confirmed !== true) return null;
+		const id = `custom-${crypto.createHash("sha256").update(name.toLocaleLowerCase("en")).digest("hex")}`;
+		return id === raw ? { id, name, prefix: id, confirmed: true } : null;
+	}
+	const aliases = { "zh-cn": "zh-Hans", "zh-sg": "zh-Hans", "zh-tw": "zh-Hant", "zh-hk": "zh-Hant", "zh-mo": "zh-Hant", "en-us": "en", "en-gb": "en", "ja-jp": "ja", "简体中文": "zh-Hans", "繁体中文": "zh-Hant", "英语": "en", "英文": "en", "日语": "ja", "english": "en", "japanese": "ja", "simplified chinese": "zh-Hans", "traditional chinese": "zh-Hant" };
+	let id = aliases[raw.toLowerCase()] || raw;
+	if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i.test(id) || /^(?:und|mul|zxx|unknown|jp|zht)$/i.test(id)) return null;
+	try {
+		const locale = new Intl.Locale(id);
+		id = locale.baseName;
+		if (locale.language === "zh") {
+			const script = locale.script || (/^(TW|HK|MO)$/.test(locale.region || "") ? "Hant" : /^(CN|SG)$/.test(locale.region || "") ? "Hans" : "");
+			id = script ? `zh-${script}` : "zh";
+		} else id = locale.script && locale.script !== new Intl.Locale(locale.language).maximize().script ? `${locale.language}-${locale.script}` : locale.language;
+		const name = new Intl.DisplayNames(["en"], { type: "language", fallback: "none" }).of(id);
+		if (!name || name === id) return null;
+		return { id, name, prefix: id === "zh-Hans" ? "zh" : id === "zh-Hant" ? "zht" : ["ch", "br", "src"].includes(id.toLowerCase()) ? `lang-${id.toLowerCase()}` : id.toLowerCase() };
+	} catch { return null; }
+}
+
+function migrateDocumentLanguages(settings, remote = {}) {
+	const current = settings.documentLanguages || {};
+	const validTarget = value => { const target = normalizeDocumentLanguage(value); return target && target.id !== "zh" ? target : null; };
+	const legacy = value => ["zh-CN", "en-US", "ja-JP"].includes(value) ? validTarget(value) : null;
+	const target = validTarget(current.translationTarget) || validTarget(remote.documentLanguages && remote.documentLanguages.translationTarget)
+		|| legacy(settings.backendOutputLanguage) || validTarget(remote.translationTargetLanguage)
+		|| legacy(settings.backendTranslationTargetLanguage) || legacy(remote.outputLanguage) || normalizeDocumentLanguage("zh-Hans");
+	const summary = normalizeDocumentLanguage(current.summaryLanguage || remote.documentLanguages?.summaryLanguage);
+	if (current.unifiedOutput === true) return { version: 1, unifiedOutput: true, translationTarget: target, summaryLanguage: target.id, ocrLanguage: "auto" };
+	return { version: 1, translationTarget: target, summaryLanguage: summary && ["zh-Hans", "en"].includes(summary.id) ? summary.id : "zh-Hans", ocrLanguage: typeof current.ocrLanguage === "string" ? current.ocrLanguage : (remote.documentLanguages?.ocrLanguage || "ch") };
+}
+
+function documentArtifactPath(folder, stem, prefix) {
+	if (!/^[a-z][a-z0-9-]*$/.test(prefix) || prefix.length > 72) throw new Error("Invalid document language prefix");
+	const safeStem = String(stem || "").normalize("NFC");
+	if (!safeStem || /[\\/:*?"<>|\x00-\x1f]/.test(safeStem) || /[. ]$/.test(safeStem)) throw new Error("Invalid document stem");
+	// Never truncate: a path that cannot fit must be rejected, not made to collide.
+	if (`${prefix}-${safeStem}.md`.length > 240) throw new Error("Document filename is too long");
+	return obsidian.normalizePath(`${folder}/${prefix}-${safeStem}.md`);
+}
+
+function documentContentHash(markdown) {
+	return crypto.createHash("sha256").update(String(markdown)).digest("hex");
+}
+
+function withDocumentArtifactMetadata(markdown, fields) {
+	let text = String(markdown).replace(/\r\n/g, "\n");
+	if (!text.startsWith("---\n")) text = `---\n---\n\n${text}`;
+	const end = text.indexOf("\n---", 3);
+	if (end < 0) throw new Error("Invalid artifact frontmatter");
+	let head = text.slice(4, end);
+	for (const [key, value] of Object.entries(fields)) {
+		head = head.replace(new RegExp(`^${key}:.*(?:\\n|$)`, "gm"), "");
+		head += `\n${key}: ${JSON.stringify(value)}`;
+	}
+	return `---\n${head.trim()}${text.slice(end)}`;
+}
+
+function documentLanguageText(zh, en) { return activeRectoUiLocale === "en" ? en : zh; }
+
+function confirmedDocumentLanguage(value) {
+	const standard = normalizeDocumentLanguage(value);
+	if (standard) return standard;
+	const name = String(value || "").normalize("NFC").trim();
+	const matches = new Set();
+	for (const locale of ["en", "zh-CN"]) {
+		const names = new Intl.DisplayNames([locale], { type: "language", fallback: "none" });
+		for (let a = 97; a <= 122; a++) for (let b = 97; b <= 122; b++) {
+			const tag = String.fromCharCode(a, b);
+			if (names.of(tag)?.toLocaleLowerCase("en") === name.toLocaleLowerCase("en")) matches.add(tag);
+		}
+	}
+	if (matches.size === 1) return normalizeDocumentLanguage([...matches][0]);
+	const id = `custom-${crypto.createHash("sha256").update(name.toLocaleLowerCase("en")).digest("hex")}`;
+	return normalizeDocumentLanguage({ id, name, confirmed: true });
 }
 
 function createRectoDocumentId() {
@@ -1630,9 +3442,9 @@ function describeTranslationQuote(settings, requiredPages) {
 	const available = known ? balance.available : null;
 	const shortfall = known ? Math.max(0, required - available) : 0;
 	const requiredText = formatTranslationPages(required);
-	let text = `本篇 ${requiredText} 页，预计消耗 ${requiredText} 页`;
-	if (known) text += `；现有 ${formatTranslationPages(available)} 页`;
-	if (shortfall > 0) text += `，还差 ${formatTranslationPages(shortfall)} 页`;
+	let text = rectoUiText("markdown.quote", { required: requiredText });
+	if (known) text += rectoUiText("markdown.quoteAvailable", { available: formatTranslationPages(available) });
+	if (shortfall > 0) text += rectoUiText("markdown.quoteShortfall", { shortfall: formatTranslationPages(shortfall) });
 	return { active: true, known, required, available, shortfall, text };
 }
 
@@ -1648,7 +3460,7 @@ function buildRectoMarkdownRecordId(markdownPath) {
  * `ch-<stem>.md`——与库内命名逐字一致，于是**双栏靠既有的前缀配对就能认出来，不需要任何新逻辑**。
  * 用户自己的 `我的剪藏.md` 则得到 `ch-我的剪藏.md`，那条要靠译文 frontmatter 里记的原文路径配对。
  */
-function resolveRectoMarkdownTranslationTarget(markdownPath) {
+function resolveRectoMarkdownTranslationTarget(markdownPath, language = null) {
 	const clean = String(markdownPath || "").replace(/\\/g, "/").replace(/\/+/g, "/");
 	if (!clean || !/\.md$/i.test(clean)) return null;
 	const slash = clean.lastIndexOf("/");
@@ -1656,16 +3468,16 @@ function resolveRectoMarkdownTranslationTarget(markdownPath) {
 	const name = (slash >= 0 ? clean.slice(slash + 1) : clean).replace(/\.md$/i, "");
 	if (!name) return null;
 	const fromRectoSource = name.startsWith(EN_MARKDOWN_PREFIX);
-	const stem = fromRectoSource ? name.slice(EN_MARKDOWN_PREFIX.length) : name;
+	const stem = language && name.startsWith("src-") ? name.slice(4) : fromRectoSource ? name.slice(EN_MARKDOWN_PREFIX.length) : name;
 	if (!stem) return null;
 	// 已经是译文的不该再翻一次——`ch-` 开头意味着这就是上一次的产物。
-	if (name.startsWith(CH_MARKDOWN_PREFIX)) return null;
+	if (!language && name.startsWith(CH_MARKDOWN_PREFIX)) return null;
 	return {
 		folder,
 		sourceName: name,
 		stem,
 		fromRectoSource,
-		targetPath: `${folder ? `${folder}/` : ""}${CH_MARKDOWN_PREFIX}${stem}.md`,
+		targetPath: language ? documentArtifactPath(folder, stem, language.prefix) : `${folder ? `${folder}/` : ""}${CH_MARKDOWN_PREFIX}${stem}.md`,
 	};
 }
 
@@ -2152,10 +3964,10 @@ function checkRectoPdfSidecarBinding(sidecar, binding) {
 }
 
 function describeRectoPdfBindingIssue(issue) {
-	if (issue === "sidecar-invalid") return "论文定位信息缺失或格式不受支持";
-	if (issue === "binding-missing") return "缺少论文定位信息，可能是旧论文";
-	if (issue === "document-mismatch") return "PDF 与当前 Markdown 不属于同一篇论文";
-	if (issue === "revision-mismatch") return "PDF 来源修订与当前 Markdown 不一致";
+	if (issue === "sidecar-invalid") return rectoUiText("compare.pdfBindingInvalid");
+	if (issue === "binding-missing") return rectoUiText("compare.pdfBindingMissing");
+	if (issue === "document-mismatch") return rectoUiText("compare.pdfDocumentMismatch");
+	if (issue === "revision-mismatch") return rectoUiText("compare.pdfRevisionMismatch");
 	return "";
 }
 
@@ -3009,6 +4821,11 @@ function normalizePendingBackendTasks(list) {
 // 消费者 `buildPromptContext` 全仓无人调用），发过去只是往 preferences 表里存一个谁也不看的值。
 function getBackendPreferencesPayload(settings) {
 	const s = settings || {};
+	if (s.documentLanguages && s.documentLanguages.version === 1) return {
+		documentLanguages: migrateDocumentLanguages(s),
+		summaryDepth: normalizeBackendChoice(s.summaryDepth, BACKEND_SUMMARY_DEPTHS, DEFAULT_SETTINGS.summaryDepth),
+		translationStyle: "faithful",
+	};
 	const outputLanguage = normalizeBackendChoice(s.backendOutputLanguage, BACKEND_OUTPUT_LANGUAGES, DEFAULT_SETTINGS.backendOutputLanguage);
 	return {
 		outputLanguage,
@@ -3028,6 +4845,10 @@ function getBackendPreferencesPayload(settings) {
 
 function applyBackendPreferencesToSettings(settings, preferences) {
 	if (!settings || !preferences || typeof preferences !== "object") return settings;
+	if (settings.documentLanguages && settings.documentLanguages.version === 1) {
+		// A legacy response cannot erase independent local choices.
+		return settings;
+	}
 	settings.backendOutputLanguage = normalizeBackendChoice(
 		preferences.outputLanguage,
 		BACKEND_OUTPUT_LANGUAGES,
@@ -3102,7 +4923,7 @@ function applyBackendPlansToSettings(settings, payload) {
 
 function formatBackendPlanPrice(plan) {
 	const priceCents = Number(plan && plan.priceCents) || 0;
-	if (priceCents <= 0) return "免费";
+	if (priceCents <= 0) return rectoUiText("plan.free");
 	// 去掉尾随的零：定价是 9.9 就写 ¥9.9，写成 ¥9.90 在卡片上只是噪音。
 	const amount = String(Number((priceCents / 100).toFixed(2)));
 	const currency = String((plan && plan.currency) || "CNY").toUpperCase();
@@ -3235,10 +5056,10 @@ function buildBackendCreditPackCatalog(plans) {
 		return {
 			kind: "credit-pack",
 			code: plan.code,
-			label: `${formatTranslationPages(pages)} 页`,
-			badge: preset.badge || "",
+			label: rectoUiText("plan.pages", { count: formatTranslationPages(pages) }),
+			badge: preset.badge ? rectoUiText("plan.recommended") : "",
 			featured: !!preset.featured,
-			papersText: preset.papersText,
+			papersText: rectoUiText(`plan.packEstimate.${{ translation_20: 1, translation_400: 20, translation_1000: 50 }[code]}`),
 			price: formatBackendPlanPrice(plan),
 			priceCents: Number(plan.priceCents) || 0,
 			translationPages: pages,
@@ -3275,18 +5096,19 @@ function buildBackendPlanCatalog(plans, cycle = "monthly", perPaper = 0, billing
 			tier,
 			code: plan.code,
 			label: preset.label,
-			kicker: preset.kicker,
+			kicker: rectoUiText(`plan.${tier}Kicker`),
 			icon: preset.icon,
 			price: formatBackendPlanPrice(plan),
 			priceCents: Number(plan.priceCents) || 0,
 			// 免费档没有周期后缀，它的 cycle 是空串——describeBackendPlanAction 靠 free 先分流，
 			// 走不到用 cycle 的那条分支。
 			cycle: resolveBackendPlanCycle(plan.code),
-			period: free ? "" : (wanted === "yearly" ? "/年" : "/月"),
+			period: free ? "" : rectoUiText(wanted === "yearly" ? "plan.perYear" : "plan.perMonth"),
 			papers,
-			papersText: papers > 0 ? `每期约 ${papers} 篇` : "额度待定",
+			papersText: papers > 0 ? rectoUiText("plan.papersPerCycle", { count: papers }) : rectoUiText("plan.creditsPending"),
 			free,
-			features: preset.features.slice(),
+			features: (tier === "basic" ? ["plan.basicFeatureConvert", "plan.basicFeatureCompare", "plan.basicFeatureZotero"]
+				: tier === "pro" ? ["plan.proFeature"] : ["plan.maxFeature"]).map(key => rectoUiText(key)),
 		});
 	}
 
@@ -3296,7 +5118,7 @@ function buildBackendPlanCatalog(plans, cycle = "monthly", perPaper = 0, billing
 		for (const card of cards) {
 			if (card.tier === "basic" || card.papers <= 0) continue;
 			const times = Math.round(card.papers / base.papers);
-			if (times >= 2) card.features.push(`额度约为 Basic 的 ${times} 倍`);
+			if (times >= 2) card.features.push(rectoUiText("plan.quotaMultiple", { count: times }));
 		}
 	}
 	return cards;
@@ -3657,17 +5479,17 @@ const BACKEND_MEMBERSHIP_SOON_DAYS = 7;
 
 function describeBackendMembershipLine(membership, now = Date.now()) {
 	if (!membership) return "";
-	if (!membership.active) return `${membership.planName} 会员已到期，权益已回到 Basic。`;
+	if (!membership.active) return rectoUiText("plan.membershipExpired", { plan: membership.planName });
 	const date = formatBackendLocalDate(membership.expiresAt);
-	const trialLabel = membership.isTrial ? "试用" : "会员";
-	if (!date) return `${membership.planName} ${trialLabel}生效中`;
+	const trialLabel = rectoUiText(membership.isTrial ? "plan.trial" : "plan.membership");
+	if (!date) return rectoUiText("plan.membershipActive", { plan: membership.planName, kind: trialLabel });
 	const days = membership.expiresMs === null
 		? null
 		: Math.max(0, Math.ceil((membership.expiresMs - now) / (24 * 60 * 60 * 1000)));
 	const soon = days !== null && days <= BACKEND_MEMBERSHIP_SOON_DAYS
-		? `，还有 ${days} 天。到期不会自动续费`
+		? rectoUiText("plan.expiresSoon", { days })
 		: "";
-	return `${membership.planName} ${trialLabel}有效期至 ${date}${soon}`;
+	return rectoUiText("plan.membershipExpires", { plan: membership.planName, kind: trialLabel, date, soon });
 }
 
 // 换档方向（T84-A-A，2026-08-10 用户拍板；与后端 `isPlanDowngrade` 同一套规则）。档位与
@@ -3696,7 +5518,7 @@ function isBackendPlanDowngrade(card, membership) {
 function describeBackendPlanAction(card, membership) {
 	const state = card && typeof card === "object" ? card : {};
 	if (state.kind === "credit-pack") {
-		return { kind: "buy", label: `购买 ${state.label}`, disabled: false, badge: state.badge || "" };
+		return { kind: "buy", label: rectoUiText("plan.buy", { plan: state.label }), disabled: false, badge: state.badge || "" };
 	}
 	const active = membership && membership.active ? membership : null;
 
@@ -3704,21 +5526,21 @@ function describeBackendPlanAction(card, membership) {
 		// 买了付费档之后，Basic 不再是「正在用」的东西，而是到期后会回到的那一档——
 		// 顺带把「到期作废额度、降回 Basic」这条语义摆在用户眼前。
 		return active
-			? { kind: "fallback", label: "到期后回到此档", disabled: true, badge: "" }
-			: { kind: "free", label: "免费使用中", disabled: true, badge: "当前套餐" };
+			? { kind: "fallback", label: rectoUiText("plan.fallback"), disabled: true, badge: "" }
+			: { kind: "free", label: rectoUiText("plan.freeActive"), disabled: true, badge: rectoUiText("plan.current") };
 	}
 
 	if (active && state.code === active.planCode) {
 		return {
 			kind: "renew",
-			label: `续期 ${state.label}`,
+			label: rectoUiText("plan.renew", { plan: state.label }),
 			disabled: false,
-			badge: active.isTrial ? "试用中" : "当前套餐",
+			badge: rectoUiText(active.isTrial ? "plan.trialActive" : "plan.current"),
 		};
 	}
 
 	if (!active) {
-		return { kind: "buy", label: `升级到 ${state.label}`, disabled: false, badge: "" };
+		return { kind: "buy", label: rectoUiText("plan.upgrade", { plan: state.label }), disabled: false, badge: "" };
 	}
 
 	// T84-A-A：降档与降周期买不了，卡片置灰。真正的守卫在后端 `startHandoff`——这里只是
@@ -3727,15 +5549,13 @@ function describeBackendPlanAction(card, membership) {
 	if (!active.isTrial && isBackendPlanDowngrade(state, active)) {
 		return {
 			kind: "blocked",
-			label: "到期后可切换",
+			label: rectoUiText("plan.switchAfterExpiry"),
 			disabled: true,
 			badge: "",
 			// 文案只用 `.recto-ui` 中文子集里已有的字（`tests/ui-cjk-font.test.js` 守着）——
 			// 「日单价」「损失」里的「价」「损」不在子集内，换成等义的说法，不为一句提示
 			// 重跑一遍字体子集化。
-			hint: `当前是 ${active.planName} ${active.cycle === "yearly" ? "年付" : "月付"}会员。`
-				+ `现在换成 ${state.label} 会按新档的每天额度折算剩余时长，您会少掉一部分已买的天数，`
-				+ `所以请等当前会员到期后再选。`,
+			hint: rectoUiText("plan.downgradeHint", { plan: active.planName, cycle: rectoUiText(active.cycle === "yearly" ? "account.yearly" : "account.monthly"), next: state.label }),
 		};
 	}
 
@@ -3743,7 +5563,7 @@ function describeBackendPlanAction(card, membership) {
 	if (state.tier === active.tier) {
 		return {
 			kind: "switch-cycle",
-			label: state.cycle === "yearly" ? "换成年付" : "换成月付",
+			label: rectoUiText(state.cycle === "yearly" ? "plan.switchYearly" : "plan.switchMonthly"),
 			disabled: false,
 			badge: "",
 		};
@@ -3753,8 +5573,8 @@ function describeBackendPlanAction(card, membership) {
 	// 已经在上面拦成 blocked。留着是 `higher` 为假时的兜底，不是活路径。
 	const higher = PLAN_TIER_ORDER.indexOf(state.tier) > PLAN_TIER_ORDER.indexOf(active.tier);
 	return higher
-		? { kind: "upgrade", label: `升级到 ${state.label}`, disabled: false, badge: "" }
-		: { kind: "downgrade", label: `切换到 ${state.label}`, disabled: false, badge: "" };
+		? { kind: "upgrade", label: rectoUiText("plan.upgrade", { plan: state.label }), disabled: false, badge: "" }
+		: { kind: "downgrade", label: rectoUiText("plan.switch", { plan: state.label }), disabled: false, badge: "" };
 }
 
 // 年付省多少：两档都在时才算得出，算不出就不显示——宁可少一个标签，也不写一个编的数字。
@@ -3876,15 +5696,15 @@ function describeBackendAccountView(settings, now = Date.now()) {
 		availableTranslationPages: s.backendAvailableTranslationPages,
 		heldTranslationPages: s.backendHeldTranslationPages,
 	});
-	let creditsText = "尚未登录 Recto 账号";
-	if (creditPackMode && loggedIn && !translationPages.known) creditsText = "翻译页尚未读取";
+	let creditsText = rectoUiText("account.signedOut");
+	if (creditPackMode && loggedIn && !translationPages.known) creditsText = rectoUiText("account.pagesUnknown");
 	else if (creditPackMode && translationPages.known) {
 		// T87-1-A：冻结不对用户显示——任务在途时可用页数已按预扣下降，失败退回时数字自然回升。
-		creditsText = `可用 ${translationPages.availableText} 页`;
-	} else if (loggedIn && !meter.known) creditsText = "额度尚未读取";
+		creditsText = rectoUiText("account.pagesAvailable", { count: translationPages.availableText });
+	} else if (loggedIn && !meter.known) creditsText = rectoUiText("account.creditsUnknown");
 	else if (meter.known) {
-		creditsText = `剩余额度 ${meter.text}`;
-		if (meter.heldPercent > 0) creditsText += `，另有 ${meter.heldPercent}% 处理中`;
+		creditsText = rectoUiText("account.creditsRemaining", { percent: meter.text });
+		if (meter.heldPercent > 0) creditsText += rectoUiText("account.creditsProcessing", { percent: meter.heldPercent });
 	}
 	return {
 		loggedIn,
@@ -3907,7 +5727,7 @@ function describeBackendAccountView(settings, now = Date.now()) {
 			: (creditsKnown && availableCredits <= 0),
 		creditsText,
 		lastError: s.backendLastError
-			? getUserFacingErrorMessage(s.backendLastError, "账号操作未完成，请稍后重试。")
+			? getUserFacingErrorMessage(s.backendLastError, rectoUiText("account.actionFailed"))
 			: "",
 		plans,
 		paidPlans: plans.filter(plan => Number(plan.priceCents) > 0),
@@ -3923,40 +5743,40 @@ function describeBackendAccountView(settings, now = Date.now()) {
 function describeHubCreditsBadge(settings) {
 	const view = describeBackendAccountView(settings);
 	if (!view.loggedIn) {
-		return { tone: "signed-out", text: "登录", title: "尚未登录 Recto 账号，点击打开账号面板", known: false, percent: 0, heldPercent: 0 };
+		return { tone: "signed-out", text: rectoUiText("account.signIn"), title: rectoUiText("account.signInHint"), known: false, percent: 0, heldPercent: 0 };
 	}
 	// 过期的会话与没登录同一种处境：出路都是重新登录一次。徽章与账号面板必须说同一句话，
 	// 否则徽章画着剩余额度的圆环、面板却是登录页。
 	if (view.sessionExpired) {
-		return { tone: "signed-out", text: "登录", title: `${RECTO_BRAND_NAME} 账号登录已过期，点击重新登录`, known: false, percent: 0, heldPercent: 0 };
+		return { tone: "signed-out", text: rectoUiText("account.signIn"), title: rectoUiText("account.sessionExpiredHint"), known: false, percent: 0, heldPercent: 0 };
 	}
-	const suffix = `${view.email ? `已登录：${view.email}；` : ""}点击打开账号面板`;
+	const suffix = `${view.email ? rectoUiText("account.signedInEmail", { email: view.email }) : ""}${rectoUiText("account.openPanelHint")}`;
 	if (view.creditPackMode) {
 		const pages = view.translationPages;
 		if (!pages || !pages.known) {
-			return { mode: "pages", tone: "unknown", text: "翻译页 —", title: `翻译页尚未读取；${suffix}`, known: false };
+			return { mode: "pages", tone: "unknown", text: rectoUiText("account.pagesLabel"), title: `${rectoUiText("account.pagesUnknown")}; ${suffix}`, known: false };
 		}
 		// T87-1-A：title 里同样不提冻结——徽章、账号面板、设置摘要对同一份余额只说一句话。
 		return {
 			mode: "pages",
 			tone: pages.tone,
-			text: `${pages.availableText} 页`,
-			short: `${pages.availableText} 页`,
-			title: `可用 ${pages.availableText} 页；PDF 转换当前免费；${suffix}`,
+			text: rectoUiText("account.pagesCount", { count: pages.availableText }),
+			short: rectoUiText("account.pagesCount", { count: pages.availableText }),
+			title: rectoUiText("account.pagesHint", { count: pages.availableText, suffix }),
 			known: true,
 		};
 	}
 	if (view.creditsEmpty) {
-		return { tone: "empty", text: "额度 0%", title: `额度已用完，需要购买后才能继续转换；${suffix}`, known: true, percent: 0, heldPercent: 0 };
+		return { tone: "empty", text: rectoUiText("account.creditsEmpty"), title: rectoUiText("account.creditsEmptyHint", { suffix }), known: true, percent: 0, heldPercent: 0 };
 	}
 	// 百分比要有分母；后端没给分母时退回「—」，绝不把「读不到」显示成一个具体数。
 	if (!view.meter || !view.meter.known) {
-		return { tone: "unknown", text: "额度 —", title: `额度尚未读取；${suffix}`, known: false, percent: 0, heldPercent: 0 };
+		return { tone: "unknown", text: rectoUiText("account.creditsLabel"), title: `${rectoUiText("account.creditsUnknown")}; ${suffix}`, known: false, percent: 0, heldPercent: 0 };
 	}
-	const held = view.meter.heldPercent > 0 ? `（${view.meter.heldPercent}% 处理中）` : "";
+	const held = view.meter.heldPercent > 0 ? rectoUiText("account.heldSuffix", { percent: view.meter.heldPercent }) : "";
 	return {
 		tone: view.meter.tone === "low" ? "low" : "ok",
-		text: `额度 ${view.meter.text}${held}`,
+		text: rectoUiText("account.creditsLabelValue", { percent: view.meter.text, held }),
 		// 工具栏挨着圆环显示的短文（T86-A 第四轮）：一个裸圆环不悬停就不知道能点、更不知道点开是账号。
 		// 只给百分比，不给点数——不变量 13。`text` 那份带「额度」前缀与「处理中」括注，工具栏放不下。
 		short: view.meter.text,
@@ -4052,8 +5872,7 @@ async function requestBackendJson(settings, path, options = {}) {
 	if (response.status < 200 || response.status >= 300) {
 		// 前缀 `Backend HTTP <status>` 必须保留：isRetryableBackendRequestError 与
 		// isBackendTaskNotFoundError 都靠它分类，去掉会让重试与 404 判定一起失效。
-		const detail = describeBackendErrorBody(text);
-		throw new Error(`Backend HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+		throw createBackendHttpError(response.status, text);
 	}
 	if (!text) return null;
 	try {
@@ -4139,8 +5958,7 @@ async function requestBackendMultipartJson(settings, path, parts, options = {}) 
 	if (response.status < 200 || response.status >= 300) {
 		// 前缀 `Backend HTTP <status>` 必须保留：isRetryableBackendRequestError 与
 		// isBackendTaskNotFoundError 都靠它分类，去掉会让重试与 404 判定一起失效。
-		const detail = describeBackendErrorBody(text);
-		throw new Error(`Backend HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+		throw createBackendHttpError(response.status, text);
 	}
 	if (!text) return null;
 	try {
@@ -4177,30 +5995,121 @@ function getSanitizedErrorMessage(error) {
 
 const USER_FACING_TECHNICAL_ERROR_PATTERN = /(?:\b(?:backend|http|json|api|endpoint|route|url|task\s*id|stack|trace|token|bearer|hmac|signature|sqlite|postgres(?:ql)?|mysql|redis|prisma|nestjs?|nginx|cloudflare|provider|model|sidecar)\b|后端|接口地址|任务\s*ID|服务端原文|供应商|上游服务|模型|\[redacted-|<\/?html|https?:\/\/|[A-Za-z]:[\\/]|\\\\[^\\\s]+\\|\/(?:Users|home|var|tmp|www|etc)\/)/i;
 
-function getUserFacingErrorMessage(error, fallback = "操作未完成，请稍后重试。") {
+const BACKEND_PUBLIC_ERROR_KEYS = Object.freeze({
+	INSUFFICIENT_CREDITS: "error.insufficientCredits", TASK_NOT_FOUND: "error.taskExpired",
+	TASK_NOT_READY: "error.taskNotReady", NO_TRANSLATABLE_CONTENT: "error.noTranslatableContent",
+	SAME_TARGET_LANGUAGE: "error.sameTargetLanguage", PDF_REQUIRED: "error.pdfRequired",
+	DOCUMENT_LANGUAGE_CONFIRMATION_REQUIRED: "error.languageConfirmation", DOCUMENT_OCR_LANGUAGE_UNSUPPORTED: "error.ocrLanguage",
+	DOCUMENT_OCR_SOURCE_UNSUPPORTED: "error.ocrSourceUnsupported", DOCUMENT_OCR_TEXT_UNREADABLE: "error.ocrUnreadable",
+	DOCUMENT_LANGUAGE_CONTRACT_UNSUPPORTED: "error.languageContract", DOCUMENT_SOURCE_REVISION_MISMATCH: "error.sourceRevision",
+	PDF_INVALID: "error.pdfInvalid", PDF_TOO_LARGE: "error.pdfTooLarge",
+	PLAN_UNAVAILABLE: "error.planUnavailable", PLAN_NOT_PURCHASABLE: "error.planNotPurchasable",
+	CHECKOUT_EXPIRED: "error.checkoutExpired", ORDER_NOT_FOUND: "error.orderNotFound",
+	PAYMENT_UNAVAILABLE: "error.paymentUnavailable", PAYMENT_METHOD_UNAVAILABLE: "error.paymentMethodUnavailable",
+	TASK_STATE_CONFLICT: "error.taskStateConflict", PAGE_LIMIT_EXCEEDED: "error.pageLimitExceeded",
+	TRANSLATION_PAGE_LIMIT_EXCEEDED: "error.translationPageLimitExceeded",
+	TASK_PROCESSING_FAILED: "error.remoteTask", SESSION_EXPIRED: "error.sessionExpired",
+	RATE_LIMITED: "error.busy", SERVICE_UNAVAILABLE: "error.unavailable",
+	REQUEST_INVALID: "error.requestInvalid", RESOURCE_NOT_FOUND: "error.resourceUnavailable",
+});
+
+function normalizeBackendPublicError(code, params) {
+	const cleanCode = String(code || "").trim();
+	if (!Object.prototype.hasOwnProperty.call(BACKEND_PUBLIC_ERROR_KEYS, cleanCode)) return null;
+	const clean = {};
+	if (cleanCode === "PAGE_LIMIT_EXCEEDED") {
+		if (!Number.isSafeInteger(params && params.limit) || params.limit <= 0 || params.limit > 10000) return null;
+		clean.limit = params.limit;
+	}
+	if (cleanCode === "TRANSLATION_PAGE_LIMIT_EXCEEDED") {
+		if (!Number.isSafeInteger(params && params.pages) || params.pages <= 0 || params.pages > 10000
+			|| !Number.isSafeInteger(params && params.limit) || params.limit <= 0 || params.limit > 10000) return null;
+		clean.pages = params.pages;
+		clean.limit = params.limit;
+	}
+	if (cleanCode === "TASK_STATE_CONFLICT") {
+		if (!/^(?:created|uploaded|queued|processing_submitted|processing|ready|failed|canceled|expired|retrying)$/.test(String(params && params.status || ""))) return null;
+		clean.status = params.status;
+	}
+	return { code: cleanCode, params: clean };
+}
+
+function createBackendHttpError(status, bodyText) {
+	let body = null;
+	try { body = JSON.parse(String(bodyText || "")); } catch { /* gateway text is never user copy */ }
+	let publicError = normalizeBackendPublicError(body && body.code, body && body.params);
+	if (!publicError && body && /^insufficient credits\.?$/i.test(String(body.message || ""))) {
+		publicError = normalizeBackendPublicError("INSUFFICIENT_CREDITS", {});
+	}
+	// Keep the status prefix for retry and 404 classification; never embed server diagnostics.
+	const error = new Error(`Backend HTTP ${status}: ${publicError ? publicError.code : "REQUEST_FAILED"}`);
+	if (publicError) {
+		error.backendErrorCode = publicError.code;
+		error.backendErrorParams = publicError.params;
+	} else if (body && typeof body.code === "string") {
+		error.backendErrorCode = "UNKNOWN";
+	}
+	return error;
+}
+
+function backendPublicErrorText(code, params, locale = activeRectoUiLocale) {
+	const item = normalizeBackendPublicError(code, params);
+	if (!item) return RECTO_UI_MESSAGES.en["error.default"];
+	const safeParams = { ...item.params };
+	if (item.code === "TASK_STATE_CONFLICT") {
+		const status = item.params.status || "processing";
+		safeParams.status = locale === "zh-CN"
+			? ({ created: "创建中", uploaded: "已上传", queued: "排队中", processing_submitted: "提交中", processing: "处理中", ready: "已完成", failed: "失败", canceled: "已取消", expired: "已过期", retrying: "重试中" }[status] || "处理中")
+			: status.replace(/_/g, " ");
+	}
+	return translateRectoUi(locale, BACKEND_PUBLIC_ERROR_KEYS[item.code], safeParams);
+}
+
+function getUserFacingErrorMessage(error, fallback = rectoUiText("error.default")) {
+	if (error && error.backendErrorCode) return backendPublicErrorText(error.backendErrorCode, error.backendErrorParams);
+	const safeFallback = activeRectoUiLocale === "en" && /[\u3400-\u9fff]/.test(String(fallback || ""))
+		? rectoUiText("error.default") : fallback;
+	if (error && error.rectoUiKey) return rectoUiText(error.rectoUiKey, error.rectoUiParams);
 	const code = String((error && error.code) || "").trim().toUpperCase();
-	if (code === "RECTO_CLOUD_CONSENT_REQUIRED") return "请先同意 Recto 云端处理说明。";
-	if (code === "RECTO_REMOTE_TASK_FAILED") return "处理未完成，请稍后重试。";
+	if (code === "RECTO_CLOUD_CONSENT_REQUIRED") return rectoUiText("error.cloudConsent");
+	if (code === "RECTO_REMOTE_TASK_FAILED") return rectoUiText("error.remoteTask");
 	const message = getSanitizedErrorMessage(error).trim();
-	if (!message) return fallback;
+	if (!message) return safeFallback;
 	if (/insufficient credits/i.test(message) || /账户额度不足/.test(message)) {
-		return BACKEND_ERROR_MESSAGE_ZH["insufficient credits."];
+		return activeRectoUiLocale === "en" ? rectoUiText("error.insufficientCredits") : BACKEND_ERROR_MESSAGE_ZH["insufficient credits."];
 	}
 	const httpStatus = message.match(/\bBackend HTTP (\d{3})\b/i);
 	if (httpStatus) {
 		const status = Number(httpStatus[1]);
-		if (status === 401 || status === 403) return "登录状态已失效，请重新登录 Recto。";
-		if (status === 404) return "这项处理已失效，请重新提交。";
-		if (status === 408 || status === 425 || status === 429) return "服务繁忙，请稍后重试。";
-		if (status >= 500) return "服务暂时不可用，请稍后重试。";
-		return "提交内容未通过检查，请返回论文库后重试。";
+		if (status === 401 || status === 403) return rectoUiText("error.sessionExpired");
+		if (status === 404) return rectoUiText("error.taskExpired");
+		if (status === 408 || status === 425 || status === 429) return rectoUiText("error.busy");
+		if (status >= 500) return rectoUiText("error.unavailable");
+		return rectoUiText("error.invalidSubmission");
 	}
-	if (isCancellationError(error)) return "操作已取消。";
-	if (isRetryableBackendRequestError(error)) return "网络连接不稳定，请稍后重试。";
-	if (USER_FACING_TECHNICAL_ERROR_PATTERN.test(message)) return fallback;
+	if (isCancellationError(error)) return rectoUiText("error.cancelled");
+	if (isRetryableBackendRequestError(error)) return rectoUiText("error.network");
+	if (USER_FACING_TECHNICAL_ERROR_PATTERN.test(message)) return safeFallback;
 	// 本地校验大多已经是短中文句；纯英文自由文本通常来自运行时或服务端，不能原样进界面。
-	if (!/[\u3400-\u9fff]/.test(message)) return fallback;
+	if (!/[\u3400-\u9fff]/.test(message)) return safeFallback;
+	if (activeRectoUiLocale === "en") {
+		const key = RECTO_UI_ZH_STATIC_KEYS.get(message);
+		return key ? rectoUiText(key) : safeFallback;
+	}
 	return message.slice(0, 200);
+}
+
+function localizeStoredUiError(message, fallback = rectoUiText("error.default")) {
+	const value = String(message || "").trim();
+	if (!value) return "";
+	if (activeRectoUiLocale === "en" && /[\u3400-\u9fff]/.test(value)) {
+		return getUserFacingErrorMessage(new Error(value), fallback);
+	}
+	if (activeRectoUiLocale === "zh-CN" && !/[\u3400-\u9fff]/.test(value)) {
+		const key = RECTO_UI_EN_STATIC_KEYS.get(value);
+		return key ? rectoUiText(key) : fallback;
+	}
+	return value;
 }
 
 // T85-R：这道门原来盖在**每一次**后端请求上（`backendRequest` 开头无条件断言），于是登录、
@@ -4609,7 +6518,7 @@ function getZoteroMetadataAuthors(metadata) {
 
 function getZoteroMetadataItemTypeLabel(metadata) {
 	const itemType = metadata && metadata.itemType ? String(metadata.itemType) : "";
-	return itemType ? (ZOTERO_ITEM_TYPE_LABELS[itemType] || itemType) : "";
+	return itemType ? (ZOTERO_ITEM_TYPE_LABELS[itemType] ? rectoUiText(`zotero.itemType.${itemType}`) : itemType) : "";
 }
 
 function normalizeZoteroCollectionName(value) {
@@ -4623,14 +6532,17 @@ function normalizeZoteroCollectionName(value) {
 }
 
 function normalizeZoteroCollectionFields(meta) {
-	const paths = uniqueStrings(meta && meta.zoteroCollectionPaths).map(normalizeZoteroCollectionName).filter(Boolean);
-	const collections = uniqueStrings(meta && meta.zoteroCollections).map(normalizeZoteroCollectionName).filter(Boolean);
+	const structured = getZoteroStructuredCollectionParts(meta);
+	const normalizeName = structured ? value => String(value || "").trim() : normalizeZoteroCollectionName;
+	const paths = uniqueStrings(meta && meta.zoteroCollectionPaths).map(normalizeName).filter(Boolean);
+	const collections = uniqueStrings(meta && meta.zoteroCollections).map(normalizeName).filter(Boolean);
 	const normalizedPaths = paths.length ? paths : (collections.length ? collections : [UNFILED_COLLECTION]);
 	const normalizedCollections = collections.length ? collections : normalizedPaths;
 	return {
 		...meta,
 		zoteroCollections: normalizedCollections,
 		zoteroCollectionPaths: normalizedPaths,
+		zoteroCollectionPathParts: structured || [],
 	};
 }
 
@@ -4664,33 +6576,73 @@ function getZoteroCollectionSortTitle(entry) {
 function splitZoteroCollectionPath(value) {
 	const normalized = normalizeZoteroCollectionName(value) || UNFILED_COLLECTION;
 	if (normalized === UNFILED_COLLECTION) return [UNFILED_COLLECTION];
-	const parts = normalized.split(/\s*\/\s*/).map(part => part.trim()).filter(Boolean);
+	if (normalized.startsWith("recto-collection:")) {
+		try {
+			const parts = JSON.parse(normalized.slice("recto-collection:".length));
+			if (Array.isArray(parts) && parts.length && parts.every(part => typeof part === "string" && part)) return parts;
+		} catch { /* Legacy display path, not an encoded selector. */ }
+	}
+	// Zotero 路径写者仅用「 / 」连接层级；普通斜杠属于分类名称。
+	const parts = normalized.split(/\s+\/\s+/).map(part => part.trim()).filter(Boolean);
 	return parts.length ? parts : [UNFILED_COLLECTION];
+}
+
+function getZoteroStructuredCollectionParts(item) {
+	const structured = item && item.zoteroCollectionPathParts;
+	if (Array.isArray(structured) && structured.length
+		&& structured.every(parts => Array.isArray(parts) && parts.length && parts.every(part => typeof part === "string" && part))) {
+		return structured;
+	}
+	return null;
+}
+
+function getZoteroCollectionPathParts(item) {
+	const structured = getZoteroStructuredCollectionParts(item);
+	if (structured) return structured;
+	const paths = uniqueStrings(item && (item.zoteroCollectionPaths?.length ? item.zoteroCollectionPaths
+		: item.collections?.length ? item.collections : item.zoteroCollections));
+	// 无真实分类用空集合表达，不能伪造一个与真实同名分类相撞的层级。
+	return paths.map(splitZoteroCollectionPath).filter(parts => parts.length !== 1 || parts[0] !== UNFILED_COLLECTION);
+}
+
+function getZoteroCollectionPathKey(parts) {
+	// 名称本身含层级分隔符时使用无歧义的选择键；界面仍显示原始名称。
+	return parts.some(part => /\s\/|\/\s/.test(part) || part === "/" || part.startsWith("recto-collection:")
+		|| ["未分类", "未匹配", UNFILED_COLLECTION].includes(part))
+		? `recto-collection:${JSON.stringify(parts)}` : parts.join(" / ");
 }
 
 function buildZoteroCollectionTree(items) {
 	const root = { children: new Map(), items: [] };
 	for (let i = 0; i < (items || []).length; i++) {
 		const item = items[i];
-		const paths = uniqueStrings(item.zoteroCollectionPaths && item.zoteroCollectionPaths.length
-			? item.zoteroCollectionPaths
-			: item.zoteroCollections);
-		const parts = splitZoteroCollectionPath(paths[0]);
-		let node = root;
-		const pathParts = [];
-		for (const part of parts) {
-			pathParts.push(part);
-			if (!node.children.has(part)) {
-				node.children.set(part, {
-					name: part,
-					path: pathParts.join(" / "),
-					children: new Map(),
-					items: [],
-				});
+		const visitedPaths = new Set();
+		const paths = getZoteroCollectionPathParts(item);
+		for (const parts of paths.length ? paths : [[]]) {
+			const unfiled = !parts.length;
+			const normalizedPath = unfiled ? UNFILED_COLLECTION : getZoteroCollectionPathKey(parts);
+			if (visitedPaths.has(normalizedPath)) continue;
+			visitedPaths.add(normalizedPath);
+			let node = root;
+			const pathParts = [];
+			for (const part of unfiled ? [UNFILED_COLLECTION] : parts) {
+				pathParts.push(part);
+				const nodePath = unfiled ? UNFILED_COLLECTION : getZoteroCollectionPathKey(pathParts);
+				if (!node.children.has(nodePath)) {
+					node.children.set(nodePath, {
+						name: part,
+						path: nodePath,
+						children: new Map(),
+						items: [],
+						itemIndexes: new Set(),
+					});
+				}
+				node = node.children.get(nodePath);
+				// 同一输入论文可属于父子/兄弟分类，每个祖先只计一次。
+				node.itemIndexes.add(i);
 			}
-			node = node.children.get(part);
+			node.items.push({ item, index: i });
 		}
-		node.items.push({ item, index: i });
 	}
 	return mapZoteroCollectionTree(root).children;
 }
@@ -4701,7 +6653,7 @@ function mapZoteroCollectionTree(node) {
 	const children = Array.from((node.children || new Map()).values())
 		.sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"))
 		.map(mapZoteroCollectionTree);
-	const count = items.length + children.reduce((sum, child) => sum + child.count, 0);
+	const count = node.itemIndexes ? node.itemIndexes.size : 0;
 	return {
 		name: node.name || "",
 		path: node.path || "",
@@ -4817,9 +6769,6 @@ function normalizeHubViewState(raw) {
 		conversion: HUB_CONVERSION_FILTERS.includes(value.conversion) ? value.conversion : HUB_VIEW_STATE_DEFAULT.conversion,
 		sort,
 		descending: typeof value.descending === "boolean" ? value.descending : !!HUB_SORT_DEFAULT_DESC[sort],
-		// 三栏档里分类树收没收起（T86-A 第三轮）。它不是筛选条件，只是记住的界面偏好，
-		// 但和其余五项同样是「重开时要恢复」的东西，所以走同一份持久化。
-		navCollapsed: value.navCollapsed === true,
 	};
 }
 
@@ -4827,6 +6776,9 @@ function normalizeHubViewState(raw) {
 // 抓不到题名时 Zotero 还会写占位串，也不该当成标题展示。两者都只在展示层处理，不回写论文对象。
 const HUB_PLACEHOLDER_TITLES = new Set(["[no title found]", "no title found", "untitled", "无标题"]);
 const HUB_MISSING_TITLE_TEXT = "（无标题）";
+function localizeHubTitle(title) {
+	return title === HUB_MISSING_TITLE_TEXT ? rectoUiText("hub.untitledPaper") : title;
+}
 
 function stripHubTitleMarkup(text) {
 	const raw = String(text || "");
@@ -4980,6 +6932,83 @@ function describeHubActivity(entry, nowMs) {
 	return label ? `${age} · ${label}` : age;
 }
 
+const HUB_NOTES_FILE = "hub-notes-v1.json";
+
+function parseHubNotesFile(text, recordId) {
+	if (text === null) return { notes: "" };
+	const data = JSON.parse(text);
+	if (!data || data.schema !== "recto-hub-notes" || data.version !== 1
+		|| data.recordId !== recordId || typeof data.notes !== "string") throw new Error("Invalid Hub notes document");
+	return data;
+}
+
+// Record-bound drafts survive view changes and failed saves. Unknown disk fields are preserved,
+// but only notes are read by the Hub; titles and summaries always come from their original sources.
+class RectoHubNotesStore {
+	constructor(read, write, changed = () => {}) {
+		this.read = read;
+		this.write = write;
+		this.changed = changed;
+		this.records = new Map();
+	}
+	get(recordId, refresh = false) {
+		let state = this.records.get(recordId);
+		if (!state) {
+			state = { saved: { notes: "" }, draft: null, base: "", status: "idle", error: "", timer: null };
+			this.records.set(recordId, state);
+			refresh = true;
+		}
+		if (refresh) {
+			try {
+				state.saved = this.read(recordId);
+				if (state.error === "read") { state.error = ""; state.status = "idle"; }
+			} catch { state.error = "read"; state.status = "error"; }
+		}
+		return { notes: state.draft ?? state.saved.notes, status: state.status, error: state.error };
+	}
+	update(recordId, text, composing = false, expected) {
+		this.get(recordId);
+		const state = this.records.get(recordId);
+		if (state.draft === null) state.base = expected ?? state.saved.notes;
+		state.draft = text;
+		state.status = "pending";
+		state.error = "";
+		this.cancelTimer(recordId);
+		if (!composing) state.timer = setTimeout(() => this.flush(recordId), 500);
+		this.changed(recordId);
+	}
+	cancelTimer(recordId) {
+		const state = this.records.get(recordId);
+		if (state) { clearTimeout(state.timer); state.timer = null; }
+	}
+	flush(recordId, force = false) {
+		const state = this.records.get(recordId);
+		if (!state || state.draft === null) return true;
+		this.cancelTimer(recordId);
+		try {
+			const disk = this.read(recordId);
+			if (!force && disk.notes !== state.base && disk.notes !== state.draft) {
+				const error = new Error("Concurrent Hub note edit");
+				error.conflict = true;
+				throw error;
+			}
+			const next = { ...disk, notes: state.draft };
+			if (disk.notes !== next.notes) this.write(recordId, next);
+			state.saved = next;
+			state.draft = null;
+			state.status = "saved";
+			state.error = "";
+		} catch (error) {
+			state.status = "error";
+			state.error = error && error.conflict ? "conflict" : "write";
+		}
+		this.changed(recordId);
+		return state.status !== "error";
+	}
+	flushAll() { for (const id of this.records.keys()) this.flush(id); }
+	forget(recordId) { this.cancelTimer(recordId); this.records.delete(recordId); }
+}
+
 // 标题遵循「原文原型」契约：titleOriginal 恒为原文，展示用译文兜底原文，排序一律用原文。
 function normalizeHubEntry(raw) {
 	const entry = raw || {};
@@ -4995,6 +7024,7 @@ function normalizeHubEntry(raw) {
 		recordId: String(entry.recordId || entry.folder || stem),
 		stem,
 		title: displayTitle || titleOriginal || stem,
+		notes: typeof entry.notes === "string" ? entry.notes : "",
 		titleOriginal: titleOriginal || stem,
 		titleTranslated,
 		authors: uniqueStrings(Array.isArray(entry.authors) ? entry.authors : [entry.authors]),
@@ -5003,6 +7033,7 @@ function normalizeHubEntry(raw) {
 		category: cleanDisplayText(entry.category),
 		collections: collections.length ? collections : [UNFILED_COLLECTION],
 		zoteroCollectionPaths: collections.length ? collections : [UNFILED_COLLECTION],
+		zoteroCollectionPathParts: getZoteroCollectionPathParts(entry),
 		readingKey: String(entry.readingKey || ""),
 		readingStatus: normalizeReadingStatus(entry.readingStatus),
 		conversionStatus: entry.conversionStatus === "converted" ? "converted" : "unconverted",
@@ -5020,6 +7051,7 @@ function normalizeHubEntry(raw) {
 		url: getZoteroMetadataField(entry.zoteroMetadata, "url"),
 		summaryPath: String(entry.summaryPath || ""),
 		translationPath: String(entry.translationPath || ""),
+		translations: Array.isArray(entry.translations) ? entry.translations : [],
 		sourcePath: String(entry.sourcePath || ""),
 		pdfPath: String(entry.pdfPath || ""),
 		// T86-C：三个时间戳只以派生值的形式对外——排序、详情栏都只看 lastActivityAt 与 lastActivityKind。
@@ -5039,7 +7071,7 @@ function hubEntryMatchesQuery(entry, query) {
 	const text = String(query || "").trim().toLowerCase();
 	if (!text) return true;
 	const haystack = [
-		entry.title, entry.titleOriginal, entry.venue, entry.category, entry.year, entry.stem,
+		entry.title, entry.titleOriginal, entry.venue, entry.category, entry.year, entry.stem, entry.notes,
 		...(entry.authors || []), ...(entry.collections || []),
 	].join(" ").toLowerCase();
 	return text.split(/\s+/).every(term => haystack.includes(term));
@@ -5048,7 +7080,11 @@ function hubEntryMatchesQuery(entry, query) {
 function hubEntryInCollection(entry, collectionPath) {
 	const path = String(collectionPath || "");
 	if (!path) return true;
-	return (entry.collections || []).some(item => item === path || isZoteroCollectionDescendantPath(item, path));
+	const paths = getZoteroCollectionPathParts(entry);
+	if (normalizeZoteroCollectionName(path) === UNFILED_COLLECTION) return paths.length === 0;
+	const selected = splitZoteroCollectionPath(path);
+	return paths.some(parts => selected.length <= parts.length
+		&& selected.every((part, index) => parts[index] === part));
 }
 
 // 「最近」的判定：**有没有操作记录**，不看多久以前。没有窗口就不需要时钟，这一档因此是
@@ -5095,7 +7131,7 @@ function formatHubAuthors(authors) {
 	const list = (authors || []).map(item => cleanDisplayText(item)).filter(Boolean);
 	if (!list.length) return "";
 	const first = list[0].split(",")[0].trim() || list[0];
-	return list.length > 1 ? `${first} 等` : first;
+	return list.length > 1 ? rectoUiText("hub.authorsEtAl", { name: first }) : first;
 }
 
 function compareHubText(a, b) {
@@ -5182,6 +7218,34 @@ const BATCH_PHASE_LABELS = {
 	translation: "翻译",
 	write: "写回",
 };
+const BATCH_DISPLAY_TEXT_KEYS = Object.freeze({
+	"一键导入 Zotero 论文库": "progress.importZotero",
+	"转换": "progress.convert", "转换并翻译": "progress.convertTranslate", "翻译": "progress.translate",
+	"扫描 Zotero": "progress.scanZotero", "扫描": "progress.scan",
+	"等待选择": "progress.waitChoice", "建立论文对象": "progress.createObjects",
+	"建档": "progress.createRecord", "等待确认": "progress.waitConfirm",
+	"保存论文对象": "progress.saveObjects", "导入本地 PDF": "progress.importPdf",
+	"复制 PDF": "progress.copyPdf", "写入索引": "progress.writeIndex",
+	"Zotero 导入完成": "progress.importDone", "Zotero 导入待修复": "progress.importIncomplete",
+	"Zotero 导入已中断": "progress.importCancelled", "提交译文": "progress.submitTranslation",
+	"上传论文内容": "progress.uploadContent", "排队": "progress.queue",
+	"取译文": "progress.fetchTranslation", "写回译文": "progress.writeTranslation",
+	"取结果": "progress.fetchResult", "已完成": "progress.finished",
+	"已中止": "progress.stopped", "已失败": "progress.failedStatus",
+	"已完成一篇": "progress.completedOne", "上一篇失败": "progress.previousFailed",
+});
+function localizeBatchDisplayText(value, fallbackKey = "progress.inProgress") {
+	const raw = String(value || "");
+	const key = BATCH_DISPLAY_TEXT_KEYS[raw];
+	if (key) return rectoUiText(key);
+	const failed = raw.match(/^完成，(\d+) 篇失败$/);
+	if (failed) return rectoUiText("progress.finishedWithFailures", { count: failed[1] });
+	const groups = raw.match(/^(\d+) 组多 PDF$/);
+	if (groups) return rectoUiText("progress.pdfGroups", { count: groups[1] });
+	const papers = raw.match(/^(\d+) 篇(待复制)?$/);
+	if (papers) return rectoUiText(papers[2] ? "progress.pendingCopy" : "progress.paperCount", { count: papers[1] });
+	return !fallbackKey || activeRectoUiLocale === "zh-CN" || !/[\u3400-\u9fff]/.test(raw) ? raw : rectoUiText(fallbackKey);
+}
 // 后端公开状态 → 本地阶段。queued 归到解析：用户视角里排队就是「等解析」。
 const BACKEND_STATUS_PHASES = {
 	awaiting_upload: "upload",
@@ -5274,19 +7338,19 @@ function renderBatchBar(fraction, width = BATCH_BAR_WIDTH) {
 function describeBatchStatusLine(progress, tick = 0) {
 	const snapshot = progress && typeof progress === "object" ? progress : null;
 	if (!snapshot || !snapshot.label) return "";
-	if (snapshot.finished) return `Recto：${snapshot.stage || "已完成"}`;
+	if (snapshot.finished) return rectoUiText("progress.prefix", { status: localizeBatchDisplayText(snapshot.stage || "已完成", "progress.finished") });
 	const fraction = Number.isFinite(snapshot.fraction) ? snapshot.fraction : 0;
 	const spinner = BATCH_SPINNER_FRAMES[Math.abs(Math.floor(tick)) % BATCH_SPINNER_FRAMES.length];
 	const counter = snapshot.total > 1 ? ` ${Math.min(snapshot.total, snapshot.index + 1)}/${snapshot.total}` : "";
 	// 阶段不在转换流水线里（导入、删除等复用同一个进度条）时不画进度条：
 	// 那些操作没有可加权的阶段，画出来的百分比是假的。
-	if (!snapshot.phase) return `${spinner} ${snapshot.label}${counter}${snapshot.stage ? ` · ${snapshot.stage}` : ""}`;
-	const phaseLabel = BATCH_PHASE_LABELS[snapshot.phase] || snapshot.stage || "";
+	if (!snapshot.phase) return `${spinner} ${localizeBatchDisplayText(snapshot.label, "progress.defaultLabel")}${counter}${snapshot.stage ? ` · ${localizeBatchDisplayText(snapshot.stage)}` : ""}`;
+	const phaseLabel = rectoUiText(`progress.phase.${snapshot.phase}`);
 	const sub = snapshot.sub && Number(snapshot.sub.total) > 0
-		? ` ${snapshot.sub.done}/${snapshot.sub.total}${snapshot.phase === "processing" ? " 页" : ""}`
+		? ` ${snapshot.sub.done}/${snapshot.sub.total}${snapshot.phase === "processing" ? rectoUiText("progress.pages") : ""}`
 		: "";
-	const failed = snapshot.failed ? ` · 失败 ${snapshot.failed}` : "";
-	return `${spinner} ${snapshot.label}${counter} ${renderBatchBar(fraction)} ${Math.round(fraction * 100)}% · ${phaseLabel}${sub}${failed}`;
+	const failed = snapshot.failed ? ` · ${rectoUiText("progress.failed", { count: snapshot.failed })}` : "";
+	return `${spinner} ${localizeBatchDisplayText(snapshot.label, "progress.defaultLabel")}${counter} ${renderBatchBar(fraction)} ${Math.round(fraction * 100)}% · ${phaseLabel}${sub}${failed}`;
 }
 
 // ── Hub 多选与批量操作（T81 第二轮） ─────────────────────────────────
@@ -5327,7 +7391,7 @@ function describeHubFilterCrumbs(filters = {}) {
 	}
 	if (conversion !== "all") crumbs.push({ key: "conversion", label: HUB_CONVERSION_LABELS[conversion] || conversion });
 	const collectionPath = String(filters.collectionPath || "");
-	if (collectionPath) crumbs.push({ key: "collection", label: collectionPath });
+	if (collectionPath) crumbs.push({ key: "collection", label: splitZoteroCollectionPath(collectionPath).join(" / ") });
 	const query = String(filters.query || "").trim();
 	if (query) crumbs.push({ key: "query", label: `“${query}”` });
 	return crumbs;
@@ -5401,11 +7465,11 @@ const HUB_QUEUE_RESULT_TTL_HOURS = 24;
 
 function formatHubQueueAge(ageMs) {
 	const minutes = Math.floor(Math.max(0, Number(ageMs) || 0) / 60000);
-	if (minutes < 1) return "刚刚";
-	if (minutes < 60) return `${minutes} 分钟前`;
+	if (minutes < 1) return rectoUiText("time.justNow");
+	if (minutes < 60) return rectoUiText("time.minutesAgo", { count: minutes });
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `${hours} 小时前`;
-	return `${Math.floor(hours / 24)} 天前`;
+	if (hours < 24) return rectoUiText("time.hoursAgo", { count: hours });
+	return rectoUiText("time.daysAgo", { count: Math.floor(hours / 24) });
 }
 
 // activeRunId：当前正在跑的那一批的身份。归属它的条目不进队列条——它们正被前台循环盯着，
@@ -5424,15 +7488,16 @@ function buildHubQueueView(pendingTasks, nowMs = 0, activeRunId = "") {
 		rows.push({
 			taskId: entry.taskId,
 			recordId: entry.recordId || String(task.recordId || ""),
-			name: String(task.name || task.recordId || entry.recordId || "未命名论文"),
+			name: String(task.name || task.recordId || entry.recordId || rectoUiText("hub.untitledPaper")),
 			status: entry.status,
-			kind: classifyRecoveredBackendTaskStatus(entry.status),
+			kind: task.resumeTranslationSubmit && BACKEND_ABANDONED_PRE_SUBMIT_STATUSES.has(String(entry.status).toLowerCase())
+				? "pending" : classifyRecoveredBackendTaskStatus(entry.status),
 			ageMs,
 			ageText: ageMs === null ? "" : formatHubQueueAge(ageMs),
 			// blocked = 写回反复以同一个错误失败，自动重试已停止，需要用户处置。
 			blocked: !!entry.blocked,
 			failure: entry.lastFailure
-				? getUserFacingErrorMessage(entry.lastFailure, "结果写回未完成，请稍后重试。")
+				? getUserFacingErrorMessage(entry.lastFailure, rectoUiText("error.writeback"))
 				: "",
 		});
 	}
@@ -5489,6 +7554,7 @@ function getSourceMarkdownFileName(stem, language) {
 
 function getSourceMarkdownFileNamesByPriority(stem) {
 	return [
+		`src-${stem}.md`,
 		getEnglishMarkdownFileName(stem),
 		`${stem}.md`,
 		getChineseMarkdownFileName(stem),
@@ -5585,7 +7651,9 @@ function normalizeJsonlYear(value) {
 
 function extractSummaryBrief(text) {
 	const source = String(text || "").replace(/\r\n/g, "\n");
-	const headings = ["一句话总结", "摘要", "整体概览"];
+	const marked = /<!-- recto-summary:brief -->([\s\S]*?)<!-- \/recto-summary:brief -->/.exec(source);
+	if (marked) return marked[1].replace(/[*_`#>]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 600);
+	const headings = ["一句话总结", "One-sentence summary", "摘要", "Abstract", "整体概览", "Overview"];
 	for (const heading of headings) {
 		const re = new RegExp(`^#{1,6}\\s+${heading}\\s*$`, "m");
 		const match = re.exec(source);
@@ -5746,6 +7814,25 @@ function buildPaperJsonlEntries(options) {
 		});
 	}
 
+	for (const entry of entries) {
+		const info = folderMap[entry.record_id];
+		const sourcePath = info?.sourcePath || (entry.source_path ? obsidian.normalizePath(`${baseFolder}/${entry.source_path}`) : "");
+		const artifact = options.documentArtifacts?.[sourcePath];
+		if (!artifact) continue;
+		let currentHash = "";
+		try { currentHash = documentContentHash(fs.readFileSync(nodePath.join(vaultBasePath, sourcePath), "utf8")); } catch {}
+		const records = Object.values(artifact.translations || {}).filter(record => fs.existsSync(nodePath.join(vaultBasePath, record.path)))
+			.sort((a, b) => a.targetLanguage.id.localeCompare(b.targetLanguage.id));
+		entry.source_path = makePathRelativeToBase(sourcePath, baseFolder);
+		entry.translations = records.map(record => ({ language: record.targetLanguage.id, language_name: record.targetLanguage.name,
+			path: makePathRelativeToBase(record.path, baseFolder), document_id: record.documentId, source_revision_id: record.sourceRevisionId,
+			quality: record.quality, source_version_matches: currentHash === record.sourceContentHash && (!info?.sourceRevisionId || info.sourceRevisionId === record.sourceRevisionId) }));
+		const chinese = records.find(record => record.targetLanguage.id === "zh-Hans") || records.find(record => record.targetLanguage.id === "zh-Hant");
+		if (chinese) {
+			entry.ch_path = makePathRelativeToBase(chinese.path, baseFolder);
+			entry.title_zh = resolveTranslatedTitleFromPaperFiles(vaultBasePath, chinese.path, sourcePath, entry.title_original);
+		} else if (info?.namingVersion === 1) { entry.ch_path = null; entry.title_zh = null; }
+	}
 	const sortKey = entry => String(entry.title_original || "");
 	return entries.sort((a, b) => (
 		sortKey(a).localeCompare(sortKey(b), "zh-Hans-CN")
@@ -5823,6 +7910,10 @@ WHERE LOWER(ia.path) LIKE 'storage:%.pdf' AND ia.parentItemID IS NOT NULL`;
 // 只读读取 Zotero 数据库。所有查询都限定在“有 storage 附件的父条目”上，
 // 笔记、批注、附件全文索引和内部同步状态一律不进入结果。
 function readZoteroMetadataFromDatabase(db) {
+	const hasDeletedCollections = !!db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'deletedCollections'").get();
+	const deletedCollections = new Set(hasDeletedCollections
+		? db.prepare("SELECT collectionID FROM deletedCollections").all().map(row => Number(row.collectionID))
+		: []);
 	const collectionRows = db.prepare("SELECT collectionID, collectionName, parentCollectionID FROM collections").all();
 	const collections = new Map(collectionRows.map(r => [Number(r.collectionID), {
 		id: Number(r.collectionID),
@@ -5831,14 +7922,16 @@ function readZoteroMetadataFromDatabase(db) {
 	}]));
 	const pathCache = new Map();
 	const collectionPath = (id, seen = new Set()) => {
-		if (id == null || !collections.has(Number(id))) return "";
+		if (id == null || deletedCollections.has(Number(id)) || !collections.has(Number(id))) return null;
 		id = Number(id);
 		if (pathCache.has(id)) return pathCache.get(id);
-		if (seen.has(id)) return collections.get(id).name;
+		if (seen.has(id)) return null;
 		seen.add(id);
 		const c = collections.get(id);
 		const parent = collectionPath(c.parent, seen);
-		const path = parent ? `${parent} / ${c.name}` : c.name;
+		// 删除分类只移除分类关系，不能丢掉仍有效的附件或提升失效子分类为根。
+		if (c.parent != null && !parent) return null;
+		const path = parent ? [...parent, c.name] : [c.name];
 		pathCache.set(id, path);
 		return path;
 	};
@@ -5959,13 +8052,16 @@ WHERE it.itemID IN (${ZOTERO_STORAGE_PARENTS_SQL})`)) {
 				venue: getZoteroMetadataVenue(metadata),
 				zoteroCollections: [],
 				zoteroCollectionPaths: [],
+				zoteroCollectionPathParts: [],
 				zoteroMetadata: metadata,
 			};
 		}
 		if (row.collectionID != null) {
-			const path = collectionPath(row.collectionID);
-			if (path) {
+			const parts = collectionPath(row.collectionID);
+			if (parts) {
+				const path = parts.join(" / ");
 				byAttachment[key].zoteroCollectionPaths.push(path);
+				byAttachment[key].zoteroCollectionPathParts.push(parts);
 				byAttachment[key].zoteroCollections.push(String(row.collectionName || path).trim());
 			}
 		}
@@ -5990,6 +8086,24 @@ function appendStemSuffix(stem, suffix) {
 function getTaskRecordId(folder, fileName, useFolderIdentity = true) {
 	if (useFolderIdentity) return String(folder || "");
 	return `${folder}::${shortStableId(String(fileName || "").toLowerCase())}`;
+}
+
+function findExistingZoteroPdfRecordId(folderMap, folder, fileName) {
+	const name = String(fileName || "").toLowerCase();
+	return Object.keys(folderMap || {}).sort().find(id => {
+		const info = folderMap[id];
+		return info && (info.zoteroAttachmentKey || id.split("::")[0]) === folder
+			&& String(info.sourceFileName || info.originalName || info.zoteroAttachmentFileName || "").toLowerCase() === name;
+	}) || "";
+}
+
+function resolveZoteroPdfRecordId(folderMap, folder, fileName, primary) {
+	const existing = findExistingZoteroPdfRecordId(folderMap, folder, fileName);
+	if (existing) return existing;
+	// 附件根身份若已属于另一份文件，不因推荐文件/文件数量变化而挪给新候选。
+	const root = folderMap?.[folder];
+	const knownFile = root && (root.sourceFileName || root.originalName || root.zoteroAttachmentFileName);
+	return getTaskRecordId(folder, fileName, primary && !knownFile);
 }
 
 function getPdfChoiceKey(file) {
@@ -6037,7 +8151,7 @@ function buildZoteroPdfSelectionPlan(candidates) {
 			|| String(a.folder || "").localeCompare(String(b.folder || ""))
 			|| String(a.name || "").localeCompare(String(b.name || ""))
 		));
-		if (files.length === 1) {
+		if (files.length === 1 && !files[0].requiresIdentityConfirmation) {
 			tasks.push({ ...files[0] });
 			continue;
 		}
@@ -6053,7 +8167,7 @@ function buildZoteroPdfSelectionPlan(candidates) {
 }
 
 // ── T82-D-S Zotero 自动同步判定核 ──────────────────────────────────
-// 触发：启动延迟约 10 秒 + 每次打开 Hub；共用冷却窗口；先比 sqlite mtime。
+// 触发：启动延迟约 10 秒 + 每次打开 Hub；共用冷却窗口，到期扫描数据库与附件。
 // 自动路径绝不弹窗、绝不删文件；歧义与 orphaned 只记待确认。
 // T83-A：静默自动导入另需「点过一键导入」门闩；路径探测不受影响。
 const ZOTERO_AUTO_CHECK_COOLDOWN_MS = 6 * 60 * 60 * 1000;
@@ -6098,7 +8212,7 @@ function isZoteroAutoCheckTransientError(error) {
 	return /SQLITE_BUSY|SQLITE_LOCKED|database is locked|EBUSY|EACCES|EPERM|ENOENT|ENOTDIR|不可访问|不支持 node:sqlite|元数据读取失败|storage 不存在/i.test(message);
 }
 
-function getZoteroUserFacingErrorMessage(error, fallback = "Zotero 操作未完成，请稍后重试。") {
+function getZoteroUserFacingErrorMessage(error, fallback = rectoUiText("import.failed")) {
 	const chain = [];
 	for (let current = error, depth = 0; current && depth < 4; current = current.cause, depth++) {
 		chain.push(current);
@@ -6107,21 +8221,36 @@ function getZoteroUserFacingErrorMessage(error, fallback = "Zotero 操作未完�
 	const codes = chain.map(item => String((item && (item.code || item.name)) || "")).join(" ");
 	const messages = chain.map(item => String((item && item.message) || item || "")).join(" ");
 	if (/SQLITE_BUSY|SQLITE_LOCKED|EBUSY/i.test(`${codes} ${messages}`) || /database is locked|数据库.*(?:占用|锁定)/i.test(messages)) {
-		return "Zotero 数据库正在被占用。请关闭 Zotero 后重试导入或检查。";
+		return rectoUiText("import.dbBusy");
 	}
 	if (/不支持 node:sqlite|无法直接读取 Zotero 数据库|当前环境无法读取 Zotero 论文库/i.test(messages)) {
-		return "当前环境无法读取 Zotero 论文库，请更新 Obsidian 后重试。";
+		return rectoUiText("import.runtimeUpgrade");
 	}
 	if (/ENOENT|ENOTDIR|EACCES|EPERM|EIO/i.test(codes)
 		|| /Zotero (?:storage|PDF)|Zotero (?:源文件夹|数据目录|论文库文件夹)|找不到 Zotero 数据库/i.test(messages)) {
-		return "找不到或无法读取 Zotero 论文库文件夹。请在 Recto 设置中重新选择 Zotero 数据目录。";
+		return rectoUiText("import.folderMissing");
 	}
 	return getUserFacingErrorMessage(error, fallback);
+}
+
+function zoteroPdfGroupSignature(group) {
+	return JSON.stringify((group.files || []).map(file => [file.recordId, file.contentHash || ""]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
+}
+
+function isZoteroPdfGroupConfirmed(group, folderMap = {}) {
+	const signature = zoteroPdfGroupSignature(group);
+	return (group.files || []).some(file => {
+		const decision = folderMap[file.recordId]?.zoteroPdfChoice;
+		return decision && decision.group === group.folder && decision.signature === signature
+			&& Array.isArray(decision.selectedIds) && decision.selectedIds.length > 0
+			&& decision.selectedIds.every(id => folderMap[id] && !folderMap[id].zoteroPdfImportPending);
+	});
 }
 
 function countPendingAmbiguousGroups(ambiguousGroups, folderMap) {
 	const map = folderMap && typeof folderMap === "object" ? folderMap : {};
 	return (ambiguousGroups || []).filter(group => {
+		if (isZoteroPdfGroupConfirmed(group, map)) return false;
 		const files = (group && group.files) || [];
 		return files.some(file => {
 			const id = String(file && (file.recordId || file.folder) || "").trim();
@@ -6135,7 +8264,10 @@ function classifyZoteroAutoImportCandidates(plan, folderMap) {
 	const tasks = (plan && plan.tasks) || [];
 	const silentNewTasks = [];
 	const refreshTasks = [];
-	for (const task of tasks) {
+	// 歧义组只允许修复已选择入库的附件，未知候选仍留待用户确认。
+	const existingAmbiguous = ((plan && plan.ambiguousGroups) || [])
+		.flatMap(group => group.files || []).filter(task => map[task.recordId || task.folder]);
+	for (const task of [...tasks, ...existingAmbiguous]) {
 		const id = String(task && (task.recordId || task.folder) || "").trim();
 		if (!id) continue;
 		if (map[id]) refreshTasks.push(task);
@@ -6150,12 +8282,12 @@ function formatZoteroSyncRelativeTime(timestamp, now = Date.now()) {
 	if (!(at > 0)) return "";
 	const delta = Math.max(0, (Number(now) || Date.now()) - at);
 	const minutes = Math.floor(delta / 60000);
-	if (minutes < 1) return "刚刚";
-	if (minutes < 60) return `${minutes} 分钟前`;
+	if (minutes < 1) return rectoUiText("time.justNow");
+	if (minutes < 60) return rectoUiText("time.minutesAgo", { count: minutes });
 	const hours = Math.floor(minutes / 60);
-	if (hours < 48) return `${hours} 小时前`;
+	if (hours < 48) return rectoUiText("time.hoursAgo", { count: hours });
 	const days = Math.floor(hours / 24);
-	return `${days} 天前`;
+	return rectoUiText("time.daysAgo", { count: days });
 }
 
 /**
@@ -6185,10 +8317,9 @@ function describeBaseFolderMismatch(input = {}) {
 
 function describeBaseFolderMismatchText(mismatch) {
 	if (!mismatch) return "";
-	const where = `「${mismatch.baseFolder}」`;
 	return mismatch.kind === "missing"
-		? `论文库文件夹 ${where} 不在了，但本地仍有 ${mismatch.recordCount} 篇论文的记录。多半是它被改名或移动过——请把下面的路径改成它现在的位置。`
-		: `论文库文件夹 ${where} 里没有任何论文，但本地仍有 ${mismatch.recordCount} 篇的记录。多半是路径指错了——请把下面的路径改成论文实际所在的文件夹。`;
+		? rectoUiText("hub.folderMissing", { folder: mismatch.baseFolder, count: mismatch.recordCount })
+		: rectoUiText("hub.folderEmpty", { folder: mismatch.baseFolder, count: mismatch.recordCount });
 }
 
 function describeSetupStatusLights(input = {}) {
@@ -6197,10 +8328,10 @@ function describeSetupStatusLights(input = {}) {
 	const view = describeBackendAccountView(settings, input.now);
 	// 过期了还画绿灯说「已登录」是彻头彻尾的假状态：此刻任何一次请求都会 401。
 	const account = view.sessionExpired
-		? { key: "account", state: "warning", text: `${RECTO_BRAND_NAME} 账号登录已过期`, icon: "circle-alert" }
+		? { key: "account", state: "warning", text: rectoUiText("account.sessionExpired"), icon: "circle-alert" }
 		: (view.loggedIn
-			? { key: "account", state: "ready", text: "Recto 账号已登录", icon: "check" }
-			: { key: "account", state: "warning", text: "Recto 账号未登录", icon: "circle-dashed" });
+			? { key: "account", state: "ready", text: rectoUiText("account.statusSignedIn"), icon: "check" }
+			: { key: "account", state: "warning", text: rectoUiText("account.statusSignedOut"), icon: "circle-dashed" });
 
 	const pendingAmbiguous = Math.max(0, Number(zotero.pendingAmbiguous) || 0);
 	const pendingOrphaned = Math.max(0, Number(zotero.pendingOrphaned) || 0);
@@ -6211,51 +8342,51 @@ function describeSetupStatusLights(input = {}) {
 	const relative = formatZoteroSyncRelativeTime(zotero.lastCheckAt, input.now);
 	let zoteroLight;
 	if (!pathConfigured) {
-		zoteroLight = { key: "zotero", state: "warning", text: "Zotero 待配置", icon: "circle-dashed" };
+		zoteroLight = { key: "zotero", state: "warning", text: rectoUiText("account.statusZoteroSetup"), icon: "circle-dashed" };
 	} else if (pendingTotal > 0) {
-		zoteroLight = { key: "zotero", state: "warning", text: `Zotero ${pendingTotal} 项待确认`, icon: "circle-alert" };
+		zoteroLight = { key: "zotero", state: "warning", text: rectoUiText("account.statusZoteroPending", { count: pendingTotal }), icon: "circle-alert" };
 	} else if (checkStatus === "degraded") {
-		zoteroLight = { key: "zotero", state: "unknown", text: "Zotero 待检查", icon: "circle-dashed" };
+		zoteroLight = { key: "zotero", state: "unknown", text: rectoUiText("account.statusZoteroCheck"), icon: "circle-dashed" };
 	} else if (importedCount > 0 && checkStatus === "ok") {
 		zoteroLight = {
 			key: "zotero",
 			state: "ready",
-			text: relative ? `Zotero 已同步 · ${relative}` : "Zotero 已同步",
+			text: relative ? rectoUiText("account.statusZoteroSyncedAt", { time: relative }) : rectoUiText("account.statusZoteroSynced"),
 			icon: "check",
 		};
 	} else if (importedCount <= 0) {
 		// 走到这里 pathConfigured 一定为真（上面第一条已经拦掉未配置），所以不能再说「待配置」——
 		// 路径配好但一篇没导入时，「开始使用」因 isSetupConfigured("zotero") 判真而**不显示**
 		// Zotero 那一步，灯却催你去配置，两边直接打架。差的是导入，就说导入。
-		zoteroLight = { key: "zotero", state: "warning", text: "Zotero 待导入", icon: "circle-dashed" };
+		zoteroLight = { key: "zotero", state: "warning", text: rectoUiText("account.statusZoteroImport"), icon: "circle-dashed" };
 	} else {
-		zoteroLight = { key: "zotero", state: "unknown", text: "Zotero 待检查", icon: "circle-dashed" };
+		zoteroLight = { key: "zotero", state: "unknown", text: rectoUiText("account.statusZoteroCheck"), icon: "circle-dashed" };
 	}
 
 	let credits;
 	if (!view.loggedIn || view.sessionExpired) {
-		credits = { key: "credits", state: "unknown", text: "额度未知", icon: "circle-dashed" };
+		credits = { key: "credits", state: "unknown", text: rectoUiText("account.statusCreditsUnknown"), icon: "circle-dashed" };
 	} else if (view.creditPackMode && (!view.translationPages || !view.translationPages.known)) {
-		credits = { key: "credits", state: "unknown", text: "翻译页未知", icon: "circle-dashed" };
+		credits = { key: "credits", state: "unknown", text: rectoUiText("account.statusPagesUnknown"), icon: "circle-dashed" };
 	} else if (view.creditPackMode && view.creditsEmpty) {
-		credits = { key: "credits", state: "warning", text: "翻译页不足", icon: "circle-alert" };
+		credits = { key: "credits", state: "warning", text: rectoUiText("account.statusPagesLow"), icon: "circle-alert" };
 	} else if (view.creditPackMode) {
 		credits = {
 			key: "credits",
 			state: "ready",
-			text: `可用 ${view.translationPages.availableText} 个翻译页`,
+			text: rectoUiText("account.statusPagesAvailable", { count: view.translationPages.availableText }),
 			icon: "check",
 		};
 	} else if (!view.meter || !view.meter.known) {
-		credits = { key: "credits", state: "unknown", text: "额度未知", icon: "circle-dashed" };
+		credits = { key: "credits", state: "unknown", text: rectoUiText("account.statusCreditsUnknown"), icon: "circle-dashed" };
 	} else if (view.creditsEmpty || view.availableCredits <= 0) {
-		credits = { key: "credits", state: "warning", text: "额度不足", icon: "circle-alert" };
+		credits = { key: "credits", state: "warning", text: rectoUiText("account.statusCreditsLow"), icon: "circle-alert" };
 	} else {
 		const papers = estimatePapersFromCredits(view.availableCredits, view.creditsPerPaper);
 		credits = {
 			key: "credits",
 			state: "ready",
-			text: papers > 0 ? `额度可用 · 约 ${papers} 篇` : "额度可用",
+			text: papers > 0 ? rectoUiText("account.statusCreditsPapers", { count: papers }) : rectoUiText("account.statusCreditsAvailable"),
 			icon: "check",
 		};
 	}
@@ -6277,7 +8408,7 @@ function isSettingsQuickStartComplete(input = {}) {
 		&& imported === true;
 }
 
-async function dedupeZoteroPdfCandidates(candidates, signal = null) {
+async function dedupeZoteroPdfCandidates(candidates, signal = null, folderMap = {}) {
 	const all = (candidates || []).map(candidate => ({ ...candidate }));
 	const byParent = new Map();
 	for (const candidate of all) {
@@ -6300,7 +8431,8 @@ async function dedupeZoteroPdfCandidates(candidates, signal = null) {
 		for (const duplicates of byHash.values()) {
 			if (duplicates.length < 2) continue;
 			duplicates.sort((a, b) => (
-				Number(!!b.isRecommended) - Number(!!a.isRecommended)
+				Number(!!folderMap[b.recordId]) - Number(!!folderMap[a.recordId])
+				|| Number(!!b.isRecommended) - Number(!!a.isRecommended)
 				|| String(a.recordId || "").localeCompare(String(b.recordId || ""))
 			));
 			const selected = duplicates[0];
@@ -6313,7 +8445,9 @@ async function dedupeZoteroPdfCandidates(candidates, signal = null) {
 				...(selected.duplicateFileNames || []),
 				...duplicates.slice(1).map(file => file.name),
 			]);
-			for (const duplicate of duplicates.slice(1)) removed.add(duplicate.recordId);
+			for (const duplicate of duplicates.slice(1)) {
+				if (!folderMap[duplicate.recordId]) removed.add(duplicate.recordId);
+			}
 		}
 	}
 	return all.filter(candidate => !removed.has(candidate.recordId));
@@ -6767,26 +8901,199 @@ function isRectoDualPaneIntact(states) {
 
 function describeRectoAlignmentBlocker(map) {
 	const issues = map && Array.isArray(map.issues) ? map.issues : [];
-	if (issues.includes("source-binding-missing") || issues.includes("translation-binding-missing")) return "缺少 Recto 修订绑定，可能是旧论文";
-	if (issues.includes("document-mismatch")) return "原文与译文不属于同一篇论文";
-	if (issues.includes("revision-mismatch")) return "原文与译文的来源修订不一致";
-	if (!map || !map.stats || !map.stats.pairs) return "两侧没有可对齐的锚点";
+	if (issues.includes("source-binding-missing") || issues.includes("translation-binding-missing")) return rectoUiText("compare.alignmentBindingMissing");
+	if (issues.includes("document-mismatch")) return rectoUiText("compare.alignmentDocumentMismatch");
+	if (issues.includes("revision-mismatch")) return rectoUiText("compare.alignmentRevisionMismatch");
+	if (!map || !map.stats || !map.stats.pairs) return rectoUiText("compare.alignmentNoAnchors");
 	return "";
 }
 
 // 中文论文的正文本身就写成 ch-，缺少 en- 不代表原文丢失；只有派生译文才带翻译标记。
 function describeRectoMissingPartner(side, isTranslation) {
-	if (side === "source") return "没有找到译文，保持单栏";
-	return isTranslation ? "没有找到原文，保持单栏" : "中文论文没有译文，保持单栏";
+	if (side === "source") return rectoUiText("compare.translationMissing");
+	return rectoUiText(isTranslation ? "compare.sourcePartnerMissing" : "compare.chineseNoTranslation");
 }
 
 function describeRectoAlignmentDegradation(map) {
 	const stats = map && map.stats;
 	if (!stats) return "";
 	const parts = [];
-	if (stats.unmatchedSource) parts.push(`原文 ${stats.unmatchedSource} 块无对应`);
-	if (stats.unmatchedTranslation) parts.push(`译文 ${stats.unmatchedTranslation} 块无对应`);
-	return parts.join("、");
+	if (stats.unmatchedSource) parts.push(rectoUiText("compare.unmatchedSource", { count: stats.unmatchedSource }));
+	if (stats.unmatchedTranslation) parts.push(rectoUiText("compare.unmatchedTranslation", { count: stats.unmatchedTranslation }));
+	return parts.join(activeRectoUiLocale === "en" ? ", " : "、");
+}
+
+// 只把会移动阅读位置的输入用于解除缩放保护；复制、输入文字和横向滚轮都不算。
+function isRectoReadingScrollIntent(event, editable = false) {
+	if (!event) return false;
+	if (event.type === "wheel") return Number.isFinite(event.deltaY) && event.deltaY !== 0 && !event.ctrlKey;
+	if (event.type === "touchmove") return !event.touches || event.touches.length === 1;
+	if (event.type !== "keydown" || event.altKey || event.isComposing) return false;
+	if ((event.ctrlKey || event.metaKey) && !["Home", "End"].includes(event.key)) return false;
+	if (event.key === " " || event.key === "Spacebar") return !editable;
+	return ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(event.key);
+}
+
+function isRectoVerticalScrollbarHit(event, rect, gutter) {
+	if (!event || event.button !== 0 || event.pointerType === "touch" || !rect) return false;
+	// overlay scrollbar 的布局宽度为 0，保留 12px 命中区；调用者还会检查 target 必须就是滚动容器。
+	const edge = Math.max(12, Number(gutter) || 0);
+	return event.clientY >= rect.top && event.clientY < rect.bottom
+		&& event.clientX >= rect.left && event.clientX < rect.right
+		&& (event.clientX < rect.left + edge || event.clientX >= rect.right - edge);
+}
+
+// Obsidian 1.13.7 preview: onRender 分批量段落，updateVirtualDisplay 先保旧像素，
+// applyScrollDelayed 最后才保源码行。真机采样确认两次跳动发生在这两个原生阶段。
+// 只在同一文档的宽度重排中提前量当前屏附近；未知前文沿用宿主高度估计，
+// 随每批量测更新滚动像素，使同一源码行在每次绘制前都已回到视口。
+class RectoPreviewResizeGuard {
+	constructor(view) {
+		this.view = view;
+		const mode = view.previewMode || view.currentMode;
+		this.renderer = mode && mode.renderer;
+		this.pending = null;
+		this.restores = [];
+		this.enabled = false;
+	}
+
+	attach() {
+		const r = this.renderer;
+		if (!r || !r.previewEl || !r.sizerEl || !Array.isArray(r.sections)
+			|| !["onResize", "updateVirtualDisplay", "applyScrollDelayed", "applyScroll", "onRendered", "measureSection"].every(key => typeof r[key] === "function")) return false;
+		const wrap = (key, callback) => {
+			const descriptor = Object.getOwnPropertyDescriptor(r, key), original = r[key];
+			const guard = this;
+			const wrapped = function (...args) {
+				if (!guard.enabled || this !== r) return original.apply(this, args);
+				return callback(original, args);
+			};
+			Object.defineProperty(r, key, { configurable: true, writable: true, value: wrapped });
+			this.restores.push(() => {
+				if (r[key] !== wrapped) return;
+				if (descriptor) Object.defineProperty(r, key, descriptor); else delete r[key];
+			});
+		};
+		try {
+			wrap("onResize", (original, args) => {
+				if (this.view.getMode() === "preview" && r.previewEl.offsetWidth > 0 && r.previewEl.offsetWidth !== r.renderedWidth) {
+					this.pending = Number.isFinite(this.view.scroll) && r.text === r.lastText
+						? { line: this.view.scroll, text: r.text, cancelled: false } : null;
+				}
+				return original.apply(r, args);
+			});
+			wrap("updateVirtualDisplay", (original, args) => {
+				const pending = this.pending;
+				if (!pending || pending.cancelled || r.text !== pending.text || r.lastText !== r.text
+					|| !r.rendered || this.view.getMode() !== "preview") return original.apply(r, args);
+				const anchor = this.findAnchor(pending.line);
+				if (!anchor || !this.measureViewport(anchor.index)) return original.apply(r, args);
+				let top = this.getTop(anchor);
+				if (!Number.isFinite(top)) return original.apply(r, args);
+				r.scrolling = true;
+				const result = original.call(r, top);
+				// 虚拟窗口本身也会量段落；同帧吸收这次量测，避免再留一帧旧位置。
+				const measuredTop = this.getTop(anchor);
+				if (Number.isFinite(measuredTop) && Math.abs(measuredTop - top) > 0.5) original.call(r, measuredTop);
+				return result;
+			});
+			wrap("applyScrollDelayed", (original, args) => {
+				const pending = this.pending;
+				if (!pending || !r.rendered || args[0] !== pending.line || args[1] || r.text !== pending.text) return original.apply(r, args);
+				// 缩放的延迟保位不能覆盖随后发生的真实阅读操作；其他跳转仍走宿主。
+				const apply = () => {
+					if (pending.cancelled || this.pending !== pending || r.text !== pending.text) return;
+					r.applyScroll(pending.line);
+					if (args[2]) args[2]();
+					this.pending = null;
+				};
+				if (!pending.cancelled && r.applyScroll(pending.line)) {
+					if (args[2]) args[2]();
+					r.onRendered(() => { if (this.pending === pending) this.pending = null; });
+				}
+				else r.onRendered(apply);
+			});
+			this.enabled = true;
+			return true;
+		} catch (error) {
+			this.detach(); // 宿主方法不可包装时保持原生行为。
+			return false;
+		}
+	}
+
+	findAnchor(line) {
+		let start = 0;
+		const sections = this.renderer.sections;
+		for (let index = 0; index < sections.length; index++) {
+			const section = sections[index];
+			if (!Number.isFinite(section.lines) || !Number.isFinite(section.height) || section.height < 0) return null;
+			if (start + section.lines > line) return section.rendered && section.shown ? { index, line: line - start, first: start === 0 } : null;
+			start += section.lines;
+		}
+		return null;
+	}
+
+	measureViewport(index) {
+		const r = this.renderer, sections = r.sections;
+		// 前一屏、后两屏，额外最多 40 段；避免为了后段保位同步重排整篇长文。
+		let first = index, last = index, before = 0, after = 0;
+		while (first > 0 && index - first < 20 && before < r.previewEl.clientHeight) before += sections[--first].height;
+		while (last < sections.length - 1 && last - index < 20 && after < r.previewEl.clientHeight * 2) after += sections[++last].height;
+		const range = sections.slice(first, last + 1);
+		if (!range.every(section => section.rendered && section.el)) return false;
+		if (range.some(section => !section.computed)) {
+			for (const section of range) r.sizerEl.appendChild(section.el);
+			for (const section of range) r.measureSection(section);
+		}
+		return true;
+	}
+
+	getTop(anchor) {
+		const r = this.renderer, section = r.sections[anchor.index];
+		let top = r.topSpace, estimated = 0;
+		for (let i = 0; i < anchor.index; i++) {
+			const item = r.sections[i];
+			if (!item.shown) continue;
+			top += item.height;
+			if (!item.computed && item.height === 0) estimated++;
+		}
+		if (estimated) {
+			let sum = 0, count = 0;
+			for (const item of r.sections) if (item.height > 0) { sum += item.height; count++; }
+			if (count) top += estimated * sum / count;
+		}
+		let height = section.height;
+		if (anchor.first) { height += top; top = 0; }
+		let pixel = top + height * anchor.line / section.lines;
+		// 与宿主 applyScroll 一样，列表按 data-line 细分，不能把整段列表均分。
+		let previous = null, previousLine = 0, perLine = 0;
+		for (const item of section.el.querySelectorAll("li[data-line]")) {
+			const line = Number.parseInt(item.getAttribute("data-line"), 10);
+			if (!Number.isFinite(line) || line < 0 || !item.getClientRects().length
+				|| (typeof r.belongsToMe === "function" && !r.belongsToMe(item))) continue;
+			if (line > Math.floor(anchor.line)) {
+				if (previous && line > previousLine) perLine = (item.getBoundingClientRect().top - previous.getBoundingClientRect().top) / (line - previousLine);
+				break;
+			}
+			previous = item;
+			previousLine = line;
+		}
+		if (previous) {
+			const offset = previous.getBoundingClientRect().top - section.el.getBoundingClientRect().top;
+			if (!perLine) perLine = (section.height - offset) / (section.lines - previousLine);
+			pixel = top + offset + perLine * (anchor.line - previousLine);
+		}
+		return Math.max(0, pixel);
+	}
+
+	cancel() { if (this.pending) this.pending.cancelled = true; }
+
+	detach() {
+		this.cancel();
+		this.enabled = false;
+		for (const restore of this.restores.reverse()) restore();
+		this.restores = [];
+	}
 }
 
 class RectoDualPaneSession {
@@ -6799,6 +9106,12 @@ class RectoDualPaneSession {
 		this.pendingSyncSide = null;
 		this.pendingFrame = null;
 		this.listeners = [];
+		this.resizeObserver = null;
+		this.resizeTimer = null;
+		this.resizing = false;
+		this.awaitingScrollIntent = false;
+		this.paneWidths = {};
+		this.previewResizeGuards = new Map();
 	}
 
 	getView(side) {
@@ -6811,15 +9124,25 @@ class RectoDualPaneSession {
 		for (const side of ["source", "translation"]) {
 			const view = this.getView(side);
 			if (!view || !view.containerEl) return false;
-			const onScroll = () => this.handleScroll(side);
+			const onScroll = event => {
+				if (event.target === this.getScroller(side)) this.handleScroll(side);
+			};
 			const onClick = event => this.handleClick(side, event);
+			const onIntent = event => this.handleScrollIntent(side, event);
 			view.containerEl.addEventListener("scroll", onScroll, { capture: true, passive: true });
 			view.containerEl.addEventListener("click", onClick, { capture: true });
+			for (const type of ["wheel", "touchmove", "keydown", "pointerdown"]) {
+				view.containerEl.addEventListener(type, onIntent, { capture: true, passive: true });
+			}
 			this.listeners.push(() => {
 				view.containerEl.removeEventListener("scroll", onScroll, { capture: true });
 				view.containerEl.removeEventListener("click", onClick, { capture: true });
+				for (const type of ["wheel", "touchmove", "keydown", "pointerdown"]) {
+					view.containerEl.removeEventListener(type, onIntent, { capture: true });
+				}
 			});
 		}
+		this.setupResizeObserver();
 		return true;
 	}
 
@@ -6838,6 +9161,15 @@ class RectoDualPaneSession {
 		if (this.pendingFrame !== null) window.cancelAnimationFrame(this.pendingFrame);
 		this.pendingFrame = null;
 		this.pendingSyncSide = null;
+		if (this.resizeObserver) this.resizeObserver.disconnect();
+		this.resizeObserver = null;
+		if (this.resizeTimer) clearTimeout(this.resizeTimer);
+		this.resizeTimer = null;
+		this.resizing = false;
+		this.awaitingScrollIntent = false;
+		this.paneWidths = {};
+		for (const guard of this.previewResizeGuards.values()) guard.detach();
+		this.previewResizeGuards.clear();
 		this.clearHighlight();
 	}
 
@@ -6848,10 +9180,99 @@ class RectoDualPaneSession {
 	}
 
 	handleScroll(side) {
+		if (this.isLayoutSyncPaused()) return;
 		const decision = decideRectoScrollDriver(this.driver, side);
 		if (!decision.accept) return;
 		this.claimDriver(side);
 		this.queueSync(side);
+	}
+
+	// T87-1-F：原文/译文也要保护缩放。只恢复接收用户操作，不在 settle 时补滚，
+	// 否则 Obsidian 渲染后的延迟 applyScroll 仍可能在 200ms 驱动锁释放后反向拉另一栏。
+	setupResizeObserver() {
+		this.refreshPreviewResizeGuards();
+		const els = [];
+		for (const side of ["source", "translation"]) {
+			const view = this.getView(side);
+			if (!view || !view.containerEl) continue;
+			this.paneWidths[side] = view.containerEl.offsetWidth;
+			els.push(view.containerEl);
+		}
+		if (typeof ResizeObserver !== "function" || !els.length) return;
+		this.resizeObserver = new ResizeObserver(() => this.observePaneWidths());
+		for (const el of els) this.resizeObserver.observe(el);
+	}
+
+	observePaneWidths() {
+		this.refreshPreviewResizeGuards();
+		let changed = false;
+		for (const side of ["source", "translation"]) {
+			const view = this.getView(side);
+			if (!view || !view.containerEl) continue;
+			const width = view.containerEl.offsetWidth;
+			if (this.paneWidths[side] !== undefined && width !== this.paneWidths[side]) changed = true;
+			this.paneWidths[side] = width;
+		}
+		if (!changed) return false;
+		this.resizing = true;
+		this.awaitingScrollIntent = true;
+		if (this.pendingFrame !== null) window.cancelAnimationFrame(this.pendingFrame);
+		this.pendingFrame = null;
+		this.pendingSyncSide = null;
+		if (this.driverTimer) clearTimeout(this.driverTimer);
+		this.driverTimer = null;
+		this.driver = null;
+		if (this.resizeTimer) clearTimeout(this.resizeTimer);
+		this.resizeTimer = setTimeout(() => {
+			this.resizeTimer = null;
+			if (!this.observePaneWidths()) this.resizing = false;
+		}, RECTO_RESIZE_SETTLE_MS);
+		return true;
+	}
+
+	refreshPreviewResizeGuards() {
+		for (const side of ["source", "translation"]) {
+			const view = this.getView(side);
+			const mode = view && (view.previewMode || (view.getMode() === "preview" && view.currentMode));
+			const renderer = mode && mode.renderer;
+			const guard = this.previewResizeGuards.get(side);
+			if (guard && guard.renderer === renderer) continue;
+			if (guard) { guard.detach(); this.previewResizeGuards.delete(side); }
+			if (renderer) {
+				const next = new RectoPreviewResizeGuard(view);
+				if (next.attach()) this.previewResizeGuards.set(side, next);
+			}
+		}
+	}
+
+	isLayoutSyncPaused() {
+		// scroll / rAF 可能先于 ResizeObserver 到达；在量段落和落滚动前再核一次栏宽。
+		this.observePaneWidths();
+		return this.resizing || this.awaitingScrollIntent;
+	}
+
+	resumeFromReadingIntent(side) {
+		this.observePaneWidths();
+		for (const guard of this.previewResizeGuards.values()) guard.cancel();
+		if (this.resizing) return false;
+		this.awaitingScrollIntent = false;
+		this.claimDriver(side);
+		return true;
+	}
+
+	handleScrollIntent(side, event) {
+		const scroller = this.getScroller(side);
+		const target = event && event.target;
+		if (!scroller || !target || (target !== scroller && !scroller.contains(target))) return;
+		if (event.type === "pointerdown") {
+			if (target !== scroller || scroller.scrollHeight <= scroller.clientHeight
+				|| !isRectoVerticalScrollbarHit(event, scroller.getBoundingClientRect(), scroller.offsetWidth - scroller.clientWidth)) return;
+		} else {
+			if (event.type === "keydown" && target.closest("input, textarea, select, button, a[href]")) return;
+			if (!isRectoReadingScrollIntent(event, target.isContentEditable)) return;
+		}
+		// 输入本身不排同步；等原生滚动真正改变位置再同步，避免吞掉第一个滚轮步进。
+		this.resumeFromReadingIntent(side);
 	}
 
 	// 被动侧的滚动是我们自己造成的，必须在驱动方停下来之后才交还控制权。
@@ -6926,6 +9347,7 @@ class RectoDualPaneSession {
 
 	// 合帧：一帧内只量一次、只落一次滚动，避免连续滚动事件反复触发对侧重排。
 	queueSync(side) {
+		if (this.resizing || this.awaitingScrollIntent) return;
 		this.pendingSyncSide = side;
 		if (this.pendingFrame !== null) return;
 		this.pendingFrame = window.requestAnimationFrame(() => {
@@ -6946,6 +9368,7 @@ class RectoDualPaneSession {
 	}
 
 	applySync(side) {
+		if (this.isLayoutSyncPaused()) return;
 		const other = side === "source" ? "translation" : "source";
 		const driverScroll = this.measureSidePosition(side);
 		if (driverScroll === null) return;
@@ -6972,11 +9395,11 @@ class RectoDualPaneSession {
 		if (!Number.isFinite(ordinal)) return;
 		const pair = lookupRectoAlignmentByOrdinal(this.map, ordinal);
 		if (!pair) return;
-		this.claimDriver(side);
+		const canSync = this.resumeFromReadingIntent(side);
 		if (this.plugin.settings.dualPaneHighlight !== false) {
 			this.applyHighlight(side === "source" ? "translation" : "source", pair);
 		}
-		this.queueSync(side);
+		if (canSync) this.queueSync(side);
 	}
 
 	resolveClickOrdinal(side, event) {
@@ -7377,12 +9800,12 @@ class RectoPdfCompareSession {
 	revealClickedBlock(ordinal, clickCount) {
 		const target = resolveRectoPdfTarget(this.blockMap, ordinal);
 		if (target.status === "no-page") {
-			new obsidian.Notice("该段落缺少 PDF 页码，未跳转");
+			new obsidian.Notice(rectoUiText("compare.noPage"));
 			return;
 		}
 		// 紧邻的 no-page 给提示、这一条却静默，是同类问题的两种待遇；补齐即可。
 		if (target.status === "unknown-block") {
-			new obsidian.Notice("该段落不在结构信息里，未跳转");
+			new obsidian.Notice(rectoUiText("compare.notInStructure"));
 			return;
 		}
 		if (target.status !== "ok") return;
@@ -7548,33 +9971,30 @@ class RectoPlugin extends obsidian.Plugin {
 		this.pendingAuthHandoff = null;
 		this.browserLoginListeners = new Set();
 		await this.loadPluginData();
+		this.refreshUiLanguage({ initial: true });
 		this.addSettingTab(new RectoSettingTab(this.app, this));
 		if (typeof obsidian.addIcon === "function") obsidian.addIcon(RECTO_ICON_ID, RECTO_ICON_SVG);
 		this.registerView(RECTO_HUB_VIEW_TYPE, (leaf) => new (getRectoHubViewClass())(leaf, this));
-		this.addCommand({ id: "open-hub", name: "打开 Recto 论文库", callback: () => { void this.activateRectoHub(); } });
-		this.addCommand({ id: "open-account", name: "Recto 账号与额度", callback: () => this.openAccountModal() });
-		this.addCommand({ id: "repair-pdfs", name: "修复：重新复制所有 PDF 原文件", callback: () => this.repairPdfs() });
-		this.addCommand({ id: "import-zotero-library", name: "一键导入 Zotero 论文库", callback: () => this.importZoteroLibrary() });
+		this.addLocalizedCommand("open-hub", "command.openHub", () => { void this.activateRectoHub(); });
+		this.addLocalizedCommand("open-account", "command.openAccount", () => this.openAccountModal());
+		this.addLocalizedCommand("repair-pdfs", "command.repairPdfs", () => this.repairPdfs());
+		this.addLocalizedCommand("import-zotero-library", "command.importZotero", () => this.importZoteroLibrary());
 		// T84：库外 PDF 的入口。命令 id 一经发布永不改动（不变量 4），改的只能是显示名。
 		// 拆成两条命令而不是一条加确认弹窗：转换与翻译是两段独立计费，「要不要译文」是用户的
 		// 动作选择而不是一道确认，混成一条会让人点一次被扣两段费。
-		this.addCommand({ id: "convert-external-pdf", name: "转换库外 PDF", callback: () => { void this.convertExternalPdfsFromCommand(); } });
-		this.addCommand({ id: "translate-markdown-file", name: "翻译当前 Markdown 文件", callback: () => { void this.translateActiveMarkdownFromCommand(); } });
-		this.addCommand({
-			id: "convert-translate-external-pdf",
-			name: "转换并翻译库外 PDF",
-			callback: () => { void this.convertExternalPdfsFromCommand({ requestTranslation: true }); },
-		});
+		this.addLocalizedCommand("convert-external-pdf", "command.convertExternalPdf", () => { void this.convertExternalPdfsFromCommand(); });
+		this.addLocalizedCommand("translate-markdown-file", "command.translateMarkdown", () => { void this.translateActiveMarkdownFromCommand(); });
+		this.addLocalizedCommand("convert-translate-external-pdf", "command.convertAndTranslateExternalPdf", () => { void this.convertExternalPdfsFromCommand({ requestTranslation: true }); });
 		// T81 删掉了「Zotero 库索引」md 文件，这条命令留下的是纯数据同步；名字随之改掉，
 		// 命令 id 不动——改 id 会让用户已有的快捷键绑定失效。
-		this.addCommand({ id: "sync-zotero-classification-index", name: "同步 Zotero 数据", callback: () => this.syncZoteroClassificationIndex() });
-		this.addCommand({ id: "recover-pending-backend-tasks", name: "恢复未完成的云端处理", callback: () => { void this.recoverPendingBackendTasksFromCommand(); } });
+		this.addLocalizedCommand("sync-zotero-classification-index", "command.syncZotero", () => this.syncZoteroClassificationIndex());
+		this.addLocalizedCommand("recover-pending-backend-tasks", "command.recoverPending", () => { void this.recoverPendingBackendTasksFromCommand(); });
 		// T85-C：软取消原本只有状态栏浮层里那一个按钮，而浮层只有 hover / focus-within 打得开，
 		// 键盘与读屏用户够不到，卡住时只能等自动放弃。命令与那个按钮走同一条软取消。
-		this.addCommand({ id: "cancel-queued-tasks", name: "取消未开始的任务", callback: () => this.cancelQueuedTasksFromCommand() });
-		this.addCommand({ id: "cycle-reader-theme", name: "切换论文阅读主题", callback: () => { void this.cycleReaderTheme(); } });
-		this.addCommand({ id: "toggle-dual-pane", name: "对照阅读：原文/译文双栏", callback: () => { void this.toggleRectoDualPane(); } });
-		this.addCommand({ id: "toggle-pdf-compare", name: "PDF 对照阅读：原文 PDF/译文", callback: () => { void this.toggleRectoPdfCompare(); } });
+		this.addLocalizedCommand("cancel-queued-tasks", "command.cancelQueued", () => this.cancelQueuedTasksFromCommand());
+		this.addLocalizedCommand("cycle-reader-theme", "command.cycleReaderTheme", () => { void this.cycleReaderTheme(); });
+		this.addLocalizedCommand("toggle-dual-pane", "command.toggleDualPane", () => { void this.toggleRectoDualPane(); });
+		this.addLocalizedCommand("toggle-pdf-compare", "command.togglePdfCompare", () => { void this.toggleRectoPdfCompare(); });
 		// 浏览器登录的回跳。深链只带公开的交接单 id，不带任何凭据——URL 会被系统与
 		// Obsidian 记录，会话 token 绝不能走这条路；它的作用只是「立刻去轮询一次」。
 		if (typeof this.registerObsidianProtocolHandler === "function") {
@@ -7645,8 +10065,63 @@ class RectoPlugin extends obsidian.Plugin {
 			}, RECTO_PLUGIN_UPDATE_STARTUP_DELAY_MS);
 		});
 		this.registerRibbonButtons();
+		this.watchObsidianUiLanguage();
+	}
+	addLocalizedCommand(id, key, callback) {
+		const command = { id, name: rectoUiText(key), callback };
+		this.addCommand(command);
+		if (!this.rectoUiCommands) this.rectoUiCommands = [];
+		this.rectoUiCommands.push({ command, key });
+	}
+	refreshUiLanguage(options = {}) {
+		const hostLanguage = typeof obsidian.getLanguage === "function" ? obsidian.getLanguage() : "zh-CN";
+		const next = resolveRectoUiLocale(this.settings && this.settings.uiLanguage, hostLanguage);
+		if (!options.initial && next === this.uiLocale) return;
+		this.uiLocale = next;
+		activeRectoUiLocale = next;
+		for (const item of this.rectoUiCommands || []) {
+			const name = rectoUiText(item.key);
+			item.command.name = name;
+			const fullId = this.manifest && this.manifest.id ? `${this.manifest.id}:${item.command.id}` : "";
+			const registered = fullId && this.app && this.app.commands && this.app.commands.commands
+				? this.app.commands.commands[fullId] : null;
+			if (registered) registered.name = name;
+		}
+		if (options.initial) return;
+		this.registerRibbonButtons();
+		this.refreshSettingsTabIfOpen({ preserveUiFocus: true });
+		for (const view of this.getOpenHubViews()) {
+			if (typeof view.refreshUiLanguage === "function") view.refreshUiLanguage();
+		}
+		if (this.activeStatusProgress) this.activeStatusProgress.renderStatusBar();
+		for (const modal of this.openUiModals || []) {
+			if (typeof modal.refreshUiLanguage === "function") modal.refreshUiLanguage();
+		}
+	}
+	trackUiModal(modal) {
+		if (!this.openUiModals) this.openUiModals = new Set();
+		this.openUiModals.add(modal);
+	}
+	untrackUiModal(modal) {
+		if (this.openUiModals) this.openUiModals.delete(modal);
+	}
+	async setUiLanguagePreference(value) {
+		this.settings.uiLanguage = normalizeRectoUiPreference(value);
+		await this.save();
+		this.refreshUiLanguage();
+	}
+	watchObsidianUiLanguage() {
+		if (typeof window !== "undefined" && typeof this.registerDomEvent === "function") {
+			this.registerDomEvent(window, "languagechange", () => this.refreshUiLanguage());
+		}
+		if (typeof document !== "undefined" && document.documentElement && typeof MutationObserver !== "undefined") {
+			const observer = new MutationObserver(() => this.refreshUiLanguage());
+			observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+			this.register(() => observer.disconnect());
+		}
 	}
 	onunload() {
+		if (this.hubNotesStore) this.hubNotesStore.flushAll();
 		this.isUnloading = true;
 		// 保留对照关联记忆，供下次启动恢复。
 		this.stopRectoDualPane(false);
@@ -7666,6 +10141,11 @@ class RectoPlugin extends obsidian.Plugin {
 		let migrated = false;
 		if (d) {
 			this.settings = { ...DEFAULT_SETTINGS, ...d.settings };
+			if (!this.settings.documentLanguages && !this.settings.documentLanguageLegacy) this.settings.documentLanguageLegacy = {
+				backendOutputLanguage: d.settings && d.settings.backendOutputLanguage,
+				backendTranslationTargetLanguage: d.settings && d.settings.backendTranslationTargetLanguage,
+			};
+			this.settings.uiLanguage = normalizeRectoUiPreference(this.settings.uiLanguage);
 			this.settings.backendBaseUrl = String(this.settings.backendBaseUrl || DEFAULT_BACKEND_BASE_URL).trim() || DEFAULT_BACKEND_BASE_URL;
 			// T82-B-R：全量切 API 域名，不留过渡；已保存的旧默认地址一次性改写。
 			const legacyApiBase = "https://" + ["api", "paper" + "-brain", "uk"].join(".");
@@ -7728,6 +10208,15 @@ class RectoPlugin extends obsidian.Plugin {
 			this.externalConversions = normalizeExternalConversions(d.externalConversions); // T84 库外转换去重记录
 			this.compareSessions = normalizeRectoCompareSessions(d.compareSessions); // 对照阅读关联，用于重启恢复
 		}
+		if (!d || Object.keys(d).length === 0) {
+			const hostLanguage = typeof obsidian.getLanguage === "function" ? obsidian.getLanguage() : "en";
+			// Obsidian 的历史代码与文档 BCP 47 标识不同；未知值回退英语。
+			const aliases = { zh: "zh-Hans", "zh-tw": "zh-Hant", pt: "pt-BR", no: "nb" };
+			const target = normalizeDocumentLanguage(aliases[String(hostLanguage).toLowerCase()] || hostLanguage) || normalizeDocumentLanguage("en");
+			this.settings.documentLanguages = { version: 1, translationTarget: target, summaryLanguage: target.id, ocrLanguage: "auto" };
+			delete this.settings.documentLanguageLegacy;
+			migrated = true;
+		}
 		this.cloudProcessingConsentAccepted = !!(d && d.cloudProcessingConsentAccepted === true);
 		this.cloudProcessingConsentPresented = !!(d && d.cloudProcessingConsentPresented === true);
 		const onboardingLoad = resolveOnboardingLoadState(d, this.settings.onboarding);
@@ -7764,10 +10253,12 @@ class RectoPlugin extends obsidian.Plugin {
 
 	// options.ownerRunId：登记这条待写回属于哪一次前台运行。它只用于显示过滤——
 	// 队列条不该把「正在被前台循环轮询的那一篇」显示成需要恢复的滞留任务（T81-T）。
-	// 登记时机不动：必须在提交成功后立刻写，否则崩溃就丢了任务。
+	// 翻译在上传前登记；转换到翻译的交接必须与子任务登记在同一次保存中替换。
 	async persistPendingBackendTask(taskId, task, status, options = {}) {
 		if (!taskId) return;
 		if (!Array.isArray(this.pendingBackendTasks)) this.pendingBackendTasks = [];
+		const previous = this.pendingBackendTasks;
+		this.pendingBackendTasks = previous.filter(item => item.taskId !== options.replacesTaskId);
 		const id = String(taskId);
 		const recordId = (task && (task.recordId || task.folder || task.name)) || "";
 		const entry = {
@@ -7784,8 +10275,24 @@ class RectoPlugin extends obsidian.Plugin {
 			const existing = this.pendingBackendTasks[index];
 			this.pendingBackendTasks[index] = { ...existing, ...entry, createdAt: existing.createdAt || entry.createdAt };
 		} else this.pendingBackendTasks.push(entry);
-		await this.save();
+		try { await this.save(); }
+		catch (error) { this.pendingBackendTasks = previous; throw error; }
 		this.notifyTaskQueueChanged();
+	}
+
+	async prepareBackendTranslationHandoff(taskId, task, stem, operation) {
+		if (!this.wantsTranslationForTask(task) || !this.hasForeignSourceMarkdownForTask(task, stem)) return false;
+		await this.persistPendingBackendTask(taskId, { ...task, stem }, "translation_handoff", {
+			ownerRunId: operation ? operation.runId : "",
+		});
+		return true;
+	}
+
+	async resumeBackendTranslationHandoff(taskId, task, modal, operation, onTaskCreated) {
+		// 产物与建档已保存。ack 即使响应丢失也可重试；远端已清理不应抹掉本地翻译意图。
+		try { await this.acknowledgeBackendTaskResult(taskId); }
+		catch (error) { if (!isBackendTaskNotFoundError(error)) throw error; }
+		return await this.runBackendTranslationPhase(task, task.stem, modal, operation, onTaskCreated, { replacesTaskId: taskId });
 	}
 
 	// 记录某个待写回任务的写回失败。写回失败分两类：
@@ -7822,7 +10329,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// 「额度不退」这句不能省（见 codemap/task-queue.md）：原先只挂在按钮的 title 上，
 		// 点完就没了。措辞与那条 title 保持一致。
 		new obsidian.Notice(
-			`已放弃${name ? `「${name}」` : "该任务"}，这篇论文可以重新转换；本次已扣的额度不会退回。`,
+			rectoUiText("recovery.abandoned", { paper: name ? rectoUiText("recovery.paperName", { name }) : rectoUiText("recovery.task") }),
 			8000
 		);
 		return true;
@@ -7831,10 +10338,12 @@ class RectoPlugin extends obsidian.Plugin {
 	async clearPendingBackendTask(taskId) {
 		if (!Array.isArray(this.pendingBackendTasks) || !taskId) return;
 		const id = String(taskId);
+		const previous = this.pendingBackendTasks;
 		const before = this.pendingBackendTasks.length;
 		this.pendingBackendTasks = this.pendingBackendTasks.filter(item => !(item && item.taskId === id));
 		if (this.pendingBackendTasks.length !== before) {
-			await this.save();
+			try { await this.save(); }
+			catch (error) { this.pendingBackendTasks = previous; throw error; }
 			this.notifyTaskQueueChanged();
 		}
 	}
@@ -7843,7 +10352,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const id = String(recordId || "").trim();
 		if (!id || !Array.isArray(this.pendingBackendTasks)) return false;
 		return this.pendingBackendTasks.some(entry => {
-			if (classifyRecoveredBackendTaskStatus(entry && entry.status) === "abandoned") return false;
+			if (classifyRecoveredBackendTaskStatus(entry && entry.status) === "abandoned" && !(entry.task && entry.task.resumeTranslationSubmit)) return false;
 			const pendingRecordId = entry && (entry.recordId || (entry.task && entry.task.recordId));
 			return String(pendingRecordId || "").trim() === id;
 		});
@@ -7913,47 +10422,47 @@ class RectoPlugin extends obsidian.Plugin {
 	async recoverPendingBackendTasksFromCommand() {
 		const count = Array.isArray(this.pendingBackendTasks) ? this.pendingBackendTasks.length : 0;
 		if (!count) {
-			new obsidian.Notice("当前没有等待写回的论文。", 6000);
+			new obsidian.Notice(rectoUiText("recovery.none"), 6000);
 			return { recovered: 0, dropped: 0, kept: 0 };
 		}
 		// 紧邻的两道门（未登录、有任务在跑）都给提示，这一道也不能例外——三条都是用户点了
 		// 「再试一次 / 恢复」之后什么都没发生。
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
-			new obsidian.Notice("尚未启用云端处理，恢复已取消。", 6000);
+			new obsidian.Notice(rectoUiText("recovery.noConsent"), 6000);
 			return { recovered: 0, dropped: 0, kept: count };
 		}
 		if (!this.hasBackendAccountSession()) {
-			new obsidian.Notice("请先重新登录 Recto，再恢复论文结果。", 8000);
+			new obsidian.Notice(rectoUiText("recovery.signIn"), 8000);
 			return { recovered: 0, dropped: 0, kept: count };
 		}
 		if (this.activeOperation) {
-			new obsidian.Notice(`已有任务正在运行：${this.activeOperation.label}`, 6000);
+			new obsidian.Notice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), 6000);
 			return { recovered: 0, dropped: 0, kept: count };
 		}
-		const progressNotice = new obsidian.Notice(`正在恢复 ${count} 篇论文的处理结果，请勿重复提交……`, 0);
+		const progressNotice = new obsidian.Notice(rectoUiText("recovery.start", { count }), 0);
 		try {
 			const summary = await this.recoverPendingBackendTasks();
 			if (progressNotice && typeof progressNotice.hide === "function") progressNotice.hide();
 			if (summary.recovered > 0) {
-				new obsidian.Notice(`已恢复并写回 ${summary.recovered} 篇论文。`, 8000);
+				new obsidian.Notice(rectoUiText("recovery.done", { count: summary.recovered }), 8000);
 			} else if (summary.dropped > 0 && summary.kept === 0) {
-				new obsidian.Notice(`已清理 ${summary.dropped} 个不可恢复的旧任务，现在可以重新提交论文。`, 8000);
+				new obsidian.Notice(rectoUiText("recovery.dropped", { count: summary.dropped }), 8000);
 			} else if (summary.blocked) {
 				// 确定性失败：再自动重试多少次都是同一个结果，必须把出路说清楚。
 				new obsidian.Notice(
-					`有 ${summary.blocked} 个任务反复写回失败，已停止自动重试。${this.pendingBackendLastRecoveryError ? `原因：${this.pendingBackendLastRecoveryError}。` : ""}请在论文库底部的队列条里选择「再试一次」或「放弃这个任务」。`,
+					rectoUiText("recovery.blocked", { count: summary.blocked, reason: this.pendingBackendLastRecoveryError ? rectoUiText("recovery.reason", { error: localizeStoredUiError(this.pendingBackendLastRecoveryError) }) : "" }),
 					15000
 				);
 			} else {
-				const detail = this.pendingBackendLastRecoveryError ? ` 最近错误：${this.pendingBackendLastRecoveryError}` : "";
-				new obsidian.Notice(`暂未恢复成功，任务仍已保留，不要重复提交。${detail}`, 12000);
+				const detail = this.pendingBackendLastRecoveryError ? rectoUiText("recovery.lastError", { error: localizeStoredUiError(this.pendingBackendLastRecoveryError) }) : "";
+				new obsidian.Notice(rectoUiText("recovery.pending", { detail }), 12000);
 			}
 			return summary;
 		} catch (error) {
 			if (progressNotice && typeof progressNotice.hide === "function") progressNotice.hide();
 			const reason = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
 			this.pendingBackendLastRecoveryError = reason;
-			new obsidian.Notice(`结果恢复未完成：${reason}`, 12000);
+			new obsidian.Notice(rectoUiText("recovery.failed", { error: reason }), 12000);
 			return { recovered: 0, dropped: 0, kept: count };
 		}
 	}
@@ -7965,7 +10474,7 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!pending.length) return summary;
 		// 没有有效会话时无法向后端核对，全部保留待下次恢复。
 		if (!this.hasBackendAccountSession()) {
-			this.pendingBackendLastRecoveryError = "请先重新登录 Recto 账号";
+			this.pendingBackendLastRecoveryError = rectoUiText("recovery.signIn");
 			summary.kept = pending.length;
 			return summary;
 		}
@@ -7985,6 +10494,20 @@ class RectoPlugin extends obsidian.Plugin {
 					: this.pendingBackendLastRecoveryError;
 				summary.blocked = (summary.blocked || 0) + 1;
 				summary.kept++;
+				continue;
+			}
+			if (entry.status === "translation_handoff") {
+				const operation = this.beginOperation(rectoUiText("progress.translate"), { silent: true });
+				if (!operation) { summary.kept++; continue; }
+				try {
+					await this.resumeBackendTranslationHandoff(taskId, entry.task, null, operation);
+					summary.recovered++;
+				} catch (error) {
+					this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "转换已恢复，翻译未完成。");
+					const marked = await this.recordPendingBackendTaskFailure(taskId, this.pendingBackendLastRecoveryError);
+					if (marked && marked.blocked) summary.blocked = (summary.blocked || 0) + 1;
+					summary.kept++;
+				} finally { this.finishOperation(operation); }
 				continue;
 			}
 			let remote;
@@ -8008,6 +10531,20 @@ class RectoPlugin extends obsidian.Plugin {
 				this.notifyTaskQueueChanged();
 			}
 			if (kind === "abandoned") {
+				if (entry.task && entry.task.translateOnly && entry.task.resumeTranslationSubmit) {
+					const operation = this.beginOperation(rectoUiText("progress.translate"), { silent: true });
+					if (!operation) { summary.kept++; continue; }
+					try {
+						await this.runBackendTranslationPhase(entry.task, entry.task.stem, null, operation, null, { existing: remote });
+						summary.recovered++;
+					} catch (error) {
+						this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "翻译未完成，请稍后重试。");
+						const marked = await this.recordPendingBackendTaskFailure(taskId, this.pendingBackendLastRecoveryError);
+						if (marked && marked.blocked) summary.blocked = (summary.blocked || 0) + 1;
+						summary.kept++;
+					} finally { this.finishOperation(operation); }
+					continue;
+				}
 				try {
 					await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(taskId)}/cancel`, { method: "POST", timeout: 30000, signal });
 					await this.clearPendingBackendTask(taskId);
@@ -8021,7 +10558,7 @@ class RectoPlugin extends obsidian.Plugin {
 				}
 			} else if (kind === "ready") {
 				if (this.activeOperation) {
-					this.pendingBackendLastRecoveryError = `已有任务正在运行：${this.activeOperation.label}`;
+					this.pendingBackendLastRecoveryError = rectoUiText("recovery.operationRunning", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") });
 					summary.kept++;
 					continue;
 				}
@@ -8035,7 +10572,7 @@ class RectoPlugin extends obsidian.Plugin {
 				}
 				// mock 占位结果绝不 ack/删除，保住已付费的真实结果（与 T39 一致）。
 				if (shouldRejectBackendMockResult(result, true)) {
-					this.pendingBackendLastRecoveryError = "处理结果暂时无法写入，请稍后重试。";
+					this.pendingBackendLastRecoveryError = rectoUiText("recovery.writeUnavailable");
 					summary.kept++;
 					continue;
 				}
@@ -8043,23 +10580,27 @@ class RectoPlugin extends obsidian.Plugin {
 				if (!operation) { summary.kept++; continue; }
 				try {
 					const task = { ...(entry.task || {}), recordId: entry.recordId || (entry.task && entry.task.recordId) };
-					// T81-S：译文任务的结果里没有正文与摘要，必须走只写译文的那条路，
+					// T81-S：译文任务的结果里没有正文，必须走译文/可选摘要的写回路，
 					// 否则会卡在「后端结果缺少源 Markdown」上反复重试到 blocked。
 					if (task.translateOnly) {
-						await this.writeBackendTranslationResult(task, task.stem, result, null);
+						await this.writeBackendTranslationArtifacts(task, task.stem, result, null);
 						await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
 						await this.clearPendingBackendTask(taskId);
 						summary.recovered++;
 					} else {
 						const stem = await this.writeBackendTaskResult(task, result, null);
-						await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
 						// T84：必须走与前台批次同一段建档分叉，否则库外产物会被写进 folderMap
 						// → papers.jsonl → 被 Zotero 同步判成 orphaned。转换耗时长、中途重启
 						// 是真实场景，这条路径不是边角。
 						await this.commitConvertedTaskRecord(task, stem, result);
-						// 恢复不接着跑翻译段（那是前台批次的事），所以临时结构信息此刻就能清。
+						// 库外任务不接着译；库内任务若有冻结的翻译意图，仍需保留 Sidecar。
 						await this.cleanupExternalPaperMetadata(task, stem);
-						await this.clearPendingBackendTask(taskId);
+						if (await this.prepareBackendTranslationHandoff(taskId, task, stem, operation)) {
+							await this.resumeBackendTranslationHandoff(taskId, { ...task, stem }, null, operation);
+						} else {
+							await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
+							await this.clearPendingBackendTask(taskId);
+						}
 						summary.recovered++;
 					}
 				} catch (error) {
@@ -8192,19 +10733,19 @@ class RectoPlugin extends obsidian.Plugin {
 		if (options.interactive === false) return false;
 		if (options.startup === true && this.cloudProcessingConsentPresented === true) return false;
 		if (this.cloudProcessingConsentPromise) return await this.cloudProcessingConsentPromise;
-		const pending = this.openDecision({
-				title: "开始使用 Recto 云端处理",
-				intro: "首次启用时只确认这一次。接受后，单篇处理会直接开始，多篇处理仍会显示篇数确认。",
+		const pending = this.openDecision(() => ({
+				title: rectoUiText("consent.title"),
+				intro: rectoUiText("consent.intro"),
 				details: [
-					"您主动处理论文时，Recto 会上传所选 PDF，或上传论文正文与结构信息。",
-					"内容由 Recto 云端处理，并可能由受托第三方协助完成。",
-					`处理结果写回本地后会从云端删除；未领取结果最多保留 ${HUB_QUEUE_RESULT_TTL_HOURS} 小时。`,
+					rectoUiText("consent.upload"),
+					rectoUiText("consent.process"),
+					rectoUiText("consent.retention", { hours: HUB_QUEUE_RESULT_TTL_HOURS }),
 				],
 				actions: [
-					{ label: "暂不启用", value: false },
-					{ label: "同意并继续", value: true, cta: true },
+					{ label: rectoUiText("consent.later"), value: false },
+					{ label: rectoUiText("consent.agree"), value: true, cta: true },
 				],
-			}).then(async accepted => {
+			})).then(async accepted => {
 			this.cloudProcessingConsentPresented = true;
 			if (accepted === true) this.cloudProcessingConsentAccepted = true;
 			await this.save();
@@ -8322,7 +10863,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async startBackendBrowserLogin(options = {}) {
 		const payload = await this.backendRequest("/api/v1/auth/handoff/start", {
 			method: "POST",
-			body: { clientLabel: "Obsidian" },
+			body: { clientLabel: "Obsidian", uiLocale: this.uiLocale },
 			timeout: options.timeout || 30000,
 			noAuth: true,
 		});
@@ -8335,7 +10876,7 @@ class RectoPlugin extends obsidian.Plugin {
 		};
 		if (!this.pendingAuthHandoff.handoffId || !this.pendingAuthHandoff.loginUrl) {
 			this.pendingAuthHandoff = null;
-			throw new Error("后端未返回可用的登录地址。");
+			throw createRectoUiError("account.noLoginUrl");
 		}
 		this.settings.backendLastError = "";
 		await this.save();
@@ -8391,12 +10932,12 @@ class RectoPlugin extends obsidian.Plugin {
 
 	openExternalUrl(url) {
 		const target = String(url || "").trim();
-		if (!/^https?:\/\//i.test(target)) throw new Error("登录地址不合法。");
+		if (!/^https?:\/\//i.test(target)) throw createRectoUiError("account.invalidLoginUrl");
 		if (typeof window !== "undefined" && typeof window.open === "function") {
 			window.open(target, "_blank");
 			return true;
 		}
-		throw new Error("无法在此环境中打开浏览器，请手动复制登录链接。");
+		throw createRectoUiError("account.browserUnavailable");
 	}
 
 	// 深链回跳：不带凭据，只是催一次轮询。id 对不上就什么都不做。
@@ -8405,7 +10946,7 @@ class RectoPlugin extends obsidian.Plugin {
 		try {
 			const result = await this.pollBackendBrowserLogin({ timeout: 30000 });
 			if (result.status === "approved") {
-				new obsidian.Notice(`已登录 ${RECTO_BRAND_NAME} 账号`, 5000);
+				new obsidian.Notice(rectoUiText("account.loginSuccessNotice", { brand: RECTO_BRAND_NAME }), 5000);
 				// 与弹窗轮询那条 approved 分支同一个理由：整条取数链路只有 refreshBackendBilling
 				// 一个入口，不在这里取一次，刚登录的用户打开账号面板看到的就是「套餐读取失败」。
 				// 这一趟失败不算登录失败——登录已经成功了，套餐面板自己还会再试并如实报状态。
@@ -8444,7 +10985,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async requestBackendEmailVerification(email, options = {}) {
 		const payload = await this.backendRequest("/api/v1/auth/email-verification", {
 			method: "POST",
-			body: { email: String(email || "").trim() },
+			body: { email: String(email || "").trim(), uiLocale: this.uiLocale },
 			timeout: options.timeout || 30000,
 			noAuth: true,
 		});
@@ -8469,7 +11010,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 	async ensureBackendAccountSession(options = {}) {
 		if (!this.hasBackendAccountSession()) {
-			throw new Error("请先登录 Recto 账号。");
+			throw createRectoUiError("account.signInRequired");
 		}
 		const payload = await this.backendRequest("/api/v1/me", {
 			timeout: options.timeout || 30000,
@@ -8516,15 +11057,15 @@ class RectoPlugin extends obsidian.Plugin {
 	async startBackendCheckout(planCode, options = {}) {
 		await this.ensureBackendAccountSession(options);
 		const cleanPlanCode = String(planCode || (getBackendSelectedPlan(this.settings) || {}).code || "").trim();
-		if (!cleanPlanCode) throw new Error("请先选择要购买的套餐。");
+		if (!cleanPlanCode) throw createRectoUiError("account.choosePlan");
 		const payload = await this.backendRequest("/api/v1/checkout/handoff/start", {
 			method: "POST",
-			body: { planCode: cleanPlanCode },
+			body: { planCode: cleanPlanCode, uiLocale: this.uiLocale },
 			timeout: options.timeout || 30000,
 			signal: options.signal,
 		});
 		const url = String((payload && payload.checkoutUrl) || "").trim();
-		if (!/^https?:\/\//i.test(url)) throw new Error("后端未返回可用的支付页地址。");
+		if (!/^https?:\/\//i.test(url)) throw createRectoUiError("account.noCheckoutUrl");
 		return url;
 	}
 
@@ -8544,6 +11085,74 @@ class RectoPlugin extends obsidian.Plugin {
 		this.applyBackendPreferences(payload);
 		await this.save();
 		return payload;
+	}
+
+	async ensureDocumentLanguageCapabilities() {
+		let capabilities;
+		try { capabilities = await this.backendRequest("/api/v1/tasks/capabilities", { timeout: 30000 }); }
+		catch { throw new Error(documentLanguageText("服务暂不支持新的文档语言功能，请更新服务后重试。", "Document language support is unavailable. Update the service and try again.")); }
+		if (!capabilities || capabilities.version !== 1 || capabilities.namingVersion !== 1 || capabilities.unifiedOutput !== true || !Array.isArray(capabilities.ocrLanguages)) {
+			throw new Error(documentLanguageText("服务暂不支持新的文档语言功能，请更新服务后重试。", "Document language support is unavailable. Update the service and try again."));
+		}
+		if (!this.settings.documentLanguages || this.settings.documentLanguages.unifiedOutput !== true) {
+			const remote = await this.backendRequest("/api/v1/me/preferences", { timeout: 30000 });
+			const migrated = migrateDocumentLanguages({ ...this.settings, ...(this.settings.documentLanguageLegacy || {}) }, remote);
+			this.settings.documentLanguages = { ...migrated, unifiedOutput: true, summaryLanguage: migrated.translationTarget.id, ocrLanguage: "auto" };
+			delete this.settings.documentLanguageLegacy;
+			await this.save();
+		}
+		this.documentLanguageCapabilities = capabilities;
+		return capabilities;
+	}
+
+	async prepareDocumentTranslation(task, stem, sidecarText, recovering = false) {
+		const sidecar = JSON.parse(sidecarText);
+		const info = this.folderMap && this.folderMap[task.recordId] || {};
+		const folder = isRectoMarkdownTranslationTask(task) ? nodePath.posix.dirname(task.markdownPath) : this.resolveTaskPaperFolder(task, stem);
+		const sourcePath = task.markdownPath || task.sourcePath || info.sourcePath
+			|| this.findOriginalMarkdownInPaperFolder(this.app.vault.getAbstractFileByPath(folder))?.path;
+		const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath);
+		if (!sourceFile) throw new Error(documentLanguageText("找不到原文，未提交翻译。", "Source file is missing. Translation was not submitted."));
+		const sourceHash = documentContentHash(await this.app.vault.read(sourceFile));
+		if (recovering) {
+			if (task.sourceContentHash !== sourceHash || task.languageContract.sourceRevisionId !== sidecar.sourceRevision.id) throw new Error(documentLanguageText("原文已改变，无法恢复这次翻译。", "The source changed; this translation cannot be resumed."));
+			return;
+		}
+		const preferences = this.settings.documentLanguages;
+		const target = normalizeDocumentLanguage(task.languageContract && task.languageContract.target || preferences.translationTarget);
+		let source = normalizeDocumentLanguage(task.languageContract && task.languageContract.source);
+		let evidence = source ? task.languageContract.sourceEvidence : "unknown";
+		const recordedSource = this.settings.documentArtifacts?.[sourcePath];
+		if (!isRectoMarkdownTranslationTask(task) && (recordedSource?.sourceContentHash || info.sourceContentHash)
+			&& (recordedSource?.sourceContentHash || info.sourceContentHash) !== sourceHash) throw new Error(documentLanguageText("原文已改变，请重新转换以更新定位信息后再翻译。", "The source changed. Convert it again to refresh its structure before translating."));
+		if (!source && recordedSource?.sourceContentHash === sourceHash && recordedSource.sourceRevisionId === sidecar.sourceRevision.id) {
+			source = normalizeDocumentLanguage(recordedSource.sourceLanguage); evidence = source ? "recorded" : "unknown";
+		}
+		if (!source && info.sourceRevisionId === sidecar.sourceRevision.id && info.sourceContentHash === sourceHash) {
+			source = normalizeDocumentLanguage(info.sourceLanguage);
+			evidence = source ? info.sourceLanguageEvidence : "unknown";
+		}
+		if (!source && !info.namingVersion && !isRectoMarkdownTranslationTask(task) && /^en-/.test(sourceFile.name)) { source = normalizeDocumentLanguage("en"); evidence = "recorded"; }
+		if (!source || source.id === "zh") {
+			const choice = await this.openDecision(() => ({
+				title: documentLanguageText("确认原文语言", "Confirm source language"),
+				intro: sourceFile.basename,
+				languageChoice: { source: true },
+				actions: [{ label: rectoUiText("dialog.cancel"), value: false }, { label: rectoUiText("dialog.continue"), value: true, cta: true }],
+			}));
+			if (!choice || !choice.language) throw new Error(documentLanguageText("未确认原文语言，翻译未提交。", "Source language was not confirmed. Translation was not submitted."));
+			source = choice.language; evidence = "user";
+		}
+		if (!target || target.id === "zh" || source.id === target.id) throw new Error(documentLanguageText("原文与目标语言相同，请选择其他目标语言。", "Source and target languages are the same. Choose another target."));
+		const translationPath = documentArtifactPath(folder, stem, target.prefix);
+		if (!info.namingVersion && !isRectoMarkdownTranslationTask(task) && /^en-/.test(sourceFile.name) && target.id === "zh-Hans"
+			&& this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}/${getChineseMarkdownFileName(stem)}`))) throw new Error(documentLanguageText("已有中文译文，已保留，未重复提交翻译。", "A Chinese translation already exists. It was preserved; no duplicate translation was submitted."));
+		if (translationPath.toLowerCase() === sourcePath.toLowerCase() || this.app.vault.getAbstractFileByPath(translationPath)
+			|| (this.app.vault.getFiles && this.app.vault.getFiles().some(file => file.path.toLowerCase() === translationPath.toLowerCase()))) throw new Error(documentLanguageText("目标译文文件已存在，已保留原文件，未提交翻译。", "The target file already exists. It was preserved; translation was not submitted."));
+		const unifiedOutput = task.languageContract ? task.languageContract.unifiedOutput === true : preferences.unifiedOutput === true;
+		Object.assign(task, { namingVersion: 1, sourcePath, translationPath, sourceContentHash: sourceHash, sourceRevisionId: sidecar.sourceRevision.id, protectExistingTranslation: true,
+			languageContract: { version: 1, namingVersion: 1, source, sourceEvidence: evidence, target, sourceRevisionId: sidecar.sourceRevision.id,
+				ocrLanguage: unifiedOutput ? "auto" : task.languageContract?.ocrLanguage || preferences.ocrLanguage, ...(unifiedOutput ? { unifiedOutput: true } : {}) } });
 	}
 
 	// ── T84-E-A 插件自更新（壳）────────────────────────────────────
@@ -8591,7 +11200,7 @@ class RectoPlugin extends obsidian.Plugin {
 	showRectoUpdateVeil() {
 		this.clearRectoUpdateVeil(true);
 		const veil = document.body.createDiv({ cls: "recto-ui recto-update-veil" });
-		veil.createDiv({ cls: "recto-update-veil-label", text: `${RECTO_BRAND_NAME} 正在应用更新……` });
+		veil.createDiv({ cls: "recto-update-veil-label", text: rectoUiText("update.applying", { brand: RECTO_BRAND_NAME }) });
 		window.setTimeout(() => veil.remove(), RECTO_PLUGIN_UPDATE_VEIL_MAX_MS);
 		return veil;
 	}
@@ -8612,7 +11221,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const version = this.getRectoPluginUpdateState().installedNotice;
 		if (!version) return;
 		await this.saveRectoPluginUpdateState({ installedNotice: "" });
-		new obsidian.Notice(`${RECTO_BRAND_NAME} 已更新到 ${version}`, 6000);
+		new obsidian.Notice(rectoUiText("update.installedNotice", { brand: RECTO_BRAND_NAME, version }), 6000);
 	}
 
 	// 启动后查一次，不轮询。凭据在就顺手刷一次 /api/v1/me（同时把额度与档位也刷新了）。
@@ -8656,20 +11265,20 @@ class RectoPlugin extends obsidian.Plugin {
 	async promptRectoPluginUpdate(version) {
 		const current = this.manifest ? String(this.manifest.version || "") : "";
 		await this.saveRectoPluginUpdateState({ ignoredVersion: version });
-		const choice = await this.openDecision({
-			title: `${RECTO_BRAND_NAME} 有新版本 ${version}`,
-			intro: `当前版本 ${current}，最新版本 ${version}。更新只要几秒，装好当场生效，不用重启 Obsidian。`,
+		const choice = await this.openDecision(() => ({
+			title: rectoUiText("update.newVersion", { brand: RECTO_BRAND_NAME, version }),
+			intro: rectoUiText("update.intro", { current, version }),
 			details: [
-				"「自动更新」：以后启动时发现新版本就直接装好，不再打扰您。",
-				"「仅本次更新」：只更新这一次，下次有新版本还会再问。",
-				"更新包只从 Recto 的公开发布页获取，与社区商店同源；正在处理论文时不会更新。",
+				rectoUiText("update.autoDesc"),
+				rectoUiText("update.onceDesc"),
+				rectoUiText("update.sourceDesc"),
 			],
 			actions: [
-				{ label: "跳过此版本", value: "skip" },
-				{ label: "仅本次更新", value: "once" },
-				{ label: "自动更新", value: "auto", cta: true },
+				{ label: rectoUiText("update.skip"), value: "skip" },
+				{ label: rectoUiText("update.once"), value: "once" },
+				{ label: rectoUiText("update.auto"), value: "auto", cta: true },
 			],
-		});
+		}));
 		if (choice === "auto") await this.saveRectoPluginUpdateState({ autoUpdate: true });
 		if (choice === "auto" || choice === "once") await this.runRectoPluginUpdate(version, { silent: false });
 	}
@@ -8696,14 +11305,14 @@ class RectoPlugin extends obsidian.Plugin {
 			return;
 		}
 		if (decision.reason === "busy") {
-			new obsidian.Notice("正在处理论文，请等这一批跑完再更新。", 6000);
+			new obsidian.Notice(rectoUiText("update.waitForBatch"), 6000);
 			return;
 		}
 		if (decision.reason === "up-to-date") {
-			new obsidian.Notice(`${RECTO_BRAND_NAME} 已是最新版本。`, 5000);
+			new obsidian.Notice(rectoUiText("update.latest", { brand: RECTO_BRAND_NAME }), 5000);
 			return;
 		}
-		new obsidian.Notice("暂时查不到新版本，请稍后重试。", 6000);
+		new obsidian.Notice(rectoUiText("update.checkFailed"), 6000);
 	}
 
 	/**
@@ -8721,7 +11330,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// 的自动更新分支里：默认用户没开自动更新，走的恰恰是「弹窗里点按钮」这条路，
 		// 而自重载会 abort 掉活动操作、把已冻结的额度甩在半路（不变量 21 ③）。
 		if (this.isRectoPluginUpdateBusy()) {
-			if (options.silent !== true) new obsidian.Notice("正在处理论文，请等这一批跑完再更新。", 6000);
+			if (options.silent !== true) new obsidian.Notice(rectoUiText("update.waitForBatch"), 6000);
 			return false;
 		}
 		if (this.rectoPluginUpdateRunning) return false;
@@ -8729,7 +11338,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const silent = options.silent === true;
 		// 用户点了按钮就得立刻有反馈：下载三件套要几秒，没有这条常驻提示会像「没点上」。
 		// 自动更新那条路全程不出声，那才是「无感」。
-		const progress = silent ? null : new obsidian.Notice(`正在更新 ${RECTO_BRAND_NAME}……`, 0);
+		const progress = silent ? null : new obsidian.Notice(rectoUiText("update.installing", { brand: RECTO_BRAND_NAME }), 0);
 		const clearProgress = () => { if (progress) progress.hide(); };
 		try {
 			const files = await this.downloadRectoPluginRelease(target);
@@ -8751,7 +11360,7 @@ class RectoPlugin extends obsidian.Plugin {
 			// resolve **之前**就跑完了，所以这一刻揭正合适。新实例那次揭幕是冗余保险。
 			this.clearRectoUpdateVeil();
 			if (!reloaded) {
-				new obsidian.Notice(`${RECTO_BRAND_NAME} ${target} 已下载，重启 Obsidian 后生效。`, 8000);
+				new obsidian.Notice(rectoUiText("update.restartNeeded", { brand: RECTO_BRAND_NAME, version: target }), 8000);
 			}
 			return true;
 		} catch (error) {
@@ -8773,7 +11382,7 @@ class RectoPlugin extends obsidian.Plugin {
 				patch.blockedAppVersion = String(obsidian.apiVersion || "").trim();
 			}
 			await this.saveRectoPluginUpdateState(patch);
-			if (!silent) new obsidian.Notice(`${RECTO_BRAND_NAME} 更新失败，请稍后重试。`, 8000);
+			if (!silent) new obsidian.Notice(rectoUiText("update.installFailed", { brand: RECTO_BRAND_NAME }), 8000);
 			return false;
 		} finally {
 			this.rectoPluginUpdateRunning = false;
@@ -8862,14 +11471,14 @@ class RectoPlugin extends obsidian.Plugin {
 	async blockedByUnsupportedRectoVersion() {
 		const decision = this.describeRectoPluginUpdate();
 		if (!decision.belowMinSupported) return false;
-		const choice = await this.openDecision({
-			title: `${RECTO_BRAND_NAME} 需要先更新`,
-			intro: "当前版本已经太旧，继续处理论文可能拿不到正确的结果。更新后即可继续。",
+		const choice = await this.openDecision(() => ({
+			title: rectoUiText("update.required", { brand: RECTO_BRAND_NAME }),
+			intro: rectoUiText("update.requiredDesc"),
 			actions: [
-				{ label: "取消", value: false },
-				{ label: "立即更新", value: true, cta: true },
+				{ label: rectoUiText("dialog.cancel"), value: false },
+				{ label: rectoUiText("update.now"), value: true, cta: true },
 			],
-		});
+		}));
 		if (choice === true && decision.target) await this.runRectoPluginUpdate(decision.target, { silent: false });
 		return true;
 	}
@@ -8881,7 +11490,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 	beginOperation(label, options = {}) {
 		if (this.activeOperation) {
-			if (!options.silent) new obsidian.Notice(`已有任务正在运行：${this.activeOperation.label}`, 6000);
+			if (!options.silent) new obsidian.Notice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), 6000);
 			return null;
 		}
 		const operation = {
@@ -8924,19 +11533,19 @@ class RectoPlugin extends obsidian.Plugin {
 	cancelQueuedTasksFromCommand() {
 		const operation = this.activeOperation;
 		if (!operation || operation.controller.signal.aborted) {
-			new obsidian.Notice("当前没有正在运行的任务。", 5000);
+			new obsidian.Notice(rectoUiText("batch.noActiveTask"), 5000);
 			return false;
 		}
 		if (operation.stopAfterCurrent) {
-			new obsidian.Notice("已经请求过取消，正在跑的这一篇会跑完。", 6000);
+			new obsidian.Notice(rectoUiText("batch.cancelAlreadyRequested"), 6000);
 			return false;
 		}
 		if ((Number(operation.queuedRemaining) || 0) <= 0) {
-			new obsidian.Notice("只剩正在跑的这一篇了，它会跑完；万一卡住会自动放弃并退回额度。", 8000);
+			new obsidian.Notice(rectoUiText("batch.onlyCurrent"), 8000);
 			return false;
 		}
 		const dropped = this.requestStopAfterCurrent();
-		new obsidian.Notice(`已取消尚未开始的 ${dropped} 篇；正在跑的这一篇会跑完。`, 8000);
+		new obsidian.Notice(rectoUiText("batch.cancelledQueued", { count: dropped }), 8000);
 		return true;
 	}
 
@@ -8958,7 +11567,7 @@ class RectoPlugin extends obsidian.Plugin {
 	getValidatedBaseFolderOrNotice() {
 		try { return this.getValidatedBaseFolder(); }
 		catch (e) {
-			new obsidian.Notice(`论文库文件夹无效：${getUserFacingErrorMessage(e, "请选择 Vault 内的文件夹。")}`, 8000);
+			new obsidian.Notice(rectoUiText("settings.libraryInvalid", { error: getUserFacingErrorMessage(e, rectoUiText("settings.chooseVaultFolder")) }), 8000);
 			return "";
 		}
 	}
@@ -8982,7 +11591,7 @@ class RectoPlugin extends obsidian.Plugin {
 			const frontmatter = cache && cache.frontmatter;
 			return describeRectoMissingPartner("translation", Boolean(frontmatter && frontmatter["recto-translation-language"]));
 		}
-		return "找不到该论文的原文或译文";
+		return rectoUiText("compare.sourceMissing");
 	}
 
 	/**
@@ -8993,6 +11602,23 @@ class RectoPlugin extends obsidian.Plugin {
 	 */
 	resolveRectoLinkedDualPanePair(file) {
 		if (!(file instanceof obsidian.TFile)) return null;
+		const artifacts = this.settings.documentArtifacts || {};
+		for (const [sourcePath, entry] of Object.entries(artifacts)) {
+			const records = Object.values(entry.translations || {});
+			const ownRecord = records.find(record => record.path === file.path);
+			if (file.path !== sourcePath && !ownRecord) continue;
+			const preferred = migrateDocumentLanguages(this.settings).translationTarget.id;
+			if (preferred === "zh-Hans" && /\/en-[^/]+\.md$/.test(sourcePath)) {
+				const legacy = this.app.vault.getAbstractFileByPath(sourcePath.replace(/\/en-([^/]+)\.md$/, "/ch-$1.md"));
+				const original = this.app.vault.getAbstractFileByPath(sourcePath);
+				if (legacy instanceof obsidian.TFile && original instanceof obsidian.TFile) return { sourceFile: original, translationFile: legacy };
+			}
+			const record = records.find(record => record.targetLanguage.id === preferred && this.app.vault.getAbstractFileByPath(record.path));
+			const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath);
+			const translationFile = record && this.app.vault.getAbstractFileByPath(record.path);
+			if (sourceFile instanceof obsidian.TFile && translationFile instanceof obsidian.TFile) return { sourceFile, translationFile, artifact: record };
+			return null;
+		}
 		const sourcePathOf = target => {
 			const cache = target instanceof obsidian.TFile ? this.app.metadataCache.getFileCache(target) : null;
 			const frontmatter = cache && cache.frontmatter;
@@ -9002,13 +11628,15 @@ class RectoPlugin extends obsidian.Plugin {
 		// ① 当前文件就是译文。
 		const own = sourcePathOf(file);
 		if (own) {
+			const language = normalizeDocumentLanguage(this.app.metadataCache.getFileCache(file)?.frontmatter?.["recto-translation-language"] || "zh-CN");
+			if (language?.id !== migrateDocumentLanguages(this.settings).translationTarget.id) return null;
 			const sourceFile = this.app.vault.getAbstractFileByPath(obsidian.normalizePath(own));
 			if (sourceFile instanceof obsidian.TFile) return { sourceFile, translationFile: file };
 			return null;
 		}
 
 		// ② 当前文件是原文，去找回指它的那份译文。
-		const target = resolveRectoMarkdownTranslationTarget(file.path);
+		const target = resolveRectoMarkdownTranslationTarget(file.path, this.settings.documentLanguages?.translationTarget);
 		if (!target) return null;
 		const translationFile = this.app.vault.getAbstractFileByPath(obsidian.normalizePath(target.targetPath));
 		if (!(translationFile instanceof obsidian.TFile)) return null;
@@ -9020,16 +11648,19 @@ class RectoPlugin extends obsidian.Plugin {
 	async startRectoDualPane() {
 		const file = this.app.workspace.getActiveFile();
 		if (!file) {
-			new obsidian.Notice("请先打开论文的 PDF、原文、译文或摘要");
+			new obsidian.Notice(rectoUiText("compare.openPaper"));
 			return;
 		}
 		// T84-S：先试「译文 frontmatter 里记着的原文路径」这条线索——用户自己的文档
 		// （`我的剪藏.md`）剥不出 `en-`/`ch-` 前缀，既有的命名约定永远配不上它。
 		// **库内产物不写这个字段，一律落到下面的命名约定，库内行为一个字不变。**
 		const linked = this.resolveRectoLinkedDualPanePair(file);
+		if (linked?.artifact && documentContentHash(await this.app.vault.read(linked.sourceFile)) !== linked.artifact.sourceContentHash) {
+			new obsidian.Notice(documentLanguageText("原文版本已改变，旧译文保留，对照已停用。", "The source version changed. The translation is preserved; comparison is disabled.")); return;
+		}
 		const stem = linked ? "" : resolveRectoPaperStem(file.name);
 		if (!linked && !stem) {
-			new obsidian.Notice("当前文件不是 Recto 的论文文件");
+			new obsidian.Notice(rectoUiText("compare.wrongFile"));
 			return;
 		}
 		const folder = file.parent && file.parent.path && file.parent.path !== "/" ? `${file.parent.path}/` : "";
@@ -9038,7 +11669,7 @@ class RectoPlugin extends obsidian.Plugin {
 			: this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${getEnglishMarkdownFileName(stem)}`));
 		const translationFile = linked
 			? linked.translationFile
-			: this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${getChineseMarkdownFileName(stem)}`));
+			: (migrateDocumentLanguages(this.settings).translationTarget.id === "zh-Hans" ? this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${getChineseMarkdownFileName(stem)}`)) : null);
 		const missing = this.describeRectoDualPaneMissing(sourceFile, translationFile);
 		if (missing) {
 			new obsidian.Notice(missing);
@@ -9047,7 +11678,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const map = await this.readRectoAlignmentMap(sourceFile, translationFile);
 		const blocker = describeRectoAlignmentBlocker(map);
 		if (blocker) {
-			new obsidian.Notice(`对照阅读不可用：${blocker}`);
+			new obsidian.Notice(rectoUiText("compare.unavailable", { error: blocker }));
 			return;
 		}
 		// 两个对照会话不能同时活着：它们会在同一个 `ch-` 窗格上各挂一套 click/scroll 监听，
@@ -9055,19 +11686,19 @@ class RectoPlugin extends obsidian.Plugin {
 		// 那时把用户正在用的另一种对照关掉是白关。切换即接管，不弹确认。
 		if (this.pdfCompareSession) {
 			this.stopRectoPdfCompare();
-			new obsidian.Notice("已切换到双栏对照，PDF 对照已关闭。", 5000);
+			new obsidian.Notice(rectoUiText("compare.switchedDual"), 5000);
 		}
 		// 固定布局：左原文 + 右译文。已开着的原文/译文直接复用，不重复开新界面。
 		const activeLeaf = this.findRectoOpenLeaf(file.path) || this.app.workspace.getMostRecentLeaf();
 		const { leftLeaf, rightLeaf } = await this.openRectoComparePanes(sourceFile, translationFile, activeLeaf);
 		if (!this.activateRectoDualPane(leftLeaf, rightLeaf, sourceFile, translationFile, map)) {
-			new obsidian.Notice("对照阅读启动失败：无法绑定视图");
+			new obsidian.Notice(rectoUiText("compare.dualBindFailed"));
 			return;
 		}
 		// 锚点不配对时对照仍然可用，只是那些块点不动、滚不到——算出来了就必须说，
 		// 否则用户只会以为对照坏了。
 		const degraded = describeRectoAlignmentDegradation(map);
-		if (degraded) new obsidian.Notice(`对照阅读已启动：${degraded}，这些段落不会联动滚动。`, 8000);
+		if (degraded) new obsidian.Notice(rectoUiText("compare.unmapped", { detail: degraded }), 8000);
 	}
 
 	// clearPersisted=false 只用于插件卸载/重启：保留记忆，下次启动才好恢复关联。
@@ -9085,7 +11716,7 @@ class RectoPlugin extends obsidian.Plugin {
 	verifyRectoDualPane() {
 		if (!this.dualPaneSession || this.dualPaneSession.isIntact()) return;
 		this.stopRectoDualPane();
-		new obsidian.Notice("对照阅读已退出：有一栏被关闭或切换到了别的文件");
+		new obsidian.Notice(rectoUiText("compare.dualClosed"));
 	}
 
 	scheduleRectoAlignmentRebuild(file) {
@@ -9113,7 +11744,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const map = await this.readRectoAlignmentMap(sourceFile, translationFile);
 		if (this.dualPaneSession !== session) return;
 		if (describeRectoAlignmentBlocker(map)) {
-			new obsidian.Notice("对照阅读已退出：锚点或修订绑定不再可用");
+			new obsidian.Notice(rectoUiText("compare.alignmentLost"));
 			this.stopRectoDualPane();
 			return;
 		}
@@ -9125,7 +11756,11 @@ class RectoPlugin extends obsidian.Plugin {
 			this.app.vault.cachedRead(sourceFile),
 			this.app.vault.cachedRead(translationFile),
 		]);
-		return createRectoAlignmentMap(sourceMarkdown, translationMarkdown);
+		const map = createRectoAlignmentMap(sourceMarkdown, translationMarkdown);
+		const metadata = parseSimpleFrontmatter(translationMarkdown);
+		if (Number(metadata["recto-naming-version"]) === 1 && (metadata["recto-source-path"] !== sourceFile.path
+			|| metadata["recto-source-hash"] !== documentContentHash(sourceMarkdown))) map.issues.push("revision-mismatch");
+		return map;
 	}
 
 	// ── 对照阅读共用：复用已打开的叶子、缺哪侧补哪侧、固定左右 ──────────
@@ -9252,6 +11887,13 @@ class RectoPlugin extends obsidian.Plugin {
 		const translationLeaf = this.findRectoOpenLeaf(record.translationPath);
 		const sourceFile = this.app.vault.getAbstractFileByPath(record.sourcePath);
 		const translationFile = this.app.vault.getAbstractFileByPath(record.translationPath);
+		if (this.settings?.documentLanguages) {
+			const current = this.resolveRectoLinkedDualPanePair(sourceFile);
+			if ((current && current.translationFile.path !== record.translationPath)
+				|| (!current && (migrateDocumentLanguages(this.settings).translationTarget.id !== "zh-Hans" || !/^ch-/.test(translationFile?.name || "")))) {
+				this.clearRectoCompareState("dualPane"); return;
+			}
+		}
 		if (!sourceLeaf || !translationLeaf || !(sourceFile instanceof obsidian.TFile) || !(translationFile instanceof obsidian.TFile)) {
 			this.clearRectoCompareState("dualPane");
 			return;
@@ -9268,6 +11910,13 @@ class RectoPlugin extends obsidian.Plugin {
 		const mdLeaf = this.findRectoOpenLeaf(record.mdPath);
 		const pdfFile = this.app.vault.getAbstractFileByPath(record.pdfPath);
 		const mdFile = this.app.vault.getAbstractFileByPath(record.mdPath);
+		if (this.settings?.documentLanguages) {
+			const current = this.resolveRectoLinkedDualPanePair(mdFile);
+			if ((current && current.translationFile.path !== record.mdPath)
+				|| (!current && (migrateDocumentLanguages(this.settings).translationTarget.id !== "zh-Hans" || !/^ch-/.test(mdFile?.name || "")))) {
+				this.clearRectoCompareState("pdfCompare"); return;
+			}
+		}
 		if (!pdfLeaf || !mdLeaf || !(pdfFile instanceof obsidian.TFile) || !(mdFile instanceof obsidian.TFile)) {
 			this.clearRectoCompareState("pdfCompare");
 			return;
@@ -9291,41 +11940,53 @@ class RectoPlugin extends obsidian.Plugin {
 	async startRectoPdfCompare() {
 		const file = this.app.workspace.getActiveFile();
 		if (!file) {
-			new obsidian.Notice("请先打开论文的 PDF、原文、译文或摘要");
-			return;
-		}
-		const stem = resolveRectoPaperStem(file.name);
-		if (!stem) {
-			new obsidian.Notice("当前文件不是 Recto 的论文文件");
+			new obsidian.Notice(rectoUiText("compare.openPaper"));
 			return;
 		}
 		const folder = file.parent && file.parent.path && file.parent.path !== "/" ? `${file.parent.path}/` : "";
-		const mdFile = this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${getChineseMarkdownFileName(stem)}`));
-		if (!(mdFile instanceof obsidian.TFile)) {
-			new obsidian.Notice("找不到中文 Markdown，无法进入 PDF 对照");
+		const isPdf = String(file.extension).toLowerCase() === "pdf";
+		let linked = this.resolveRectoLinkedDualPanePair(file);
+		if (isPdf) {
+			// A PDF has no translation frontmatter. Locate its own source first, then use
+			// the same persisted target selection as Hub and Markdown compare.
+			const info = Object.values(this.folderMap || {}).find(info => info.sourcePath && info.stem
+				&& obsidian.normalizePath(`${nodePath.posix.dirname(info.sourcePath)}/${info.stem}.pdf`) === file.path);
+			const source = this.app.vault.getAbstractFileByPath(info?.sourcePath || obsidian.normalizePath(`${folder}src-${file.basename}.md`))
+				|| this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}en-${file.basename}.md`));
+			linked = source instanceof obsidian.TFile ? this.resolveRectoLinkedDualPanePair(source) : null;
+		}
+		const sourceInfo = linked ? Object.values(this.folderMap || {}).find(info => info.sourcePath && info.sourcePath === linked.sourceFile.path) : null;
+		const stem = isPdf ? file.basename : sourceInfo?.stem || (linked?.sourceFile.name.startsWith("src-") ? linked.sourceFile.name.slice(4, -3) : null) || resolveRectoPaperStem(file.name);
+		if (!stem) {
+			new obsidian.Notice(rectoUiText("compare.wrongFile"));
 			return;
 		}
-		const pdfFile = this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${stem}.pdf`));
+		const mdFile = linked?.translationFile || (migrateDocumentLanguages(this.settings).translationTarget.id === "zh-Hans" ? this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${getChineseMarkdownFileName(stem)}`)) : null);
+		if (!(mdFile instanceof obsidian.TFile)) {
+			new obsidian.Notice(rectoUiText("compare.markdownMissing"));
+			return;
+		}
+		const pdfFile = isPdf ? file : this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${stem}.pdf`));
 		if (!(pdfFile instanceof obsidian.TFile)) {
-			new obsidian.Notice("找不到 PDF 原文件，无法进入 PDF 对照");
+			new obsidian.Notice(rectoUiText("compare.pdfMissing"));
 			return;
 		}
 		const prepared = await this.readRectoPdfCompareData(mdFile, folder);
 		if (prepared.error) {
-			new obsidian.Notice(`PDF 对照不可用：${prepared.error}`);
+			new obsidian.Notice(rectoUiText("compare.pdfUnavailable", { error: prepared.error }));
 			return;
 		}
 		// 与 startRectoDualPane 同一条规矩：两个对照会话不能同时活着（同一个 `ch-` 窗格上
 		// 叠两套 click/scroll 监听）。同样放在所有校验之后，切换即接管。
 		if (this.dualPaneSession) {
 			this.stopRectoDualPane();
-			new obsidian.Notice("已切换到 PDF 对照，原文译文双栏已关闭。", 5000);
+			new obsidian.Notice(rectoUiText("compare.switchedPdf"), 5000);
 		}
 		// 固定布局：左 PDF + 右中文 md。已开着的 PDF/译文直接复用，不重复开新界面。
 		const activeLeaf = this.findRectoOpenLeaf(file.path) || this.app.workspace.getMostRecentLeaf();
 		const { leftLeaf, rightLeaf } = await this.openRectoComparePanes(pdfFile, mdFile, activeLeaf);
 		if (!this.activateRectoPdfCompare(leftLeaf, rightLeaf, pdfFile, mdFile, prepared)) {
-			new obsidian.Notice("PDF 对照启动失败：无法绑定视图");
+			new obsidian.Notice(rectoUiText("compare.pdfBindFailed"));
 			return;
 		}
 	}
@@ -9344,7 +12005,7 @@ class RectoPlugin extends obsidian.Plugin {
 	verifyRectoPdfCompare() {
 		if (!this.pdfCompareSession || this.pdfCompareSession.isIntact()) return;
 		this.stopRectoPdfCompare();
-		new obsidian.Notice("PDF 对照已退出：有一栏被关闭或切换到了别的文件");
+		new obsidian.Notice(rectoUiText("compare.pdfClosed"));
 	}
 
 	scheduleRectoPdfCompareRebuild(file) {
@@ -9373,6 +12034,12 @@ class RectoPlugin extends obsidian.Plugin {
 	async readRectoPdfCompareData(mdFile, folder) {
 		const markdown = await this.app.vault.cachedRead(mdFile);
 		const binding = parseRectoFrontmatter(markdown);
+		const metadata = parseSimpleFrontmatter(markdown);
+		if (Number(metadata["recto-naming-version"]) === 1) {
+			const sourcePath = metadata["recto-source-path"];
+			const source = this.app.vault.getAbstractFileByPath(sourcePath);
+			if (!source || documentContentHash(await this.app.vault.read(source)) !== metadata["recto-source-hash"]) return { error: documentLanguageText("原文版本已改变，对照已停用。", "The source version changed; comparison is disabled.") };
+		}
 		let sidecar;
 		try {
 			const sidecarPath = obsidian.normalizePath(`${folder}${RECTO_METADATA_DIRECTORY}/${RECTO_SIDECAR_FILE}`);
@@ -9385,7 +12052,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const blockMap = buildRectoPdfBlockMap(sidecar);
 		let mappedBlocks = 0;
 		for (const info of blockMap.values()) if (info.pageIndex !== null) mappedBlocks++;
-		if (!mappedBlocks) return { error: "这篇论文没有可用的页码定位信息" };
+		if (!mappedBlocks) return { error: rectoUiText("compare.pdfNoPageInfo") };
 		return { blockMap, lineIndex: buildRectoPdfLineIndex(markdown), mappedBlocks };
 	}
 
@@ -9509,7 +12176,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const cfg = { ...DEFAULT_SETTINGS.ribbonButtons, ...(this.settings.ribbonButtons || {}) };
 		for (const btn of RIBBON_BUTTONS) {
 			if (!cfg[btn.key]) continue;
-			const el = this.addRibbonIcon(btn.icon, btn.name, () => this[btn.action]());
+			const el = this.addRibbonIcon(btn.icon, rectoUiText({ hub: "hub.viewTitle", dualPane: "command.toggleDualPane", pdfCompare: "command.togglePdfCompare", externalPdf: "command.convertExternalPdf" }[btn.key]), () => this[btn.action]());
 			this.ribbonIconEls.push(el);
 		}
 	}
@@ -9526,19 +12193,19 @@ class RectoPlugin extends obsidian.Plugin {
 			dialog = null;
 		}
 		if (!dialog || typeof dialog.showOpenDialog !== "function") {
-			new obsidian.Notice("当前运行时打不开文件夹选择框，请把路径直接粘贴到输入框里。", 8000);
+			new obsidian.Notice(rectoUiText("filePicker.folderUnavailable"), 8000);
 			return "";
 		}
 		try {
 			const result = await dialog.showOpenDialog({
-				title: title || "选择文件夹",
+				title: title || rectoUiText("filePicker.folderTitle"),
 				defaultPath: defaultPath || undefined,
 				properties: ["openDirectory", "dontAddToRecent"],
 			});
 			if (!result || result.canceled) return "";
 			return (Array.isArray(result.filePaths) && result.filePaths[0]) || "";
 		} catch (error) {
-			new obsidian.Notice(getUserFacingErrorMessage(error, "文件夹选择框未能打开，请稍后重试。"), 8000);
+			new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("filePicker.folderFailed")), 8000);
 			return "";
 		}
 	}
@@ -9558,12 +12225,12 @@ class RectoPlugin extends obsidian.Plugin {
 			dialog = null;
 		}
 		if (!dialog || typeof dialog.showOpenDialog !== "function") {
-			new obsidian.Notice("当前运行时打不开文件选择框，无法选择库外 PDF。", 8000);
+			new obsidian.Notice(rectoUiText("filePicker.pdfUnavailable"), 8000);
 			return [];
 		}
 		try {
 			const result = await dialog.showOpenDialog({
-				title: "选择要转换的 PDF（可多选）",
+				title: rectoUiText("filePicker.pdfTitle"),
 				properties: ["openFile", "multiSelections", "dontAddToRecent"],
 				filters: [{ name: "PDF", extensions: ["pdf"] }],
 			});
@@ -9579,7 +12246,7 @@ class RectoPlugin extends obsidian.Plugin {
 					return { path: item, name: nodePath.basename(item), size };
 				});
 		} catch (error) {
-			new obsidian.Notice(getUserFacingErrorMessage(error, "文件选择框未能打开，请稍后重试。"), 8000);
+			new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("filePicker.pdfFailed")), 8000);
 			return [];
 		}
 	}
@@ -9601,20 +12268,20 @@ class RectoPlugin extends obsidian.Plugin {
 			sourceVaultFolder: sourceVaultFolder || "",
 		});
 		if (resolved.fellBackFrom === "source") {
-			new obsidian.Notice(`这些 PDF 不在库内，没有「所在目录」可用，已改为写入「${resolved.root}」。`, 8000);
+			new obsidian.Notice(rectoUiText("external.outputFallback", { folder: resolved.root }), 8000);
 		}
 		if (resolved.mode !== "ask") return resolved.root;
-		const picked = await this.pickDirectory("选择本次转换的输出目录（必须在库内）", this.app.vault.adapter.basePath);
+		const picked = await this.pickDirectory(rectoUiText("external.chooseOutput"), this.app.vault.adapter.basePath);
 		if (!picked) return "";
 		const relative = this.getVaultRelativePath(picked);
 		if (relative === null) {
-			new obsidian.Notice("输出目录必须在当前库（vault）里，否则正文里的图片会全部失效。请重新选择。", 10000);
+			new obsidian.Notice(rectoUiText("external.outputOutside"), 10000);
 			return "";
 		}
 		// 库根目录经 getVaultRelativePath 返回空串，而空串会让任务被当成库内任务
 		// （见 buildExternalPdfTasks 里那道失败关闭）。所以这里明确要求选一个子文件夹。
 		if (!relative) {
-			new obsidian.Notice("请选择库里的一个子文件夹，不要直接用库根目录。", 8000);
+			new obsidian.Notice(rectoUiText("external.outputAtRoot"), 8000);
 			return "";
 		}
 		return relative;
@@ -9624,19 +12291,21 @@ class RectoPlugin extends obsidian.Plugin {
 	// 这里问的是「同一篇你已经付过一次了，还要再付一次吗」。
 	async confirmExternalDuplicateRun(duplicates) {
 		const first = duplicates[0];
-		const more = duplicates.length > 1 ? `（另有 ${duplicates.length - 1} 篇同样已转换过）` : "";
-		return await this.openDecision({
-			title: "这个 PDF 已经转换过",
-			intro: `${first.task.name || "所选 PDF"} 之前已经转换过${more}。再转一次会重新计费，并另建一个新目录。`,
+		return await this.openDecision(() => ({
+			title: rectoUiText("external.duplicateTitle"),
+			intro: rectoUiText("external.duplicateIntro", {
+				name: first.task.name || rectoUiText("external.selectedPdf"),
+				more: duplicates.length > 1 ? rectoUiText("external.moreDuplicates", { count: duplicates.length - 1 }) : "",
+			}),
 			details: [
-				first.existing.outputFolder ? `上次的产物在：${first.existing.outputFolder}` : "上次的产物目录已无记录。",
-				"如果只是想要译文，打开上次的正文用命令「翻译当前 Markdown 文件」直接翻，不必重转（T84-S 已上线）。",
+				first.existing.outputFolder ? rectoUiText("external.previousOutput", { path: first.existing.outputFolder }) : rectoUiText("external.previousOutputUnknown"),
+				rectoUiText("external.translateInstead"),
 			],
 			actions: [
-				{ label: "取消", value: false },
-				{ label: `仍然转换 ${duplicates.length} 篇`, value: true, cta: true },
+				{ label: rectoUiText("dialog.cancel"), value: false },
+				{ label: rectoUiText("external.convertAgain", { count: duplicates.length }), value: true, cta: true },
 			],
-		});
+		}));
 	}
 
 	/**
@@ -9648,11 +12317,11 @@ class RectoPlugin extends obsidian.Plugin {
 	 */
 	async convertExternalPdfsFromCommand(options = {}) {
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
-			new obsidian.Notice("尚未启用云端处理，库外 PDF 转换已取消。", 6000);
+			new obsidian.Notice(rectoUiText("external.noConsent"), 6000);
 			return;
 		}
-		if (!this.hasBackendAccountSession()) { new obsidian.Notice("请先登录 Recto 账号"); return; }
-		if (this.activeOperation) { new obsidian.Notice("有任务正在进行，请等它跑完再转换库外 PDF。", 6000); return; }
+		if (!this.hasBackendAccountSession()) { new obsidian.Notice(rectoUiText("external.signIn")); return; }
+		if (this.activeOperation) { new obsidian.Notice(rectoUiText("external.busy"), 6000); return; }
 		const files = await this.pickExternalPdfFiles();
 		if (!files.length) return;
 		// 多选一定在同一个目录里（一次 showOpenDialog 选不到跨目录的文件），所以「PDF 所在目录」
@@ -9667,14 +12336,14 @@ class RectoPlugin extends obsidian.Plugin {
 			// 要译文必须由用户明确选那条命令。
 			requestTranslation: options.requestTranslation === true,
 		});
-		if (!tasks.length) { new obsidian.Notice("没有可处理的 PDF。", 6000); return; }
+		if (!tasks.length) { new obsidian.Notice(rectoUiText("external.noPdf"), 6000); return; }
 		const { fresh, duplicates } = splitExternalDuplicateTasks(tasks, this.externalConversions);
 		let selected = fresh;
 		if (duplicates.length) {
 			if (await this.confirmExternalDuplicateRun(duplicates)) selected = tasks;
-			else if (!fresh.length) { new obsidian.Notice("已取消。", 4000); return; }
+			else if (!fresh.length) { new obsidian.Notice(rectoUiText("external.cancelled"), 4000); return; }
 		}
-		if (!selected.length) { new obsidian.Notice("已取消。", 4000); return; }
+		if (!selected.length) { new obsidian.Notice(rectoUiText("external.cancelled"), 4000); return; }
 		await this.runBatchWithTasks(selected);
 	}
 
@@ -9806,6 +12475,8 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!this.convertedFolders.includes(recordId)) this.convertedFolders.push(recordId);
 		this.folderMap[recordId] = {
 			...(this.folderMap[recordId] || {}),
+			...(task.namingVersion === 1 ? { namingVersion: 1, sourcePath: task.sourcePath, sourceContentHash: task.sourceContentHash,
+				sourceLanguage: task.languageContract.source, sourceLanguageEvidence: task.languageContract.sourceEvidence } : {}),
 			...this.getZoteroFieldsFromTask(task),
 			stem,
 			originalName: task.name,
@@ -9825,7 +12496,7 @@ class RectoPlugin extends obsidian.Plugin {
 		let metadata;
 		try { metadata = this.readZoteroMetadata(); }
 		catch (e) {
-			new obsidian.Notice(`Zotero 分类暂时无法读取，将按普通列表显示。${getUserFacingErrorMessage(e, "")}`, 8000);
+			new obsidian.Notice(rectoUiText("import.collectionReadFailed", { error: getUserFacingErrorMessage(e, "") }), 8000);
 			return tasks;
 		}
 		return tasks.map(task => {
@@ -9860,6 +12531,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 	getPaperJsonlEntries() {
 		return buildPaperJsonlEntries({
+			documentArtifacts: this.settings?.documentArtifacts,
 			vaultBasePath: this.app.vault.adapter.basePath,
 			baseFolder: this.getValidatedBaseFolder(),
 			folderMap: this.folderMap,
@@ -9931,7 +12603,8 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!normalized.startsWith(basePrefix) || !normalized.toLowerCase().endsWith(".md")) return false;
 		const fileName = nodePath.basename(normalized);
 		const watched = [SUMMARY_FILE_PREFIX, EN_MARKDOWN_PREFIX, CH_MARKDOWN_PREFIX];
-		if (!watched.some(prefix => fileName.startsWith(prefix))) return false;
+		const registered = Object.entries(this.settings?.documentArtifacts || {}).some(([source, entry]) => source === normalized || Object.values(entry.translations || {}).some(record => record.path === normalized));
+		if (!registered && !fileName.startsWith("src-") && !watched.some(prefix => fileName.startsWith(prefix))) return false;
 		if (normalized.startsWith(legacyNestedPrefix)) return true;
 		const rel = normalized.substring(basePrefix.length);
 		return rel.split("/").length === 2;
@@ -10003,7 +12676,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.settings.baseFolder = next;
 		void this.save();
 		this.refreshSettingsStatusIfOpen();
-		new obsidian.Notice(`论文库文件夹已同步为「${next}」。`, 6000);
+		new obsidian.Notice(rectoUiText("settings.librarySynced", { folder: next }), 6000);
 	}
 
 	getReadingStateKey(info, folder) {
@@ -10134,13 +12807,13 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!container) return;
 		this.registerDomEvent(container, "click", (event) => {
 			void this.handleReadingStatusClick(event).catch((error) => {
-				new obsidian.Notice(getUserFacingErrorMessage(error, "阅读状态切换未完成，请稍后重试。"), 5000);
+				new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("settings.readingStatusFailed")), 5000);
 			});
 		});
 		this.registerDomEvent(container, "keydown", (event) => {
 			if (event.key !== "Enter" && event.key !== " ") return;
 			void this.handleReadingStatusClick(event).catch((error) => {
-				new obsidian.Notice(getUserFacingErrorMessage(error, "阅读状态切换未完成，请稍后重试。"), 5000);
+				new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("settings.readingStatusFailed")), 5000);
 			});
 		});
 	}
@@ -10173,14 +12846,14 @@ class RectoPlugin extends obsidian.Plugin {
 			return { tasks: [], ambiguousGroups: [] };
 		}
 		let metadata = { byAttachment: {} };
-		try { metadata = this.readZoteroMetadata(); }
+		try { metadata = options.metadata || this.readZoteroMetadata(); }
 		catch (e) {
 			if (options.requireMetadata) {
 				const wrapped = new Error("Zotero 论文信息读取失败，已取消导入", { cause: e });
 				if (e && e.code) wrapped.code = e.code;
 				throw wrapped;
 			}
-			if (!quiet) new obsidian.Notice(getZoteroUserFacingErrorMessage(e, "Zotero 论文信息暂时无法读取，将按文件名选择 PDF。"), 8000);
+			if (!quiet) new obsidian.Notice(getZoteroUserFacingErrorMessage(e, rectoUiText("import.metadataReadFailed")), 8000);
 		}
 		const candidates = [];
 		const entries = fs.readdirSync(storage, { withFileTypes: true }).filter(entry => entry.isDirectory());
@@ -10225,10 +12898,11 @@ class RectoPlugin extends obsidian.Plugin {
 				...zotero,
 			});
 			if (names.length === 1) {
+				const recordId = resolveZoteroPdfRecordId(this.folderMap, entry.name, names[0], true);
 				candidates.push({
 					...makeTask(names[0]),
-					recordId: entry.name,
-					choiceKey: entry.name,
+					recordId,
+					choiceKey: recordId,
 					isRecommended: true,
 					duplicateFileNames: [],
 				});
@@ -10242,20 +12916,23 @@ class RectoPlugin extends obsidian.Plugin {
 				if (!byHash.has(hash)) byHash.set(hash, []);
 				byHash.get(hash).push(name);
 			}
-			const uniqueNames = Array.from(byHash.values()).map(duplicates => (
-				duplicates.find(name => name.toLowerCase() === officialName.toLowerCase()) || duplicates[0]
-			));
+			const chooseRepresentative = duplicates => duplicates.find(name => findExistingZoteroPdfRecordId(this.folderMap, entry.name, name))
+				|| duplicates.find(name => name.toLowerCase() === officialName.toLowerCase()) || duplicates[0];
+			const chooseRepresentatives = duplicates => {
+				const existing = duplicates.filter(name => findExistingZoteroPdfRecordId(this.folderMap, entry.name, name));
+				return existing.length ? existing : [chooseRepresentative(duplicates)];
+			};
+			const uniqueNames = Array.from(byHash.values()).flatMap(chooseRepresentatives);
 			const duplicateNamesBySelected = new Map(
-				Array.from(byHash.values()).map(duplicates => {
-					const selected = duplicates.find(name => name.toLowerCase() === officialName.toLowerCase()) || duplicates[0];
-					return [selected, duplicates.filter(name => name !== selected)];
-				})
+				Array.from(byHash.values()).flatMap(duplicates => chooseRepresentatives(duplicates)
+					.map(selected => [selected, duplicates.filter(name => name !== selected)]))
 			);
 			if (uniqueNames.length === 1) {
+				const recordId = resolveZoteroPdfRecordId(this.folderMap, entry.name, uniqueNames[0], true);
 				candidates.push({
 					...makeTask(uniqueNames[0]),
-					recordId: entry.name,
-					choiceKey: entry.name,
+					recordId,
+					choiceKey: recordId,
 					isRecommended: true,
 					duplicateFileNames: duplicateNamesBySelected.get(uniqueNames[0]),
 					contentHash: Array.from(byHash.keys())[0],
@@ -10268,7 +12945,7 @@ class RectoPlugin extends obsidian.Plugin {
 				: uniqueNames;
 			const primaryName = official || orderedNames[0];
 			for (const name of orderedNames) {
-				const recordId = getTaskRecordId(entry.name, name, name === primaryName);
+				const recordId = resolveZoteroPdfRecordId(this.folderMap, entry.name, name, name === primaryName);
 				const contentHash = Array.from(byHash.entries()).find(([, duplicates]) => duplicates.includes(name))[0];
 				candidates.push({
 					...makeTask(name),
@@ -10280,17 +12957,43 @@ class RectoPlugin extends obsidian.Plugin {
 				});
 			}
 		}
-		const dedupedCandidates = await dedupeZoteroPdfCandidates(candidates, options.signal || this.getActiveSignal());
+		// 文件改名仅在同一附件下有内容证据时沿用身份；不确定的候选交用户确认。
+		for (const candidate of candidates) {
+			if (this.folderMap?.[candidate.recordId]) continue;
+			const previous = Object.entries(this.folderMap || {}).filter(([id, info]) =>
+				(info.zoteroAttachmentKey || id.split("::")[0]) === candidate.folder
+				&& !candidates.some(file => file.recordId === id));
+			if (!previous.length) continue;
+			candidate.contentHash ||= await hashFileSha256(candidate.path, options.signal || this.getActiveSignal());
+			const matches = [];
+			for (const [id, info] of previous) {
+				let hash = info.zoteroPdfContentHash || "";
+				const local = findImportedPdfVaultPath(this.app?.vault?.adapter?.basePath, this.getValidatedBaseFolder(), info);
+				if (!hash && local) hash = await hashFileSha256(resolveImportedVaultPdfPath(this.app.vault.adapter.basePath, local), options.signal || this.getActiveSignal());
+				if (hash === candidate.contentHash) matches.push(id);
+			}
+			if (matches.length === 1) {
+				candidate.recordId = candidate.choiceKey = matches[0];
+				candidate.verifiedSourceRename = true;
+			} else candidate.requiresIdentityConfirmation = true;
+		}
+		const dedupedCandidates = await dedupeZoteroPdfCandidates(candidates, options.signal || this.getActiveSignal(), this.folderMap || {});
 		return buildZoteroPdfSelectionPlan(dedupedCandidates);
 	}
 
 	async chooseZoteroPdfTasks(plan) {
 		let chosen = [];
-		if (plan.ambiguousGroups.length) {
+		const groups = plan.ambiguousGroups.filter(group => !isZoteroPdfGroupConfirmed(group, this.folderMap));
+		if (groups.length) {
 			chosen = await new Promise(resolve => {
-				new MultiPdfChoiceModal(this, plan.ambiguousGroups, resolve).open();
+				new MultiPdfChoiceModal(this, groups, resolve).open();
 			});
 			if (chosen == null) return null;
+			chosen = chosen.map(task => {
+				const group = groups.find(group => group.files.some(file => file.recordId === task.recordId));
+				return group ? { ...task, zoteroPdfChoice: { group: group.folder, signature: zoteroPdfGroupSignature(group),
+					selectedIds: chosen.filter(item => group.files.some(file => file.recordId === item.recordId)).map(item => item.recordId) } } : task;
+			});
 		}
 		return [...plan.tasks, ...chosen];
 	}
@@ -10394,7 +13097,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.app.vault.adapter.basePath
 		);
 		if (result.missing) {
-			new obsidian.Notice(`有 ${result.missing} 篇已导入论文的源 PDF 当前不可读取，已跳过`, 8000);
+			new obsidian.Notice(rectoUiText("import.unreadablePdfs", { count: result.missing }), 8000);
 		}
 		return result.tasks.filter(task => !this.hasConvertedOutput(task.recordId));
 	}
@@ -10416,29 +13119,29 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async confirmZoteroImportPlan(summary) {
-		return await this.openDecision({
-			title: "导入 Zotero 论文库",
-			intro: `即将导入 ${summary.total} 篇论文。`,
+		return await this.openDecision(() => ({
+			title: rectoUiText("import.confirmTitle"),
+			intro: rectoUiText("import.confirmIntro", { count: summary.total }),
 			details: [
-				`新建 ${summary.newObjects} 个，更新 ${summary.existingObjects} 个。`,
-				`复制 ${summary.pendingPdfs} 篇 PDF，约 ${(summary.pendingBytes / 1024 / 1024).toFixed(1)} MB。`,
-				summary.unreadable ? `${summary.unreadable} 篇源 PDF 暂时不可读取，将跳过。` : "",
-				"导入只会在本地建立论文对象，不会开始转换或翻译。",
+				rectoUiText("import.objectCounts", { created: summary.newObjects, updated: summary.existingObjects }),
+				rectoUiText("import.pdfCounts", { count: summary.pendingPdfs, size: (summary.pendingBytes / 1024 / 1024).toFixed(1) }),
+				summary.unreadable ? rectoUiText("import.unreadable", { count: summary.unreadable }) : "",
+				rectoUiText("import.localOnly"),
 			],
 			actions: [
-				{ label: "取消", value: false },
-				{ label: `导入 ${summary.total} 篇`, value: true, cta: true },
+				{ label: rectoUiText("dialog.cancel"), value: false },
+				{ label: rectoUiText("import.confirmAction", { count: summary.total }), value: true, cta: true },
 			],
-		});
+		}));
 	}
 
 	async importZoteroLibrary(options = {}) {
 		if (!this.hasNodeSqlite) {
-			new obsidian.Notice("当前环境无法读取 Zotero 论文库。请更新 Obsidian 后重试。", 8000);
+			new obsidian.Notice(rectoUiText("import.runtimeUnsupported"), 8000);
 			return null;
 		}
 		if (!this.settings.sourceFolder) {
-			new obsidian.Notice("请先设置 Zotero 源文件夹");
+			new obsidian.Notice(rectoUiText("import.chooseSource"));
 			return null;
 		}
 		if (!this.getValidatedBaseFolderOrNotice()) return null;
@@ -10461,11 +13164,11 @@ class RectoPlugin extends obsidian.Plugin {
 			// 多 PDF 弹窗取消会连无歧义的那些条目一起放弃（取消就是取消，不半做），但必须说出来：
 			// 用户看到的只是弹窗关掉、库里一篇没多。
 			if (tasks == null) {
-				new obsidian.Notice("已取消导入，未导入任何论文。", 6000);
+				new obsidian.Notice(rectoUiText("import.cancelled"), 6000);
 				return null;
 			}
 			if (!tasks.length) {
-				new obsidian.Notice("没有找到可读的本地 Zotero PDF，未导入任何内容", 7000);
+				new obsidian.Notice(rectoUiText("import.noPdf"), 7000);
 				await this.markZoteroLibraryImportOptedIn();
 				return { imported: 0, existing: 0, total: 0, copyFailures: [] };
 			}
@@ -10484,13 +13187,13 @@ class RectoPlugin extends obsidian.Plugin {
 				// 失败）与 `cancelled` 都不该点亮「已同步」。
 				// **开通判定不跟着收紧**：它决定静默自动同步开不开（不变量 17），原来只要 result 非空
 				// 就开通，这里一个字不动。
-				const completed = result.status === "completed";
-				if (completed) this.persistZoteroAutoCheckState({ status: "ok", lastCheckAt: Date.now() });
+				const completed = result.status === "completed" && !result.mismatchedPdfs;
+				this.persistZoteroAutoCheckState({ status: completed ? "ok" : "degraded", mtimeMs: null, lastCheckAt: Date.now() });
 				// 首次开通那一次 markZoteroLibraryImportOptedIn 自己会落盘，顺带把上面这行状态带走；
 				// 已开通时它直接返回，才轮到这里写——别为同一批状态连写两次 data.json。
 				const justOptedIn = await this.markZoteroLibraryImportOptedIn();
-				if (completed && !justOptedIn) await this.save();
-				if (completed) this.refreshSettingsStatusIfOpen();
+				if (!justOptedIn) await this.save();
+				this.refreshSettingsStatusIfOpen();
 			}
 			return result;
 		} catch (error) {
@@ -10498,7 +13201,7 @@ class RectoPlugin extends obsidian.Plugin {
 			if (isCancellationError(error, operation.controller.signal)) {
 				return null;
 			}
-			new obsidian.Notice(getZoteroUserFacingErrorMessage(error, "Zotero 导入未完成，请稍后重试。"), 10000);
+			new obsidian.Notice(getZoteroUserFacingErrorMessage(error, rectoUiText("import.failed")), 10000);
 			throw error;
 		} finally {
 			if (!handedOff) {
@@ -10566,11 +13269,14 @@ class RectoPlugin extends obsidian.Plugin {
 					...this.getZoteroFieldsFromTask(task),
 					stem,
 					originalName: current && current.originalName || task.name,
-					sourceFileName: current && current.sourceFileName || task.sourceFileName || task.name,
+					sourceFileName: task.verifiedSourceRename ? task.sourceFileName : current && current.sourceFileName || task.sourceFileName || task.name,
+					...(task.zoteroPdfChoice ? { zoteroPdfChoice: task.zoteroPdfChoice } : {}),
+					zoteroPdfContentHash: task.contentHash || current?.zoteroPdfContentHash || "",
 					documentId,
 					conversionStatus: converted ? "converted" : "unconverted",
 					zoteroSyncState: "active",
 					zoteroImportedAt: current && current.zoteroImportedAt || importedAt,
+					zoteroPdfImportPending: true,
 				};
 				delete next.orphanedAt;
 				delete next.orphanDeletePrompted;
@@ -10635,6 +13341,7 @@ class RectoPlugin extends obsidian.Plugin {
 						...current,
 						localPdfPath: asset.localPdfPath,
 						localPdfImportedAt: current.localPdfImportedAt || importedAt,
+						zoteroPdfImportPending: !!asset.incomplete,
 					};
 				} catch (error) {
 					if (isCancellationError(error, signal)) {
@@ -10678,32 +13385,32 @@ class RectoPlugin extends obsidian.Plugin {
 				projectionFailures,
 			};
 			const copyNote = [
-				`本地 PDF 新复制 ${copiedPdfs}`,
-				repairedPdfs ? `修复不完整 ${repairedPdfs}` : "",
-				copyFailures.length ? `复制失败 ${copyFailures.length}` : "",
-				mismatchedPdfs ? `与源大小不一致未覆盖 ${mismatchedPdfs}` : "",
-			].filter(Boolean).join("，");
+				rectoUiText("import.copiedCount", { count: copiedPdfs }),
+				repairedPdfs ? rectoUiText("import.repairedCount", { count: repairedPdfs }) : "",
+				copyFailures.length ? rectoUiText("import.copyFailedCount", { count: copyFailures.length }) : "",
+				mismatchedPdfs ? rectoUiText("import.mismatchCount", { count: mismatchedPdfs }) : "",
+			].filter(Boolean).join(activeRectoUiLocale === "en" ? ", " : "，");
 			if (cancelled) {
 				finalStatus = "cancelled";
 				result.status = "cancelled";
 				if (!quiet) new obsidian.Notice(
-					`Zotero 导入已中断：论文对象已保存 ${tasks.length} 篇，${copyNote}；重跑会从中断处继续`,
+					rectoUiText("import.interruptedSummary", { count: tasks.length, copyNote }),
 					10000
 				);
 				return result;
 			}
-			if (projectionFailures.length || copyFailures.length) {
+			if (projectionFailures.length || copyFailures.length || mismatchedPdfs) {
 				finalStatus = "incomplete";
 				result.status = "incomplete";
 				if (!quiet) new obsidian.Notice(
-					`Zotero 论文对象已保存，但有 ${projectionFailures.length + copyFailures.length} 项未完成（${copyNote}）；重跑导入或重启 Obsidian 会自动修复`,
+					rectoUiText("import.incompleteSummary", { count: projectionFailures.length + copyFailures.length + mismatchedPdfs, copyNote }),
 					12000
 				);
 				return result;
 			}
 			finalStatus = "completed";
 			if (!quiet) new obsidian.Notice(
-				`Zotero 导入完成：新增 ${imported}，已存在 ${existing}，共 ${tasks.length}；${copyNote}`,
+				rectoUiText("import.completedSummary", { imported, existing, total: tasks.length, copyNote }),
 				7000
 			);
 			return result;
@@ -10712,7 +13419,7 @@ class RectoPlugin extends obsidian.Plugin {
 			if (isCancellationError(error, operation && operation.controller && operation.controller.signal)) {
 				return null;
 			}
-			if (!quiet) new obsidian.Notice(getUserFacingErrorMessage(error, "Zotero 导入未完成，请稍后重试。"), 10000);
+			if (!quiet) new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("import.failed")), 10000);
 			throw error;
 		} finally {
 			if (progress) {
@@ -10767,14 +13474,18 @@ class RectoPlugin extends obsidian.Plugin {
 
 	applyZoteroSyncPlanSilently(syncPlan) {
 		for (const item of syncPlan.matched || []) {
-			const next = { ...item.info, ...item.zotero, zoteroSyncState: "active" };
+			const current = this.folderMap[item.recordId];
+			if (!current) continue;
+			const next = { ...current, ...item.zotero, zoteroSyncState: "active" };
 			delete next.orphanDeletePrompted;
 			delete next.orphanedAt;
 			this.folderMap[item.recordId] = next;
 		}
 		for (const item of syncPlan.missingPdfs || []) {
+			const current = this.folderMap[item.recordId];
+			if (!current) continue;
 			const next = {
-				...item.info,
+				...current,
 				...item.zotero,
 				zoteroSyncState: "missing-pdf",
 			};
@@ -10784,10 +13495,12 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		// 自动路径只标记 orphaned，绝不删文件、绝不移入回收站。
 		for (const item of syncPlan.orphaned || []) {
+			const current = this.folderMap[item.recordId];
+			if (!current) continue;
 			const next = {
-				...item.info,
+				...current,
 				zoteroSyncState: "orphaned",
-				orphanedAt: item.info.orphanedAt || new Date().toISOString(),
+				orphanedAt: current.orphanedAt || new Date().toISOString(),
 			};
 			delete next.orphanDeletePrompted;
 			this.folderMap[item.recordId] = next;
@@ -10814,7 +13527,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// 这道门在 beginOperation 之前，走不到那边的忙碌提示；不补一句的话，用户在设置页点
 		// 「立即检查」撞上别的任务时是彻底静默的。自动轮询（force = false）照旧沉默。
 		if (this.activeOperation) {
-			if (force) new obsidian.Notice(`已有任务正在运行：${this.activeOperation.label}`, 6000);
+			if (force) new obsidian.Notice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), 6000);
 			return { skipped: true, reason: "busy" };
 		}
 		if (!this.hasNodeSqlite || !this.settings.sourceFolder) {
@@ -10832,36 +13545,44 @@ class RectoPlugin extends obsidian.Plugin {
 			return { skipped: true, reason: "mtime-unreadable", degraded: true };
 		}
 
-		if (shouldSkipZoteroScanByMtime({
-			lastMtimeMs: this.zoteroLastSqliteMtimeMs,
-			currentMtimeMs: mtimeMs,
-			force,
-		})) {
-			this.persistZoteroAutoCheckState({ lastCheckAt: Date.now(), status: "ok", mtimeMs });
-			await this.save().catch(() => {});
-			this.refreshSettingsStatusIfOpen();
-			return { skipped: true, reason: "mtime-unchanged" };
-		}
+		const vaultBasePath = this.app?.vault?.adapter?.basePath || "";
+		// SQLite mtime 不能代表附件下载完成；每次到期检查都扫描 storage（仍受六小时冷却约束）。
 
 		const operation = this.beginOperation("Zotero 自动同步", { silent: true });
 		if (!operation) return { skipped: true, reason: "busy" };
 		try {
 			this.assertZoteroStorageRootAccessible();
+			// 扫描、分类刷新、新建与补复制共用一次元数据快照。
+			const metadata = this.readZoteroMetadata();
 			const plan = await this.getPdfScanPlan({
 				signal: operation.controller.signal,
 				requireMetadata: true,
 				quiet: true,
+				metadata,
 			});
 			this.throwIfUnloaded();
 			const classification = classifyZoteroAutoImportCandidates(plan, this.folderMap);
-			const metadata = this.readZoteroMetadata();
 			const syncPlan = this.buildZoteroSyncPlan(metadata);
 			this.applyZoteroSyncPlanSilently(syncPlan);
+			for (const task of classification.refreshTasks) {
+				const info = this.folderMap[task.recordId];
+				if (info && task.verifiedSourceRename) {
+					info.sourceFileName = task.sourceFileName;
+					info.zoteroSyncState = "active";
+					info.zoteroPdfContentHash = task.contentHash;
+				}
+			}
 
 			let imported = 0;
 			let importResult = null;
-			if (classification.silentNewTasks.length) {
-				importResult = await this.commitZoteroImportTasks(classification.silentNewTasks, {
+			const repairTasks = classification.refreshTasks.filter(task => {
+				const info = this.folderMap[task.recordId || task.folder];
+				return info && info.zoteroSyncState === "active" && (info.zoteroPdfImportPending
+					|| !findImportedPdfVaultPath(vaultBasePath, this.getValidatedBaseFolder(), info));
+			});
+			const importTasks = [...classification.silentNewTasks, ...repairTasks];
+			if (importTasks.length) {
+				importResult = await this.commitZoteroImportTasks(importTasks, {
 					operation,
 					progress: null,
 					skipConfirm: true,
@@ -10869,48 +13590,40 @@ class RectoPlugin extends obsidian.Plugin {
 					manageOperation: false,
 				});
 				imported = importResult && importResult.imported ? importResult.imported : 0;
-			} else if (classification.refreshTasks.length) {
-				// 已入库条目：元数据已由 syncPlan.matched 覆盖；这里只刷新原型字段到现有对象。
-				for (const task of classification.refreshTasks) {
-					const id = String(task.recordId || task.folder || "").trim();
-					const current = this.folderMap[id];
-					if (!current) continue;
-					const next = {
-						...current,
-						...this.getZoteroFieldsFromTask(task),
-						zoteroSyncState: current.zoteroSyncState === "orphaned" ? "orphaned" : "active",
-					};
-					if (next.zoteroSyncState === "active") {
-						delete next.orphanedAt;
-						delete next.orphanDeletePrompted;
-					}
-					this.folderMap[id] = next;
-				}
 			}
 
+			const incomplete = importTasks.length > 0 && (!importResult || importResult.status !== "completed" || importResult.mismatchedPdfs > 0);
+			await this.save(); // 先持久化论文对象，再生成可重建的索引投影。
+			let projectionFailed = false;
+			try { await this.writePaperJsonlIndex(); this.zoteroImportProjectionPending = false; }
+			catch { projectionFailed = true; this.zoteroImportProjectionPending = true; }
+			const degraded = incomplete || projectionFailed
+				|| Object.values(this.folderMap || {}).some(info => info && info.zoteroSyncState !== "orphaned" && info.zoteroPdfImportPending);
 			this.persistZoteroAutoCheckState({
 				lastCheckAt: Date.now(),
-				mtimeMs,
-				status: "ok",
+				mtimeMs: degraded ? null : mtimeMs,
+				status: degraded ? "degraded" : "ok",
 				pendingAmbiguous: classification.pendingAmbiguous,
 				pendingOrphaned: (syncPlan.orphaned || []).length,
 			});
 			await this.save();
-			await this.writePaperJsonlIndex().catch(() => {});
 			this.safeRefreshHubViews();
 			this.refreshSettingsStatusIfOpen();
 
 			const pending = classification.pendingAmbiguous + (syncPlan.orphaned || []).length;
 			const parts = [];
-			if (imported > 0) parts.push(`新增 ${imported} 篇`);
-			if (pending > 0) parts.push(`${pending} 项待确认`);
-			if (force && parts.length) {
-				new obsidian.Notice(`Zotero 自动同步：${parts.join("，")}`, 7000);
+			if (imported > 0) parts.push(rectoUiText("import.autoAdded", { count: imported }));
+			if (pending > 0) parts.push(rectoUiText("import.pending", { count: pending }));
+			if (force && degraded) {
+				new obsidian.Notice(rectoUiText("import.checkFailed"), 8000);
+			} else if (force && parts.length) {
+				new obsidian.Notice(rectoUiText("import.autoSummary", { summary: parts.join(activeRectoUiLocale === "en" ? ", " : "，") }), 7000);
 			} else if (force) {
-				new obsidian.Notice("Zotero 已检查：没有需要处理的变化", 4000);
+				new obsidian.Notice(rectoUiText("import.noChanges"), 4000);
 			}
 			return {
 				imported,
+				degraded,
 				pendingAmbiguous: classification.pendingAmbiguous,
 				pendingOrphaned: (syncPlan.orphaned || []).length,
 				importResult,
@@ -10922,7 +13635,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.refreshSettingsStatusIfOpen();
 			if (force) {
 				// 自动轮询继续静默；用户主动点「立即检查」时，瞬时占用也要给出可执行的下一步。
-				new obsidian.Notice(getZoteroUserFacingErrorMessage(error, "Zotero 检查未完成，请稍后重试。"), 8000);
+				new obsidian.Notice(getZoteroUserFacingErrorMessage(error, rectoUiText("import.checkFailed")), 8000);
 			}
 			return {
 				degraded: true,
@@ -10936,7 +13649,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 	async resolveZoteroPendingConfirmations(hostEl = null) {
 		if (!this.hasNodeSqlite) {
-			new obsidian.Notice("当前环境无法读取 Zotero 论文库。请更新 Obsidian 后重试。", 8000);
+			new obsidian.Notice(rectoUiText("import.runtimeUnsupported"), 8000);
 			return null;
 		}
 		if (!this.getValidatedBaseFolderOrNotice()) return null;
@@ -10948,9 +13661,8 @@ class RectoPlugin extends obsidian.Plugin {
 				signal: operation.controller.signal,
 				requireMetadata: true,
 			});
-			const metadata = this.readZoteroMetadata();
-			const syncPlan = this.buildZoteroSyncPlan(metadata);
 			let imported = 0;
+			let importIncomplete = false;
 			if (plan.ambiguousGroups.length) {
 				const chosen = await this.chooseZoteroPdfTasks({ tasks: [], ambiguousGroups: plan.ambiguousGroups });
 				if (chosen == null) {
@@ -10963,8 +13675,11 @@ class RectoPlugin extends obsidian.Plugin {
 						manageOperation: false,
 					});
 					imported = result && result.imported ? result.imported : 0;
+					importIncomplete = !result || result.status !== "completed" || result.mismatchedPdfs > 0;
 				}
 			}
+			// 用户选择和复制可能已更新记录；同步计划必须基于导入后的对象与当前元数据。
+			const syncPlan = this.buildZoteroSyncPlan(this.readZoteroMetadata());
 			if (syncPlan.orphaned.length || syncPlan.missingPdfs.length) {
 				const action = await this.chooseZoteroSyncAction(syncPlan);
 				if (action) {
@@ -10981,11 +13696,11 @@ class RectoPlugin extends obsidian.Plugin {
 							this.convertedFolders = this.convertedFolders.filter(id => id !== recordId);
 							removed++;
 						} catch (error) {
-							new obsidian.Notice(getUserFacingErrorMessage(error, "未能移入回收站，请稍后重试。"), 8000);
+							new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("import.trashFailed")), 8000);
 						}
 					}
 					if (removed) {
-						new obsidian.Notice(`已移入回收站 ${removed} 篇`, 5000);
+						new obsidian.Notice(rectoUiText("import.trashDone", { count: removed }), 5000);
 					}
 				}
 			}
@@ -10996,19 +13711,25 @@ class RectoPlugin extends obsidian.Plugin {
 			});
 			const freshSync = this.buildZoteroSyncPlan(this.readZoteroMetadata());
 			const classification = classifyZoteroAutoImportCandidates(freshPlan, this.folderMap);
+			const degraded = importIncomplete || [...freshSync.matched, ...freshSync.missingPdfs]
+				.some(item => this.folderMap[item.recordId]?.zoteroPdfImportPending);
 			this.persistZoteroAutoCheckState({
 				pendingAmbiguous: classification.pendingAmbiguous,
 				pendingOrphaned: (freshSync.orphaned || []).length,
-				status: "ok",
+				status: degraded ? "degraded" : "ok",
+				mtimeMs: null,
 				lastCheckAt: Date.now(),
 			});
 			await this.save();
 			await this.writePaperJsonlIndex();
 			this.safeRefreshHubViews();
 			this.refreshSettingsStatusIfOpen();
-			return { imported };
+			return { imported, degraded };
 		} catch (error) {
-			new obsidian.Notice(getZoteroUserFacingErrorMessage(error, "待确认项处理未完成，请稍后重试。"), 8000);
+			this.persistZoteroAutoCheckState({ status: "degraded", mtimeMs: null });
+			await this.save().catch(() => {});
+			this.refreshSettingsStatusIfOpen();
+			new obsidian.Notice(getZoteroUserFacingErrorMessage(error, rectoUiText("import.pendingFailed")), 8000);
 			return null;
 		} finally {
 			this.finishOperation(operation);
@@ -11028,13 +13749,23 @@ class RectoPlugin extends obsidian.Plugin {
 		if (typeof tab.refreshAllSetupStatus === "function") tab.refreshAllSetupStatus();
 	}
 
-	refreshSettingsTabIfOpen() {
+	refreshSettingsTabIfOpen(options = {}) {
 		const tabs = this.app && this.app.setting && this.app.setting.pluginTabs;
 		const tab = Array.isArray(tabs)
 			? tabs.find(item => item && item.plugin === this)
 			: null;
 		if (tab && typeof tab.display === "function") {
+			const host = tab.containerEl;
+			const scrollTop = options.preserveUiFocus && host ? host.scrollTop : null;
+			const active = typeof document !== "undefined" ? document.activeElement : null;
+			const keepLanguageFocus = !!(options.preserveUiFocus && active && host && host.contains
+				&& host.contains(active) && active.closest && active.closest(".recto-settings-language"));
 			tab.display();
+			if (scrollTop != null && host) host.scrollTop = scrollTop;
+			if (keepLanguageFocus && host && host.querySelector) {
+				const select = host.querySelector(".recto-settings-language select");
+				if (select && select.focus) select.focus();
+			}
 			return;
 		}
 		this.refreshSettingsStatusIfOpen();
@@ -11100,6 +13831,7 @@ class RectoPlugin extends obsidian.Plugin {
 				zoteroTitle: info.zoteroTitle || "",
 				frontmatterTitle: fm.title || "",
 				collections,
+				zoteroCollectionPathParts: normalizeZoteroCollectionFields(info).zoteroCollectionPathParts,
 				readingKey,
 				readingStatus: this.getReadingStatus(readingKey),
 				conversionStatus: converted ? "converted" : "unconverted",
@@ -11118,7 +13850,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async cycleReadingStatusByKey(readingKey) {
 		const entries = this.getZoteroIndexEntries();
 		if (!entries.some(entry => entry.readingKey === readingKey)) {
-			new obsidian.Notice("找不到对应的 Zotero 论文记录", 5000);
+			new obsidian.Notice(rectoUiText("hub.recordMissing"), 5000);
 			return null;
 		}
 		const next = getNextReadingStatus(this.getReadingStatus(readingKey));
@@ -11187,7 +13919,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.maybeOpenOnboarding();
 		} catch (error) {
 			console.error("Recto: failed to open hub", getSanitizedErrorMessage(error));
-			new obsidian.Notice("打不开论文库，请重试或重启 Obsidian。", 8000);
+			new obsidian.Notice(rectoUiText("hub.openFailed"), 8000);
 		}
 	}
 
@@ -11204,7 +13936,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async submitFeedback(input = {}, options = {}) {
-		if (!this.hasBackendAccountSession()) throw new Error("请先登录 Recto 账号再提交反馈。");
+		if (!this.hasBackendAccountSession()) throw createRectoUiError("feedback.signInRequired");
 		// 反馈不是论文云端处理，不要求用户先同意 PDF 上传；但沿用账号会话，邮箱由后端身份取得。
 		return await requestBackendJson(this.settings, "/api/v1/feedback", {
 			method: "POST",
@@ -11221,7 +13953,7 @@ class RectoPlugin extends obsidian.Plugin {
 	openRectoSettings() {
 		const setting = this.app && this.app.setting;
 		if (!setting || typeof setting.open !== "function") {
-			new obsidian.Notice("请从 Obsidian 设置 → 第三方插件 → Recto 打开设置页。", 6000);
+			new obsidian.Notice(rectoUiText("hub.settingsPath"), 6000);
 			return;
 		}
 		setting.open();
@@ -11232,7 +13964,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const outputFolder = obsidian.normalizePath(String((record && record.outputFolder) || ""));
 		const stem = outputFolder.split("/").filter(Boolean).pop() || "";
 		if (!outputFolder || !stem) {
-			new obsidian.Notice("找不到刚才的转换结果，请从文件列表打开输出目录。", 6000);
+			new obsidian.Notice(rectoUiText("hub.resultMissing"), 6000);
 			return false;
 		}
 		const candidates = [
@@ -11241,7 +13973,7 @@ class RectoPlugin extends obsidian.Plugin {
 		];
 		const file = candidates.map(path => this.app.vault.getAbstractFileByPath(path)).find(Boolean);
 		if (!file) {
-			new obsidian.Notice(`正文已保存到「${outputFolder}」，请从文件列表打开。`, 8000);
+			new obsidian.Notice(rectoUiText("hub.resultSaved", { folder: outputFolder }), 8000);
 			return false;
 		}
 		const leaf = this.getHubOpenLeaf(file);
@@ -11283,6 +14015,42 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
+	getHubNotesPath(recordId) {
+		const info = this.folderMap && this.folderMap[recordId];
+		if (!info || !info.stem) throw new Error("Missing Hub paper");
+		const root = nodePath.resolve(this.app.vault.adapter.basePath, this.getPaperSubFolder(info.stem));
+		return nodePath.join(root, "recto", HUB_NOTES_FILE);
+	}
+
+	getHubNotesStore() {
+		if (!this.hubNotesStore) {
+			this.hubNotesStore = new RectoHubNotesStore(recordId => {
+				const path = this.getHubNotesPath(recordId);
+				let text;
+				try { text = fs.readFileSync(path, "utf8"); }
+				catch (error) { if (error.code === "ENOENT") text = null; else throw error; }
+				return parseHubNotesFile(text, recordId);
+			}, (recordId, value) => {
+				const path = this.getHubNotesPath(recordId);
+				fs.mkdirSync(nodePath.dirname(path), { recursive: true });
+				// Same-directory rename commits a complete document; an interrupted write leaves the old one intact.
+				const temporary = `${path}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+				try {
+					fs.writeFileSync(temporary, JSON.stringify({ schema: "recto-hub-notes", version: 1, recordId,
+						...value, updatedAt: new Date().toISOString() }, null, 2) + "\n", { encoding: "utf8", flag: "wx" });
+					fs.renameSync(temporary, path);
+				} finally {
+					try { fs.unlinkSync(temporary); } catch (error) { if (error.code !== "ENOENT") throw error; }
+				}
+			}, recordId => {
+				for (const view of this.getOpenHubViews()) {
+					if (typeof view.refreshHubNote === "function") view.refreshHubNote(recordId);
+				}
+			});
+		}
+		return this.hubNotesStore;
+	}
+
 	getHubEntries() {
 		const base = this.getValidatedBaseFolder();
 		const vault = this.app.vault;
@@ -11292,9 +14060,17 @@ class RectoPlugin extends obsidian.Plugin {
 		return buildHubEntries(this.getZoteroIndexEntries().map(entry => {
 			const folderPath = getPaperFolderVaultPath(base, entry.stem);
 			const folder = vault.getAbstractFileByPath(folderPath);
-			const translationPath = obsidian.normalizePath(`${folderPath}/${getChineseMarkdownFileName(entry.stem)}`);
+			let translationPath = obsidian.normalizePath(`${folderPath}/${getChineseMarkdownFileName(entry.stem)}`);
 			const sourceFile = folder ? this.findOriginalMarkdownInPaperFolder(folder) : null;
 			const sourcePath = sourceFile ? sourceFile.path : "";
+			const translations = Object.values(this.settings.documentArtifacts?.[sourcePath]?.translations || {})
+				.filter(record => vault.getAbstractFileByPath(record.path)).sort((a, b) => a.targetLanguage.id.localeCompare(b.targetLanguage.id));
+			if (sourceFile && /^en-/.test(sourceFile.name) && vault.getAbstractFileByPath(translationPath) && !translations.some(record => record.targetLanguage.id === "zh-Hans")) {
+				translations.push({ path: translationPath, targetLanguage: normalizeDocumentLanguage("zh-Hans"), quality: this.readHubTranslationQuality(folderPath) });
+				translations.sort((a, b) => a.targetLanguage.id.localeCompare(b.targetLanguage.id));
+			}
+			const selected = translations.find(record => record.targetLanguage.id === migrateDocumentLanguages(this.settings).translationTarget.id);
+			translationPath = selected?.path || "";
 			const chineseFile = vault.getAbstractFileByPath(translationPath);
 			// 中文源正文也是 ch-*.md；有没有译文看的是 en 与 ch 是否是两份不同的文件。
 			const hasTranslation = !!(chineseFile && sourceFile && sourcePath !== translationPath);
@@ -11303,10 +14079,12 @@ class RectoPlugin extends obsidian.Plugin {
 				: null;
 			return {
 				...entry,
+				translations,
+				notes: this.getHubNotesStore().get(entry.recordId, true).notes,
 				title: titleZh || entry.title,
 				translationPath: hasTranslation ? translationPath : "",
 				translationQuality: hasTranslation
-					? (entry.translationQuality || this.readHubTranslationQuality(folderPath))
+					? (selected?.quality || entry.translationQuality || this.readHubTranslationQuality(folderPath))
 					: null,
 				sourcePath,
 				summaryPath: entry.summaryPath && vault.getAbstractFileByPath(entry.summaryPath) ? entry.summaryPath : "",
@@ -11360,7 +14138,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const path = this.resolveHubTargetPath(entry, action);
 		const file = path ? this.app.vault.getAbstractFileByPath(path) : null;
 		if (!(file instanceof obsidian.TFile)) {
-			new obsidian.Notice("找不到要打开的文件，请关闭再打开 Hub 后重试", 5000);
+			new obsidian.Notice(rectoUiText("hub.fileMissing"), 5000);
 			return false;
 		}
 		const leaf = this.getHubOpenLeaf(file);
@@ -11404,6 +14182,12 @@ class RectoPlugin extends obsidian.Plugin {
 
 	async trashSyncedPaperArtifacts(info) {
 		if (!info || !info.stem) return;
+		for (const [id, paper] of Object.entries(this.folderMap || {})) {
+			if (paper && paper.stem === info.stem && this.hubNotesStore) {
+				if (!this.hubNotesStore.flush(id)) throw new Error("Note 尚未保存，请重试后再删除。");
+				this.hubNotesStore.forget(id);
+			}
+		}
 		const summaryPath = this.getSummaryPathForStem(info.stem);
 		await this.trashVaultPath(this.getPaperSubFolder(info.stem));
 		await this.trashVaultPath(summaryPath);
@@ -11412,7 +14196,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async syncZoteroClassificationIndex() {
 		try {
 			if (!this.hasNodeSqlite) {
-				new obsidian.Notice("当前环境无法读取 Zotero 论文库，已暂停同步。请更新 Obsidian 后重试。", 8000);
+				new obsidian.Notice(rectoUiText("import.syncPaused"), 8000);
 				return null;
 			}
 			if (!this.getValidatedBaseFolderOrNotice()) return null;
@@ -11477,10 +14261,10 @@ class RectoPlugin extends obsidian.Plugin {
 			await this.save();
 			await this.writePaperJsonlIndex();
 			if (removeFailures.length) {
-				new obsidian.Notice(`部分论文未能移入回收站，记录已保留：${removeFailures.join("、")}`, 12000);
+				new obsidian.Notice(rectoUiText("import.trashPartial", { titles: removeFailures.join(activeRectoUiLocale === "en" ? ", " : "、") }), 12000);
 			}
 			new obsidian.Notice(
-				`Zotero 已同步：正常 ${plan.matched.length}，PDF 缺失 ${plan.missingPdfs.length}，本地孤立 ${plan.orphaned.length - removed}，移入回收站 ${removed}`,
+				rectoUiText("import.syncedSummary", { matched: plan.matched.length, missing: plan.missingPdfs.length, orphaned: plan.orphaned.length - removed, trashed: removed }),
 				9000
 			);
 			this.safeRefreshHubViews();
@@ -11495,7 +14279,7 @@ class RectoPlugin extends obsidian.Plugin {
 				this.finishOperation(operation);
 			}
 		} catch (e) {
-			if (!isCancellationError(e)) new obsidian.Notice(getZoteroUserFacingErrorMessage(e, "Zotero 同步未完成，请稍后重试。"), 10000);
+			if (!isCancellationError(e)) new obsidian.Notice(getZoteroUserFacingErrorMessage(e, rectoUiText("import.syncFailed")), 10000);
 			throw e;
 		}
 	}
@@ -11633,18 +14417,9 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	// T81-S：转换端点不再接受 translation，发过去会被后端明确拒绝。译文是独立任务。
-	// T83-I：摘要是可选产出。关掉时后端跳过整段摘要生成、也不返回占位摘要，
-	// 于是 `writeBackendTaskResult` 里那条 `if (summaryRaw)` 自然不会落 br-*.md。
+	// T87-4-A：新转换只请求原文；旧客户端、旧在途转换摘要由后端按旧快照兼容。
 	getBackendRequestedOutputs(task = null) {
-		const outputs = ["markdown"];
-		// T84：库外 PDF 一律不出摘要（用户拍板）——「整理一个已有的 md」现成插件能做，不重复；
-		// 而库外产物没有 papers.jsonl，摘要在那里只会是一个孤立的 md。
-		if (!isRectoExternalTask(task) && this.shouldGenerateSummaryOnConvert()) outputs.push("summary");
-		return outputs;
-	}
-
-	shouldGenerateSummaryOnConvert() {
-		return this.settings.generateSummaryOnConvert !== false;
+		return ["markdown"];
 	}
 
 	// T83-N：总开关只映射到一个受限的 profile id，插件永远不提交规则列表或 AI 参数——
@@ -11682,11 +14457,18 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async createBackendHostedTask(task) {
+		if (task.namingVersion === 1) {
+			const desired = task.stem || sanitizeStem(task.zoteroTitle || String(task.name || "paper").replace(/\.pdf$/i, ""));
+			task.stem = isRectoExternalTask(task) ? this.allocateExternalTaskStem(task, desired) : this.allocateUniquePaperStem(desired, task.recordId);
+			task.sourcePath = documentArtifactPath(this.resolveTaskPaperFolder(task, task.stem), task.stem, "src");
+			if (this.app.vault.getAbstractFileByPath(task.sourcePath)) throw new Error(documentLanguageText("原文路径已存在，未提交转换。", "The source path already exists. Conversion was not submitted."));
+		}
 		await this.saveBackendPreferences({ timeout: 30000 });
 		const documentId = this.getOrCreateRectoDocumentId(task);
 		return await this.backendRequest("/api/v1/tasks", {
 			method: "POST",
 			body: {
+				...(task.languageContract ? { languageContract: task.languageContract } : {}),
 				estimatedPages: this.estimateBackendTaskPages(task),
 				requestedOutputs: this.getBackendRequestedOutputs(task),
 				postprocessProfile: this.getTaskPostprocessProfile(task),
@@ -11716,7 +14498,7 @@ class RectoPlugin extends obsidian.Plugin {
 		});
 	}
 
-	// T81-S：译文任务。唯一输入是 sidecar——不需要 PDF、不需要重新解析、不需要摘要。
+	// T81-S：译文任务只上传 Sidecar；T87-4-A 起库内翻译可同时请求摘要。
 	// 建任务时后端还不知道待译字符数，所以额度是在 sidecar 上传解析完之后才冻结的。
 	async createBackendTranslationTask(task) {
 		await this.saveBackendPreferences({ timeout: 30000 });
@@ -11728,8 +14510,14 @@ class RectoPlugin extends obsidian.Plugin {
 		return await this.backendRequest("/api/v1/tasks/translation", {
 			method: "POST",
 			body: {
+				...(task.languageContract ? { languageContract: task.languageContract } : {}),
 				sourceName: task.name || task.recordId || "paper.pdf",
 				documentId,
+				...(task.requestSummary === true ? {
+					requestedOutputs: ["translation", "summary"],
+					summaryLanguage: task.summaryLanguage,
+					summaryDepth: task.summaryDepth,
+				} : {}),
 			},
 			timeout: 30000,
 		});
@@ -11756,60 +14544,63 @@ class RectoPlugin extends obsidian.Plugin {
 	 * T84 库外转换产出的 `en-*.md` 事后补译、Sidecar 降级的老论文补译。
 	 */
 	async translateActiveMarkdownFromCommand() {
+		await this.ensureDocumentLanguageCapabilities();
 		const file = this.app.workspace.getActiveFile();
 		if (!file || !/\.md$/i.test(String(file.path || ""))) {
-			new obsidian.Notice("请先打开要翻译的 Markdown 文件", 6000);
+			new obsidian.Notice(rectoUiText("markdown.openFirst"), 6000);
 			return;
 		}
-		const target = resolveRectoMarkdownTranslationTarget(file.path);
+		const target = resolveRectoMarkdownTranslationTarget(file.path, this.settings.documentLanguages.translationTarget);
 		if (!target) {
-			new obsidian.Notice("这个文件不能作为翻译原文（译文文件不会再翻一次）", 8000);
+			new obsidian.Notice(rectoUiText("markdown.invalidSource"), 8000);
 			return;
 		}
 		let markdown = "";
 		try {
 			markdown = await this.app.vault.read(file);
 		} catch (error) {
-			new obsidian.Notice(`读取文档失败：${getUserFacingErrorMessage(error)}`, 8000);
+			new obsidian.Notice(rectoUiText("markdown.readFailed", { error: getUserFacingErrorMessage(error) }), 8000);
 			return;
 		}
 		// 中文源不提供翻译，判据与后端在冻结之前那道复判同源（不变量 11）。这里先拦一次，
 		// 免得用户等到扣费那一步才被拒。
-		if (detectMarkdownLanguage(markdown, this.settings.translationChineseThreshold) === "zh") {
-			new obsidian.Notice("这份文档已经是中文，不需要翻译", 8000);
+		if (!this.settings.documentLanguages && detectMarkdownLanguage(markdown, this.settings.translationChineseThreshold) === "zh") {
+			new obsidian.Notice(rectoUiText("markdown.alreadyChinese"), 8000);
 			return;
 		}
 		const estimate = estimateRectoMarkdownTranslationPages(markdown);
 		if (!estimate.pages) {
-			new obsidian.Notice("这份文档没有可翻译的内容", 6000);
+			new obsidian.Notice(rectoUiText("markdown.empty"), 6000);
 			return;
 		}
 		const quote = describeTranslationQuote(this.settings, estimate.pages);
 		if (quote.active && quote.shortfall > 0) {
-			new obsidian.Notice(`${quote.text}。请先购买翻译页。`, 10000);
+			new obsidian.Notice(rectoUiText("markdown.buyPages", { quote: quote.text }), 10000);
 			this.openAccountModal();
 			return;
 		}
 		if (this.app.vault.getAbstractFileByPath(target.targetPath)) {
-			const replace = await this.openDecision({
-				title: "这份文档已经有译文",
-				intro: `${target.targetPath} 已经存在。再翻一次会重新计费，并覆盖这份译文。`,
-				details: [`这份文档约合 ${estimate.pages} 页。`, "原文不受影响。"],
+			if (this.settings.documentLanguages) { new obsidian.Notice(documentLanguageText("目标译文已存在，已保留原文件。", "The target translation already exists and was preserved.")); return; }
+			const replace = await this.openDecision(() => ({
+				title: rectoUiText("markdown.replaceTitle"),
+				intro: rectoUiText("markdown.replaceIntro", { path: target.targetPath }),
+				details: [rectoUiText("markdown.pageEstimate", { count: estimate.pages }), rectoUiText("markdown.sourceSafe")],
 				actions: [
-					{ label: "取消", value: false },
-					{ label: "重新翻译", value: true, cta: true },
+					{ label: rectoUiText("dialog.cancel"), value: false },
+					{ label: rectoUiText("markdown.retranslate"), value: true, cta: true },
 				],
-			});
+			}));
 			if (!replace) return;
 		}
 		const writeAnchors = this.settings.markdownTranslationWriteAnchors === true;
 		// 单篇零确认是 T84-F 的既有决定，所以量级用 Notice 说而不是再弹一次窗——但**必须说**：
 		// 额度是按字符扣的，用户事先看不见量级就等于蒙着眼花钱。
 		new obsidian.Notice(
-			quote.active ? `${quote.text}。` : `开始翻译《${file.basename}》，约合 ${estimate.pages} 页。`,
+			quote.active ? `${quote.text}${activeRectoUiLocale === "en" ? "." : "。"}` : rectoUiText("markdown.start", { name: file.basename, count: estimate.pages }),
 			6000,
 		);
 		await this.runBackendBatchWithTasks([{
+			namingVersion: 1,
 			name: file.name,
 			// 没有它就没有重复提交防护（守卫的键就是 recordId），连点两次命令会扣两次费。
 			recordId: buildRectoMarkdownRecordId(file.path),
@@ -11825,7 +14616,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// 默认不写锚点，双栏因此会报「两侧没有可对齐的锚点」——而设置里那个开关没有任何东西
 		// 指向它。不补这一句，用户永远发现不了双栏对照的存在。
 		if (!writeAnchors && this.app.vault.getAbstractFileByPath(target.targetPath)) {
-			new obsidian.Notice("想要双栏对照？在设置「翻译 Markdown」里开启「写入对照锚点」后重新翻译一次。", 12000);
+			new obsidian.Notice(rectoUiText("markdown.anchorHint"), 12000);
 		}
 	}
 
@@ -11844,9 +14635,16 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		if (!path || !(await adapter.exists(path))) throw new Error("要翻译的文档已不在原来的位置");
 		const markdown = await adapter.read(path);
+		if (task.namingVersion === 1) {
+			const prior = this.settings.documentArtifacts?.[path];
+			if (prior && prior.sourceContentHash === documentContentHash(markdown)) {
+				task.markdownDocumentId = prior.documentId;
+				task.sourceRevisionId = prior.sourceRevisionId;
+			}
+		}
 		const built = buildRectoSidecarFromMarkdown(markdown, {
 			documentId: task.markdownDocumentId,
-			sourceRevisionId: createRectoDocumentId(),
+			sourceRevisionId: task.sourceRevisionId || (task.sourceRevisionId = createRectoDocumentId()),
 			writeAnchors: task.markdownWriteAnchors === true,
 		});
 		// 空文档在本地就拦住，不要送到后端才吃一个「没有可翻译内容」的 400。
@@ -11900,7 +14698,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const pending = Array.isArray(this.pendingBackendTasks) ? this.pendingBackendTasks : [];
 		const existing = pending.find(entry => entry && entry.taskId === String(taskId || "").trim());
 		if (!existing) {
-			new obsidian.Notice("该任务不在本机待恢复列表中，已阻止重试以避免结果无法写回。", 8000);
+			new obsidian.Notice(rectoUiText("task.retryMissing"), 8000);
 			return null;
 		}
 		const operation = this.beginOperation("重试论文结果");
@@ -11908,10 +14706,10 @@ class RectoPlugin extends obsidian.Plugin {
 		try {
 			const result = await this.retryBackendTask(existing.taskId, { signal: operation.controller.signal });
 			await this.persistPendingBackendTask(existing.taskId, existing.task, (result && result.status) || "retrying");
-			new obsidian.Notice("已重新提交，请等待结果写回。", 6000);
+			new obsidian.Notice(rectoUiText("task.retrySubmitted"), 6000);
 			return result;
 		} catch (error) {
-			new obsidian.Notice(getUserFacingErrorMessage(error, "重试未完成，请稍后再试。"), 8000);
+			new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("task.retryFailed")), 8000);
 			return null;
 		} finally {
 			this.finishOperation(operation);
@@ -11952,6 +14750,9 @@ class RectoPlugin extends obsidian.Plugin {
 				if (options.returnTerminalStatus) return task;
 				const error = new Error(`Backend task ended as ${task.status}`);
 				error.code = "RECTO_REMOTE_TASK_FAILED";
+				const publicError = normalizeBackendPublicError(task.safeErrorCode || "TASK_PROCESSING_FAILED", task.safeErrorParams);
+				error.backendErrorCode = publicError ? publicError.code : "UNKNOWN";
+				error.backendErrorParams = publicError ? publicError.params : {};
 				throw error;
 			}
 			await sleep(waitMs, this.getActiveSignal());
@@ -12166,6 +14967,16 @@ class RectoPlugin extends obsidian.Plugin {
 			throw error;
 		}
 		if (!result.sidecar) throw new Error("译文任务没有返回更新后的 Sidecar，未写入本地论文库");
+		if (task.namingVersion === 1) {
+			const contract = result.metadata && result.metadata.languageContract;
+			if (!contract || contract.version !== 1 || contract.namingVersion !== 1
+				|| contract.source?.id !== task.languageContract.source?.id || contract.target?.id !== task.languageContract.target?.id
+				|| contract.sourceRevisionId !== task.sourceRevisionId || contract.ocrLanguage !== task.languageContract.ocrLanguage
+				|| alignment.language !== task.languageContract.target.id
+				|| result.sidecar.sourceRevision?.id !== task.sourceRevisionId) throw new Error("Document language result contract mismatch");
+			const source = this.app.vault.getAbstractFileByPath(task.sourcePath);
+			if (!source || documentContentHash(await this.app.vault.read(source)) !== task.sourceContentHash) throw new Error(documentLanguageText("原文已改变，译文未写入。", "The source changed; translation was not written."));
+		}
 
 		// T84-S：任意 Markdown 的任务本地没有 sidecar 文件可比对（合成的那份没落盘），改用提交
 		// 时记下的 documentId 校验——**同样挡得住「把 A 篇的译文写进 B 篇」**，那才是这道门要守的。
@@ -12202,17 +15013,17 @@ class RectoPlugin extends obsidian.Plugin {
 		if (prepared.alignment.status === "degraded") log("  ⚠ 个别文段翻译失败或未通过完整性校验，已明确保留对应原文");
 
 		// T84-S：任意 Markdown 的落点是**原文同目录**的 `ch-<stem>.md`，不进论文库。
-		const markdownTarget = markdownTask ? resolveRectoMarkdownTranslationTarget(task.markdownPath) : null;
+		const markdownTarget = markdownTask ? resolveRectoMarkdownTranslationTarget(task.markdownPath, task.languageContract?.target) : null;
 		if (markdownTask && !markdownTarget) throw new Error("这份文档的文件名推不出译文落点，未写入");
 		const subFolder = markdownTask ? markdownTarget.folder : this.resolveTaskPaperFolder(task, stem);
-		const translationPath = markdownTask ? markdownTarget.targetPath : this.getTranslationPath(stem, subFolder);
+		const translationPath = task.namingVersion === 1 ? task.translationPath : markdownTask ? markdownTarget.targetPath : this.getTranslationPath(stem, subFolder);
 		if (markdownTask) {
 			// 唯一要挡的是「译文盖住原文」。`resolveRectoMarkdownTranslationTarget` 已经拒了 `ch-`
 			// 开头的原文，这里再兜一次底——落点和原文同名就绝不能写。
 			if (obsidian.normalizePath(translationPath) === obsidian.normalizePath(task.markdownPath)) {
 				throw new Error("译文落点与原文同名，未写入");
 			}
-		} else {
+		} else if (task.namingVersion !== 1) {
 			// 中文源论文的正文本来就存成 ch-<stem>.md，写译文会把源文覆盖掉。判据是「有没有
 			// en-<stem>.md」而不是「ch- 在不在」——ch- 在的时候也可能只是上一次的译文。
 			const foreignSourcePath = this.getSourceMarkdownPath(stem, subFolder, "en");
@@ -12225,12 +15036,19 @@ class RectoPlugin extends obsidian.Plugin {
 		this.throwIfUnloaded();
 		// 库内论文的图片是我们自己落盘到 `images/` 的，要改写成 vault 内的 wikilink；用户自己
 		// 文档里的图片链接**一个字都不该动**（可能是网图，也可能指向别处的附件）。
-		const translationText = markdownTask
+		let translationText = markdownTask
 			? withRectoTranslationSourcePath(prepared.markdown, task.markdownPath)
 			: prepared.markdown.replace(/!\[([^\]]*)\]\(images\/([^)]+)\)/g,
 				(_, alt, f) => `![[${subFolder}/images/${f}]]`);
-		const existing = this.app.vault.getAbstractFileByPath(translationPath);
-		if (existing) await this.app.vault.modify(existing, translationText);
+		if (task.namingVersion === 1) translationText = withDocumentArtifactMetadata(translationText, {
+			"recto-source-path": task.sourcePath, "recto-source-hash": task.sourceContentHash,
+			"recto-artifact-role": "translation", "recto-naming-version": 1,
+		});
+		const existing = this.app.vault.getAbstractFileByPath(translationPath) || (task.namingVersion === 1 && this.app.vault.getFiles?.().find(file => file.path.toLowerCase() === translationPath.toLowerCase()));
+		if (existing && task.protectExistingTranslation === true) {
+			const existingText = await this.app.vault.read(existing);
+			if (existingText !== translationText) throw new Error("译文文件已存在且内容不同，已保留原文件");
+		} else if (existing) await this.app.vault.modify(existing, translationText);
 		else await this.app.vault.create(translationPath, translationText);
 		log(`  保存译文: ${translationPath}`);
 
@@ -12238,11 +15056,28 @@ class RectoPlugin extends obsidian.Plugin {
 		// 凭空造出一个 `recto/`（本条的产品前提正是「不改用户的文件」），而摘要那一步会按 stem 去
 		// 论文库找同名文件——万一撞上就改了别人的东西。folderMap 那段本来就因为库外任务没有
 		// recordId 而跳过，这里不必再判一次。
-		if (!markdownTask) {
-			await this.writeBackendSidecarText(subFolder, `${JSON.stringify(prepared.sidecar, null, 2)}\n`);
+		if (task.namingVersion === 1) {
+			const record = { documentId: result.sidecar.document.id, sourceRevisionId: task.sourceRevisionId, sourcePath: task.sourcePath,
+				sourceContentHash: task.sourceContentHash, sourceLanguage: task.languageContract.source,
+				targetLanguage: task.languageContract.target, path: translationPath, alignment: prepared.alignment,
+				quality: extractHubTranslationQuality(prepared.sidecar), namingVersion: 1 };
+			if (!markdownTask) {
+				const merged = { ...localSidecar, translations: { ...(localSidecar.translations || {}), [`${task.sourceRevisionId}:${task.languageContract.target.id}`]: record } };
+				await this.writeBackendSidecarText(subFolder, `${JSON.stringify(merged, null, 2)}\n`);
+			}
+			const previous = this.settings.documentArtifacts || {};
+			const sourceRecord = previous[task.sourcePath] || {};
+			this.settings.documentArtifacts = { ...previous, [task.sourcePath]: { ...sourceRecord, documentId: record.documentId,
+				sourceRevisionId: task.sourceRevisionId, sourceContentHash: task.sourceContentHash, sourceLanguage: task.languageContract.source,
+				translations: { ...(sourceRecord.translations || {}), [`${task.sourceRevisionId}:${task.languageContract.target.id}`]: record } } };
+			try { await this.save(); } catch (error) { this.settings.documentArtifacts = previous; throw error; }
+		} else if (!markdownTask) {
+			if (!task.protectExistingTranslation || JSON.stringify(localSidecar) !== JSON.stringify(prepared.sidecar)) {
+				await this.writeBackendSidecarText(subFolder, `${JSON.stringify(prepared.sidecar, null, 2)}\n`);
+			}
 			log("  论文结构信息已更新");
 		}
-		const projectedQuality = markdownTask ? null : extractHubTranslationQuality(prepared.sidecar);
+		const projectedQuality = markdownTask || task.namingVersion === 1 ? null : extractHubTranslationQuality(prepared.sidecar);
 		if (projectedQuality && task && task.recordId && this.folderMap && this.folderMap[task.recordId]) {
 			this.folderMap[task.recordId] = { ...this.folderMap[task.recordId], translationQuality: projectedQuality };
 			await this.save().catch(error => {
@@ -12250,18 +15085,75 @@ class RectoPlugin extends obsidian.Plugin {
 			});
 		}
 
-		// 摘要的 ch 链接是转换时按「没有译文」填的，补上才点得开。
-		const summaryFile = markdownTask ? null : this.app.vault.getAbstractFileByPath(this.getSummaryPath(stem));
-		if (summaryFile) {
-			const summaryText = await this.app.vault.read(summaryFile);
-			const patched = upsertFrontmatterField(summaryText, "ch", this.getTranslationLink(stem));
-			if (patched !== summaryText) {
-				await this.app.vault.modify(summaryFile, patched);
-				log("  已把译文链接补进摘要");
-			}
-		}
-
 		log(`✓ ${stem}（译文写回完成）`);
+		return stem;
+	}
+
+	async writeBackendTranslationArtifacts(task, stem, result, modal) {
+		if (task.requestSummary !== true) return this.writeBackendTranslationResult(task, stem, result, modal);
+		if (isRectoMarkdownTranslationTask(task) || isRectoExternalTask(task)) throw new Error("此任务不支持摘要写回");
+		const status = result && result.artifactStatus;
+		if (!status || !["succeeded", "failed"].includes(status.translation)
+			|| !["succeeded", "failed"].includes(status.summary)
+			|| !Array.isArray(result.metadata && result.metadata.requestedOutputs)
+			|| !result.metadata.requestedOutputs.includes("summary")
+			|| result.metadata.summaryLanguage !== task.summaryLanguage) {
+			throw new Error("摘要与译文结果契约不完整，已保留任务等待恢复");
+		}
+		const localSidecar = JSON.parse(await this.readLocalPaperSidecarText(stem, task));
+		const returned = result.sidecar;
+		if (!returned || !returned.document || !localSidecar.document
+			|| returned.document.id !== localSidecar.document.id
+			|| !returned.sourceRevision || !localSidecar.sourceRevision
+			|| returned.sourceRevision.id !== localSidecar.sourceRevision.id) {
+			throw new Error("摘要与译文的文档身份或源版本不匹配，未写入");
+		}
+		let translationWritten = false;
+		let summaryWritten = false;
+		let translationError = null;
+		let summaryError = null;
+		if (status.translation === "succeeded") {
+			try {
+				await this.writeBackendTranslationResult(task, stem, result, modal);
+				translationWritten = true;
+			} catch (error) { translationError = error; }
+		}
+		if (status.summary === "succeeded") {
+			try {
+				const path = task.namingVersion === 1 ? obsidian.normalizePath(`${nodePath.posix.dirname(task.sourcePath)}/${getSummaryFileName(stem)}`) : this.getSummaryPath(stem);
+				if (this.app.vault.getAbstractFileByPath(path)) {
+					if (modal) modal.log(`${stem}：已有摘要，保留并跳过写回`);
+					summaryWritten = true;
+				} else {
+					const raw = String(result.summaryMarkdown || "").trim();
+					if (!raw) {
+						const error = new Error("摘要结果为空，未写入");
+						error.code = "RECTO_SUMMARY_RESULT_INVALID";
+						throw error;
+					}
+					const folder = this.resolveTaskPaperFolder(task, stem);
+					const sourcePath = task.sourcePath || this.getSourceMarkdownPath(stem, folder, "en");
+					if (!this.app.vault.getAbstractFileByPath(sourcePath)) throw new Error("原文不存在，摘要未写入");
+					const pdfPath = obsidian.normalizePath(`${folder}/${stem}.pdf`);
+					const translationPath = task.translationPath || this.getTranslationPath(stem, folder);
+					const text = fillLinks(raw, `[[${sourcePath}]]`,
+						this.app.vault.getAbstractFileByPath(pdfPath) ? `[[${pdfPath}]]` : "",
+						translationWritten && this.app.vault.getAbstractFileByPath(translationPath) && (!task.languageContract || /^zh-/.test(task.languageContract.target.id)) ? `[[${translationPath}]]` : "");
+					await this.app.vault.create(path, text);
+					summaryWritten = true;
+				}
+			} catch (error) { summaryError = error; }
+		}
+		if (translationError && translationError.code !== "RECTO_TRANSLATION_ALIGNMENT_INVALID") throw translationError;
+		if (translationError && !summaryWritten) throw translationError;
+		if (summaryError && summaryError.code !== "RECTO_SUMMARY_RESULT_INVALID") throw summaryError;
+		if (summaryError && !translationWritten) throw summaryError;
+		if (translationError || status.translation === "failed") {
+			new obsidian.Notice(rectoUiText(translationError ? "hub.translationRejectedSummarySaved" : "hub.translationFailedSummarySaved", { stem }), 10000);
+		}
+		if (summaryError || status.summary === "failed") {
+			new obsidian.Notice(rectoUiText("hub.summaryFailed", { stem }), 10000);
+		}
 		return stem;
 	}
 
@@ -12272,7 +15164,11 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!sourceMarkdownRaw) throw new Error("后端结果缺少源 Markdown，未写入本地论文库");
 		const summaryRaw = String((result && result.summaryMarkdown) || "").trim();
 		let translationRaw = String((result && result.translationMarkdown) || "").trim();
-		const sourceLanguage = detectMarkdownLanguage(sourceMarkdownRaw, this.settings.translationChineseThreshold);
+		if (task.namingVersion === 1) {
+			const contract = result?.metadata?.languageContract;
+			if (!contract || contract.version !== 1 || contract.namingVersion !== 1 || contract.ocrLanguage !== task.languageContract.ocrLanguage || (contract.source?.id || null) !== (task.languageContract.source?.id || null)) throw new Error("Source language contract mismatch");
+		}
+		const sourceLanguage = task.namingVersion === 1 ? (task.languageContract.source?.id || "unknown") : detectMarkdownLanguage(sourceMarkdownRaw, this.settings.translationChineseThreshold);
 		// 这里曾经有一条「请求了译文却没拿到译文就整篇拒收」的守卫（T81-V 删除）。
 		// T81-S 之后转换任务永远不返回译文——译文是转换成功之后跑的第二段独立任务，
 		// 所以那条守卫对每一篇请求了译文的非中文论文都必然触发：后端已完成并已扣费，
@@ -12335,11 +15231,25 @@ class RectoPlugin extends obsidian.Plugin {
 		// ——库内是已付费的主路径，不为库外功能承担回归风险（TASKS.md T84 的停止条件）。
 		const external = isRectoExternalTask(task);
 		const desiredStem = stemHint || fallbackStem(task.name || "recto-paper.pdf");
-		const stem = external
+		const stem = task.namingVersion === 1 && task.stem ? task.stem : external
 			? this.allocateExternalTaskStem(task, desiredStem)
 			: this.allocateUniquePaperStem(desiredStem, recordId);
 		const subFolder = this.resolveTaskPaperFolder(task, stem);
 		const subFolderExisted = !!this.app.vault.getAbstractFileByPath(subFolder);
+		const rewriteImageLinks = text => text.replace(/!\[([^\]]*)\]\(images\/([^)]+)\)/g,
+			(_, alt, f) => `![[${subFolder}/images/${f}]]`);
+		const mdText = task.namingVersion === 1 ? withDocumentArtifactMetadata(rewriteImageLinks(sourceMarkdownRaw), {
+			"recto-artifact-role": "source", "recto-source-language": sourceLanguage, "recto-source-language-evidence": task.languageContract.sourceEvidence,
+			"recto-naming-version": 1,
+		}) : rewriteImageLinks(sourceMarkdownRaw);
+		const mdPath = task.namingVersion === 1 ? documentArtifactPath(subFolder, stem, "src") : this.getSourceMarkdownPath(stem, subFolder, sourceLanguage);
+		if (task.namingVersion === 1) {
+			task.sourcePath = mdPath;
+			task.sourceContentHash = documentContentHash(mdText);
+		}
+		this.throwIfUnloaded();
+		const exMd = this.app.vault.getAbstractFileByPath(mdPath) || (task.namingVersion === 1 && this.app.vault.getFiles?.().find(file => file.path.toLowerCase() === mdPath.toLowerCase()));
+		if (task.namingVersion === 1 && exMd && await this.app.vault.read(exMd) !== mdText) throw new Error(documentLanguageText("原文文件已存在，已保留，未覆盖。", "The source file already exists and was preserved."));
 		try {
 		await this.ensureFolder(subFolder);
 
@@ -12358,12 +15268,6 @@ class RectoPlugin extends obsidian.Plugin {
 			log("  论文结构信息已保存");
 		}
 
-		const rewriteImageLinks = text => text.replace(/!\[([^\]]*)\]\(images\/([^)]+)\)/g,
-			(_, alt, f) => `![[${subFolder}/images/${f}]]`);
-		const mdText = rewriteImageLinks(sourceMarkdownRaw);
-		const mdPath = this.getSourceMarkdownPath(stem, subFolder, sourceLanguage);
-		this.throwIfUnloaded();
-		const exMd = this.app.vault.getAbstractFileByPath(mdPath);
 		if (exMd) await this.app.vault.modify(exMd, mdText);
 		else await this.app.vault.create(mdPath, mdText);
 		log(`  保存MD: ${mdPath}`);
@@ -12416,16 +15320,18 @@ class RectoPlugin extends obsidian.Plugin {
 			const summaryText = fillLinks(summaryRaw, srcLink, pdfLink, chLink);
 			const sumPath = this.getSummaryPath(stem);
 			const exSum = this.app.vault.getAbstractFileByPath(sumPath);
-			if (exSum) await this.app.vault.modify(exSum, summaryText);
-			else await this.app.vault.create(sumPath, summaryText);
-			log(`  保存摘要: ${sumPath}`);
+			if (exSum) log(`  已有摘要，保留原文件: ${sumPath}`);
+			else {
+				await this.app.vault.create(sumPath, summaryText);
+				log(`  保存摘要: ${sumPath}`);
+			}
 		}
 
 		log(`✓ ${stem}（图片 ${resources.length} 个${translationWritten ? "，含译文" : ""}${translationSkippedReason ? `，译文已跳过：${translationSkippedReason}` : ""}）`);
 		// 跳过译文是用户必须知道的事：他为译文付过费，本地却只有正文与摘要。
 		if (translationSkippedReason) {
 			new obsidian.Notice(
-				`${stem}：正文与摘要已保存，但译文未写入（${translationSkippedReason}）。这篇会显示为「已转换无译文」。`,
+				rectoUiText("task.translationSkipped", { stem, reason: getUserFacingErrorMessage(translationSkippedReason) }),
 				12000
 			);
 		}
@@ -12460,19 +15366,18 @@ class RectoPlugin extends obsidian.Plugin {
 			0,
 		);
 		const quote = describeTranslationQuote(this.settings, quotedPages);
-		const details = ["使用已有论文正文与当前翻译设置，不会再次复制 PDF。"];
-		if (quote.active && quotedPages > 0) {
-			details.unshift(`本批预计消耗 ${formatTranslationPages(quotedPages)} 个翻译页；当前可用 ${formatTranslationPages(quote.available)} 页。`);
-		}
-		return await this.openDecision({
-			title: "批量翻译",
-			intro: `即将翻译选中的 ${count} 篇论文。`,
-			details,
-			actions: [
-				{ label: "取消", value: false },
-				{ label: `翻译 ${count} 篇`, value: true, cta: true },
+		return await this.openDecision(() => ({
+			title: rectoUiText("batch.translateTitle"),
+			intro: rectoUiText("batch.translateIntro", { count }),
+			details: [
+				...(quote.active && quotedPages > 0 ? [rectoUiText("batch.quote", { needed: formatTranslationPages(quotedPages), available: formatTranslationPages(quote.available) })] : []),
+				rectoUiText("batch.translateReuse"),
 			],
-		});
+			actions: [
+				{ label: rectoUiText("dialog.cancel"), value: false },
+				{ label: rectoUiText("batch.translateAction", { count }), value: true, cta: true },
+			],
+		}));
 	}
 
 	async confirmBackendRealProviderRun(tasks) {
@@ -12480,29 +15385,28 @@ class RectoPlugin extends obsidian.Plugin {
 		const wantsTranslation = (tasks || []).some(task => this.wantsTranslationForTask(task));
 		// T84：库外任务不请求摘要，文案不能一律说「与已启用的摘要」——那会让用户以为付了摘要。
 		// 判定与状态栏进度的 setWantsSummary 同源，两处不会漂。库内批次的文案逐字不变。
-		const wantsSummary = (tasks || []).some(task => !isRectoExternalTask(task))
-			&& this.shouldGenerateSummaryOnConvert();
-		const parts = ["转换"];
-		if (wantsTranslation) parts.push("翻译");
-		if (wantsSummary) parts.push("已启用的摘要");
-		const content = parts.length === 1
-			? parts[0]
-			: `${parts.slice(0, -1).join("、")}与${parts[parts.length - 1]}`;
-		const details = [`处理内容：${content}。`];
-		if (describeBackendAccountView(this.settings).creditPackMode) {
-			details.push(wantsTranslation
-				? "PDF 转换当前免费；转换完成后按实际页数消耗翻译页。"
-				: "PDF 转换当前免费，不消耗翻译页。");
-		}
-		details.push("请确认选择范围无误，并确保您有权处理这些文件。");
-		return await this.openDecision({
-			title: wantsTranslation ? "批量转换并翻译" : "批量转换",
-			intro: `即将处理选中的 ${count} 篇 PDF。`,
-			details,
-			actions: [
-				{ label: "取消", value: false },
-				{ label: `${wantsTranslation ? "转换并翻译" : "转换"} ${count} 篇`, value: true, cta: true },
+		const wantsSummary = (tasks || []).some(task => task.requestSummary === true);
+		return await this.openDecision(() => {
+			const parts = [rectoUiText("progress.convert")];
+			if (wantsTranslation) parts.push(rectoUiText("progress.translate"));
+			if (wantsSummary) parts.push(rectoUiText("batch.summaryPart"));
+			const content = parts.length === 1 ? parts[0] : rectoUiText("batch.partsFinal", {
+				first: parts.length === 3 ? rectoUiText("batch.partsJoin", { first: parts[0], second: parts[1] }) : parts[0],
+				last: parts[parts.length - 1],
+			});
+			return {
+			title: rectoUiText(wantsTranslation ? "batch.convertTranslateTitle" : "batch.convertTitle"),
+			intro: rectoUiText("batch.convertIntro", { count }),
+			details: [
+				rectoUiText("batch.content", { content }),
+				...(describeBackendAccountView(this.settings).creditPackMode ? [rectoUiText(wantsTranslation ? "batch.freeTranslate" : "batch.freeConvert")] : []),
+				rectoUiText("batch.rights"),
 			],
+			actions: [
+				{ label: rectoUiText("dialog.cancel"), value: false },
+				{ label: rectoUiText("batch.convertAction", { action: rectoUiText(wantsTranslation ? "progress.convertTranslate" : "progress.convert"), count }), value: true, cta: true },
+			],
+		};
 		});
 	}
 
@@ -12511,46 +15415,76 @@ class RectoPlugin extends obsidian.Plugin {
 	 * 早就转换好的论文单独译（stem 从本地论文库拿）。两种情形走的是同一段代码，所以
 	 * 「新转换的」和「已转换的」不可能翻出两种结果。
 	 */
-	async runBackendTranslationPhase(task, stem, modal, operation, onTaskCreated) {
+	async runBackendTranslationPhase(task, stem, modal, operation, onTaskCreated, options = {}) {
 		const setStage = (stage) => { if (modal) modal.setStage(stage, task.name || stem); };
 		const log = message => { if (modal) modal.log(message); };
+		if (!options.existing && task.requestSummary === true && !isRectoMarkdownTranslationTask(task)
+			&& this.app.vault.getAbstractFileByPath(task.namingVersion === 1 && task.sourcePath ? obsidian.normalizePath(`${nodePath.posix.dirname(task.sourcePath)}/${getSummaryFileName(stem)}`) : this.getSummaryPath(stem))) {
+			task.requestSummary = false;
+			if (modal) modal.summarySkipped = (modal.summarySkipped || 0) + 1;
+			log(`${stem}：已有摘要，保留并跳过生成`);
+		}
 		// T84-S：库内论文读磁盘上现成的 sidecar；任意 Markdown 现场合成一份无页的。
 		// 这是本条**唯一**的提交侧分叉，往下（建任务、上传、轮询、取结果）逐字共用。
 		const markdownTask = isRectoMarkdownTranslationTask(task);
 		setStage(markdownTask ? "读取文档" : "读取论文内容");
+		if (options.existing && task.namingVersion === 1 && task.sourceContentHash) {
+			const source = this.app.vault.getAbstractFileByPath(task.sourcePath || task.markdownPath);
+			if (!source || documentContentHash(await this.app.vault.read(source)) !== task.sourceContentHash) throw new Error(documentLanguageText("原文已改变，请重新确认后发起翻译。", "The source changed; confirm it before starting a new translation."));
+		}
 		const sidecarText = markdownTask
 			? await this.buildMarkdownTranslationSidecarText(task)
 			: await this.readLocalPaperSidecarText(stem, task);
+		if (task.namingVersion === 1) await this.prepareDocumentTranslation(task, stem, sidecarText, !!options.existing);
 		const quotePages = Number(task && task.translationQuotePages) > 0
 			? Number(task.translationQuotePages)
 			: estimateRectoSidecarTranslationPages(sidecarText);
 		const quote = describeTranslationQuote(this.settings, quotePages);
-		if (quote.active) {
+		if (!options.existing && quote.active) {
 			log(quote.text);
 			if (quote.shortfall > 0) {
 				throw new Error(`${quote.text}。请先购买翻译页。`);
 			}
 		}
 		setStage("提交译文");
-		const created = await this.createBackendTranslationTask(task);
+		const created = options.existing || await this.createBackendTranslationTask(task);
+		if (!options.existing && task.namingVersion === 1 && (created.languageContract?.version !== 1
+			|| created.languageContract.target?.id !== task.languageContract.target.id || created.languageContract.sourceRevisionId !== task.sourceRevisionId)) {
+			await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(created.taskId)}/cancel`, { method: "POST" }).catch(() => {});
+			throw new Error(documentLanguageText("服务未确认翻译语言，任务未上传或扣费。", "The service did not confirm the language contract. Nothing was uploaded or charged."));
+		}
 		const translationTaskId = created.taskId;
+		if (!options.existing && task.requestSummary === true && (!Array.isArray(created.requestedOutputs)
+			|| !created.requestedOutputs.includes("summary"))) {
+			await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(translationTaskId)}/cancel`, { method: "POST", timeout: 30000 }).catch(() => {});
+			const error = new Error("Summary capability unavailable");
+			error.rectoUiKey = "task.summaryUnsupported";
+			throw error;
+		}
 		// 交给调用方：中途取消时要能把这个后端任务也取消掉，否则它会一直跑到超时才退额度。
 		if (typeof onTaskCreated === "function") onTaskCreated(translationTaskId);
+		// 创建尚未扣费；登记成功后才上传/冻结额度。一次保存将父阶段替换成可恢复的子任务。
+		if (!options.existing) await this.persistPendingBackendTask(translationTaskId,
+			{ ...task, stem, translateOnly: true, resumeTranslationSubmit: true }, "awaiting_upload", {
+				ownerRunId: operation ? operation.runId : "", replacesTaskId: options.replacesTaskId,
+			});
 		log(`已提交翻译：${task.name || stem}`);
 		setStage("上传论文内容");
-		const uploaded = await this.uploadBackendTaskSidecar(translationTaskId, sidecarText);
+		const uploaded = String(created.status || "").toLowerCase() === "uploaded"
+			? created : await this.uploadBackendTaskSidecar(translationTaskId, sidecarText);
 		log("论文内容已上传");
 		setStage("排队");
+		// uploaded 只保证 Sidecar 已存储；冻结失败时由 submit 按原任务幂等补冻，不重复上传。
 		await this.runBackendRealTask(translationTaskId);
-		// 提交成功后后端会在 READY 时扣费，从这一刻起持久化以便重启恢复、避免重复提交与重复扣费。
-		await this.persistPendingBackendTask(translationTaskId, { ...task, stem, translateOnly: true }, "submitted", {
+		await this.persistPendingBackendTask(translationTaskId, { ...task, stem, translateOnly: true, resumeTranslationSubmit: true }, "submitted", {
 			ownerRunId: operation ? operation.runId : "",
 		});
 		const ready = await this.pollBackendTaskStatus(translationTaskId, modal);
 		setStage("取译文");
 		const result = await this.fetchBackendTaskResult(ready.taskId, modal);
+		if (shouldRejectBackendMockResult(result, true)) throw new Error("后端返回测试占位结果，任务已保留且未写入");
 		setStage("写回译文");
-		await this.writeBackendTranslationResult(task, stem, result, modal);
+		await this.writeBackendTranslationArtifacts(task, stem, result, modal);
 		await this.acknowledgeBackendTaskResult(ready.taskId);
 		await this.clearPendingBackendTask(ready.taskId);
 		// 豁免发生在冻结那一刻（上传 Sidecar），READY 只是把它带回来；两个都看是为了让
@@ -12558,28 +15492,28 @@ class RectoPlugin extends obsidian.Plugin {
 		return { stem, tailExemption: backendTaskUsedTailExemption(uploaded) || backendTaskUsedTailExemption(ready) };
 	}
 
-	async runBackendBatchWithTasks(tasks) {
+	async runBackendBatchWithTasks(tasks, options = {}) {
 		const s = this.settings;
 		// 拒绝云端确认（或按 Esc 关掉）不能一声不吭地返回：用户刚点过转换/翻译，界面毫无反应
 		// 与「点坏了」分不开。措辞与库外 PDF 那条入口一致。
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
-			new obsidian.Notice("尚未启用云端处理，本次处理已取消。", 6000);
+			new obsidian.Notice(rectoUiText("task.noConsent"), 6000);
 			return;
 		}
-		if (!this.hasBackendAccountSession()) { new obsidian.Notice("请先登录 Recto 账号"); return; }
-		if (!tasks || !tasks.length) { new obsidian.Notice("没有选择需要提交到 Recto 的任务"); return; }
+		if (!this.hasBackendAccountSession()) { new obsidian.Notice(rectoUiText("external.signIn")); return; }
+		if (!tasks || !tasks.length) { new obsidian.Notice(rectoUiText("task.noTasks")); return; }
 		tasks = tasks.map(task => ({ ...task, recordId: task.recordId || task.folder || task.name }));
 		// 只翻译的批次没有 PDF，走的是 Sidecar 上传；其余每一篇都必须有本地 PDF 可上传。
 		const translateOnly = tasks.every(task => task.translateOnly === true);
 		if (!translateOnly && tasks.some(task => !task.path)) {
-			new obsidian.Notice("转换任务需要本地 PDF 路径才能上传", 8000);
+			new obsidian.Notice(rectoUiText("task.pdfPathMissing"), 8000);
 			return;
 		}
-		if (tasks.length > 1 && translateOnly) {
+		if (!options.batchConfirmed && tasks.length > 1 && translateOnly) {
 			if (!(await this.confirmBackendTranslationRun(tasks))) {
 				return;
 			}
-		} else if (tasks.length > 1 && !(await this.confirmBackendRealProviderRun(tasks))) {
+		} else if (!options.batchConfirmed && tasks.length > 1 && !(await this.confirmBackendRealProviderRun(tasks))) {
 			return;
 		}
 		// T84-S：翻译任意 Markdown 与论文库无关——产物落在**原文同目录**。没配过论文库的用户
@@ -12588,7 +15522,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const markdownOnly = tasks.every(task => isRectoMarkdownTranslationTask(task));
 		const base = markdownOnly ? "" : this.getValidatedBaseFolderOrNotice();
 		if (!markdownOnly && !base) return;
-		const operation = this.beginOperation("论文云端处理");
+		const operation = this.beginOperation(rectoUiText("task.cloudProcessing"));
 		if (!operation) return;
 		let modal = null;
 		let suspended = false;
@@ -12604,7 +15538,7 @@ class RectoPlugin extends obsidian.Plugin {
 			});
 			if (blocked.length) {
 				// 命令的真实显示名就是「恢复未完成的云端处理」，没有「立即」二字——照着提示去搜是搜不到的。
-			new obsidian.Notice(`有 ${blocked.length} 篇论文仍在恢复或已经完成，已阻止重复提交并启动恢复检查。请勿重复上传；也可在命令面板运行“Recto: 恢复未完成的云端处理”。`, 12000);
+			new obsidian.Notice(rectoUiText("task.blockedDuplicate", { count: blocked.length }), 12000);
 				return;
 			}
 			this.stemReservations = new Map();
@@ -12621,7 +15555,7 @@ class RectoPlugin extends obsidian.Plugin {
 			);
 			modal.setWantsTranslation(wantsTranslation);
 			// T84：库外任务不请求摘要，进度条里也不该显示摘要那一段。
-			modal.setWantsSummary(!translateOnly && tasks.some(task => !isRectoExternalTask(task)) && this.shouldGenerateSummaryOnConvert());
+			modal.setWantsSummary(tasks.some(task => task.requestSummary === true));
 			modal.enableCancel(operation);
 			modal.log(`开始处理 ${tasks.length} 篇论文`);
 			if (base) await this.ensureFolder(base);
@@ -12649,6 +15583,7 @@ class RectoPlugin extends obsidian.Plugin {
 					}
 					modal.setStage("提交", task.name);
 					const created = await this.createBackendHostedTask(task);
+					if (task.namingVersion === 1 && created.languageContract?.version !== 1) throw new Error(documentLanguageText("服务未确认文档语言功能，文件未上传。", "The service did not confirm document language support. The file was not uploaded."));
 					backendTaskId = created.taskId;
 					modal.log(`[${index + 1}/${tasks.length}] 已提交：${task.name || "未命名论文"}`);
 					modal.setStage("上传", task.name);
@@ -12668,11 +15603,14 @@ class RectoPlugin extends obsidian.Plugin {
 					}
 					modal.setStage("写回", task.name);
 					const stem = await this.writeBackendTaskResult(task, result, modal);
-					await this.acknowledgeBackendTaskResult(ready.taskId);
-					modal.log(`[${index + 1}/${tasks.length}] 结果已保存到本地`);
-					await this.clearPendingBackendTask(ready.taskId);
 					// 库外任务不建论文对象，只落去重记录——与重启恢复共用同一段（不变量 22）。
 					await this.commitConvertedTaskRecord(task, stem, result);
+					const handoff = await this.prepareBackendTranslationHandoff(ready.taskId, task, stem, operation);
+					if (!handoff) {
+						await this.acknowledgeBackendTaskResult(ready.taskId);
+						await this.clearPendingBackendTask(ready.taskId);
+					}
+					modal.log(`[${index + 1}/${tasks.length}] 结果已保存到本地`);
 					// T81-S：转换与翻译是两段独立计费。第二段失败（最常见的是翻译额度不够）
 					// 绝不能把已经写好、也已经扣过费的转换成果一起判为失败——如实说明即可。
 					// T82-A-S-U：刚写完的正文若是 `ch-*.md`，说明原文就是中文——不跑第二段。
@@ -12681,7 +15619,7 @@ class RectoPlugin extends obsidian.Plugin {
 						modal.log(`${stem}：原文是中文，跳过翻译`);
 					} else if (this.wantsTranslationForTask(task)) {
 						try {
-							const phase = await this.runBackendTranslationPhase(task, stem, modal, operation, id => { backendTaskId = id; });
+							const phase = await this.resumeBackendTranslationHandoff(ready.taskId, { ...task, stem }, modal, operation, id => { backendTaskId = id; });
 							if (phase.tailExemption) exemptedCount += 1;
 						} catch (translationError) {
 							if (isCancellationError(translationError, this.getActiveSignal())) throw translationError;
@@ -12691,8 +15629,8 @@ class RectoPlugin extends obsidian.Plugin {
 							// 事后补译要等 T84-S，现在只说实话。
 							new obsidian.Notice(
 								isRectoExternalTask(task)
-									? `${stem}：转换已完成并保存，但翻译未成功（${reason}）。转换的额度已扣、翻译的没有扣。`
-									: `${stem}：转换已完成并保存，但翻译未成功（${reason}）。转换的额度已扣、翻译的没有扣，这篇现在是「已转换无译文」，可以在 Hub 里单独重试翻译。`,
+									? rectoUiText("task.translationFailedExternal", { stem, reason })
+									: rectoUiText("task.translationFailedHub", { stem, reason }),
 								12000
 							);
 						}
@@ -12745,22 +15683,25 @@ class RectoPlugin extends obsidian.Plugin {
 				}
 			}
 			modal.setFinished(failedCount ? `完成，${failedCount} 篇失败` : "已完成");
-			const failedNoticeSuffix = failedCount ? (failureLogPath ? `，请查看 ${failureLogPath}` : "，失败日志保存失败") : "";
-			const stoppedSuffix = stoppedEarly ? `，已取消未开始的 ${stoppedEarly} 篇` : "";
+			const failedNoticeSuffix = failedCount ? (failureLogPath ? rectoUiText("task.failureLog", { path: failureLogPath }) : rectoUiText("task.logSaveFailed")) : "";
+			const stoppedSuffix = stoppedEarly ? rectoUiText("task.stoppedSuffix", { count: stoppedEarly }) : "";
 			new obsidian.Notice(
-				`Recto：成功 ${successCount} 篇，失败 ${failedCount} 篇${stoppedSuffix}${failedNoticeSuffix}`,
+				rectoUiText("task.batchSummary", { success: successCount, failed: failedCount, stopped: stoppedSuffix, log: failedNoticeSuffix }),
 				failedCount ? 10000 : 6000
 			);
+			if (modal.summarySkipped) {
+				new obsidian.Notice(rectoUiText("hub.summaryExists", { count: modal.summarySkipped }), 8000);
+			}
 			// T82-A-S：如实告知豁免。不说补了多少点（不变量 13），只说做完了、额度已用完。
 			if (exemptedCount) {
 				new obsidian.Notice(
-					`其中 ${exemptedCount} 篇的额度差了一点点，已为您补足并把这一篇做完。额度现在已用完，继续处理需要先购买。`,
+					rectoUiText("task.exemption", { count: exemptedCount }),
 					12000
 				);
 			}
 		} catch (error) {
 			const cancelled = isCancellationError(error, operation.controller.signal);
-			const reason = getUserFacingErrorMessage(error, "处理未完成，请稍后重试。");
+			const reason = getUserFacingErrorMessage(error, rectoUiText("error.remoteTask"));
 			let failureLogPath = "";
 			if (modal) {
 				if (!cancelled) modal.log(`处理已停止：${reason}`);
@@ -12774,7 +15715,7 @@ class RectoPlugin extends obsidian.Plugin {
 				}
 				modal.setFinished(cancelled ? "已中止" : "已失败");
 			}
-			if (!cancelled) new obsidian.Notice(`Recto 任务失败：${reason}${failureLogPath ? `，请查看 ${failureLogPath}` : ""}`, 8000);
+			if (!cancelled) new obsidian.Notice(rectoUiText("task.failed", { error: reason, log: failureLogPath ? rectoUiText("task.failureLog", { path: failureLogPath }) : "" }), 8000);
 		} finally {
 			if (suspended) await this.resumePaperJsonlRefresh({ flush: true });
 			this.finishOperation(operation);
@@ -12786,8 +15727,15 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
-	async runBatchWithTasks(tasks) {
-		return await this.runBackendBatchWithTasks(tasks);
+	async runBatchWithTasks(tasks, options = {}) {
+		await this.ensureDocumentLanguageCapabilities();
+		const preferences = this.settings.documentLanguages;
+		for (const task of tasks) {
+			task.namingVersion = 1;
+			task.languageContract = { version: 1, namingVersion: 1, source: null, sourceEvidence: "unknown", target: preferences.translationTarget, sourceRevisionId: null, ocrLanguage: "auto", unifiedOutput: true };
+		}
+		for (const task of tasks) if (task.requestSummary) task.summaryLanguage = task.languageContract.target.id;
+		return await this.runBackendBatchWithTasks(tasks, options);
 	}
 
 	// Hub 的转换/翻译入口。刻意复用 preparePdfTasks + runBatchWithTasks 这条既有管线，
@@ -12796,42 +15744,48 @@ class RectoPlugin extends obsidian.Plugin {
 	async runHubBatchForRecords(recordIds, options = {}) {
 		const wanted = new Set((recordIds || []).map(id => String(id || "")).filter(Boolean));
 		if (!wanted.size) {
-			new obsidian.Notice("请先在列表里选择论文", 5000);
+			new obsidian.Notice(rectoUiText("hub.noSelection"), 5000);
 			return null;
 		}
-		if (!this.hasBackendAccountSession()) { new obsidian.Notice("请先登录 Recto 账号"); return null; }
+		if (!this.hasBackendAccountSession()) { new obsidian.Notice(rectoUiText("external.signIn")); return null; }
 		if (!this.getValidatedBaseFolderOrNotice()) return null;
 		if (await this.blockedByUnsupportedRectoVersion()) return null;
 		const available = await this.preparePdfTasks();
 		if (available == null) return null;
 		const picked = available.filter(task => wanted.has(String(task.recordId || task.folder || "")));
 		if (!picked.length) {
-			new obsidian.Notice("选中的论文里没有可提交的未转换 PDF；已转换的论文请看右栏说明。", 8000);
+			new obsidian.Notice(rectoUiText("hub.noConvertible"), 8000);
 			return null;
 		}
 		const skipped = wanted.size - picked.length;
 		if (skipped > 0) {
-			new obsidian.Notice(`选中 ${wanted.size} 篇，其中 ${picked.length} 篇可提交，${skipped} 篇已转换或源 PDF 不可读取，已跳过。`, 8000);
+			new obsidian.Notice(rectoUiText("hub.skippedConversion", { total: wanted.size, ready: picked.length, skipped }), 8000);
 		}
 		const requestTranslation = options.requestTranslation === true;
 		// T83-N：profile 在这里定死一次，整批共用同一个值——批次跑到一半用户改了开关，
 		// 后半批不该悄悄换一套规则。
 		const postprocessProfile = this.getBackendPostprocessProfile();
-		return await this.runBatchWithTasks(picked.map(task => ({ ...task, requestTranslation, postprocessProfile })));
+		return await this.runBatchWithTasks(picked.map(task => ({
+			...task, requestTranslation, postprocessProfile,
+			requestSummary: requestTranslation && options.requestSummary === true,
+			protectExistingTranslation: requestTranslation,
+				summaryLanguage: options.summaryLanguage || this.settings.documentLanguages?.summaryLanguage || "zh-CN",
+			summaryDepth: options.summaryDepth || "standard",
+		})), { batchConfirmed: options.batchConfirmed === true });
 	}
 
 	/**
 	 * T81-S：Hub 的「翻译」入口。同一次点击里可能混着两种论文——未转换的要先转换再译，
-	 * 已转换无译文的只译。两组分别跑一批：它们的上传内容、计费段数与确认措辞都不一样，
-	 * 混在一批里必然有一半的提示是错的。
+	 * 已转换无译文的只译。两组分别执行，在摘要选择弹窗统一确认整次操作。
 	 */
 	async runHubTranslateForRecords(recordIds) {
+		await this.ensureDocumentLanguageCapabilities();
 		const wanted = (recordIds || []).map(id => String(id || "")).filter(Boolean);
 		if (!wanted.length) {
-			new obsidian.Notice("请先在列表里选择论文", 5000);
+			new obsidian.Notice(rectoUiText("hub.noSelection"), 5000);
 			return null;
 		}
-		if (!this.hasBackendAccountSession()) { new obsidian.Notice("请先登录 Recto 账号"); return null; }
+		if (!this.hasBackendAccountSession()) { new obsidian.Notice(rectoUiText("external.signIn")); return null; }
 		if (!this.getValidatedBaseFolderOrNotice()) return null;
 		if (await this.blockedByUnsupportedRectoVersion()) return null;
 
@@ -12843,23 +15797,14 @@ class RectoPlugin extends obsidian.Plugin {
 			const converted = this.convertedFolders.includes(recordId) && info && this.hasConvertedOutput(recordId);
 			if (converted && info && info.stem) {
 				// 已转换但原文就是中文：既不该翻译，**也绝不能丢进 needConversion 重转一遍**。
-				if (this.hasForeignSourceMarkdown(recordId)) translateOnly.push({ recordId, stem: info.stem, info });
+				if (this.hasForeignSourceMarkdown(recordId) || info.namingVersion === 1 || this.settings.documentLanguages) translateOnly.push({ recordId, stem: info.stem, info });
 				else chineseSource.push(info.stem);
 			} else needConversion.push(recordId);
 		}
-
-		if (chineseSource.length) {
-			new obsidian.Notice(
-				`${chineseSource.length} 篇原文就是中文，已跳过翻译（这类论文不需要译文，也不会扣额度）。`,
-				8000
-			);
+		if (!translateOnly.length && !needConversion.length) {
+			if (chineseSource.length) new obsidian.Notice(rectoUiText("hub.chineseSkipped", { count: chineseSource.length }), 8000);
+			return null;
 		}
-
-		if (needConversion.length) {
-			await this.runHubBatchForRecords(needConversion, { requestTranslation: true });
-		}
-		if (!translateOnly.length) return null;
-
 		const tasks = translateOnly.map(item => ({
 			...item.info,
 			recordId: item.recordId,
@@ -12867,6 +15812,7 @@ class RectoPlugin extends obsidian.Plugin {
 			name: item.info.originalName || item.info.sourceFileName || `${item.stem}.pdf`,
 			translateOnly: true,
 			requestTranslation: true,
+			protectExistingTranslation: true,
 		}));
 		for (const task of tasks) {
 			try {
@@ -12880,14 +15826,40 @@ class RectoPlugin extends obsidian.Plugin {
 		const quote = describeTranslationQuote(this.settings, quotedPages);
 		if (quote.active && quote.shortfall > 0) {
 			new obsidian.Notice(
-				`${tasks.length === 1 ? quote.text : `本批预计消耗 ${formatTranslationPages(quotedPages)} 页；现有 ${formatTranslationPages(quote.available)} 页，还差 ${formatTranslationPages(quote.shortfall)} 页`}。请先购买翻译页。`,
+				rectoUiText("markdown.buyPages", { quote: tasks.length === 1 ? quote.text : rectoUiText("batch.shortfall", { needed: formatTranslationPages(quotedPages), available: formatTranslationPages(quote.available), shortfall: formatTranslationPages(quote.shortfall) }) }),
 				10000,
 			);
 			this.openAccountModal();
 			return null;
 		}
-		if (quote.active && tasks.length === 1) new obsidian.Notice(`${quote.text}。`, 6000);
-		return await this.runBatchWithTasks(tasks);
+		const count = tasks.length + needConversion.length;
+		const choice = await this.openDecision(() => ({
+			title: needConversion.length ? rectoUiText("batch.convertTranslateTitle") : rectoUiText("batch.translateTitle"),
+			intro: rectoUiText("batch.translateIntro", { count }),
+			details: [
+				...(needConversion.length ? [rectoUiText("batch.convertIntro", { count: needConversion.length })] : []),
+				...(quote.active && quotedPages > 0 ? [rectoUiText("batch.quote", { needed: formatTranslationPages(quotedPages), available: formatTranslationPages(quote.available) })] : []),
+				...(tasks.length ? [rectoUiText("batch.translateReuse")] : []),
+				...(describeBackendAccountView(this.settings).creditPackMode ? [rectoUiText("batch.freeTranslate")] : []),
+				...(needConversion.length ? [rectoUiText("batch.rights")] : []),
+			],
+			summaryChoice: true,
+			actions: [
+				{ label: rectoUiText("dialog.cancel"), value: false },
+				{ label: rectoUiText("batch.translateAction", { count }), value: true, cta: true },
+			],
+		}));
+		if (!choice || choice.accepted !== true) return null;
+		if (chineseSource.length) new obsidian.Notice(rectoUiText("hub.chineseSkipped", { count: chineseSource.length }), 8000);
+		if (needConversion.length) await this.runHubBatchForRecords(needConversion, {
+			requestTranslation: true, requestSummary: choice.requestSummary,
+			summaryDepth: choice.summaryDepth, summaryLanguage: choice.summaryLanguage, batchConfirmed: true,
+		});
+		if (!tasks.length) return null;
+		for (const task of tasks) Object.assign(task, {
+			requestSummary: choice.requestSummary, summaryLanguage: choice.summaryLanguage, summaryDepth: choice.summaryDepth,
+		});
+		return await this.runBatchWithTasks(tasks, { batchConfirmed: true });
 	}
 
 	getTranslationPath(stem, subFolder) {
@@ -12918,6 +15890,7 @@ class RectoPlugin extends obsidian.Plugin {
 	// 登记的 outputRoot 给出（重启恢复读的是同一条登记）。转换写回、翻译输入、译文写回
 	// 三处共用这一个口径——分头各算一次就会出现「转换写到 A、翻译去 B 找」的漂移。
 	resolveTaskPaperFolder(task, stem) {
+		if (task?.namingVersion === 1 && task.sourcePath) return nodePath.posix.dirname(task.sourcePath);
 		if (isRectoExternalTask(task)) return obsidian.normalizePath(`${task.outputRoot}/${stem}`);
 		return this.getPaperSubFolder(stem);
 	}
@@ -12969,6 +15942,7 @@ class RectoPlugin extends obsidian.Plugin {
 	// 对象，直接看刚写回的目录里有没有 `en-<stem>.md`。**判据与库内同源**（磁盘上有没有 en-），
 	// 因为中文源论文的正文与译文目标路径同名，判错会用译文覆盖原文。
 	hasForeignSourceMarkdownForTask(task, stem) {
+		if (task.namingVersion === 1 && task.sourcePath) return !!this.app.vault.getAbstractFileByPath(task.sourcePath);
 		if (!isRectoExternalTask(task)) return this.hasForeignSourceMarkdown(task && task.recordId);
 		if (!stem) return false;
 		const path = this.getSourceMarkdownPath(stem, this.resolveTaskPaperFolder(task, stem), "en");
@@ -13057,7 +16031,7 @@ class RectoPlugin extends obsidian.Plugin {
 			};
 		}).filter(Boolean);
 		if (!candidates.length) {
-			new obsidian.Notice("这些论文已经不在库里了");
+			new obsidian.Notice(rectoUiText("delete.missing"));
 			return;
 		}
 		return this.deleteSelectedPapers(candidates);
@@ -13070,7 +16044,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.preflightTrashRecords(recordIds);
 		} catch (e) {
 			const reason = getUserFacingErrorMessage(e, "删除前检查未通过，请刷新论文库后重试。");
-			new obsidian.Notice(`删除预检失败: ${reason}`, 10000);
+			new obsidian.Notice(rectoUiText("delete.preflightFailed", { error: reason }), 10000);
 			return { status: "error", reason };
 		}
 		const operation = this.beginOperation("删除库中论文");
@@ -13080,6 +16054,10 @@ class RectoPlugin extends obsidian.Plugin {
 		try {
 			for (const candidate of candidates) {
 				try {
+					if (this.hubNotesStore && candidate.folder) {
+						if (!this.hubNotesStore.flush(candidate.folder)) throw new Error("Note 尚未保存，请重试后再删除。");
+						this.hubNotesStore.forget(candidate.folder);
+					}
 					await this.removeFolderRecursive(candidate.paperPath);
 					await this.removeFolderRecursive(candidate.summaryPath);
 					if (candidate.folder) {
@@ -13102,7 +16080,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.pruneReadingStates();
 			await this.save();
 			await this.writePaperJsonlIndex();
-			new obsidian.Notice(`删除完成：成功 ${deleted}，失败 ${failed}`, failed ? 10000 : 6000);
+			new obsidian.Notice(rectoUiText("delete.done", { success: deleted, failed }), failed ? 10000 : 6000);
 			this.safeRefreshHubViews();
 			return { status: "completed", deleted, failed };
 		} finally {
@@ -13131,7 +16109,7 @@ class RectoPlugin extends obsidian.Plugin {
 		let src;
 		try { src = this.getZoteroStoragePath(); }
 		catch (e) { new obsidian.Notice(getZoteroUserFacingErrorMessage(e)); return; }
-		if (!src || !fs.existsSync(src)) { new obsidian.Notice("源文件夹不存在"); return; }
+		if (!src || !fs.existsSync(src)) { new obsidian.Notice(rectoUiText("delete.sourceMissing")); return; }
 		const base = this.getValidatedBaseFolderOrNotice();
 		if (!base) return;
 		let fixed = 0, total = 0;
@@ -13159,8 +16137,8 @@ class RectoPlugin extends obsidian.Plugin {
 		// 一篇都没扫到时报「0/0 个文件已重新复制」听着像修完了，其实是没东西可修——分开说。
 		new obsidian.Notice(
 			total > 0
-				? `PDF 修复完成：${fixed}/${total} 个文件已重新复制`
-				: "没有找到需要重新复制的 PDF：还没有导入过论文，或 Zotero 源文件当前不可读。",
+				? rectoUiText("pdfRepair.done", { fixed, total })
+				: rectoUiText("pdfRepair.none"),
 			8000
 		);
 	}
@@ -13198,10 +16176,10 @@ class RectoPlugin extends obsidian.Plugin {
 	createSanitizedDistributionPackage() {
 		try {
 			const zipPath = createSanitizedDistributionZip(this.getPluginDirectoryPath());
-			new obsidian.Notice(`脱敏分发包已生成: ${nodePath.basename(zipPath)}`, 10000);
+			new obsidian.Notice(rectoUiText("distribution.done", { file: nodePath.basename(zipPath) }), 10000);
 			return zipPath;
 		} catch (e) {
-			new obsidian.Notice(getUserFacingErrorMessage(e, "分发包生成未完成，请稍后重试。"), 10000);
+			new obsidian.Notice(getUserFacingErrorMessage(e, rectoUiText("distribution.failed")), 10000);
 			throw e;
 		}
 	}
@@ -13303,16 +16281,14 @@ function createRectoHubViewClass(api) {
 			// 断点全写在 styles.css 的 @container 里，宽档下这两个 class 根本没有对应规则，
 			// 于是「返回列表」「关抽屉」在宽档就是视觉无操作，整条链路一次 getComputedStyle 都不需要。
 			this.activePane = "list"; // "list" | "detail"
-			// navOpen 是**窄档**悬浮抽屉的瞬时状态；navCollapsed 是**三栏档**常驻分类树收没收起的
-			// 持久化偏好。两者互不相干、各自只在自己那一档有 CSS 规则——正因为如此，同一个按钮
-			// 点一下把两个都翻一遍是安全的，也就不必在 JS 里问「现在是宽还是窄」。
+			// 窄栏抽屉与宽栏折叠分开控制；断点由 CSS 决定显示哪一个开关。
 			this.navOpen = false;
-			this.navCollapsed = !!(this.filters && this.filters.navCollapsed);
+			this.navCollapsed = false;
 			this.navHoverTimer = null;
 		}
 
 		getViewType() { return RECTO_HUB_VIEW_TYPE; }
-		getDisplayText() { return "Recto 论文库"; }
+		getDisplayText() { return rectoUiText("hub.viewTitle"); }
 		getIcon() { return RECTO_ICON_ID; }
 
 		async onOpen() {
@@ -13320,8 +16296,6 @@ function createRectoHubViewClass(api) {
 			container.empty();
 			container.addClass("recto-hub-host");
 			this.rootEl = container.createDiv({ cls: "recto-ui recto-hub" });
-			// 三栏档的分类树收起状态是记住的；这里只上 class，不回写（回写要留给用户的动作）。
-			this.rootEl.toggleClass("is-nav-collapsed", this.navCollapsed);
 			// 队列条常驻在最底部、横跨整个 Hub，所以 root 是纵向的，三栏收进 body。
 			this.bodyEl = this.rootEl.createDiv({ cls: "recto-hub-body" });
 			this.navEl = this.bodyEl.createDiv({ cls: "recto-hub-nav" });
@@ -13344,6 +16318,7 @@ function createRectoHubViewClass(api) {
 			// 详情栏只在窄栏切过去时由 setActivePane 主动聚焦，不进 Tab 序。
 			this.detailEl.tabIndex = -1;
 			this.buildToolbar();
+			this.resetLayout();
 			this.registerDomEvent(this.listEl, "scroll", () => this.handleListScroll());
 			this.registerDomEvent(this.listEl, "click", (event) => this.handleListClick(event));
 			this.registerDomEvent(this.listEl, "dblclick", (event) => this.handleListDoubleClick(event));
@@ -13375,6 +16350,7 @@ function createRectoHubViewClass(api) {
 			// 详情栏里按 Esc 回列表。宽档下它只是把 activePane 写回 "list"，没有对应 CSS 规则，
 			// 看不出任何变化——列表那条 Esc（收回多选）在 handleListKeydown 里，两者互不相干。
 			this.registerDomEvent(this.detailEl, "keydown", (event) => {
+				if (event.target && event.target.closest && event.target.closest(".recto-hub-note")) return;
 				if (event.key !== "Escape" && event.key !== "ArrowLeft") return;
 				event.preventDefault();
 				this.setActivePane("list", { focus: true });
@@ -13397,17 +16373,16 @@ function createRectoHubViewClass(api) {
 			this.registerDomEvent(this.navEl, "mouseleave", () => {
 				if (this.navOpen) this.closeNavAfterHover();
 			});
-			// 布局一变就回到列表（T86-A 第五轮）。宽档下每次点行都会把 activePane 写成 "detail"
-			// （那一档没有对应规则、看不出来），于是把窗口拖窄时单栏显示的是详情栏而不是列表——
-			// 而列表才是「家」。**这不是宽度判断**：它不问「我现在多宽」，只在布局变动时把前台
-			// 复位到主栏，断点仍然只有 styles.css 一处真值。
-			this.registerEvent(this.app.workspace.on("resize", () => this.setActivePane("list")));
+			// 调整布局时回到列表并清除临时菜单状态，让 CSS 断点重新决定三/二/一栏。
+			this.registerEvent(this.app.workspace.on("resize", () => this.resetLayout()));
 			// 队列条订阅任务状态：切走再回来（甚至重启 Obsidian）都能把在途任务重新画出来。
 			this.unsubscribeTaskQueue = this.plugin.onTaskQueueChanged(() => this.renderQueue());
 			this.reload();
 		}
 
 		async onClose() {
+			this.closeReadMenu();
+			this.finishHubNote();
 			if (this.searchTimer) clearTimeout(this.searchTimer);
 			this.searchTimer = null;
 			this.cancelNavHoverClose();
@@ -13416,24 +16391,13 @@ function createRectoHubViewClass(api) {
 		}
 
 		buildToolbar() {
-			// 分类抽屉的开关。≤900 时左边那栏收成悬浮卡片，这个按钮就是它唯一的入口——
-			// T86-A 之前分类树在窄栏是直接消失的，面包屑只能清不能设，等于一扇单向门。
-			// **排在品牌之前**：品牌只在 <700 隐藏，跟在它后面的话这个按钮在 700–900 与 <700
-			// 两档会落在不同位置，同一个控件两个地方找。放第一个就永远钉在左上角。
-			this.navToggleEl = this.toolbarEl.createEl("button", { cls: "recto-hub-icon-button recto-hub-nav-toggle" });
-			// 汉堡而不是 panel-left：后者是「一个矩形被竖线分成左右两块」，和品牌 mark 的两根竖条
-			// （RECTO_ICON_SVG：左实心 + 右描边）是同一个形状家族，并排放着分不出谁是谁。
-			// 三条横线与那两根竖条方向正交，撞不上，也是最通用的「打开导航」符号。
-			setChromeIcon(this.navToggleEl, "menu");
-			this.registerDomEvent(this.navToggleEl, "click", (event) => {
-				event.stopPropagation();
-				this.toggleNav();
-			});
-			// 悬浮即展开、移开即缩回。延时是必须的——鼠标从按钮走向卡片的路上会有一瞬 hover 落空，
-			// 没有延时就会闪。监听只挂在开关上，而它在宽档 display:none、根本 hover 不到，
-			// 所以宽档下鼠标扫过不会白翻 class——仍然一次宽度判断都没有。
-			this.registerDomEvent(this.navToggleEl, "mouseenter", () => this.openNavOnHover());
-			this.registerDomEvent(this.navToggleEl, "mouseleave", () => this.closeNavAfterHover());
+			this.navToggleEl = this.toolbarEl.createEl("button", { cls: "recto-hub-icon-button recto-hub-nav-toggle recto-hub-nav-wide" });
+			this.navDrawerToggleEl = this.toolbarEl.createEl("button", { cls: "recto-hub-icon-button recto-hub-nav-toggle recto-hub-nav-drawer" });
+			for (const button of [this.navToggleEl, this.navDrawerToggleEl]) setChromeIcon(button, "menu");
+			this.registerDomEvent(this.navToggleEl, "click", event => { event.stopPropagation(); this.toggleNav(); });
+			this.registerDomEvent(this.navDrawerToggleEl, "click", event => { event.stopPropagation(); this.setNavOpen(!this.navOpen); });
+			this.registerDomEvent(this.navDrawerToggleEl, "mouseenter", () => this.openNavOnHover());
+			this.registerDomEvent(this.navDrawerToggleEl, "mouseleave", () => this.closeNavAfterHover());
 			this.syncNavToggle();
 			const brand = this.toolbarEl.createDiv({ cls: "recto-brand" });
 			const mark = brand.createSpan({ cls: "recto-brand-mark" });
@@ -13443,7 +16407,7 @@ function createRectoHubViewClass(api) {
 			setChromeIcon(search.createSpan({ cls: "recto-hub-search-icon" }), "search");
 			this.searchInput = search.createEl("input", {
 				type: "search",
-				placeholder: "搜索标题、作者、期刊、分类…",
+				placeholder: rectoUiText("hub.searchPlaceholder"),
 			});
 			this.registerDomEvent(this.searchInput, "input", () => {
 				if (this.searchTimer) clearTimeout(this.searchTimer);
@@ -13461,8 +16425,9 @@ function createRectoHubViewClass(api) {
 			this.refreshCreditsBadge();
 			// 设置入口就在额度旁边：Hub 是常驻工作面，从这里回设置比翻 Obsidian 的设置树快得多。
 			const settingsButton = this.toolbarEl.createEl("button", { cls: "recto-hub-icon-button" });
-			settingsButton.setAttribute("aria-label", "Recto 设置");
-			settingsButton.setAttribute("title", "Recto 设置");
+			this.settingsButtonEl = settingsButton;
+			settingsButton.setAttribute("aria-label", rectoUiText("hub.settings"));
+			settingsButton.setAttribute("title", rectoUiText("hub.settings"));
 			setChromeIcon(settingsButton, "settings");
 			this.registerDomEvent(settingsButton, "click", () => this.plugin.openRectoSettings());
 		}
@@ -13511,6 +16476,22 @@ function createRectoHubViewClass(api) {
 			this.renderQueue();
 		}
 
+		refreshUiLanguage() {
+			const listScrollTop = this.listEl ? this.listEl.scrollTop : 0;
+			const detailScrollTop = this.detailEl ? this.detailEl.scrollTop : 0;
+			if (this.leaf && typeof this.leaf.updateHeader === "function") this.leaf.updateHeader();
+			if (this.searchInput) this.searchInput.placeholder = rectoUiText("hub.searchPlaceholder");
+			if (this.settingsButtonEl) {
+				this.settingsButtonEl.setAttribute("aria-label", rectoUiText("hub.settings"));
+				this.settingsButtonEl.setAttribute("title", rectoUiText("hub.settings"));
+			}
+			this.renderNav();
+			this.applyFilters({ quiet: true });
+			this.renderQueue();
+			if (this.listEl) this.listEl.scrollTop = listScrollTop;
+			if (this.detailEl) this.detailEl.scrollTop = detailScrollTop;
+		}
+
 		// 「打开了一篇论文」只影响按「最近」在排或在筛的视图（T86-C）。别的情况下重排一次
 		// 得到的顺序一模一样，却要把滚动位置和分块进度赔进去——而从 Hub 点开一篇论文，
 		// 正是最常触发这个信号的操作。
@@ -13540,7 +16521,7 @@ function createRectoHubViewClass(api) {
 			if (dropped && wasBatch && !options.quiet) {
 				// 搜索框是 120ms 防抖的，连着打字会一句叠一句；替换掉上一条而不是堆起来。
 				if (this.deselectNotice && typeof this.deselectNotice.hide === "function") this.deselectNotice.hide();
-				this.deselectNotice = new api.Notice(`已选的 ${dropped} 篇不在当前筛选内，已退出选择。`, 6000);
+				this.deselectNotice = new api.Notice(rectoUiText("hub.selectionDropped", { count: dropped }), 6000);
 			}
 			if (this.anchorRecordId && !visibleIds.has(this.anchorRecordId)) this.anchorRecordId = "";
 			if (this.selectedRecordId && !visibleIds.has(this.selectedRecordId)) this.selectedRecordId = "";
@@ -13557,7 +16538,7 @@ function createRectoHubViewClass(api) {
 		// applyFilters 是所有筛选/排序变化的汇合点，持久化就挂在这儿。只有值真的变了才落盘——
 		// reload 每次写回、每次批次收尾都会走到这里，无脑 save 等于给 data.json 加一串空写。
 		persistViewState() {
-			const next = JSON.stringify(normalizeHubViewState({ ...this.filters, navCollapsed: this.navCollapsed }));
+			const next = JSON.stringify(normalizeHubViewState(this.filters));
 			if (next === this.persistedViewState) return;
 			this.persistedViewState = next;
 			this.plugin.settings.hubViewState = JSON.parse(next);
@@ -13577,8 +16558,16 @@ function createRectoHubViewClass(api) {
 			return this.selectedIds.size >= 2;
 		}
 
-		// ----- 窄栏形态（T86-A）。这四个方法只翻 class、只改前台是哪一栏，一次宽度判断都没有：
-		// 断点全在 styles.css 的 @container 里，宽档下这些 class 没有任何对应规则。
+		// 只重置临时布局状态，不重画列表/详情，保留选中论文、滚动位置与 Note 编辑节点。
+		// 旧 navCollapsed 偏好已不再读取或写入，否则重开/拉宽仍会把分类栏永久隐藏。
+		resetLayout() {
+			this.closeReadMenu();
+			this.setActivePane("list");
+			this.setNavOpen(false);
+			this.setNavCollapsed(false);
+		}
+
+		// ----- 面板形态：只翻 class，不测宽；断点全在 styles.css 的 @container 里。
 		// options.focus 只由**键盘**路径传 true（← / →）。鼠标点行不搬焦点：宽档下详情栏与列表同屏，
 		// 搬过去会把焦点从列表偷走、方向键当场失灵；而鼠标用户本来也不靠焦点，返回按钮就在眼前。
 		setActivePane(pane, options = {}) {
@@ -13601,13 +16590,11 @@ function createRectoHubViewClass(api) {
 		setNavCollapsed(collapsed) {
 			this.navCollapsed = !!collapsed;
 			if (this.rootEl) this.rootEl.toggleClass("is-nav-collapsed", this.navCollapsed);
-			this.persistViewState();
+			this.syncNavToggle();
 		}
 
-		// 一个按钮管两档：各自独立翻一次。三栏档只读 navCollapsed、窄档只读 navOpen，
-		// 所以在任一档里点它的效果都恰好是「开 ↔ 关」，不管另一个标志当时是什么值。
+		// 宽栏按钮临时收起分类树；窄栏抽屉由另一按钮单独控制。
 		toggleNav() {
-			this.setNavOpen(!this.navOpen);
 			this.setNavCollapsed(!this.navCollapsed);
 		}
 
@@ -13630,12 +16617,13 @@ function createRectoHubViewClass(api) {
 			}, HUB_NAV_HOVER_CLOSE_MS);
 		}
 
-		// 文案固定：这个按钮在两档管的是两件事（收起常驻树 / 开合悬浮抽屉），而 JS 不知道自己在哪一档，
-		// 所以任何「展开/收起」的措辞都会在另一档说反话。aria-expanded 同理，宁可不给也不给错的。
 		syncNavToggle() {
-			if (!this.navToggleEl) return;
-			this.navToggleEl.setAttribute("aria-label", "分类与阅读状态");
-			this.navToggleEl.setAttribute("title", "分类与阅读状态");
+			for (const [button, expanded] of [[this.navToggleEl, !this.navCollapsed], [this.navDrawerToggleEl, this.navOpen]]) {
+				if (!button) continue;
+				button.setAttribute("aria-label", rectoUiText("hub.navToggle"));
+				button.setAttribute("title", rectoUiText("hub.navToggle"));
+				button.setAttribute("aria-expanded", String(expanded));
+			}
 		}
 
 		// 列表上方那条**只在多选时出现**：单选已经是点行直接进详情，常驻一条按钮既多一步、又在列表和
@@ -13646,10 +16634,10 @@ function createRectoHubViewClass(api) {
 			const batch = this.isBatchMode();
 			this.paneJumpEl.toggleClass("is-hidden", !batch);
 			if (!batch) return;
-			this.paneJumpEl.setAttribute("title", "打开批量面板：转换、翻译、删除选中");
+			this.paneJumpEl.setAttribute("title", rectoUiText("hub.openBatchPane"));
 			this.paneJumpEl.createSpan({
 				cls: "recto-hub-pane-jump-label",
-				text: `已选 ${this.selectedIds.size} 篇 · 处理`,
+				text: rectoUiText("hub.batchPaneJump", { count: this.selectedIds.size }),
 			});
 			setChromeIcon(this.paneJumpEl.createSpan(), "chevron-right");
 		}
@@ -13659,7 +16647,7 @@ function createRectoHubViewClass(api) {
 		renderPaneBack() {
 			const back = this.detailEl.createEl("button", { cls: "recto-hub-pane-back" });
 			setChromeIcon(back.createSpan(), "chevron-left");
-			back.createSpan({ text: "返回列表" });
+			back.createSpan({ text: rectoUiText("hub.backToList") });
 			back.dataset.hubPane = "list";
 		}
 
@@ -13703,8 +16691,8 @@ function createRectoHubViewClass(api) {
 				cell.dataset.hubSort = key;
 				cell.setAttribute("role", "button");
 				cell.setAttribute("tabindex", "0");
-				cell.setAttribute("title", `按${HUB_SORT_LABELS[key]}排序`);
-				if (key !== "status") cell.createSpan({ text: HUB_SORT_LABELS[key] });
+				cell.setAttribute("title", rectoUiText("hub.sortBy", { label: rectoUiText(`hub.sort.${key}`) }));
+				if (key !== "status") cell.createSpan({ text: rectoUiText(`hub.sort.${key}`) });
 				if (key === "title") {
 					// 中/英切换：只有当前列表中有任何已译条目时才显示
 					const hasTranslated = this.visible.some(entry => entry.titleTranslated);
@@ -13714,9 +16702,8 @@ function createRectoHubViewClass(api) {
 							text: this.titleMode === "translated" ? "中" : "英",
 						});
 						modeBtn.dataset.hubTitleMode = "toggle";
-						modeBtn.setAttribute("title", this.titleMode === "translated"
-							? "当前显示中文标题，点击切换为英文标题"
-							: "当前显示英文标题，点击切换为中文标题");
+						modeBtn.setAttribute("title", rectoUiText(this.titleMode === "translated"
+							? "hub.showOriginalTitle" : "hub.showTranslatedTitle"));
 					}
 				}
 				const active = this.filters.sort === key;
@@ -13752,12 +16739,13 @@ function createRectoHubViewClass(api) {
 				: this.entries;
 			const summary = summarizeHubEntries(scoped);
 			// 计数跟着分类走，就必须说清是谁的计数；分类路径可能很长，只取末级名。
-			const leaf = this.filters.collectionPath.split(" / ").pop();
+			const collectionParts = this.filters.collectionPath ? splitZoteroCollectionPath(this.filters.collectionPath) : [];
+			const leaf = collectionParts[collectionParts.length - 1];
 			const section = this.navEl.createDiv({
 				cls: "recto-hub-nav-section",
-				text: leaf ? `阅读状态 · ${leaf}` : "阅读状态",
+				text: leaf ? rectoUiText("hub.readingStatusIn", { collection: leaf }) : rectoUiText("hub.readingStatus"),
 			});
-			if (leaf) section.setAttribute("title", `以下计数只统计「${this.filters.collectionPath}」内的论文`);
+			if (leaf) section.setAttribute("title", rectoUiText("hub.countScope", { collection: collectionParts.join(" / ") }));
 			// 这一列只管「这篇论文和我的关系」这一个维度；转换状态全部交给下面的 chips 行，
 			// 不再一列里混两种筛选（原来的「未转换」与 chips 的同名项是同一个筛选的两个入口）。
 			// **「最近」也是这一维**（T86-C）：正在读/已读/未读是手动标的，「最近」是插件自己记的
@@ -13767,12 +16755,12 @@ function createRectoHubViewClass(api) {
 			// ——进它就清掉分类与转换筛选，点任何分类又会退出它。图标与分隔线就是在点破这件事，
 			// 让人在点之前就有预感，而不是点完发现列表行为不一样。
 			const quick = [
-				{ label: "最近", count: summary.recent, status: "recent", icon: "clock", separate: true,
-					title: "独立视图：打开过、转换过或改过阅读状态的论文，按时间从新到旧排。进入时会清掉分类与转换筛选；点任何分类即退出。导入不算，没有记录的不在其中。" },
-				{ label: "全部论文", count: summary.total, status: "all" },
-				{ label: `${READING_STATUS_SYMBOLS.reading} 正在读`, count: summary.reading, status: "reading" },
-				{ label: `${READING_STATUS_SYMBOLS.read} 已读`, count: summary.read, status: "read" },
-				{ label: `${READING_STATUS_SYMBOLS.unread} 未读`, count: summary.unread, status: "unread" },
+				{ label: rectoUiText("hub.recent"), count: summary.recent, status: "recent", icon: "clock", separate: true,
+					title: rectoUiText("hub.recentHint") },
+				{ label: rectoUiText("hub.allPapers"), count: summary.total, status: "all" },
+				{ label: `${READING_STATUS_SYMBOLS.reading} ${rectoUiText("hub.reading")}`, count: summary.reading, status: "reading" },
+				{ label: `${READING_STATUS_SYMBOLS.read} ${rectoUiText("hub.read")}`, count: summary.read, status: "read" },
+				{ label: `${READING_STATUS_SYMBOLS.unread} ${rectoUiText("hub.unread")}`, count: summary.unread, status: "unread" },
 			];
 			for (const item of quick) {
 				const row = this.navEl.createDiv({ cls: "recto-hub-nav-row" });
@@ -13786,7 +16774,7 @@ function createRectoHubViewClass(api) {
 				row.createSpan({ cls: "recto-hub-nav-count", text: String(item.count) });
 			}
 			if (!this.tree.length) return;
-			this.navEl.createDiv({ cls: "recto-hub-nav-section", text: "Zotero 分类" });
+			this.navEl.createDiv({ cls: "recto-hub-nav-section", text: rectoUiText("hub.zoteroCollections") });
 			this.renderNavTree(this.tree, 0);
 		}
 
@@ -13796,16 +16784,18 @@ function createRectoHubViewClass(api) {
 			const crumbs = describeHubFilterCrumbs(this.filters);
 			this.crumbsEl.toggleClass("is-hidden", !crumbs.length);
 			if (!crumbs.length) return;
-			this.crumbsEl.createSpan({ cls: "recto-hub-crumb-label", text: "筛选" });
+			this.crumbsEl.createSpan({ cls: "recto-hub-crumb-label", text: rectoUiText("hub.filters") });
 			crumbs.forEach((crumb, index) => {
 				if (index > 0) this.crumbsEl.createSpan({ cls: "recto-hub-crumb-join", text: "×" });
-				const el = this.crumbsEl.createSpan({ cls: "recto-hub-crumb", text: crumb.label });
+				const label = crumb.key === "status" ? rectoUiText(`hub.${this.filters.status}`)
+					: crumb.key === "conversion" ? rectoUiText(`hub.conversion.${this.filters.conversion}`) : crumb.label;
+				const el = this.crumbsEl.createSpan({ cls: "recto-hub-crumb", text: label });
 				const close = el.createSpan({ cls: "recto-hub-crumb-close", text: "×" });
 				close.dataset.hubCrumbClear = crumb.key;
-				close.setAttribute("title", `清除这个筛选条件：${crumb.label}`);
-				this.markAsButton(close, `清除这个筛选条件：${crumb.label}`);
+				close.setAttribute("title", rectoUiText("hub.clearFilter", { label }));
+				this.markAsButton(close, rectoUiText("hub.clearFilter", { label }));
 			});
-			const clearAll = this.crumbsEl.createSpan({ cls: "recto-hub-crumb-clear", text: "全部清除" });
+			const clearAll = this.crumbsEl.createSpan({ cls: "recto-hub-crumb-clear", text: rectoUiText("hub.clearAll") });
 			clearAll.dataset.hubCrumbClear = "all";
 			this.markAsButton(clearAll);
 		}
@@ -13842,7 +16832,7 @@ function createRectoHubViewClass(api) {
 				if (node.children.length) {
 					const caret = row.createSpan({ cls: "recto-hub-nav-caret", text: collapsed ? "▸" : "▾" });
 					caret.dataset.hubToggle = node.path;
-					this.markAsButton(caret, `${collapsed ? "展开" : "折叠"}：${node.name}`);
+					this.markAsButton(caret, rectoUiText(collapsed ? "hub.expandCollection" : "hub.collapseCollection", { name: node.name }));
 				} else {
 					row.createSpan({ cls: "recto-hub-nav-caret" });
 				}
@@ -13855,10 +16845,10 @@ function createRectoHubViewClass(api) {
 		renderChips() {
 			this.chipsEl.empty();
 			const chips = [
-				{ key: "all", label: HUB_CONVERSION_LABELS.all },
-				{ key: "converted", label: HUB_CONVERSION_LABELS.converted },
-				{ key: "translated", label: HUB_CONVERSION_LABELS.translated },
-				{ key: "todo", label: HUB_CONVERSION_LABELS.todo },
+				{ key: "all", label: rectoUiText("hub.conversion.all") },
+				{ key: "converted", label: rectoUiText("hub.conversion.converted") },
+				{ key: "translated", label: rectoUiText("hub.conversion.translated") },
+				{ key: "todo", label: rectoUiText("hub.conversion.todo") },
 			];
 			for (const chip of chips) {
 				const el = this.chipsEl.createSpan({ cls: "recto-hub-chip", text: chip.label });
@@ -13869,10 +16859,10 @@ function createRectoHubViewClass(api) {
 			const summary = summarizeHubEntries(this.visible);
 			// 明细拆成独立 span：窄栏由 CSS 收起，只留总数，位置让给筛选 chip（JS 不判宽度）。
 			const count = this.chipsEl.createSpan({ cls: "recto-hub-chip-count" });
-			count.createSpan({ text: `${summary.total} 篇` });
+			count.createSpan({ text: rectoUiText("hub.totalCount", { count: summary.total }) });
 			count.createSpan({
 				cls: "recto-hub-chip-count-detail",
-				text: ` · 已转换 ${summary.converted} · 有译文 ${summary.translated}`,
+				text: rectoUiText("hub.countDetail", { converted: summary.converted, translated: summary.translated }),
 			});
 		}
 
@@ -13887,7 +16877,7 @@ function createRectoHubViewClass(api) {
 		if (this.loadError) {
 			const box = this.listEl.createDiv({ cls: "recto-hub-error" });
 			setChromeIcon(box.createSpan({ cls: "rc-icon" }), "triangle-alert");
-			box.createSpan({ text: `读取失败：${this.loadError}` });
+			box.createSpan({ text: rectoUiText("hub.loadFailed", { error: this.loadError }) });
 			return;
 		}
 			// T85-D：设置里的论文库文件夹指错了（多半是在 Obsidian 外面改的名——那种改法只发
@@ -13904,11 +16894,11 @@ function createRectoHubViewClass(api) {
 			}
 			if (!this.entries.length) {
 				const empty = this.listEl.createDiv({ cls: "recto-hub-empty" });
-				empty.createDiv({ text: "还没有论文" });
-				empty.createDiv({ text: "把 Zotero 论文库导进来就能开始。" });
+				empty.createDiv({ text: rectoUiText("hub.noPapers") });
+				empty.createDiv({ text: rectoUiText("hub.importHint") });
 				// 光说「运行一键导入」而不给按钮，用户得自己去设置页找——旁边那个「没有匹配的论文」
 				// 空态早就有按钮了，同一个位置两种待遇。
-				const importBtn = empty.createEl("button", { cls: "mod-cta", text: "一键导入 Zotero 论文库" });
+				const importBtn = empty.createEl("button", { cls: "mod-cta", text: rectoUiText("command.importZotero") });
 				importBtn.dataset.hubEmptyImport = "1";
 				return;
 			}
@@ -13921,27 +16911,27 @@ function createRectoHubViewClass(api) {
 					&& !this.filters.collectionPath && !String(this.filters.query || "").trim()
 					&& this.filters.conversion === "all";
 				if (bareRecent) {
-					empty.createDiv({ text: "还没有记录。" });
-					empty.createDiv({ text: "打开任意一篇论文，它就会出现在这里。" });
+					empty.createDiv({ text: rectoUiText("hub.noRecent") });
+					empty.createDiv({ text: rectoUiText("hub.recentHintEmpty") });
 					return;
 				}
-				empty.createDiv({ text: "当前筛选条件下没有匹配的论文。" });
+				empty.createDiv({ text: rectoUiText("hub.noMatches") });
 				// T86-B：四个筛选条件是 AND，所以搜索词经常是被分类或状态挡住的，而空态原来只说
 				// 「没有匹配」，不告诉用户别处其实有。另外那个「清除筛选」清的是全部，连搜索词一起
 				// 清掉——用户敲的字得重打。所以主按钮改成「只清其余条件、留着搜索词」。
 				const elsewhere = countHubEntriesMatchingQueryOnly(this.entries, this.filters);
 				if (elsewhere) {
 					const term = String(this.filters.query || "").trim();
-					empty.createDiv({ text: `全部论文中另有 ${elsewhere} 篇匹配「${term}」。` });
+					empty.createDiv({ text: rectoUiText("hub.matchesElsewhere", { count: elsewhere, query: term }) });
 				}
 				const actions = empty.createDiv({ cls: "recto-hub-empty-actions" });
 				if (elsewhere) {
-					const scope = actions.createEl("button", { cls: "mod-cta", text: "在全部论文中搜索" });
+					const scope = actions.createEl("button", { cls: "mod-cta", text: rectoUiText("hub.searchAll") });
 					scope.dataset.hubClearFilters = "scope";
-					scope.setAttribute("title", "保留搜索词，清除分类、阅读状态与转换状态三个筛选条件");
+					scope.setAttribute("title", rectoUiText("hub.searchAllHint"));
 				}
 				// 有「在全部论文中搜索」时它才是主按钮，否则「清除全部筛选」自己是主按钮。
-				const clear = actions.createEl("button", { text: "清除全部筛选" });
+				const clear = actions.createEl("button", { text: rectoUiText("hub.clearFilters") });
 				if (!elsewhere) clear.addClass("mod-cta");
 				clear.dataset.hubClearFilters = "all";
 				return;
@@ -13969,10 +16959,10 @@ function createRectoHubViewClass(api) {
 			row.toggleClass("is-unconverted", unconverted);
 			const status = row.createSpan({
 				cls: `recto-hub-dot is-${entry.readingStatus}`,
-				attr: { role: "button", tabindex: "0", "aria-label": READING_STATUS_LABELS[entry.readingStatus] },
+				attr: { role: "button", tabindex: "0", "aria-label": rectoUiText(`hub.${entry.readingStatus}`) },
 			});
 			status.dataset.hubStatusToggle = entry.recordId;
-			status.setAttribute("title", `阅读状态：${READING_STATUS_LABELS[entry.readingStatus]}（点击切换）`);
+			status.setAttribute("title", rectoUiText("hub.statusToggle", { status: rectoUiText(`hub.${entry.readingStatus}`) }));
 			const title = row.createSpan({ cls: "recto-hub-col-title" });
 			this.fillRowTitle(title, entry);
 			this.renderMatchedText(row.createSpan({ cls: "recto-hub-col-author" }), formatHubAuthors(entry.authors));
@@ -13998,12 +16988,12 @@ function createRectoHubViewClass(api) {
 			const displayTitle = (this.titleMode === "translated" && entry.titleTranslated)
 				? entry.titleTranslated
 				: entry.titleOriginal;
-			this.renderMatchedText(el, displayTitle);
+			this.renderMatchedText(el, localizeHubTitle(displayTitle));
 			el.setAttribute("title", unconverted
-				? `${displayTitle}（未转换）`
+				? rectoUiText("hub.unconvertedTitle", { title: localizeHubTitle(displayTitle) })
 				: (entry.titleTranslated
-					? `${entry.titleOriginal}\n${entry.titleTranslated}`
-					: displayTitle));
+					? `${localizeHubTitle(entry.titleOriginal)}\n${entry.titleTranslated}`
+					: localizeHubTitle(displayTitle)));
 		}
 
 		updateRowTitles() {
@@ -14016,6 +17006,11 @@ function createRectoHubViewClass(api) {
 		}
 
 		renderDetail() {
+			// Preserve the actual editing node and IME/caret during background reloads.
+			if (this.noteEditor && this.noteEditor.editing && !this.isBatchMode()
+				&& this.noteEditor.recordId === this.selectedRecordId) return;
+			this.finishHubNote();
+			this.closeReadMenu();
 			this.detailEl.empty();
 			// 所有分支（多选面板、空态、单篇）都要有返回按钮，所以排在分流之前。
 			this.renderPaneBack();
@@ -14025,10 +17020,10 @@ function createRectoHubViewClass(api) {
 			}
 			const entry = this.getSelectedEntry();
 			if (!entry) {
-				this.detailEl.createDiv({ cls: "recto-hub-empty", text: "选择一篇论文" });
+				this.detailEl.createDiv({ cls: "recto-hub-empty", text: rectoUiText("hub.choosePaper") });
 				return;
 			}
-			this.detailEl.createEl("h3", { text: entry.titleOriginal });
+			this.detailEl.createEl("h3", { text: localizeHubTitle(entry.titleOriginal) });
 			if (entry.titleTranslated) {
 				this.detailEl.createDiv({ cls: "recto-hub-detail-sub", text: entry.titleTranslated });
 			}
@@ -14039,59 +17034,153 @@ function createRectoHubViewClass(api) {
 				kv.createSpan({ text: value });
 			};
 			this.renderAuthorRow(kv, entry);
-			addRow("来源", [entry.venue, entry.year].filter(Boolean).join(" · "));
+			addRow(rectoUiText("hub.source"), [entry.venue, entry.year].filter(Boolean).join(" · "));
 			for (const kind of ["doi", "url"]) {
 				const identifier = describeHubIdentifier(kind, kind === "doi" ? entry.doi : entry.url);
 				if (!identifier) continue;
-				kv.createSpan({ cls: "recto-hub-detail-key", text: kind === "doi" ? "DOI" : "网址" });
+				kv.createSpan({ cls: "recto-hub-detail-key", text: kind === "doi" ? "DOI" : rectoUiText("hub.url") });
 				const cell = kv.createSpan({ cls: "recto-hub-detail-link" });
 				const link = cell.createSpan({ cls: "recto-hub-detail-link-text", text: identifier.text });
 				if (identifier.url) {
 					link.dataset.hubOpenUrl = identifier.url;
-					link.setAttribute("title", `在浏览器打开 ${identifier.url}`);
+					link.setAttribute("title", rectoUiText("hub.openUrl", { url: identifier.url }));
 				}
-				const copy = cell.createSpan({ cls: "recto-hub-detail-copy", text: "复制" });
+				const copy = cell.createSpan({ cls: "recto-hub-detail-copy", text: rectoUiText("hub.copy") });
 				copy.dataset.hubCopy = identifier.text;
 			}
-			addRow("分类", (entry.collections || []).join("；"));
+			addRow(rectoUiText("hub.collection"), (entry.collections || []).join("；"));
 			// T83-O：状态行只说「读到哪 + 转没转」。译文完整度与未识别符号计数都撤了——
 			// 中文源论文的正文就写在 ch-<stem>.md，Hub 判「有没有译文」看的正是这个路径，
 			// 于是中文论文一律被判成「有译文（完整度未知）」，那条提示对它们永远是假的。
-			addRow("状态", [
-				`${READING_STATUS_SYMBOLS[entry.readingStatus]} ${READING_STATUS_LABELS[entry.readingStatus]}`,
-				entry.conversionStatus === "converted" ? "已转换" : "未转换",
+			addRow(rectoUiText("hub.status"), [
+				`${READING_STATUS_SYMBOLS[entry.readingStatus]} ${rectoUiText(`hub.${entry.readingStatus}`)}`,
+				entry.conversionStatus === "converted" ? rectoUiText("hub.conversion.converted") : rectoUiText("hub.notConverted"),
 			].join(" · "));
 			// T86-C：「最近」排序看不见依据，这一行就是那个依据。没有任何时间戳的存量论文不显示这行
 			// ——写「未知」等于给每一篇旧论文加一行噪音，而它们本来就该沉在列表最后。
 			const activity = describeHubActivity(entry, Date.now());
-			if (activity) addRow("最近", activity);
+			if (activity) addRow(rectoUiText("hub.recent"), activity);
 			const brief = this.plugin.readHubSummaryBrief(entry);
 			if (brief) this.detailEl.createDiv({ cls: "recto-hub-detail-brief", text: brief });
+			this.renderHubNote(entry);
 			this.renderProcessActions(this.detailEl, [entry]);
 			this.renderOpenActions(entry);
 		}
 
-		// 阅读动作从最多 6 个竖排按钮收成「一个主按钮 + 一行图标」：
-		// 主按钮走 auto（译文 > 原文 > 摘要 > PDF），其余压成同一行的小图标，靠 title 说明。
-		// 只有主按钮带品牌色，不给每类动作配色——那会破 T69 定的薄品牌层与色值预算。
-		renderOpenActions(entry) {
+		renderHubNote(entry) {
+			const store = this.plugin.getHubNotesStore();
+			const value = store.get(entry.recordId);
+			const section = this.detailEl.createEl("section", { cls: "recto-hub-note" });
+			section.createDiv({ cls: "recto-hub-note-heading" }).createSpan({ text: "Note" });
+			const input = section.createDiv({ cls: "recto-hub-note-input", text: value.notes,
+				attr: { contenteditable: "plaintext-only", role: "textbox", "aria-label": "Note", "aria-multiline": "true", "data-placeholder": rectoUiText("hub.notePlaceholder") } });
+			input.spellcheck = false;
+			const status = section.createDiv({ cls: "recto-hub-note-status", attr: { "aria-live": "polite" } });
+			const editor = { recordId: entry.recordId, input, status, editing: false, composing: false, base: value.notes };
+			this.noteEditor = editor;
+			const update = () => {
+				if (this.noteEditor !== editor) return;
+				const text = input.innerText.replace(/\r\n/g, "\n");
+				input.dataset.empty = String(!text.trim());
+				store.update(entry.recordId, text, editor.composing, editor.base);
+				editor.base = text;
+			};
+			input.addEventListener("focus", () => {
+				for (const other of this.plugin.getOpenHubViews()) {
+					if (other !== this && other.noteEditor && other.noteEditor.recordId === entry.recordId && other.noteEditor.editing) other.noteEditor.input.blur();
+				}
+				editor.editing = true;
+			});
+			input.addEventListener("input", update);
+			input.addEventListener("compositionstart", () => { editor.composing = true; store.cancelTimer(entry.recordId); });
+			input.addEventListener("compositionend", () => { editor.composing = false; update(); });
+			input.addEventListener("keydown", event => {
+				event.stopPropagation();
+				if (event.key === "Escape" && !event.isComposing && !editor.composing && event.keyCode !== 229) {
+					event.preventDefault(); input.blur();
+				}
+			});
+			input.addEventListener("blur", () => {
+				if (this.noteEditor !== editor) return;
+				editor.editing = false;
+				if (!input.innerText.trim()) { input.empty(); update(); }
+				store.flush(entry.recordId);
+				this.refreshHubNote(entry.recordId);
+			});
+			this.refreshHubNote(entry.recordId);
+		}
+
+		finishHubNote() {
+			const editor = this.noteEditor;
+			if (!editor) return;
+			this.noteEditor = null;
+			this.plugin.getHubNotesStore().flush(editor.recordId);
+		}
+
+		refreshHubNote(recordId) {
+			const store = this.plugin.getHubNotesStore();
+			const value = store.get(recordId);
+			const entry = this.entries.find(item => item.recordId === recordId);
+			if (entry) entry.notes = value.notes;
+			const editor = this.noteEditor;
+			if (!editor || editor.recordId !== recordId) return;
+			if (!editor.editing) {
+				if (editor.input.innerText !== value.notes) editor.input.setText(value.notes);
+				editor.base = value.notes;
+			}
+			editor.input.dataset.empty = String(!value.notes.trim());
+			editor.input.setAttribute("contenteditable", value.error === "read" ? "false" : "plaintext-only");
+			// Keep a displayed retry button alive through blur/flush so its first click can complete.
+			if (value.status === "error" && editor.status.dataset.error === value.error && editor.status.hasChildNodes()) return;
+			editor.status.dataset.error = value.error;
+			editor.status.empty();
+			if (value.status !== "error") return;
+			editor.status.appendText(rectoUiText(value.error === "conflict" ? "hub.noteConflict"
+				: value.error === "read" ? "hub.noteReadFailed" : "hub.noteSaveFailed"));
+			const retry = editor.status.createEl("button", { text: rectoUiText(value.error === "conflict" ? "hub.saveMyNote" : "hub.retry") });
+			retry.addEventListener("click", () => {
+				store.get(recordId, true);
+				store.flush(recordId, value.error === "conflict");
+				this.refreshHubNote(recordId);
+			});
+		}
+
+		// T88-B: only replace this action block when selecting a reading preference; preserve Note.
+		renderOpenActions(entry, existing = null) {
+			this.closeReadMenu();
 			const hasAnything = entry.translationPath || entry.sourcePath || entry.summaryPath || entry.pdfPath;
 			if (!hasAnything) {
-				this.detailEl.createDiv({ cls: "recto-hub-empty", text: "这篇还没有可打开的文件" });
+				this.detailEl.createDiv({ cls: "recto-hub-empty", text: rectoUiText("hub.noOpenFile") });
 				// 一个文件都没有的论文对象更该删得掉，所以空态也要留着垃圾桶。
 				// 图标样式挂在 .recto-hub-detail-actions 的后代选择器上，容器不能省。
 				const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
 				this.renderDeleteIcon(actions.createDiv({ cls: "recto-hub-detail-icons" }));
 				return;
 			}
-			const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
-			const primary = actions.createEl("button", { cls: "mod-cta" });
-			setChromeIcon(primary.createSpan({ cls: "rc-icon" }), "book-open");
-			primary.createSpan({ text: "阅读" });
-			primary.dataset.hubAction = "auto";
-			primary.setAttribute("title", entry.translationPath
-				? "打开译文"
-				: (entry.sourcePath ? "打开原文" : (entry.summaryPath ? "打开摘要" : "打开 PDF")));
+			const actions = existing || this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
+			actions.empty();
+			const state = resolveHubReadActions(entry, this.plugin.settings.hubReadAction);
+			if (state.primary) {
+				const split = actions.createDiv({ cls: "recto-hub-read-split" });
+				const primary = split.createEl("button", { cls: "mod-cta recto-hub-read-primary" });
+				setChromeIcon(primary.createSpan({ cls: "rc-icon" }), HUB_READ_ICONS[state.primary]);
+				const label = rectoUiText(`hub.read.${state.primary}`);
+				primary.createSpan({ cls: "recto-hub-read-label", text: label });
+				primary.dataset.hubAction = state.primary;
+				primary.setAttribute("title", label);
+				primary.setAttribute("aria-label", label);
+				const toggle = split.createEl("button", { cls: "mod-cta recto-hub-read-toggle", attr: { "aria-label": rectoUiText("hub.chooseReadAction"), "aria-haspopup": "menu", "aria-expanded": "false", title: rectoUiText("hub.chooseReadAction") } });
+				setChromeIcon(toggle.createSpan({ cls: "rc-icon" }), "chevron-down");
+				toggle.addEventListener("click", () => {
+					if (this.readMenuCleanup) this.closeReadMenu();
+					else this.openReadMenu(entry, state, actions, split, toggle);
+				});
+				toggle.addEventListener("keydown", event => {
+					if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+					event.preventDefault(); event.stopPropagation();
+					if (!this.readMenuCleanup) this.openReadMenu(entry, state, actions, split, toggle);
+				});
+			}
 			const icons = actions.createDiv({ cls: "recto-hub-detail-icons" });
 			const addIcon = (action, iconName, title, enabled) => {
 				if (!enabled) return;
@@ -14101,17 +17190,74 @@ function createRectoHubViewClass(api) {
 				button.setAttribute("title", title);
 				button.setAttribute("aria-label", title);
 			};
-			addIcon("source", "file-text", "打开原文", !!entry.sourcePath);
-			addIcon("summary", "notebook-pen", "打开摘要", !!entry.summaryPath);
-			addIcon("pdf", "newspaper", entry.conversionStatus === "converted" ? "打开 PDF" : "打开 PDF（未转换）", !!entry.pdfPath);
-			addIcon("dual-pane", "columns-2", "原文/译文双栏对照", !!(entry.translationPath && entry.sourcePath));
-			addIcon("pdf-compare", "book-copy", "PDF 对照阅读", !!(entry.translationPath && entry.pdfPath));
+			const separator = () => { if (icons.children.length) icons.createSpan({ cls: "recto-hub-action-separator", attr: { "aria-hidden": "true" } }); };
+			for (const action of state.secondary) addIcon(action, HUB_READ_ICONS[action], rectoUiText(`hub.read.${action}`), true);
+			addIcon("summary", "list-filter", rectoUiText("hub.openSummary"), !!entry.summaryPath);
+			if (entry.translationPath && (entry.sourcePath || entry.pdfPath)) separator();
+			addIcon("dual-pane", "columns-2", rectoUiText("hub.dualPane"), !!(entry.translationPath && entry.sourcePath));
+			addIcon("pdf-compare", "recto-pdf-compare", rectoUiText("hub.pdfCompare"), !!(entry.translationPath && entry.pdfPath));
+			separator();
 			const cite = icons.createEl("button");
-			setChromeIcon(cite.createSpan({ cls: "rc-icon" }), "copy");
+			setChromeIcon(cite.createSpan({ cls: "rc-icon" }), "quote");
 			cite.dataset.hubCopy = this.formatCitation(entry);
-			cite.setAttribute("title", "复制引用");
-			cite.setAttribute("aria-label", "复制引用");
+			cite.setAttribute("title", rectoUiText("hub.copyCitation"));
+			cite.setAttribute("aria-label", rectoUiText("hub.copyCitation"));
 			this.renderDeleteIcon(icons);
+		}
+
+		closeReadMenu(focus = false) {
+			if (this.readMenuCleanup) this.readMenuCleanup(focus);
+		}
+
+		openReadMenu(entry, state, actions, split, toggle) {
+			this.closeReadMenu();
+			const menu = split.createDiv({ cls: "recto-hub-read-menu", attr: { role: "menu", "aria-label": rectoUiText("hub.chooseReadAction") } });
+			const doc = toggle.ownerDocument;
+			toggle.setAttribute("aria-expanded", "true");
+			const enabled = [];
+			for (const action of HUB_READ_ACTIONS) {
+				const selected = action === state.primary;
+				const item = menu.createEl("button", { cls: selected ? "is-selected" : "", attr: { role: "menuitemradio", "aria-checked": String(selected), tabindex: "-1" } });
+				item.disabled = !state.available.includes(action);
+				item.setAttribute("aria-disabled", String(item.disabled));
+				setChromeIcon(item.createSpan({ cls: "rc-icon" }), HUB_READ_ICONS[action]);
+				item.createSpan({ text: rectoUiText(`hub.readChoice.${action}`) });
+				if (selected) setChromeIcon(item.createSpan({ cls: "rc-icon recto-hub-read-check" }), "check");
+				if (!item.disabled) enabled.push(item);
+				item.addEventListener("click", event => {
+					event.stopPropagation();
+					if (item.disabled) return;
+					this.plugin.settings.hubReadAction = action;
+					this.closeReadMenu();
+					this.renderOpenActions(entry, actions);
+					actions.querySelector(".recto-hub-read-toggle").focus();
+					void this.plugin.save().catch(() => new api.Notice(rectoUiText("hub.readPreferenceFailed")));
+				});
+			}
+			menu.addEventListener("keydown", event => {
+				event.stopPropagation();
+				if (event.key === "Escape") { event.preventDefault(); this.closeReadMenu(true); return; }
+				if (event.key === "Tab") { this.closeReadMenu(true); return; }
+				if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+				event.preventDefault();
+				const index = enabled.indexOf(doc.activeElement);
+				const next = event.key === "Home" ? 0 : event.key === "End" ? enabled.length - 1
+					: (index + (event.key === "ArrowDown" ? 1 : -1) + enabled.length) % enabled.length;
+				enabled[next]?.focus();
+			});
+			const outside = event => { if (!split.contains(event.target)) this.closeReadMenu(); };
+			doc.addEventListener("pointerdown", outside, true);
+			doc.addEventListener("focusin", outside);
+			this.readMenuCleanup = focus => {
+				doc.removeEventListener("pointerdown", outside, true);
+				doc.removeEventListener("focusin", outside);
+				menu.remove();
+				toggle.setAttribute("aria-expanded", "false");
+				this.readMenuCleanup = null;
+				if (focus && toggle.isConnected) toggle.focus();
+			};
+			(enabled.find(item => item.getAttribute("aria-checked") === "true") || enabled[0])?.focus();
+			menu.scrollIntoView({ block: "nearest" });
 		}
 
 		// T83-O：单篇的删除排在图标行最右，与阅读动作隔开语义——它是危险动作，
@@ -14121,7 +17267,7 @@ function createRectoHubViewClass(api) {
 			const remove = icons.createEl("button", { cls: "recto-hub-detail-danger" });
 			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "trash-2");
 			remove.dataset.hubProcess = "delete";
-			const title = "删除本篇（移入系统回收站）";
+			const title = rectoUiText("hub.deletePaper");
 			remove.setAttribute("title", title);
 			remove.setAttribute("aria-label", title);
 		}
@@ -14134,18 +17280,18 @@ function createRectoHubViewClass(api) {
 			// 展开时把上限放到人数本身，拿到的 shown 就是清洗后的完整列表——
 			// 不能拿原始 authors 去拼，空串被过滤后下标会错位。
 			const full = describeHubAuthorLines(authors, Math.max(1, authors.length));
-			kv.createSpan({ cls: "recto-hub-detail-key", text: "作者" });
+			kv.createSpan({ cls: "recto-hub-detail-key", text: rectoUiText("hub.authors") });
 			const cell = kv.createSpan({ cls: "recto-hub-detail-authors" });
 			cell.appendText((this.authorsExpanded ? full.shown : lines.shown).join("、"));
 			if (!lines.hidden && !this.authorsExpanded) return;
 			const toggle = cell.createSpan({
 				cls: "recto-hub-detail-more",
-				text: this.authorsExpanded ? "收起" : `更多 ${lines.hidden}`,
+				text: this.authorsExpanded ? rectoUiText("hub.collapseAuthors") : rectoUiText("hub.moreAuthors", { count: lines.hidden }),
 			});
 			toggle.dataset.hubAuthorsToggle = "1";
 			toggle.setAttribute("title", this.authorsExpanded
-				? "收起作者列表"
-				: `共 ${lines.total} 位作者，点击展开全部`);
+				? rectoUiText("hub.collapseAuthorsHint")
+				: rectoUiText("hub.expandAuthorsHint", { count: lines.total }));
 		}
 
 		formatCitation(entry) {
@@ -14166,7 +17312,8 @@ function createRectoHubViewClass(api) {
 		// 已转换无译文的只译。用户不需要知道底下是一段还是两段。
 		renderProcessActions(container, entries) {
 			const summary = summarizeHubSelection(entries);
-			const translatable = summary.unconverted + summary.convertedWithoutTranslation;
+			const target = this.plugin.settings?.documentLanguages?.translationTarget?.id;
+			const translatable = target ? entries.filter(entry => !entry.translations?.some(record => record.targetLanguage.id === target)).length : summary.unconverted + summary.convertedWithoutTranslation;
 			// 「部分未翻译」不算进 translatable，是有理由的：重译是整篇重来、按页另计一次费，
 			// 不是把缺的那几个块补上。但 renderBatchDetail 明晃晃地把这个数摆出来，这里却整块
 			// return——数字给了、按钮没了、一句解释也没有。**不造一个点不动的假入口**，如实说一句。
@@ -14176,34 +17323,34 @@ function createRectoHubViewClass(api) {
 				const convert = box.createEl("button", { cls: "mod-cta" });
 				setChromeIcon(convert.createSpan({ cls: "rc-icon" }), "file-cog");
 				convert.createSpan({
-					text: summary.total > 1 ? `转换选中（${summary.unconverted} 篇）` : "转换本篇",
+					text: summary.total > 1 ? rectoUiText("hub.convertSelected", { count: summary.unconverted }) : rectoUiText("hub.convertThis"),
 				});
 				convert.dataset.hubProcess = "convert";
-				convert.setAttribute("title", "上传未转换的 PDF 并解析为 Markdown 与摘要");
+				convert.setAttribute("title", rectoUiText("hub.convertHint"));
 			}
 			if (translatable) {
 				const translate = box.createEl("button", { cls: summary.unconverted ? "" : "mod-cta" });
 				setChromeIcon(translate.createSpan({ cls: "rc-icon" }), "languages");
 				translate.createSpan({
-					text: summary.total > 1 ? `翻译选中（${translatable} 篇）` : "翻译本篇",
+					text: summary.total > 1 ? rectoUiText("hub.translateSelected", { count: translatable }) : rectoUiText("hub.translateThis"),
 				});
 				translate.dataset.hubProcess = "translate";
 				translate.setAttribute("title", summary.unconverted && summary.convertedWithoutTranslation
-					? "未转换的会先转换再翻译；已转换的只翻译，不重复转换、不重复计费"
-					: (summary.unconverted ? "未转换的论文会转换并一并产出译文" : "只翻译，不重复转换"));
+					? rectoUiText("hub.translateMixedHint")
+					: rectoUiText(summary.unconverted ? "hub.translateUnconvertedHint" : "hub.translateOnlyHint"));
 			}
 			if (summary.unconverted && summary.convertedWithoutTranslation) {
 				box.createDiv({
 					cls: "recto-hub-process-note",
-					text: `选中的 ${translatable} 篇里，${summary.unconverted} 篇需要先转换再翻译，${summary.convertedWithoutTranslation} 篇已转换、只需翻译。`,
+					text: rectoUiText("hub.translateMixedNote", { total: translatable, convert: summary.unconverted, translate: summary.convertedWithoutTranslation }),
 				});
 			}
 			if (summary.partialTranslation) {
 				box.createDiv({
 					cls: "recto-hub-process-note",
 					text: summary.total > 1
-						? `另有 ${summary.partialTranslation} 篇只译出了一部分，暂不支持重译。`
-						: "这篇只译出了一部分，暂不支持重译。",
+						? rectoUiText("hub.partialSelected", { count: summary.partialTranslation })
+						: rectoUiText("hub.partialThis"),
 				});
 			}
 			// T83-N-R：后处理开关搬去了设置页「高级设置」。Hub 这里不再摆第二个入口——
@@ -14213,13 +17360,13 @@ function createRectoHubViewClass(api) {
 		renderBatchDetail() {
 			const entries = this.getSelectedEntries();
 			const summary = summarizeHubSelection(entries);
-			const heading = this.detailEl.createEl("h3", { text: `已选 ${summary.total} 篇` });
+			const heading = this.detailEl.createEl("h3", { text: rectoUiText("hub.selectedCount", { count: summary.total }) });
 			// T83-O 撤掉「清除选择」按钮的理由是 Escape 已经能做同样的事（注释在下面），
 			// 但界面上一个字都没说过这件事。只补这一句提示，不把按钮加回来。
-			heading.createSpan({ cls: "recto-hub-batch-hint", text: "按 Esc 收回" });
+			heading.createSpan({ cls: "recto-hub-batch-hint", text: rectoUiText("hub.escapeHint") });
 			this.detailEl.createDiv({
 				cls: "recto-hub-detail-sub",
-				text: `未转换 ${summary.unconverted} · 已转换无译文 ${summary.convertedWithoutTranslation} · 完整/旧版译文 ${summary.translated} · 部分未翻译 ${summary.partialTranslation}`,
+				text: rectoUiText("hub.batchSummary", { unconverted: summary.unconverted, withoutTranslation: summary.convertedWithoutTranslation, translated: summary.translated, partial: summary.partialTranslation }),
 			});
 			this.renderProcessActions(this.detailEl, entries);
 			// T83-O：这一行原来是「清除选择」——Escape 就能做同样的事，占着多选面板唯一的动作位没有价值。
@@ -14227,15 +17374,15 @@ function createRectoHubViewClass(api) {
 			const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
 			const remove = actions.createEl("button", { cls: "recto-hub-detail-danger" });
 			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "trash-2");
-			remove.createSpan({ text: `删除选中（${summary.total} 篇）` });
+			remove.createSpan({ text: rectoUiText("hub.deleteSelected", { count: summary.total }) });
 			remove.dataset.hubProcess = "delete";
-			remove.setAttribute("title", "选中论文的文件夹与摘要移入系统回收站；删前会再确认一次");
+			remove.setAttribute("title", rectoUiText("hub.deleteSelectedHint"));
 			const list = this.detailEl.createDiv({ cls: "recto-hub-batch-list" });
 			for (const entry of entries.slice(0, 8)) {
-				list.createDiv({ cls: "recto-hub-batch-row", text: entry.titleOriginal });
+				list.createDiv({ cls: "recto-hub-batch-row", text: localizeHubTitle(entry.titleOriginal) });
 			}
 			if (entries.length > 8) {
-				list.createDiv({ cls: "recto-hub-batch-more", text: `另有 ${entries.length - 8} 篇` });
+				list.createDiv({ cls: "recto-hub-batch-more", text: rectoUiText("hub.morePapers", { count: entries.length - 8 }) });
 			}
 		}
 
@@ -14258,15 +17405,15 @@ function createRectoHubViewClass(api) {
 			caret.dataset.hubQueue = "toggle";
 			// 同一行的「再试一次 / 立即恢复」本来就是真 <button>，只有这个折叠三角键盘够不到。
 			// 旁边那段摘要文字也挂着同一个 toggle，但它只是鼠标的大命中区，不再占一个 Tab 位。
-			this.markAsButton(caret, this.queueExpanded ? "折叠待写回列表" : "展开待写回列表");
+			this.markAsButton(caret, rectoUiText(this.queueExpanded ? "hub.collapseQueue" : "hub.expandQueue"));
 			const summary = view.counts.blocked
-				? `⚠ ${view.counts.blocked} 篇写回失败，已停止自动重试`
-				: [`${view.rows.length} 篇已提交待写回`, view.oldestAgeText ? `最早 ${view.oldestAgeText}` : ""].filter(Boolean).join(" · ");
+				? rectoUiText("hub.writebackFailedCount", { count: view.counts.blocked })
+				: [rectoUiText("hub.pendingWritebackCount", { count: view.rows.length }), view.oldestAgeText ? rectoUiText("hub.oldest", { age: view.oldestAgeText }) : ""].filter(Boolean).join(" · ");
 			const label = head.createSpan({ cls: "recto-hub-queue-label", text: summary });
 			label.dataset.hubQueue = "toggle";
-			const recover = head.createEl("button", { text: view.counts.blocked ? "再试一次" : "立即恢复" });
+			const recover = head.createEl("button", { text: rectoUiText(view.counts.blocked ? "hub.tryAgain" : "hub.recoverNow") });
 			recover.dataset.hubQueue = view.counts.blocked ? "retry-blocked" : "recover";
-			recover.setAttribute("title", "立即检查并写回已完成的论文结果");
+			recover.setAttribute("title", rectoUiText("hub.recoverHint"));
 			if (!this.queueExpanded) return;
 			for (const row of view.rows) {
 				const el = this.queueEl.createDiv({ cls: `recto-hub-queue-row is-${row.kind}` });
@@ -14274,24 +17421,24 @@ function createRectoHubViewClass(api) {
 				el.createSpan({ cls: "recto-hub-queue-name", text: row.name });
 				el.createSpan({
 					cls: "recto-hub-queue-status",
-					text: [row.blocked ? "写回失败" : (HUB_QUEUE_KIND_LABELS[row.kind] || row.status), row.ageText].filter(Boolean).join(" · "),
+					text: [row.blocked ? rectoUiText("hub.writebackFailed") : rectoUiText(`hub.queueStatus.${row.kind}`), row.ageText].filter(Boolean).join(" · "),
 				});
 				if (row.blocked) {
 					// 唯一的人工出路：放弃这条登记，让这篇论文重新可转换。
-					const abandon = el.createEl("button", { text: "放弃" });
+					const abandon = el.createEl("button", { text: rectoUiText("hub.abandon") });
 					abandon.dataset.hubQueue = "abandon";
 					abandon.dataset.hubQueueTask = row.taskId;
-					abandon.setAttribute("title", "清掉本地登记，这篇论文可以重新转换；本次已扣的额度不会退回");
+					abandon.setAttribute("title", rectoUiText("hub.abandonHint"));
 				}
 			}
 			const blockedFailure = (view.rows.find(row => row.blocked && row.failure) || {}).failure;
-			const message = blockedFailure || this.plugin.pendingBackendLastRecoveryError;
+			const message = blockedFailure || localizeStoredUiError(this.plugin.pendingBackendLastRecoveryError, rectoUiText("error.writeback"));
 			if (message) {
 				this.queueEl.createDiv({
 					cls: "recto-hub-queue-error",
 					text: view.counts.blocked
-						? `写回失败原因：${message}。处理结果最多保留 ${HUB_QUEUE_RESULT_TTL_HOURS} 小时；修复问题后可点「再试一次」，或选择「放弃」后重新转换。`
-						: `最近一次恢复未成功：${message}`,
+						? rectoUiText("hub.writebackFailureDetail", { error: message, hours: HUB_QUEUE_RESULT_TTL_HOURS })
+						: rectoUiText("hub.recoveryFailure", { error: message }),
 				});
 			}
 		}
@@ -14599,7 +17746,7 @@ function createRectoHubViewClass(api) {
 				try {
 					this.plugin.openExternalUrl(openUrl.dataset.hubOpenUrl);
 				} catch (error) {
-					new api.Notice(getUserFacingErrorMessage(error, "链接暂时无法打开，请稍后重试。"), 6000);
+					new api.Notice(getUserFacingErrorMessage(error, rectoUiText("hub.linkFailed")), 6000);
 				}
 				return;
 			}
@@ -14625,16 +17772,17 @@ function createRectoHubViewClass(api) {
 		if (action === "convert") {
 			const pending = entries.filter(entry => entry.conversionStatus !== "converted");
 			if (!pending.length) {
-				new api.Notice("选中的论文都已转换。", 6000);
+				new api.Notice(rectoUiText("hub.allConverted"), 6000);
 				return;
 			}
 			this.withProcessButtonsDisabled(() => this.plugin.runHubBatchForRecords(pending.map(entry => entry.recordId), { requestTranslation: false }));
 			return;
 		}
 		// T81-S：待译 = 未转换的 + 已转换但没译文的。已有译文的直接排除，不重复计费。
-		const pending = entries.filter(entry => entry.conversionStatus !== "converted" || !entry.hasTranslation);
+		const target = this.plugin.settings?.documentLanguages?.translationTarget?.id;
+		const pending = entries.filter(entry => target ? !entry.translations?.some(record => record.targetLanguage.id === target) : entry.conversionStatus !== "converted" || !entry.hasTranslation);
 		if (!pending.length) {
-			new api.Notice("选中的论文都已经有译文了。", 6000);
+			new api.Notice(rectoUiText("hub.allTranslated"), 6000);
 			return;
 		}
 		this.withProcessButtonsDisabled(() => this.plugin.runHubTranslateForRecords(pending.map(entry => entry.recordId)));
@@ -14646,19 +17794,19 @@ function createRectoHubViewClass(api) {
 			const entries = this.getSelectedEntries();
 			if (!entries.length) return;
 			if (entries.length > 1) {
-				const accepted = await this.plugin.openDecision({
-					title: "批量删除论文",
-					intro: `即将删除选中的 ${entries.length} 篇论文。`,
+				const accepted = await this.plugin.openDecision(() => ({
+					title: rectoUiText("batch.deleteTitle"),
+					intro: rectoUiText("batch.deleteIntro", { count: entries.length }),
 					details: [
-						...entries.slice(0, 5).map(entry => entry.titleOriginal),
-						entries.length > 5 ? `另有 ${entries.length - 5} 篇` : "",
-						"论文文件夹与摘要会移入系统回收站。",
+						...entries.slice(0, 5).map(entry => localizeHubTitle(entry.titleOriginal)),
+						entries.length > 5 ? rectoUiText("batch.deleteMore", { count: entries.length - 5 }) : "",
+						rectoUiText("batch.deleteDesc"),
 					],
 					actions: [
-						{ label: "取消", value: false },
-						{ label: `删除 ${entries.length} 篇`, value: true, warning: true },
+						{ label: rectoUiText("dialog.cancel"), value: false },
+						{ label: rectoUiText("batch.deleteAction", { count: entries.length }), value: true, warning: true },
 					],
-				});
+				}));
 				if (accepted !== true) return;
 			}
 			await this.plugin.deletePaperRecords(entries.map(entry => entry.recordId));
@@ -14682,12 +17830,12 @@ function createRectoHubViewClass(api) {
 			try {
 				if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
 					await navigator.clipboard.writeText(value);
-					new api.Notice("已复制", 2000);
+					new api.Notice(rectoUiText("hub.copied"), 2000);
 					return;
 				}
-				new api.Notice("当前环境不支持复制", 5000);
+				new api.Notice(rectoUiText("hub.copyUnavailable"), 5000);
 			} catch {
-				new api.Notice("复制失败", 5000);
+				new api.Notice(rectoUiText("hub.copyFailed"), 5000);
 			}
 		}
 
@@ -14708,28 +17856,54 @@ function createRectoHubViewClass(api) {
 			const dot = row ? row.querySelector("[data-hub-status-toggle]") : null;
 			if (dot) {
 				dot.className = `recto-hub-dot is-${next}`;
-				dot.setAttribute("aria-label", READING_STATUS_LABELS[next]);
-				dot.setAttribute("title", `阅读状态：${READING_STATUS_LABELS[next]}（点击切换）`);
+				dot.setAttribute("aria-label", rectoUiText(`hub.status.${next}`));
+				dot.setAttribute("title", rectoUiText("hub.statusToggle", { status: rectoUiText(`hub.status.${next}`) }));
 			}
 			if (!this.isBatchMode()) this.renderDetail();
 		}
 	};
 }
 
+function refreshRectoModalPreservingInteraction(modal, render) {
+	const root = modal && modal.contentEl;
+	if (!root) return render();
+	const scroll = root.scrollTop;
+	const controls = typeof root.querySelectorAll === "function"
+		? Array.from(root.querySelectorAll("button, input, textarea, select, [tabindex]")) : [];
+	const active = typeof document !== "undefined" ? document.activeElement : null;
+	const focusIndex = controls.indexOf(active);
+	const inputValue = focusIndex >= 0 && active && /^(INPUT|TEXTAREA)$/i.test(String(active.tagName || "")) ? active.value : null;
+	const selectionStart = inputValue !== null && Number.isInteger(active.selectionStart) ? active.selectionStart : null;
+	const selectionEnd = inputValue !== null && Number.isInteger(active.selectionEnd) ? active.selectionEnd : null;
+	render();
+	root.scrollTop = scroll;
+	if (focusIndex < 0 || typeof root.querySelectorAll !== "function") return;
+	const next = Array.from(root.querySelectorAll("button, input, textarea, select, [tabindex]"))[focusIndex];
+	if (!next) return;
+	if (inputValue !== null && "value" in next) next.value = inputValue;
+	if (typeof next.focus === "function") next.focus();
+	if (selectionStart !== null && selectionEnd !== null && typeof next.setSelectionRange === "function") {
+		next.setSelectionRange(selectionStart, selectionEnd);
+	}
+}
+
 class RectoDecisionModal extends obsidian.Modal {
 	constructor(plugin, options, resolve) {
 		super(plugin.app);
-		this.options = options || {};
+		this.plugin = plugin;
+		this.optionsFactory = typeof options === "function" ? options : () => options || {};
 		this.resolve = typeof resolve === "function" ? resolve : () => {};
 		this.resolved = false;
 	}
 
 	onOpen() {
+		this.plugin.trackUiModal?.(this);
+		this.options = this.optionsFactory();
 		if (this.modalEl && this.modalEl.addClass) {
 			this.modalEl.addClass("recto-decision-modal");
 			this.modalEl.addClass("recto-ui");
 		}
-		if (typeof this.setTitle === "function") this.setTitle(String(this.options.title || "请确认"));
+		if (typeof this.setTitle === "function") this.setTitle(String(this.options.title || rectoUiText("dialog.confirm")));
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass("recto-ui");
@@ -14741,13 +17915,52 @@ class RectoDecisionModal extends obsidian.Modal {
 			for (const detail of details) list.createEl("li", { text: String(detail) });
 		}
 		if (this.options.note) contentEl.createDiv({ cls: "recto-decision-note", text: String(this.options.note) });
+		if (this.options.languageChoice) {
+			const row = contentEl.createEl("label");
+			row.createSpan({ text: documentLanguageText("语言名称或标准标签", "Language name or standard tag") });
+			const input = row.createEl("input", { type: "text" });
+			input.value = this.languageInput || "";
+			input.placeholder = "en / zh-Hans / zh-Hant / ja";
+			input.maxLength = 120;
+			input.addEventListener("input", () => { this.languageInput = input.value; });
+			const confirmation = contentEl.createEl("label");
+			const check = confirmation.createEl("input", { type: "checkbox" });
+			check.checked = this.languageConfirmed === true;
+			check.addEventListener("change", () => { this.languageConfirmed = check.checked; });
+			confirmation.createSpan({ text: documentLanguageText("我确认此名称明确表示所需语言及书写形式", "I confirm this name specifies the intended language and writing form") });
+		}
+		if (this.options.summaryChoice) {
+			if (this.summaryChecked === undefined) this.summaryChecked = false;
+			if (!this.summaryDepth) this.summaryDepth = "standard";
+			const row = contentEl.createEl("label", { cls: "recto-decision-summary-choice" });
+			const checkbox = row.createEl("input");
+			checkbox.type = "checkbox";
+			checkbox.checked = this.summaryChecked;
+			checkbox.addEventListener("change", () => {
+				this.summaryChecked = checkbox.checked;
+				depthRow.hidden = !checkbox.checked;
+			});
+			row.createSpan({ text: rectoUiText("hub.translationSummary") });
+			contentEl.createEl("p", { cls: "recto-decision-note", text: rectoUiText("hub.translationSummaryHint") });
+			const depthRow = contentEl.createEl("label", { cls: "recto-decision-summary-depth" });
+			depthRow.createSpan({ text: rectoUiText("settings.summaryDetail") });
+			const select = depthRow.createEl("select");
+			for (const value of ["brief", "standard", "detailed"]) {
+				const option = select.createEl("option", { text: rectoUiText(`settings.${value}`) });
+				option.value = value;
+			}
+			select.value = this.summaryDepth;
+			select.addEventListener("change", () => { this.summaryDepth = select.value; });
+			this.summaryLanguage = migrateDocumentLanguages(this.plugin.settings || {}).translationTarget.id;
+			depthRow.hidden = !this.summaryChecked;
+		}
 		const actions = contentEl.createDiv({ cls: "recto-decision-actions" });
 		let preferred = null;
 		let firstSafe = null;
 		let firstAny = null;
 		for (const action of this.options.actions || []) {
 			const button = actions.createEl("button", {
-				text: String(action.label || "继续"),
+				text: String(action.label || rectoUiText("dialog.continue")),
 				cls: action.cta ? "mod-cta" : (action.warning ? "mod-warning" : ""),
 			});
 			button.setAttr("type", "button");
@@ -14761,17 +17974,33 @@ class RectoDecisionModal extends obsidian.Modal {
 		// 这类安全项），绝不自动聚焦 warning 按钮——那等于把删除放在回车底下。
 		// 需要落在别的项上时由调用方标 `defaultFocus: true`（如「保留现有记录」）。
 		const focusTarget = preferred || firstSafe || firstAny;
-		if (focusTarget && typeof focusTarget.focus === "function") focusTarget.focus();
+		if (!this.isUiRefreshing && focusTarget && typeof focusTarget.focus === "function") focusTarget.focus();
+	}
+	refreshUiLanguage() {
+		this.isUiRefreshing = true;
+		try { refreshRectoModalPreservingInteraction(this, () => this.onOpen()); }
+		finally { this.isUiRefreshing = false; }
 	}
 
 	finish(value) {
 		if (this.resolved) return;
+		if (value === true && this.options.languageChoice) {
+			const language = this.languageConfirmed && confirmedDocumentLanguage(this.languageInput);
+			if (!language || language.id === "zh") {
+				new obsidian.Notice(documentLanguageText("请填写并确认明确的语言，中文需区分简体或繁体。", "Enter and confirm a language, including simplified or traditional form for Chinese."));
+				return;
+			}
+			value = { language };
+		}
 		this.resolved = true;
-		this.resolve(value);
+		this.resolve(this.options && this.options.summaryChoice && value === true
+			? { accepted: true, requestSummary: this.summaryChecked === true, summaryLanguage: this.summaryLanguage || "zh-Hans", summaryDepth: this.summaryDepth || "standard" }
+			: value);
 		this.close();
 	}
 
 	onClose() {
+		this.plugin.untrackUiModal?.(this);
 		if (!this.resolved) {
 			this.resolved = true;
 			this.resolve(null);
@@ -14803,12 +18032,13 @@ class RectoOnboardingModal extends obsidian.Modal {
 	}
 
 	onOpen() {
+		this.plugin.trackUiModal?.(this);
 		this.closed = false;
 		if (this.modalEl && this.modalEl.addClass) {
 			this.modalEl.addClass("recto-onboarding-modal");
 			this.modalEl.addClass("recto-ui");
 		}
-		if (typeof this.setTitle === "function") this.setTitle("欢迎使用 Recto");
+		if (typeof this.setTitle === "function") this.setTitle(rectoUiText("onboarding.title"));
 		// 与设置页共用同一份 T82-D-S 探测：命中就立即落盘，后面的状态灯与导入动作都读它。
 		const detected = this.plugin.autoFillDetectedZoteroSourceIfNeeded(this.plugin.settings);
 		if (detected && detected.savePromise && typeof detected.savePromise.then === "function") {
@@ -14816,6 +18046,12 @@ class RectoOnboardingModal extends obsidian.Modal {
 		} else {
 			this.render();
 		}
+	}
+	refreshUiLanguage() {
+		refreshRectoModalPreservingInteraction(this, () => {
+			if (typeof this.setTitle === "function") this.setTitle(rectoUiText("onboarding.title"));
+			this.render();
+		});
 	}
 
 	getSnapshot() {
@@ -14879,16 +18115,16 @@ class RectoOnboardingModal extends obsidian.Modal {
 			// 标题只写在窗口标题栏（onOpen 里的 setTitle），这里不再重复一遍。四条与其它
 			// 步骤同一套版式：图标 + 粗体小标题 + 同字号正文，一屏之内不出现第三种字号。
 			this.renderFeatureList(card, [
-				{ icon: "library", title: "从 Zotero 精准转换", text: "论文转成 Markdown，库外的其他 PDF 同样可以转。" },
-				{ icon: "languages", title: "翻译与双栏对照", text: "内置翻译一键生成译文，可与原文并排对照阅读。" },
-				{ icon: "sparkles", title: "为 AI 阅读铺路", text: "论文变成能被 AI 读懂、能检索引用的笔记，长成您自己的知识库。" },
-				{ icon: "gift", title: "免费开始", text: "全功能免费，每月都有免费额度；需要更多用量时再按需升级套餐。" },
+				{ icon: "library", title: rectoUiText("onboarding.zoteroFeature"), text: rectoUiText("onboarding.zoteroFeatureDesc") },
+				{ icon: "languages", title: rectoUiText("onboarding.translationFeature"), text: rectoUiText("onboarding.translationFeatureDesc") },
+				{ icon: "sparkles", title: rectoUiText("onboarding.aiFeature"), text: rectoUiText("onboarding.aiFeatureDesc") },
+				{ icon: "gift", title: rectoUiText("onboarding.freeFeature"), text: rectoUiText("onboarding.freeFeatureDesc") },
 			]);
 			// 演示视频的位置就在下面这一行动作里（次按钮位），等有稳定地址了再补，
 			// 现在不画占位也不放假链接——见 T85-R 的移交后续。
 			this.renderActions(card, [
-				{ label: "开始设置", cta: true, action: () => this.markWelcomeSeen() },
-				{ label: "稍后再说", action: () => this.close() },
+				{ label: rectoUiText("onboarding.startSetup"), cta: true, action: () => this.markWelcomeSeen() },
+				{ label: rectoUiText("onboarding.later"), action: () => this.close() },
 			], { skippable: false });
 			return;
 		}
@@ -14899,54 +18135,54 @@ class RectoOnboardingModal extends obsidian.Modal {
 			this.renderStepHeader(
 				card,
 				"user-round",
-				"登录 Recto 账号",
+				rectoUiText("onboarding.signIn"),
 				offline
-					? "连不上 Recto 服务时，可以先跳过这一步，稍后在设置页继续。"
-					: "在浏览器里完成，密码不进入插件。",
+					? rectoUiText("onboarding.offline")
+					: rectoUiText("onboarding.browserOnly"),
 			);
 			this.renderActions(card, [{
-				label: "在浏览器中登录",
+				label: rectoUiText("onboarding.signInBrowser"),
 				cta: true,
 				action: () => this.startBrowserSignIn(),
 			}]);
 			return;
 		}
 		if (id === "credits") {
-			this.renderStepHeader(card, "gauge", "确认可用额度", "账号已经登录。在账号面板里可以看到当前额度，也可以选择适合您的套餐。");
+			this.renderStepHeader(card, "gauge", rectoUiText("onboarding.checkCredits"), rectoUiText("onboarding.checkCreditsDesc"));
 			this.renderActions(card, [{
-				label: "查看账号与额度",
+				label: rectoUiText("onboarding.viewAccount"),
 				cta: true,
 				action: () => this.handOffToAccountModal(),
 			}]);
 			return;
 		}
 		if (id === "zotero") {
-			this.renderStepHeader(card, "library", "从 Zotero 导入论文", "已经检测到本地的 Zotero 数据目录。导入只在本地复制 PDF 并建立论文条目，不转换，也不消耗额度。");
-			this.renderBaseFolderField(card, "命名您的论文库文件夹");
+			this.renderStepHeader(card, "library", rectoUiText("onboarding.importZotero"), rectoUiText("onboarding.importZoteroDesc"));
+			this.renderBaseFolderField(card, rectoUiText("onboarding.nameLibrary"));
 			this.renderActions(card, [
-				{ label: "一键导入 Zotero", cta: true, action: () => this.importZotero() },
-				{ label: "改用库外 PDF", action: () => { this.preferExternal = true; this.render(); } },
+				{ label: rectoUiText("onboarding.importNow"), cta: true, action: () => this.importZotero() },
+				{ label: rectoUiText("onboarding.useExternal"), action: () => { this.preferExternal = true; this.render(); } },
 			]);
 			return;
 		}
 		if (id === "hub") {
-			this.renderStepHeader(card, "library-big", "材料已经就绪", "打开论文库，选择一篇论文，在右侧完成转换；转换完成后从同一处打开正文或译文阅读。");
+			this.renderStepHeader(card, "library-big", rectoUiText("onboarding.ready"), rectoUiText("onboarding.readyDesc"));
 			this.renderActions(card, [{
-				label: "打开论文库，选择一篇转换",
+				label: rectoUiText("onboarding.openLibrary"),
 				cta: true,
 				action: () => this.complete(() => {
 					void this.plugin.activateRectoHub();
 					// 教学到这里就撒手了，而转换按钮在**详情栏**里——不先选中一篇，右侧
 					// 什么都不出现。这是整条链最容易掉队的一跳，值这一句话。
-					new obsidian.Notice("在列表里选中一篇论文，右侧详情栏就有「转换」。", 10000);
+					new obsidian.Notice(rectoUiText("onboarding.selectPaperHint"), 10000);
 				}),
 			}]);
 			return;
 		}
 		if (id === "external-result") {
-			this.renderStepHeader(card, "book-open", "第一篇已经转换", "正文已经写回当前 Vault。现在可以直接打开阅读，之后也能从文件列表再次找到它。");
+			this.renderStepHeader(card, "book-open", rectoUiText("onboarding.firstConverted"), rectoUiText("onboarding.firstConvertedDesc"));
 			this.renderActions(card, [{
-				label: "打开正文阅读",
+				label: rectoUiText("onboarding.readSource"),
 				cta: true,
 				action: () => this.complete(() => this.plugin.openExternalConversionResult(this.externalResult)),
 			}]);
@@ -14955,15 +18191,15 @@ class RectoOnboardingModal extends obsidian.Modal {
 		this.renderStepHeader(
 			card,
 			"file-plus",
-			"选择第一篇 PDF",
+			rectoUiText("onboarding.choosePdf"),
 			this.plugin.hasNodeSqlite
-				? "没有检测到可用的 Zotero 数据目录。可以先选一篇本地 PDF 转换，也可以去设置页手动配置 Zotero。"
-				: "当前运行环境不能读取 Zotero 数据库，但仍可直接选择本地 PDF 完成第一次转换。"
+				? rectoUiText("onboarding.zoteroNotFound")
+				: rectoUiText("onboarding.zoteroUnavailable")
 		);
-		this.renderBaseFolderField(card, "命名您的论文库文件夹");
+		this.renderBaseFolderField(card, rectoUiText("onboarding.nameLibrary"));
 		this.renderActions(card, [
-			{ label: "选择 PDF 并转换", cta: true, action: () => this.convertExternalPdf() },
-			{ label: "配置 Zotero", action: () => this.complete(() => this.plugin.openRectoSettings()) },
+			{ label: rectoUiText("onboarding.convertPdf"), cta: true, action: () => this.convertExternalPdf() },
+			{ label: rectoUiText("onboarding.configureZotero"), action: () => this.complete(() => this.plugin.openRectoSettings()) },
 		]);
 	}
 
@@ -14979,7 +18215,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 		field.createEl("label", { text: label });
 		const input = field.createEl("input", { cls: "recto-onboarding-field-input" });
 		input.setAttr("type", "text");
-		input.setAttr("placeholder", "论文库");
+		input.setAttr("placeholder", rectoUiText("settings.libraryPlaceholder"));
 		input.value = String(this.plugin.settings.baseFolder || "");
 		input.disabled = this.busy;
 		input.addEventListener("blur", () => { void this.commitBaseFolder(input); });
@@ -14995,7 +18231,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 		try {
 			next = validateVaultRelativeFolder(raw);
 		} catch (error) {
-			new obsidian.Notice(`论文库文件夹无效：${getUserFacingErrorMessage(error, "请选择 Vault 内的文件夹。")}`, 6000);
+			new obsidian.Notice(rectoUiText("settings.libraryInvalid", { error: getUserFacingErrorMessage(error, rectoUiText("settings.chooseVaultFolder")) }), 6000);
 			input.value = previous;
 			input.toggleClass("is-rejected", true);
 			return;
@@ -15052,11 +18288,11 @@ class RectoOnboardingModal extends obsidian.Modal {
 		// 把每一屏都拉高一截，而它们只是退路，不值那个高度。
 		if (options.skippable !== false) {
 			const foot = row.createDiv({ cls: "recto-onboarding-foot" });
-			const skipStep = foot.createEl("button", { text: "跳过这一步", cls: "recto-onboarding-skip" });
+			const skipStep = foot.createEl("button", { text: rectoUiText("onboarding.skipStep"), cls: "recto-onboarding-skip" });
 			skipStep.setAttr("type", "button");
 			skipStep.disabled = this.busy;
 			skipStep.addEventListener("click", () => void this.runAction(() => this.skipCurrentStep()));
-			const skipAll = foot.createEl("button", { text: "跳过引导", cls: "recto-onboarding-skip" });
+			const skipAll = foot.createEl("button", { text: rectoUiText("onboarding.skipAll"), cls: "recto-onboarding-skip" });
 			skipAll.setAttr("type", "button");
 			skipAll.disabled = this.busy;
 			skipAll.addEventListener("click", () => void this.complete());
@@ -15123,7 +18359,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 		try {
 			await action();
 		} catch (error) {
-			new obsidian.Notice(getUserFacingErrorMessage(error, "这一步没有完成，请稍后重试。"), 8000);
+			new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("onboarding.stepFailed")), 8000);
 		} finally {
 			this.busy = false;
 			if (!this.closed && !this.finishing) this.render();
@@ -15150,7 +18386,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 			await this.plugin.updateOnboardingState({ completed: true });
 		} catch (error) {
 			this.finishing = false;
-			new obsidian.Notice("未能保存引导状态，请重试。", 6000);
+			new obsidian.Notice(rectoUiText("onboarding.saveFailed"), 6000);
 			console.warn("Recto: failed to complete onboarding", getSanitizedErrorMessage(error));
 			return;
 		}
@@ -15160,7 +18396,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 			try {
 				await action();
 			} catch (error) {
-				new obsidian.Notice("引导已完成，但目标页面没有打开，请从设置页继续。", 8000);
+				new obsidian.Notice(rectoUiText("onboarding.openFailed"), 8000);
 				console.warn("Recto: onboarding handoff failed", getSanitizedErrorMessage(error));
 			}
 		}
@@ -15180,10 +18416,11 @@ class RectoOnboardingModal extends obsidian.Modal {
 		}
 		this.completed = true;
 		this.close();
-		new obsidian.Notice("引导已结束。需要时可在 设置 → Recto → 开始使用 里继续配置。", 8000);
+		new obsidian.Notice(rectoUiText("onboarding.finished"), 8000);
 	}
 
 	onClose() {
+		this.plugin.untrackUiModal?.(this);
 		// T85-R：关闭**什么都不写**。此前这里无条件标 completed，且不像同文件的登录轮询那样
 		// 检查 isUnloading——于是退出 Obsidian、重载或禁用插件、自更新重载，全都会把引导标成
 		// 「已完成」，用户什么都没做错，引导就永久消失了。现在 Esc / 右上角 X / 点遮罩 / 应用
@@ -15207,12 +18444,13 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 	}
 
 	onOpen() {
+		this.plugin.trackUiModal?.(this);
 		this.closed = false;
 		if (this.modalEl && this.modalEl.addClass) {
 			this.modalEl.addClass("recto-help-modal");
 			this.modalEl.addClass("recto-ui");
 		}
-		if (typeof this.setTitle === "function") this.setTitle("问题反馈");
+		if (typeof this.setTitle === "function") this.setTitle(rectoUiText("settings.feedback"));
 		if (this.titleEl && this.titleEl.createSpan) {
 			this.titleEl.addClass("recto-help-heading");
 			const mark = this.titleEl.createSpan({ cls: "recto-help-heading-mark" });
@@ -15220,6 +18458,26 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 			if (this.titleEl.prepend) this.titleEl.prepend(mark);
 		}
 		this.render();
+	}
+	refreshUiLanguage() {
+		const message = this.contentEl.querySelector("textarea");
+		const draft = message ? message.value : "";
+		this.isUiRefreshing = true;
+		try {
+			refreshRectoModalPreservingInteraction(this, () => {
+				if (typeof this.setTitle === "function") this.setTitle(rectoUiText("settings.feedback"));
+				if (this.titleEl && this.titleEl.createSpan) {
+					const mark = this.titleEl.createSpan({ cls: "recto-help-heading-mark" });
+					mark.innerHTML = RECTO_MARK_MARKUP;
+					if (this.titleEl.prepend) this.titleEl.prepend(mark);
+				}
+				this.render();
+			});
+		} finally {
+			this.isUiRefreshing = false;
+		}
+		const next = this.contentEl.querySelector("textarea");
+		if (next) next.value = draft;
 	}
 
 	render() {
@@ -15238,7 +18496,7 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 
 	renderSignedOut(parent) {
 		const box = parent.createDiv({ cls: "recto-help-signed-out" });
-		const login = box.createEl("button", { text: "打开账号登录", cls: "mod-cta" });
+		const login = box.createEl("button", { text: rectoUiText("feedback.signIn"), cls: "mod-cta" });
 		login.setAttr("type", "button");
 		login.addEventListener("click", () => {
 			this.close();
@@ -15248,9 +18506,9 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 
 	renderContact(parent) {
 		const row = parent.createDiv({ cls: "recto-help-contact" });
-		row.createSpan({ cls: "recto-help-contact-label", text: "Contact us：" });
+		row.createSpan({ cls: "recto-help-contact-label", text: rectoUiText("feedback.contact") });
 		row.createSpan({ cls: "recto-help-contact-number", text: `QQ ${RECTO_SUPPORT_QQ}` });
-		const copyButton = row.createEl("button", { text: "复制" });
+		const copyButton = row.createEl("button", { text: rectoUiText("hub.copy") });
 		copyButton.setAttr("type", "button");
 		copyButton.addEventListener("click", () => void this.copySupportQq());
 	}
@@ -15262,9 +18520,9 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 				throw new Error("clipboard unavailable");
 			}
 			await navigator.clipboard.writeText(RECTO_SUPPORT_QQ);
-			new obsidian.Notice("QQ 号已复制", 2500);
+			new obsidian.Notice(rectoUiText("feedback.qqCopied"), 2500);
 		} catch {
-			new obsidian.Notice(`复制失败，请手动记录 QQ：${RECTO_SUPPORT_QQ}`, 6000);
+			new obsidian.Notice(rectoUiText("feedback.qqCopyFailed", { qq: RECTO_SUPPORT_QQ }), 6000);
 		}
 	}
 
@@ -15272,13 +18530,13 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 		const form = parent.createDiv({ cls: "recto-help-form" });
 		const types = form.createDiv({
 			cls: "recto-help-types",
-			attr: { role: "radiogroup", "aria-label": "反馈类型" },
+			attr: { role: "radiogroup", "aria-label": rectoUiText("feedback.type") },
 		});
 		const typeButtons = [];
 		for (const option of [
-			{ value: "issue", label: "故障" },
-			{ value: "feature", label: "建议" },
-			{ value: "other", label: "其他" },
+			{ value: "issue", label: rectoUiText("feedback.issue") },
+			{ value: "feature", label: rectoUiText("feedback.feature") },
+			{ value: "other", label: rectoUiText("feedback.other") },
 		]) {
 			const active = option.value === this.category;
 			const button = types.createEl("button", {
@@ -15304,26 +18562,26 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 		const message = form.createEl("textarea");
 		message.setAttr("rows", "9");
 		message.setAttr("maxlength", "2000");
-		message.setAttr("placeholder", "请描述问题或建议…");
+		message.setAttr("placeholder", rectoUiText("feedback.placeholder"));
 
 		const status = form.createDiv({ cls: "recto-help-form-status", attr: { "aria-live": "polite" } });
 		const footer = form.createDiv({ cls: "recto-help-form-footer" });
 		this.renderContact(footer);
-		const submit = footer.createEl("button", { text: "提交反馈", cls: "mod-cta" });
+		const submit = footer.createEl("button", { text: rectoUiText("feedback.submit"), cls: "mod-cta" });
 		submit.setAttr("type", "button");
 		const version = this.viewVersion;
 		submit.addEventListener("click", async () => {
 			if (this.submitting) return;
 			const text = String(message.value || "").trim();
 			if (text.length < 5) {
-				status.setText("请至少填写 5 个字。");
+				status.setText(rectoUiText("feedback.tooShort"));
 				status.removeClass("is-success");
 				status.addClass("is-error");
 				return;
 			}
 			this.submitting = true;
 			submit.disabled = true;
-			submit.setText("正在提交…");
+			submit.setText(rectoUiText("feedback.submitting"));
 			status.setText("");
 			status.removeClass("is-error");
 			status.removeClass("is-success");
@@ -15331,24 +18589,25 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 				await this.plugin.submitFeedback({ category: this.category, message: text });
 				if (this.closed || this.viewVersion !== version) return;
 				message.value = "";
-				status.setText("反馈已收到，谢谢。");
+				status.setText(rectoUiText("feedback.received"));
 				status.addClass("is-success");
 			} catch (error) {
 				if (this.closed || this.viewVersion !== version) return;
-				status.setText(getUserFacingErrorMessage(error, "提交失败，请稍后重试或通过 QQ 联系。"));
+				status.setText(getUserFacingErrorMessage(error, rectoUiText("feedback.submitFailed")));
 				status.addClass("is-error");
 			} finally {
 				this.submitting = false;
 				if (!this.closed && this.viewVersion === version) {
 					submit.disabled = false;
-					submit.setText("提交反馈");
+					submit.setText(rectoUiText("feedback.submit"));
 				}
 			}
 		});
-		if (typeof message.focus === "function") message.focus();
+		if (!this.isUiRefreshing && typeof message.focus === "function") message.focus();
 	}
 
 	onClose() {
+		this.plugin.untrackUiModal?.(this);
 		this.closed = true;
 		this.contentEl.empty();
 	}
@@ -15391,6 +18650,7 @@ class RectoAccountModal extends obsidian.Modal {
 	}
 
 	onOpen() {
+		this.plugin.trackUiModal?.(this);
 		if (this.modalEl && this.modalEl.addClass) {
 			this.modalEl.addClass("recto-account-modal");
 			// 品牌 token 挂到弹窗根上而不是 contentEl 上：标题栏是 contentEl 的兄弟，
@@ -15398,7 +18658,7 @@ class RectoAccountModal extends obsidian.Modal {
 			this.modalEl.addClass("recto-ui");
 		}
 		// Obsidian 官方的标题栏惯例，取代自绘标题（T59 遗留、T71 收口）。
-		if (typeof this.setTitle === "function") this.setTitle(`${RECTO_BRAND_NAME} 账号与额度`);
+		if (typeof this.setTitle === "function") this.setTitle(rectoUiText("account.modalTitle"));
 		// setTitle 只吃字符串，品牌图标只能事后塞进 titleEl 行首（T82-A-A-R）。
 		if (this.titleEl && this.titleEl.createSpan) {
 			this.titleEl.addClass("recto-account-heading");
@@ -15420,8 +18680,20 @@ class RectoAccountModal extends obsidian.Modal {
 		this.render();
 		if (this.plugin.hasBackendAccountSession()) void this.refreshAccountQuietly();
 	}
+	refreshUiLanguage() {
+		refreshRectoModalPreservingInteraction(this, () => {
+			if (typeof this.setTitle === "function") this.setTitle(rectoUiText("account.modalTitle"));
+			if (this.titleEl && this.titleEl.createSpan) {
+				const mark = this.titleEl.createSpan({ cls: "recto-account-heading-mark" });
+				mark.innerHTML = RECTO_MARK_MARKUP;
+				if (this.titleEl.prepend) this.titleEl.prepend(mark);
+			}
+			this.render();
+		});
+	}
 
 	onClose() {
+		this.plugin.untrackUiModal?.(this);
 		// 先置 closed 再停表：网络请求的续段可能晚于关闭才回来，不能让它把界面重画、把轮询重开。
 		this.closed = true;
 		this.stopBrowserLoginPolling();
@@ -15465,7 +18737,7 @@ class RectoAccountModal extends obsidian.Modal {
 			await this.plugin.refreshBackendBilling({ timeout: 30000 });
 		} catch (error) {
 			this.plansFailed = true;
-			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, "账号信息暂时无法刷新，请稍后重试。");
+			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, rectoUiText("account.refreshFailed"));
 			await this.plugin.save();
 		} finally {
 			this.plansLoading = false;
@@ -15492,9 +18764,9 @@ class RectoAccountModal extends obsidian.Modal {
 			this.notifyChanged();
 			return done;
 		} catch (error) {
-			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, `${label}未完成，请稍后重试。`);
+			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, rectoUiText("account.operationPending", { label }));
 			await this.plugin.save();
-			new obsidian.Notice(`${label}失败：${this.plugin.settings.backendLastError}`, 8000);
+			new obsidian.Notice(rectoUiText("account.operationFailed", { label, error: this.plugin.settings.backendLastError }), 8000);
 			return false;
 		} finally {
 			this.busy = false;
@@ -15520,7 +18792,7 @@ class RectoAccountModal extends obsidian.Modal {
 		if (!signedIn) {
 			const support = contentEl.createEl("button", {
 				cls: "recto-account-support-link",
-				text: "问题反馈",
+				text: rectoUiText("settings.feedback"),
 			});
 			support.setAttr("type", "button");
 			if (this.busy) support.disabled = true;
@@ -15553,16 +18825,16 @@ class RectoAccountModal extends obsidian.Modal {
 		const box = container.createDiv({ cls: "recto-account-browser" });
 		const intro = box.createDiv({ cls: "recto-account-browser-intro" });
 		// 全中文界面里不留英文 kicker（品牌字 Recto 除外，它是名字不是文案）。
-		intro.createDiv({ cls: "recto-account-kicker", text: waiting.active ? "浏览器登录 · 等待中" : `${RECTO_BRAND_NAME} 账号` });
+		intro.createDiv({ cls: "recto-account-kicker", text: rectoUiText(waiting.active ? "account.browserWaitingTitle" : "account.browserAccountTitle") });
 		intro.createEl("h3", {
 			cls: "recto-account-browser-title",
-			text: waiting.active ? "浏览器登录后，自动回到这里。" : "把登录交给浏览器。",
+			text: rectoUiText(waiting.active ? "account.browserReturn" : "account.browserIntro"),
 		});
 		intro.createDiv({
 			cls: "recto-account-browser-copy",
 			text: waiting.active
-				? "Recto 正在安全等待浏览器完成认证。这个面板可以保持打开，也可以稍后再回来。"
-				: "使用系统浏览器完成登录、注册或找回密码；密码管理器可以正常工作，密码不会进入 Obsidian 插件。",
+				? rectoUiText("account.browserWaitingDesc")
+				: rectoUiText("account.browserDesc"),
 		});
 		const folio = box.createDiv({ cls: "recto-account-folio", attr: { "aria-hidden": "true" } });
 		const source = folio.createDiv({ cls: "recto-account-folio-page is-source" });
@@ -15578,16 +18850,16 @@ class RectoAccountModal extends obsidian.Modal {
 		if (waiting.active) {
 			const status = box.createDiv({ cls: "recto-account-browser-status" });
 			status.createSpan({ cls: "recto-account-browser-pulse" });
-			status.createSpan({ text: "正在等待浏览器完成登录" });
+			status.createSpan({ text: rectoUiText("account.browserWaiting") });
 		}
 		// 过期与从没登录过长得一样，不说一句用户会以为自己被莫名其妙登出了。
 		if (view.sessionExpired) {
-			box.createDiv({ cls: "recto-account-hint", text: "上次登录的会话已过期，重新登录即可继续使用。" });
+			box.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.sessionExpiredDesc") });
 		}
 		this.renderActionError(box, view);
 		const actions = box.createDiv({ cls: "recto-account-actions" });
-		this.createButton(actions, waiting.active ? "重新打开登录页" : "在浏览器中登录", () => {
-			void this.runAction(waiting.active ? "重新打开登录页" : "在浏览器中登录", async () => {
+		this.createButton(actions, rectoUiText(waiting.active ? "account.reopenLogin" : "account.loginInBrowser"), () => {
+			void this.runAction(rectoUiText(waiting.active ? "account.reopenLogin" : "account.loginInBrowser"), async () => {
 				const handoff = await this.plugin.startBackendBrowserLogin({ timeout: 30000 });
 				this.plugin.openExternalUrl(handoff.loginUrl);
 				this.loginAttempt = 0;
@@ -15597,15 +18869,15 @@ class RectoAccountModal extends obsidian.Modal {
 		}, "mod-cta");
 		if (waiting.active) {
 			// 深链没注册（Linux、便携安装、沙盒）时，用户手点这个也能把登录接管过来。
-			this.createButton(actions, "已在浏览器登录", () => {
+			this.createButton(actions, rectoUiText("account.browserLoggedIn"), () => {
 				// 手动检查同时解封轮询：网络恢复后不该还要用户关掉弹窗重开。
 				this.loginAttempt = 0;
 				this.loginBlocked = false;
-				void this.runAction("检查登录状态", async () => {
+				void this.runAction(rectoUiText("account.checkLogin"), async () => {
 					const result = await this.plugin.pollBackendBrowserLogin({ timeout: 30000 });
 					if (result.status === "approved") {
 						this.loginNote = "";
-						new obsidian.Notice(`已登录 ${RECTO_BRAND_NAME} 账号`, 5000);
+						new obsidian.Notice(rectoUiText("account.loginSuccess"), 5000);
 						// 与自动轮询 / 深链两条 approved 同一条规矩：登录成功后必须取一次套餐。
 						// runAction 收尾只 render()，不走 refreshAccountQuietly；不在这里取，
 						// 套餐仍是 []，界面会永远停在「正在读取套餐…」，若打开时已经因过期
@@ -15613,12 +18885,12 @@ class RectoAccountModal extends obsidian.Modal {
 						void this.refreshAccountQuietly();
 						return true;
 					}
-					this.loginNote = BROWSER_LOGIN_STATUS_NOTES[result.status] || "浏览器那边还没完成登录。";
+					this.loginNote = rectoUiText(BROWSER_LOGIN_STATUS_NOTES[result.status] || "account.loginNotFinished");
 					if (result.status === "expired" || result.status === "consumed") this.plugin.clearPendingBrowserLogin();
 					return false;
 				});
 			});
-			this.createButton(actions, "取消", () => {
+			this.createButton(actions, rectoUiText("account.cancel"), () => {
 				this.plugin.clearPendingBrowserLogin();
 				this.loginAttempt = 0;
 				this.loginBlocked = false;
@@ -15628,22 +18900,22 @@ class RectoAccountModal extends obsidian.Modal {
 		}
 		if (waiting.active && waiting.loginUrl) {
 			// 浏览器打不开时的最后一条路：把地址复制到别的设备上打开，轮询照样能接管。
-			this.createButton(actions, "复制登录链接", async () => {
+			this.createButton(actions, rectoUiText("account.copyLoginLink"), async () => {
 				try {
 					if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
 						await navigator.clipboard.writeText(waiting.loginUrl);
 					}
-					new obsidian.Notice("登录链接已复制，可在任意浏览器打开。", 5000);
+					new obsidian.Notice(rectoUiText("account.loginLinkCopied"), 5000);
 				} catch {
-					new obsidian.Notice("复制失败，请手动打开账号网页。", 8000);
+					new obsidian.Notice(rectoUiText("account.loginLinkCopyFailed"), 8000);
 				}
 			});
 		}
 		box.createDiv({
 			cls: "recto-account-browser-foot",
 			text: waiting.active
-				? "完成网页操作后返回 Obsidian，Recto 会自动继续。"
-				: "登录、注册与找回密码都在浏览器完成。",
+				? rectoUiText("account.browserReturnHint")
+				: rectoUiText("account.browserOnlyHint"),
 		});
 		if (this.loginNote) box.createDiv({ cls: "recto-account-hint", text: this.loginNote });
 	}
@@ -15694,7 +18966,7 @@ class RectoAccountModal extends obsidian.Modal {
 		if (!decision.poll) {
 			this.stopBrowserLoginPolling();
 			if (decision.reason === "timeout" || decision.reason === "expired") {
-				this.loginNote = "登录页已超时，请重新点「在浏览器中登录」。";
+				this.loginNote = rectoUiText("account.loginTimeout");
 				this.plugin.clearPendingBrowserLogin();
 				this.render();
 			}
@@ -15707,7 +18979,7 @@ class RectoAccountModal extends obsidian.Modal {
 			if (result.status === "approved") {
 				this.stopBrowserLoginPolling();
 				this.loginNote = "";
-				new obsidian.Notice(`已登录 ${RECTO_BRAND_NAME} 账号`, 5000);
+				new obsidian.Notice(rectoUiText("account.loginSuccess"), 5000);
 				// 登录成功后必须取一次套餐与额度：整条取数链路只有 refreshBackendBilling 一个入口，
 				// 而它原来只在「打开面板时已登录」那一种情形下跑过。先开面板再去浏览器登录的新用户
 				// 走的正是这条路，回来时套餐一次都没取过，界面却说「套餐读取失败」。
@@ -15718,16 +18990,16 @@ class RectoAccountModal extends obsidian.Modal {
 			if (result.status === "expired" || result.status === "consumed") {
 				this.stopBrowserLoginPolling();
 				this.plugin.clearPendingBrowserLogin();
-				this.loginNote = BROWSER_LOGIN_STATUS_NOTES[result.status];
+				this.loginNote = rectoUiText(BROWSER_LOGIN_STATUS_NOTES[result.status]);
 				this.render();
 			}
 		} catch (error) {
 			// 与订单轮询同一条规矩：失败不重试，停表 + 留一行说明，交回手动按钮。
 			this.stopBrowserLoginPolling();
 			this.loginBlocked = true;
-			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, "登录未完成，请稍后重试。");
+			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, rectoUiText("account.loginFailed"));
 			await this.plugin.save();
-			this.loginNote = "自动检查登录状态失败，已停止；在浏览器登录后请点「已在浏览器登录」。";
+			this.loginNote = rectoUiText("account.loginAutoCheckFailed");
 			this.render();
 		} finally {
 			this.loginPolling = false;
@@ -15791,11 +19063,11 @@ class RectoAccountModal extends obsidian.Modal {
 			: this.renderMembershipBalance(container, view);
 		if (!view.emailVerified) {
 			const row = creditHost.createDiv({ cls: "recto-account-verify-row" });
-			row.createSpan({ cls: "recto-account-hint", text: "邮箱尚未验证。" });
-			this.createButton(row, "发送验证邮件", () => {
-				void this.runAction("发送验证邮件", async () => {
+			row.createSpan({ cls: "recto-account-hint", text: rectoUiText("account.emailUnverified") });
+			this.createButton(row, rectoUiText("account.sendVerification"), () => {
+				void this.runAction(rectoUiText("account.sendVerification"), async () => {
 					await this.plugin.requestBackendEmailVerification(view.email, { timeout: 30000 });
-				}, "验证邮件已请求，请检查邮箱。");
+				}, rectoUiText("account.verificationRequested"));
 			});
 		}
 		this.renderActionError(creditHost, view);
@@ -15804,36 +19076,36 @@ class RectoAccountModal extends obsidian.Modal {
 		// 两行并一行；邮箱显示六轮拍板删掉——用户自己知道账号，右格不再挤）；权益仍只挂复制按钮 title。
 		const footer = container.createDiv({ cls: "recto-account-footer" });
 		const supportHost = footer.createDiv({ cls: "recto-account-footer-meta" });
-		const support = supportHost.createEl("button", { cls: "recto-account-support-link", text: "问题反馈" });
+		const support = supportHost.createEl("button", { cls: "recto-account-support-link", text: rectoUiText("settings.feedback") });
 		support.setAttr("type", "button");
 		if (this.busy) support.disabled = true;
 		support.addEventListener("click", () => this.plugin.openHelpFeedbackModal());
 		if (view.inviteCode) {
 			const invite = footer.createDiv({ cls: "recto-account-invite" });
-			invite.createSpan({ cls: "recto-account-invite-label", text: "邀请码" });
+			invite.createSpan({ cls: "recto-account-invite-label", text: rectoUiText("account.inviteCode") });
 			invite.createSpan({ cls: "recto-account-invite-code", text: view.inviteCode });
-			const copyBtn = this.createButton(invite, "复制", () => {
-				void this.runAction("复制邀请码", async () => {
+			const copyBtn = this.createButton(invite, rectoUiText("hub.copy"), () => {
+				void this.runAction(rectoUiText("account.copyInvite"), async () => {
 					if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
 						await navigator.clipboard.writeText(view.inviteCode);
 						return;
 					}
-					throw new Error("当前环境不支持复制");
-				}, "邀请码已复制");
+					throw new Error(rectoUiText("account.clipboardUnavailable"));
+				}, rectoUiText("account.inviteCopied"));
 			}, "recto-account-invite-copy");
 			copyBtn.setAttr("title", view.creditPackMode
-				? "好友注册并验证邮箱后，双方各得 60 个翻译页。"
-				: "好友注册时填写，双方各得 7 天 Pro 试用。");
+				? rectoUiText("account.invitePagesHint")
+				: rectoUiText("account.inviteTrialHint"));
 		} else {
 			footer.createDiv({ cls: "recto-account-invite is-empty" });
 		}
 		const logout = footer.createDiv({ cls: "recto-account-footer-end" });
-		this.createButton(logout, "退出登录", () => {
-			void this.runAction("退出登录", async () => {
+		this.createButton(logout, rectoUiText("account.signOut"), () => {
+			void this.runAction(rectoUiText("account.signOut"), async () => {
 				await this.plugin.logoutBackendAccount({ timeout: 30000 });
 				this.loginAttempt = 0;
 				this.loginNote = "";
-			}, "已退出 Recto 账号");
+			}, rectoUiText("account.signedOutNotice"));
 		});
 	}
 
@@ -15846,15 +19118,15 @@ class RectoAccountModal extends obsidian.Modal {
 		const pages = view.translationPages || { known: false, availableText: "—", tone: "unknown" };
 		const available = credits.createDiv({ cls: "recto-account-page-balance-item" });
 		const label = available.createDiv({ cls: "recto-account-page-label" });
-		label.createSpan({ cls: "recto-account-meter-label", text: "可用翻译页" });
+		label.createSpan({ cls: "recto-account-meter-label", text: rectoUiText("account.availablePagesLabel") });
 		const help = label.createSpan({ cls: "recto-account-pack-help rc-icon" });
 		setChromeIcon(help, "circle-help");
-		help.setAttr("title", "一次购买，长期有效，可叠加。翻译按实际页数消耗；约几篇按普通论文估算；PDF 转换当前免费。");
-		available.createEl("strong", { cls: `recto-account-page-value is-${pages.tone}`, text: `${pages.availableText} 页` });
+		help.setAttr("title", rectoUiText("account.packHelp"));
+		available.createEl("strong", { cls: `recto-account-page-value is-${pages.tone}`, text: rectoUiText("account.pagesCount", { count: pages.availableText }) });
 		if (!pages.known) {
-			credits.createDiv({ cls: "recto-account-hint", text: "翻译页读取失败，重新打开面板会再试一次。" });
+			credits.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.pagesReadFailed") });
 		} else if (view.creditsEmpty) {
-			credits.createDiv({ cls: "recto-account-hint", text: "翻译页已用完，购买后可继续翻译；PDF 转换当前免费。" });
+			credits.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.pagesDepleted") });
 		}
 		return credits;
 	}
@@ -15865,7 +19137,7 @@ class RectoAccountModal extends obsidian.Modal {
 		const credits = card.createDiv({ cls: "recto-account-credits" });
 		const meter = view.meter || { known: false, percent: 0, heldPercent: 0, text: "—", tone: "unknown" };
 		const top = credits.createDiv({ cls: "recto-account-meter-top" });
-		top.createSpan({ cls: "recto-account-meter-label", text: "剩余额度" });
+		top.createSpan({ cls: "recto-account-meter-label", text: rectoUiText("account.remainingCreditsLabel") });
 		top.createSpan({ cls: `recto-account-meter-value is-${meter.tone}`, text: meter.text });
 		const track = credits.createDiv({ cls: `recto-account-meter-track${meter.known ? "" : " is-unknown"}` });
 		const fill = track.createDiv({ cls: `recto-account-meter-fill is-${meter.tone}` });
@@ -15882,10 +19154,10 @@ class RectoAccountModal extends obsidian.Modal {
 			});
 		}
 		const footNote = meter.known
-			? (meter.heldPercent > 0 ? `另有 ${meter.heldPercent}% 正在处理中` : "")
-			: "额度读取失败，重新打开面板会再试一次。";
+			? (meter.heldPercent > 0 ? rectoUiText("account.heldProcessing", { percent: meter.heldPercent }) : "")
+			: rectoUiText("account.creditsReadFailed");
 		if (footNote) credits.createDiv({ cls: "recto-account-hint", text: footNote });
-		if (view.creditsEmpty) card.createDiv({ cls: "recto-account-hint", text: "额度已用完，购买后才能继续转换与翻译。" });
+		if (view.creditsEmpty) card.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.creditsDepleted") });
 		return card;
 	}
 
@@ -15899,7 +19171,7 @@ class RectoAccountModal extends obsidian.Modal {
 			// 套餐一次都没取过，却被告知「读取失败」，而根本没有失败发生。
 			box.createDiv({
 				cls: "recto-account-hint",
-				text: this.plansFailed ? "套餐读取失败，重新打开面板会再试一次。" : "正在读取套餐…",
+				text: rectoUiText(this.plansFailed ? "account.plansReadFailed" : "account.plansLoading"),
 			});
 			return;
 		}
@@ -15907,7 +19179,7 @@ class RectoAccountModal extends obsidian.Modal {
 		const cards = buildBackendPlanCatalog(view.plans, this.planCycle, view.creditsPerPaper, view.billingMode);
 		if (!cards.length) {
 			// 后端返回的套餐一个都认不出来（code 约定对不上）时，宁可说清楚，也不要画一片空白。
-			box.createDiv({ cls: "recto-account-hint", text: "套餐信息暂时无法显示，请联系我们。" });
+			box.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.plansUnavailable") });
 			return;
 		}
 
@@ -15920,8 +19192,8 @@ class RectoAccountModal extends obsidian.Modal {
 			box.createDiv({
 				cls: "recto-account-hint",
 				text: waiting
-					? "正在等待浏览器完成付款，额度会自动更新。"
-					: "还没等到付款结果。关掉这个面板再打开一次也会刷新；插件不会查询订单本身。",
+					? rectoUiText("account.paymentWaiting")
+					: rectoUiText("account.paymentTimeout"),
 			});
 		}
 
@@ -15991,8 +19263,8 @@ class RectoAccountModal extends obsidian.Modal {
 		// 「约」字在文案里，完整口径挂 title——底下那行灰色小字太占观感，但估算的前提不能不交代。
 		const quota = cell.createDiv({ cls: "recto-account-plan-quota", text: card.papersText });
 		quota.setAttr("title", card.kind === "credit-pack"
-			? "按每篇约 20 页估算。实际消耗始终以翻译页数为准；PDF 转换当前免费。"
-			: "按平均页数折算的估计值。转换按论文页数计费，翻译按字符量另计，实际篇数会随论文长短浮动。");
+			? rectoUiText("account.packEstimateHint")
+			: rectoUiText("account.planEstimateHint"));
 		const list = cell.createEl("ul", { cls: "recto-account-plan-feats" });
 		for (const feature of card.features) list.createEl("li", { text: feature });
 	}
@@ -16013,7 +19285,7 @@ class RectoAccountModal extends obsidian.Modal {
 			this.checkoutStarted = true;
 			this.checkoutPaid = false;
 			this.checkoutAttempt = 0;
-		}, "支付页已在浏览器打开，请在浏览器里完成付款。");
+		}, rectoUiText("account.paymentOpened"));
 	}
 
 	// T87-1-A 方案 B：一张额度包卡片——页数、价格、「约 N 篇」、按钮，仅此四件；推荐档带
@@ -16029,7 +19301,7 @@ class RectoAccountModal extends obsidian.Modal {
 		const pending = this.pendingLabel === action.label;
 		const cta = cell.createEl("button", {
 			cls: `recto-account-pack-cta${action.disabled ? "" : " mod-cta"}`,
-			text: pending ? "购买…" : "购买",
+			text: rectoUiText(pending ? "account.buyPending" : "account.buy"),
 		});
 		cta.setAttr("type", "button");
 		if (pending) cta.addClass("is-pending");
@@ -16047,10 +19319,10 @@ class RectoAccountModal extends obsidian.Modal {
 		const wrap = box.createDiv({ cls: "recto-account-cycle-wrap" });
 		const group = wrap.createDiv({ cls: "recto-account-cycle" });
 		group.setAttr("role", "group");
-		group.setAttr("aria-label", "计费周期");
+		group.setAttr("aria-label", rectoUiText("account.billingCycle"));
 		const options = [
-			{ id: "monthly", label: "月付", badge: "" },
-			{ id: "yearly", label: "年付", badge: saving && saving.months >= 1 ? `省 ${saving.months} 个月` : "" },
+			{ id: "monthly", label: rectoUiText("account.monthly"), badge: "" },
+			{ id: "yearly", label: rectoUiText("account.yearly"), badge: saving && saving.months >= 1 ? rectoUiText("account.saveMonths", { count: saving.months }) : "" },
 		];
 		for (const option of options) {
 			const active = this.planCycle === option.id;
@@ -16088,22 +19360,23 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 	}
 
 	onOpen() {
+		this.plugin.trackUiModal?.(this);
 		const { contentEl } = this;
 		if (this.modalEl && this.modalEl.addClass) {
 			this.modalEl.addClass("recto-sync-preview-modal");
 			this.modalEl.addClass("recto-ui");
 		}
-		if (typeof this.setTitle === "function") this.setTitle("预览 Zotero 同步差异");
+		if (typeof this.setTitle === "function") this.setTitle(rectoUiText("sync.title"));
 		contentEl.empty();
 		contentEl.addClass("recto-ui");
 		contentEl.addClass("recto-sync-preview-content");
 		contentEl.createEl("p", {
-			text: `正常 ${this.plan.matched.length}；PDF 暂时缺失 ${this.plan.missingPdfs.length}；Zotero 已删除但 Obsidian 仍保留 ${this.plan.orphaned.length}。`,
+			text: rectoUiText("sync.summary", { matched: this.plan.matched.length, missing: this.plan.missingPdfs.length, orphaned: this.plan.orphaned.length }),
 		});
 		if (this.plan.missingPdfs.length) {
-			contentEl.createEl("h3", { text: "Zotero 条目仍存在，但本地 PDF 缺失" });
+			contentEl.createEl("h3", { text: rectoUiText("sync.missingTitle") });
 			contentEl.createEl("p", {
-				text: "这些论文不会从索引删除，也不会删除 Obsidian 文件。请检查 Zotero 云附件是否尚未下载。",
+				text: rectoUiText("sync.missingDesc"),
 				cls: "setting-item-description",
 			});
 			for (const item of this.plan.missingPdfs) {
@@ -16114,9 +19387,9 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 			}
 		}
 		if (this.plan.orphaned.length) {
-			contentEl.createEl("h3", { text: "Zotero 中已删除的论文" });
+			contentEl.createEl("h3", { text: rectoUiText("sync.orphanedTitle") });
 			contentEl.createEl("p", {
-				text: "同步后它们会标记为已从 Zotero 删除，但 Obsidian 文件默认保留。仅勾选的论文会移入系统回收站。",
+				text: rectoUiText("sync.orphanedDesc"),
 				cls: "setting-item-description",
 			});
 			// 全选/全不选：orphaned 动辄十几条，逐个点太苦；两个按钮只改已有勾选框的状态，
@@ -16128,10 +19401,10 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 				for (const box of this.orphanCheckboxes) box.checked = checked;
 				if (this.deleteButton && this.deleteButton.setDisabled) this.deleteButton.setDisabled(!this.selected.size);
 			};
-			const all = bulk.createEl("button", { text: "全选" });
+			const all = bulk.createEl("button", { text: rectoUiText("sync.selectAll") });
 			all.setAttr("type", "button");
 			all.addEventListener("click", () => selectAll(true));
-			const none = bulk.createEl("button", { text: "全不选" });
+			const none = bulk.createEl("button", { text: rectoUiText("sync.selectNone") });
 			none.setAttr("type", "button");
 			none.addEventListener("click", () => selectAll(false));
 			for (const item of this.plan.orphaned) {
@@ -16140,7 +19413,7 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 				const row = contentEl.createEl("label", { cls: "recto-sync-preview-row" });
 				const checkbox = row.createEl("input");
 				checkbox.type = "checkbox";
-				checkbox.setAttr("aria-label", `移入回收站：${item.info.stem}`);
+				checkbox.setAttr("aria-label", rectoUiText("sync.moveToTrash", { title: item.info.stem }));
 				checkbox.checked = this.selected.has(item.recordId);
 				checkbox.onchange = () => {
 					if (checkbox.checked) this.selected.add(item.recordId);
@@ -16152,20 +19425,23 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 			}
 		}
 		new obsidian.Setting(contentEl)
-			.addButton(button => button.setButtonText("取消同步").onClick(() => this.finish(null)))
-			.addButton(button => button.setButtonText("仅同步索引").onClick(() => this.finish({ deleteRecordIds: [] })))
+			.addButton(button => button.setButtonText(rectoUiText("sync.cancel")).onClick(() => this.finish(null)))
+			.addButton(button => button.setButtonText(rectoUiText("sync.indexOnly")).onClick(() => this.finish({ deleteRecordIds: [] })))
 			.addButton(button => {
 				this.deleteButton = button;
 				// 主行动走品牌色（`mod-cta`，recto-ui 明写的品牌三处露出之一）而不是 `mod-warning`：
 				// 这个动作是**移入系统回收站**、可撤销，弹窗文案也已说清「仅勾选的会移入回收站」，
 				// 用 danger 红属于把可恢复操作说得比实际更重。
-				button.setButtonText("同步并移入回收站").setCta();
+				button.setButtonText(rectoUiText("sync.indexAndTrash")).setCta();
 				if (button.setDisabled) button.setDisabled(!this.selected.size);
 				return button.onClick(() => {
 					if (!this.selected.size) return;
 					this.finish({ deleteRecordIds: Array.from(this.selected) });
 				});
 			});
+	}
+	refreshUiLanguage() {
+		refreshRectoModalPreservingInteraction(this, () => this.onOpen());
 	}
 
 	finish(value) {
@@ -16176,6 +19452,7 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 	}
 
 	onClose() {
+		this.plugin.untrackUiModal?.(this);
 		if (!this.resolved) {
 			this.resolved = true;
 			this.resolve(null);
@@ -16204,34 +19481,35 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 	}
 
 	onOpen() {
+		this.plugin.trackUiModal?.(this);
 		const { contentEl } = this;
 		if (this.modalEl && this.modalEl.addClass) {
 			this.modalEl.addClass("recto-multi-pdf-modal");
 			this.modalEl.addClass("recto-ui");
 		}
-		if (typeof this.setTitle === "function") this.setTitle("选择多 PDF 条目的处理方式");
+		if (typeof this.setTitle === "function") this.setTitle(rectoUiText("pdfChoice.title"));
 		contentEl.empty();
 		contentEl.addClass("recto-ui");
 		contentEl.addClass("recto-multi-pdf-content");
 		contentEl.createEl("p", {
-			text: "以下 Zotero 条目包含多个不同内容的 PDF（可能来自多个附件目录）。已识别正式附件或既有对象时会默认选中它；您也可以改选其他版本、全部处理或跳过。",
+			text: rectoUiText("pdfChoice.intro"),
 			cls: "setting-item-description",
 		});
 		for (const group of this.groups) {
 			const section = contentEl.createDiv({ cls: "recto-multi-pdf-group" });
 			section.createEl("h3", { text: group.title });
-			section.createEl("p", { text: `${group.files.length} 个 PDF 版本`, cls: "setting-item-description" });
+			section.createEl("p", { text: rectoUiText("pdfChoice.versions", { count: group.files.length }), cls: "setting-item-description" });
 			const choice = this.choices.get(group.folder);
 			// 改「处理方式」原来直接重跑 onOpen()，而 onOpen 开头就 contentEl.empty()——
 			// 整窗重建。歧义组多时，改完第 1 组要重新滚到第 3 组，焦点也一起丢。
 			// 改成只重画这一组自己的明细区，其余各组、滚动位置与焦点全不动。
 			let detail = null;
 			new obsidian.Setting(section)
-				.setName("处理方式")
+				.setName(rectoUiText("pdfChoice.mode"))
 				.addDropdown(dropdown => dropdown
-					.addOption("one", "选择一个 PDF")
-					.addOption("all", "全部分别处理")
-					.addOption("skip", "本次跳过")
+					.addOption("one", rectoUiText("pdfChoice.one"))
+					.addOption("all", rectoUiText("pdfChoice.all"))
+					.addOption("skip", rectoUiText("pdfChoice.skip"))
 					.setValue(choice.mode)
 					.onChange(value => {
 						choice.mode = value;
@@ -16241,8 +19519,8 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 			this.renderGroupDetail(detail, group, choice);
 		}
 		new obsidian.Setting(contentEl)
-			.addButton(button => button.setButtonText("取消").onClick(() => this.finish(null)))
-			.addButton(button => button.setButtonText("继续").setCta().onClick(() => {
+			.addButton(button => button.setButtonText(rectoUiText("pdfChoice.cancel")).onClick(() => this.finish(null)))
+			.addButton(button => button.setButtonText(rectoUiText("dialog.continue")).setCta().onClick(() => {
 				const tasks = [];
 				for (const group of this.groups) {
 					const choice = this.choices.get(group.folder);
@@ -16251,6 +19529,9 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 				this.finish(tasks);
 			}));
 	}
+	refreshUiLanguage() {
+		refreshRectoModalPreservingInteraction(this, () => this.onOpen());
+	}
 
 	// 一组的明细区：只有「选择一个 PDF」与「全部分别处理」有内容，「本次跳过」是空的。
 	renderGroupDetail(container, group, choice) {
@@ -16258,18 +19539,18 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 		container.empty();
 		if (choice.mode === "one") {
 			new obsidian.Setting(container)
-				.setName("使用文件")
+				.setName(rectoUiText("pdfChoice.file"))
 				.addDropdown(dropdown => {
 					for (const file of group.files) {
 						let detail = "";
 						try {
 							const stat = fs.statSync(file.path);
-							detail = ` (${(stat.size / 1024 / 1024).toFixed(1)} MB, ${stat.mtime.toLocaleString("zh-CN")})`;
+						detail = ` (${(stat.size / 1024 / 1024).toFixed(1)} MB, ${stat.mtime.toLocaleString(activeRectoUiLocale)})`;
 						} catch {}
 						const choiceKey = getPdfChoiceKey(file);
-						const recommended = choiceKey === group.recommendedChoiceKey ? " [推荐]" : "";
+						const recommended = choiceKey === group.recommendedChoiceKey ? rectoUiText("pdfChoice.recommended") : "";
 						const attachment = group.files.some(other => other !== file && other.name === file.name)
-							? ` [版本 ${group.files.indexOf(file) + 1}]`
+							? rectoUiText("pdfChoice.version", { count: group.files.indexOf(file) + 1 })
 							: "";
 						dropdown.addOption(choiceKey, `${file.name}${attachment}${recommended}${detail}`);
 					}
@@ -16294,6 +19575,7 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 	}
 
 	onClose() {
+		this.plugin.untrackUiModal?.(this);
 		if (!this.resolved) {
 			this.resolved = true;
 			this.resolve(null);
@@ -16315,6 +19597,7 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 class StatusBarProgress {
 	constructor(plugin, total, label = "", sizes = []) {
 		this.plugin = plugin;
+		plugin.activeStatusProgress = this;
 		this.total = total;
 		this.logs = [];
 		this.label = label;
@@ -16354,7 +19637,7 @@ class StatusBarProgress {
 		this.textEl = this.statusBarEl.createSpan({ cls: "rc-statusbar-text" });
 		this.popoverEl = this.statusBarEl.createDiv({ cls: "rc-statusbar-popover" });
 		this.popoverTextEl = this.popoverEl.createDiv({ cls: "rc-statusbar-popover-text" });
-		this.popoverButtonEl = this.popoverEl.createEl("button", { text: "取消未开始的任务" });
+		this.popoverButtonEl = this.popoverEl.createEl("button", { text: rectoUiText("command.cancelQueued") });
 		this.popoverButtonEl.addEventListener("click", (event) => {
 			event.stopPropagation();
 			this.requestCancel();
@@ -16372,20 +19655,20 @@ class StatusBarProgress {
 		const stopping = !!(this.operation && this.operation.stopAfterCurrent);
 		// 论文名常常超过 40 字，硬截会截得像另一个名字；截了就加省略号说明它被截过。
 		const detail = this.detail.length > 40 ? `${this.detail.substring(0, 40)}…` : this.detail;
-		const stage = `${BATCH_PHASE_LABELS[this.phase] || this.stage || "进行中"}${detail ? ` · ${detail}` : ""}`;
+		const stage = `${this.phase ? rectoUiText(`progress.phase.${this.phase}`) : localizeBatchDisplayText(this.stage)}${detail ? ` · ${localizeBatchDisplayText(detail, null)}` : ""}`;
 		// 只剩在跑的那篇时按钮直接消失——强制中止已于 T81-U 删除。这一步必须把「不用管它」说出来，
 		// 否则用户只看见按钮没了，会以为卡住了没出路。
 		this.popoverTextEl.setText(done
-			? (snapshot.stage || "已完成")
-			: (this.operation && !remaining ? `${stage} · 这一篇会跑完；万一卡住会自动放弃并退回额度` : stage));
-		this.popoverButtonEl.setText(stopping ? "已请求取消剩余任务" : `取消未开始的 ${remaining} 篇`);
+			? localizeBatchDisplayText(snapshot.stage || "已完成", "progress.finished")
+			: (this.operation && !remaining ? `${stage} · ${rectoUiText("progress.currentWillFinish")}` : stage));
+		this.popoverButtonEl.setText(stopping ? rectoUiText("progress.cancelRequested") : rectoUiText("progress.cancelQueued", { count: remaining }));
 		this.popoverButtonEl.toggleClass("is-hidden", done || !this.operation || !remaining);
 		this.popoverButtonEl.disabled = stopping;
 	}
 
 	publish(patch = {}) {
 		this.lastPublished = {
-			label: this.label || (this.operation && this.operation.label) || "Recto 任务",
+			label: this.label || (this.operation && this.operation.label) || rectoUiText("progress.defaultLabel"),
 			stage: this.stage,
 			detail: this.detail,
 			phase: this.phase,
@@ -16527,6 +19810,7 @@ class StatusBarProgress {
 		setTimeout(() => {
 			this.statusBarEl.remove();
 			this.clearPublished();
+			if (this.plugin.activeStatusProgress === this) this.plugin.activeStatusProgress = null;
 		}, 15000);
 	}
 
@@ -16534,6 +19818,7 @@ class StatusBarProgress {
 		this.stopSpinner();
 		this.statusBarEl.remove();
 		this.clearPublished();
+		if (this.plugin.activeStatusProgress === this) this.plugin.activeStatusProgress = null;
 	}
 }
 
@@ -16599,8 +19884,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		setting.setDesc(mismatch
 			? describeBaseFolderMismatchText(mismatch)
 			: (locked
-				? "在 Obsidian 文件浏览器里给这个文件夹改名或移动即可，这里会自动同步（正文里的链接也由 Obsidian 一并更新）。"
-				: "Vault 内的相对路径。"));
+				? rectoUiText("settings.folderRenameHint")
+				: rectoUiText("settings.vaultRelativePath")));
 	}
 
 	// 按钮自己的忙碌态：跑起来就禁用并换成「…中」的文案，跑完复原。扫描全库要好几秒，
@@ -16634,10 +19919,6 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		const brand = header.createDiv({ cls: "recto-brand" });
 		brand.createSpan({ cls: "recto-brand-mark" }).innerHTML = RECTO_MARK_MARKUP;
 		brand.createSpan({ text: RECTO_BRAND_NAME });
-		header.createEl("p", {
-			text: "登录账号、指好 Zotero 文件夹，然后把论文导入论文库，就可以开始转换与翻译。",
-			cls: "setting-item-description",
-		});
 		// 状态点只留用户真正要盯的两件事：账号（含额度）与 Zotero。后端地址默认就是对的，
 		// 把它做成一个「待配置」的点只会让新用户以为自己漏了一步。
 		const status = header.createDiv({ cls: "recto-settings-status" });
@@ -16649,39 +19930,23 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		this.addSetupStatus(status, lights.account);
 		this.addSetupStatus(status, lights.zotero);
 		this.addSetupStatus(status, lights.credits);
-
 		// 段落说明只写「名字说不出来的那半句」（T82-D-R）：开始使用的步骤号自己会数，
 		// 原来那句「三步配好」在认不出 Zotero 时还是错的，删掉比修准更省事。
 		this.renderQuickStart(
-			this.openFoldableSection(c, "开始使用", null, "quickStartOpen", true),
+			this.openFoldableSection(c, rectoUiText("settings.getStarted"), null, "quickStartOpen", true),
 			s,
 			autoDetectedZoteroSource
 		);
-		// 阅读体验排在处理偏好前面：改了立刻能在预览里看见效果，是最容易上手的一段；
-		// 处理偏好要等下一次转换才看得出差别，放后面更合节奏。
-		this.renderReaderTheme(this.openFoldableSection(
-			c,
-			"阅读体验",
-			"切换立即生效，不修改任何文件内容。",
-			"readerOpen",
-			true
-		), s);
-		this.renderBackendPreferences(this.openFoldableSection(
-			c,
-			"处理偏好",
-			"改动在下一次转换或翻译时生效。",
-			"prefsOpen",
-			true
-		), s);
-		this.renderRibbonButtons(this.openFoldableSection(c, "侧边栏按钮", null, "ribbonOpen", true), s);
+		this.renderReaderTheme(this.openFoldableSection(c, rectoUiText("settings.readingExperience"), null, "readerOpen", true), s);
+		this.renderRibbonButtons(this.openFoldableSection(c, rectoUiText("settings.sidebarButtons"), null, "ribbonOpen", true), s);
 		// T86-D-B：库外 PDF 与翻译 Markdown 合成一节。不塞进高级设置——
 		// 那是 Hub 之外仅有的转换入口，和「侧边栏 / 后处理」不是一类东西。
 		// 排在侧边栏后面：先看到自己常用的入口，再用得到时才打开这一节。
 		// 默认同其它目录级大类一样展开，折不折由用户点标题决定。
 		const externalBody = this.openFoldableSection(
 			c,
-			"Zotero 之外的文件",
-			"转换不在论文库里的 PDF，或翻译任意 Markdown。",
+			rectoUiText("settings.externalFiles"),
+			null,
 			"externalFilesOpen",
 			true
 		);
@@ -16689,8 +19954,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		this.renderMarkdownTranslation(externalBody, s);
 		const advanced = createCollapsibleSettingsSection(
 			c,
-			"高级设置",
-			"PDF 转换优化、本地笔记、对照阅读与插件更新"
+			rectoUiText("settings.advanced"),
+			null
 		);
 		this.bindCollapsibleState(advanced.details, "advancedOpen", false);
 		this.renderAdvancedSettings(advanced.body, s, autoDetectedZoteroSource);
@@ -16722,7 +19987,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			cls: "recto-settings-footer-version",
 		});
 		const feedback = footer.createEl("button", {
-			text: "问题反馈",
+			text: rectoUiText("settings.feedback"),
 			cls: "recto-settings-quiet",
 		});
 		if (feedback.setAttr) feedback.setAttr("type", "button");
@@ -16818,7 +20083,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			+ (Number(this.plugin.zoteroPendingOrphaned) || 0);
 		const wasVisible = !el.hasClass("rc-hidden");
 		setting.setDesc(pending > 0
-			? `当前有 ${pending} 项需要您选择：多 PDF 条目或 Zotero 里已删除的论文。自动同步不会删文件。`
+			? rectoUiText("settings.pendingZotero", { count: pending })
 			: "");
 		el.toggleClass("rc-hidden", pending <= 0);
 		// 只在「从无到有」时淡入：状态没变还播动画，看着才像闪。
@@ -16831,26 +20096,32 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 
 
 	// T59：账号、额度、套餐与订单整体搬进 RectoAccountModal，设置页只留一个入口与状态摘要。
-	renderAccountEntry(container, s, name = "Recto 账号") {
+	renderAccountEntry(container, s, name = rectoUiText("settings.account")) {
 		const view = describeBackendAccountView(s);
 		// 说明只在登录后才有内容可写（邮箱与额度）；未登录时按钮上「登录 / 注册」四个字
 		// 已经把这一步说完了，再写一句「尚未登录」只是复述。
 		const setting = new obsidian.Setting(container).setName(name);
 		if (view.loggedIn) {
-			setting.setDesc(`已登录：${view.email}${view.emailVerified ? "" : "（邮箱未验证）"}；${view.creditsText}。`);
+			setting.setDesc(rectoUiText("settings.loggedIn", { email: view.email, verification: view.emailVerified ? "" : rectoUiText("settings.emailUnverified"), credits: view.creditsText }));
 		}
-		setting.addButton(b => b.setButtonText(view.loggedIn ? "打开账号面板" : "登录 / 注册").setCta()
+		setting.addButton(b => b.setButtonText(rectoUiText(view.loggedIn ? "settings.openAccount" : "settings.signInOrRegister")).setCta()
 			.onClick(() => this.plugin.openAccountModal({ onChange: () => this.display() })));
 	}
 
 	async persistBackendPreferenceChange(mutator) {
+		const previousTarget = migrateDocumentLanguages(this.plugin.settings).translationTarget.id;
 		if (typeof mutator === "function") mutator();
+		if (previousTarget !== migrateDocumentLanguages(this.plugin.settings).translationTarget.id) {
+			if (this.plugin.dualPaneSession) this.plugin.stopRectoDualPane();
+			if (this.plugin.pdfCompareSession) this.plugin.stopRectoPdfCompare();
+		}
 		await this.plugin.save();
+		this.plugin.safeRefreshHubViews?.();
 		if (!this.plugin.hasBackendAccountSession || !this.plugin.hasBackendAccountSession()) return;
 		try {
 			await this.plugin.saveBackendPreferences({ timeout: 30000 });
 		} catch (error) {
-			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, "处理偏好同步未完成，请稍后重试。");
+			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, rectoUiText("settings.preferenceSyncFailed"));
 			await this.plugin.save();
 			new obsidian.Notice(this.plugin.settings.backendLastError, 8000);
 		}
@@ -16858,36 +20129,36 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 
 	// T84-S：只有一个开关，因为其余的都不该问用户——落点固定在原文同目录、计费由后端算。
 	renderMarkdownTranslation(container, s) {
-		new obsidian.Setting(container).setName("写入对照锚点")
-			.setDesc("开启后会往您的原文里写入隐藏锚点，翻译完就能双栏对照。默认关：不改您自己写的文件。")
+		new obsidian.Setting(container).setName(rectoUiText("settings.writeAnchors"))
+			.setDesc(rectoUiText("settings.writeAnchorsDesc"))
 			.addToggle(t => t.setValue(s.markdownTranslationWriteAnchors === true)
 				.onChange(async value => { s.markdownTranslationWriteAnchors = value; await this.plugin.save(); }));
 	}
 
 	renderExternalPdf(container, s) {
-		const folderSetting = new obsidian.Setting(container).setName("输出位置")
-			.setDesc("产物写进所选目录下的同名子文件夹，必须在库内。固定目录也是「PDF 所在目录」的回退位置。");
+		const folderSetting = new obsidian.Setting(container).setName(rectoUiText("settings.outputLocation"))
+			.setDesc(rectoUiText("settings.outputLocationDesc"));
 		if (folderSetting.settingEl && folderSetting.settingEl.addClass) {
 			folderSetting.settingEl.addClass("recto-settings-output");
 		}
 		const pathLine = folderSetting.descEl.createDiv({ cls: "recto-settings-path-line" });
-		pathLine.createSpan({ text: "当前目录：" });
+		pathLine.createSpan({ text: rectoUiText("settings.currentFolder") });
 		const folderValueEl = pathLine.createEl("code", {
 			cls: "recto-settings-path-value",
 			text: s.externalOutputFolder || DEFAULT_EXTERNAL_OUTPUT_FOLDER,
 		});
-		const pick = pathLine.createEl("button", { text: "选择文件夹", cls: "recto-settings-quiet" });
+		const pick = pathLine.createEl("button", { text: rectoUiText("settings.chooseFolder"), cls: "recto-settings-quiet" });
 		if (pick.setAttr) pick.setAttr("type", "button");
 		pick.addEventListener("click", async () => {
-			const picked = await this.plugin.pickDirectory("选择库外 PDF 的输出目录（必须在库内）", this.plugin.app.vault.adapter.basePath);
+			const picked = await this.plugin.pickDirectory(rectoUiText("settings.chooseOutputFolder"), this.plugin.app.vault.adapter.basePath);
 			if (!picked) return;
 			const relative = this.plugin.getVaultRelativePath(picked);
 			if (relative === null) {
-				new obsidian.Notice("输出目录必须在当前库里，否则正文里的图片会全部失效。", 10000);
+				new obsidian.Notice(rectoUiText("settings.outputOutsideVault"), 10000);
 				return;
 			}
 			if (!relative) {
-				new obsidian.Notice("请选择库里的一个子文件夹，不要直接用库根目录。", 8000);
+				new obsidian.Notice(rectoUiText("settings.outputAtVaultRoot"), 8000);
 				return;
 			}
 			s.externalOutputFolder = sanitizeExternalOutputFolder(relative);
@@ -16896,56 +20167,40 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			else folderValueEl.text = s.externalOutputFolder;
 		});
 		folderSetting.addDropdown(d => {
-			for (const [key, label] of Object.entries(EXTERNAL_OUTPUT_MODES)) d.addOption(key, label);
+			for (const key of Object.keys(EXTERNAL_OUTPUT_MODES)) d.addOption(key, rectoUiText(`settings.externalMode.${key}`));
 			return d.setValue(EXTERNAL_OUTPUT_MODES[s.externalOutputMode] ? s.externalOutputMode : "fixed")
 				.onChange(async value => { s.externalOutputMode = value; await this.plugin.save(); });
 		});
-		new obsidian.Setting(container).setName("保留 PDF 副本与结构信息")
-			.setDesc("PDF 对照阅读需要它们；关掉时只有正文、译文与图片。")
+		new obsidian.Setting(container).setName(rectoUiText("settings.keepPdf"))
+			.setDesc(rectoUiText("settings.keepPdfDesc"))
 			.addToggle(t => t.setValue(s.externalKeepSourcePdf === true)
 				.onChange(async value => { s.externalKeepSourcePdf = value; await this.plugin.save(); }));
 	}
 
 	// 下拉一改就落库（本地 + 已登录时同步到后端），所以这里没有「保存」按钮——
 	// T82-D 删掉的那两个手动同步按钮是内部调试遗留，普通用户按不出任何额外结果。
-	renderBackendPreferences(container, s) {
-		// T86-D-A：原名「输出语言」，**名字比它管得宽**。它同时填后端的 `outputLanguage` 与
-		// `translationTargetLanguage`（合并见 getBackendPreferencesPayload），但后端只有后者进得了
-		// 提示词——摘要模板当前是写死的中文，`outputLanguage` 全仓没有消费者。
-		// 所以选 English 的真实结果是「中文摘要 + 英文译文」。名字改窄、说明如实交代摘要那一半，
-		// 是在 T87-4 把摘要语言真正接通之前唯一不骗人的写法。**这一项不能删**：中文论文译成英文
-		// 这条路是真的能走通的。
-		new obsidian.Setting(container).setName("译文语言")
-			.setDesc("摘要目前固定输出中文。")
-			.addDropdown(d => d
-				.addOption("zh-CN", "中文")
-				.addOption("en-US", "English")
-				.setValue(s.backendOutputLanguage || "zh-CN")
-				.onChange(async value => this.persistBackendPreferenceChange(() => { s.backendOutputLanguage = value; })));
-		// T83-I：摘要与转换技术上无关。只想要正文（批量补库、只做对照阅读）时关掉它，
-		// 转换照常，只是不生成也不落 br- 摘要文件。
-		new obsidian.Setting(container).setName("转换后生成摘要")
-			.setDesc("关掉后只出正文，不生成摘要文件；正文、译文与对照阅读都不受影响。")
-			.addToggle(t => t.setValue(s.generateSummaryOnConvert !== false)
-				.onChange(async value => {
-					s.generateSummaryOnConvert = value;
-					await this.plugin.save();
+	renderBackendPreferences(container, s, name = documentLanguageText("输出语言", "Output language")) {
+		const current = migrateDocumentLanguages(s);
+		new obsidian.Setting(container).setName(name)
+			.setDesc(documentLanguageText("新译文和摘要使用此语言，已有文件保持不变。", "New translations and summaries use this language. Existing files are preserved."))
+			.addDropdown(d => {
+				const common = [["zh-Hans", "简体中文"], ["zh-Hant", "繁體中文"], ["en", "English"], ["ja", "日本語"], ["ko", "한국어"], ["fr", "Français"], ["de", "Deutsch"], ["es", "Español"], ["ar", "العربية"], ["hi", "हिन्दी"], ["ru", "Русский"]];
+				for (const [id, name] of common) d.addOption(id, name);
+				if (!common.some(([id]) => id === current.translationTarget.id)) d.addOption(current.translationTarget.id, current.translationTarget.name);
+				d.addOption("custom", documentLanguageText("自定义…", "Custom…"));
+				d.setValue(current.translationTarget.id).onChange(async value => {
+					try {
+						await this.plugin.ensureDocumentLanguageCapabilities();
+						let target = normalizeDocumentLanguage(value);
+						if (value === "custom") {
+							const choice = await this.plugin.openDecision(() => ({ title: documentLanguageText("自定义翻译目标", "Custom translation target"), languageChoice: {}, actions: [{ label: rectoUiText("dialog.cancel"), value: false }, { label: rectoUiText("dialog.continue"), value: true, cta: true }] }));
+							target = choice && choice.language;
+						}
+						if (target) await this.persistBackendPreferenceChange(() => { s.documentLanguages = { ...s.documentLanguages, unifiedOutput: true, translationTarget: target, summaryLanguage: target.id, ocrLanguage: "auto" }; });
+					} catch (error) { new obsidian.Notice(getUserFacingErrorMessage(error)); }
 					this.display();
-				}));
-		if (s.generateSummaryOnConvert !== false) {
-			new obsidian.Setting(container).setName("摘要详略")
-				.addDropdown(d => d
-					.addOption("brief", "简略")
-					.addOption("standard", "标准")
-					.addOption("detailed", "详细")
-					.setValue(s.summaryDepth || "standard")
-					.onChange(async value => this.persistBackendPreferenceChange(() => { s.summaryDepth = value; })));
-		}
-		// T86-D-A：「笔记结构」「翻译风格」「生成术语表」三行整条删除，**因为它们对输出零影响**——
-		// 摘要只吃 `summaryDepth`（模板当前写死中文），术语一致性是 T84-D 起默认全程生效的
-		// 内部机制（`harvestGlossary`，从不落盘、不进摘要），而翻译风格只是塞进提示词的一个没有定义的
-		// 英文单词。三者唯一的后端消费者 `buildPromptContext` 全仓无人调用。**别顺手补回来**：要恢复
-		// 任何一项，先让它在后端真的改变输出，再谈界面。
+				});
+			});
 	}
 
 	renderQuickStart(container, s, autoDetectedZoteroSource = null) {
@@ -16953,20 +20208,20 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		// 不会出现「1、3、4」这种看着像漏了一步的编号。
 		let step = 0;
 		const stepName = name => `${++step}. ${name}`;
-		this.renderAccountEntry(container, s, stepName("Recto 账号"));
+		this.renderAccountEntry(container, s, stepName(rectoUiText("settings.account")));
 
 		// Zotero 自动检测覆盖默认数据目录与 Windows 上的 Zotero 配置目录，命中率足够高；
 		// 认出来了它就是一件已经办好的事，不该在「开始使用」里占一格——改路径的入口留在高级设置。
 		// 认不出来（多见于自定义数据目录）才必须让用户当场动手，这时它就是一个正经步骤。
 		if (!this.isSetupConfigured("zotero")) {
-			this.renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, stepName("Zotero 源文件夹"));
+			this.renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, stepName(rectoUiText("settings.zoteroSource")));
 		}
 
 		// 只说「必须在 Vault 内」——这条不写清楚，用户会粘一个绝对路径进来然后被静默拒绝。
-		this.baseFolderSetting = new obsidian.Setting(container).setName(stepName("论文库文件夹"))
+		this.baseFolderSetting = new obsidian.Setting(container).setName(stepName(rectoUiText("settings.libraryFolder")))
 			.addText(t => {
 				this.baseFolderText = t;
-				t.setPlaceholder("论文库").setValue(s.baseFolder);
+				t.setPlaceholder(rectoUiText("settings.libraryPlaceholder")).setValue(s.baseFolder);
 				// **不挂 onChange**：逐键校验既吵又危险。删掉「论文库」三个字的过程中必然经过空串，
 				// 右上角当场弹「不能为空」；而输入「zotero」的过程里 z / zo / zot 每一步都会被
 				// **存成**一个合法的论文库文件夹，其间任何一次索引写入或转换都会照着半截名字建目录
@@ -16980,7 +20235,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					try {
 						next = validateVaultRelativeFolder(raw);
 					} catch (error) {
-						new obsidian.Notice(`论文库文件夹无效：${getUserFacingErrorMessage(error, "请选择 Vault 内的文件夹。")}`, 6000);
+						new obsidian.Notice(rectoUiText("settings.libraryInvalid", { error: getUserFacingErrorMessage(error, rectoUiText("settings.chooseVaultFolder")) }), 6000);
 						t.setValue(previous);
 						t.inputEl.toggleClass("is-rejected", true);
 						return;
@@ -16995,7 +20250,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					const old = previous && this.plugin.app.vault.getAbstractFileByPath(previous);
 					if (old && old.children && old.children.length) {
 						new obsidian.Notice(
-							`论文库文件夹已改为「${next}」。旧目录不会自动改名，里面的论文仍在原处。`,
+							rectoUiText("settings.libraryMoved", { folder: next }),
 							12000
 						);
 					}
@@ -17021,46 +20276,50 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			optedIn: this.plugin.zoteroLibraryImportOptedIn === true,
 			folderMap: this.plugin.folderMap,
 		});
-		new obsidian.Setting(container).setName(stepName("导入 Zotero 论文库"))
+		new obsidian.Setting(container).setName(stepName(rectoUiText("settings.importLibrary")))
 			.setDesc(optedIn
-				? "已开启自动同步：新的单 PDF 条目会静默入库；多 PDF 与已删除条目只记待确认，不自动删文件。点「立即检查」可立刻强制同步。"
-				: "首次点「一键导入」并完成后才会开启自动同步。导入只在本地建文件夹与复制 PDF，不转换、不扣额度。")
+				? rectoUiText("settings.autoSyncOn")
+				: rectoUiText("settings.autoSyncOff"))
 			.addButton(b => {
 				if (optedIn) {
-					b.setButtonText("立即检查");
+					b.setButtonText(rectoUiText("settings.checkNow"));
 					if (b.setDisabled) b.setDisabled(!this.plugin.hasNodeSqlite);
-					return b.onClick(() => this.runSettingButton(b, "立即检查", "检查中…", async () => {
+					return b.onClick(() => this.runSettingButton(b, rectoUiText("settings.checkNow"), rectoUiText("settings.checking"), async () => {
 						await this.plugin.maybeRunZoteroAutoCheck({ force: true });
 						// 检查完当场把「待确认」那一行显/隐出来，不用等下次打开设置页。
 						this.refreshZoteroPendingRow();
 						this.refreshAllSetupStatus();
 					}));
 				}
-				const importLabel = this.plugin.hasNodeSqlite ? "一键导入" : "当前运行时不支持";
+				const importLabel = rectoUiText(this.plugin.hasNodeSqlite ? "settings.importNow" : "settings.runtimeUnsupported");
 				b.setButtonText(importLabel);
 				if (b.setDisabled) b.setDisabled(!this.plugin.hasNodeSqlite);
-				return b.onClick(() => this.runSettingButton(b, importLabel, "导入中…", () =>
+				return b.onClick(() => this.runSettingButton(b, importLabel, rectoUiText("settings.importing"), () =>
 					this.plugin.importZoteroLibrary({ hostEl: this.containerEl })));
 			});
 		// 这一行**常显但按需隐藏**，不再条件渲染：点「立即检查」发现新的待确认项时它要能当场
 		// 出现，而条件渲染的行只有整页重绘才长得出来。重绘（display()）会把滚动位置与焦点甩回
 		// 页首（T84 真机实测过），所以这里与库外 PDF 输出目录那一行同一个口径——定点更新，
 		// 一次 display() 都不调。出现时走一条极短的淡入，避免凭空跳一行出来。
-		this.zoteroPendingSetting = new obsidian.Setting(container).setName("待确认的 Zotero 变化")
-			.addButton(b => b.setButtonText("处理待确认").setCta()
-				.onClick(() => this.runSettingButton(b, "处理待确认", "处理中…", async () => {
+		this.zoteroPendingSetting = new obsidian.Setting(container).setName(rectoUiText("settings.pendingChanges"))
+			.addButton(b => b.setButtonText(rectoUiText("settings.resolvePending")).setCta()
+				.onClick(() => this.runSettingButton(b, rectoUiText("settings.resolvePending"), rectoUiText("settings.processing"), async () => {
 					await this.plugin.resolveZoteroPendingConfirmations(this.containerEl);
 					this.refreshZoteroPendingRow();
 					this.refreshAllSetupStatus();
 				})));
 		this.refreshZoteroPendingRow({ animate: false });
 
+		// 自动识别 Zotero 时接在打开论文库后；需手动配置时仍固定为第 5 项。
+		const outputBeforeOpen = step === 4;
+		if (outputBeforeOpen) this.renderBackendPreferences(container, s, stepName(documentLanguageText("输出语言", "Output language")));
 		// 这一句留着：转换入口只在 Hub，不说清楚用户会在设置页里找按钮。
 		// 「打开论文库」也占步骤号（T86-D-B）；「待确认」不给号——它是异常态提示，不是步骤。
-		new obsidian.Setting(container).setName(stepName("打开论文库"))
-			.setDesc("转换、翻译与对照阅读都在这里完成。")
-			.addButton(b => b.setButtonText("打开").setCta().onClick(() => { void this.plugin.activateRectoHub(); }))
-			.addButton(b => b.setButtonText("再看一次引导").onClick(() => this.plugin.openOnboardingReplay()));
+		new obsidian.Setting(container).setName(stepName(rectoUiText("settings.openLibrary")))
+			.setDesc(rectoUiText("settings.libraryActionsDesc"))
+			.addButton(b => b.setButtonText(rectoUiText("settings.open")).setCta().onClick(() => { void this.plugin.activateRectoHub(); }))
+			.addButton(b => b.setButtonText(rectoUiText("settings.replayOnboarding")).onClick(() => this.plugin.openOnboardingReplay()));
+		if (!outputBeforeOpen) this.renderBackendPreferences(container, s, stepName(documentLanguageText("输出语言", "Output language")));
 	}
 
 	renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, name) {
@@ -17068,22 +20327,22 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		sourceSetting.setDesc("");
 		if (autoDetectedZoteroSource) {
 			sourceSetting.descEl.createSpan({
-				text: "已自动检测并填入 Zotero 数据目录；云端附件未下载时，转换会显示缺失。",
+				text: rectoUiText("settings.zoteroDetectedDesc"),
 			});
 		} else if (!s.sourceFolder) {
 			sourceSetting.descEl.createSpan({
-				text: "未自动检测到 Zotero 数据目录。请手动选择 Zotero 数据目录；云端附件未下载时，转换会显示缺失。",
+				text: rectoUiText("settings.zoteroMissingDesc"),
 			});
 		}
 		if (!s.sourceFolder && !autoDetectedZoteroSource) {
 			sourceSetting.descEl.createEl("br");
 			sourceSetting.descEl.createSpan({
-				text: "查找方法：在 Zotero 中右键任意 PDF 附件，打开文件所在位置后返回上一级，选择名为 storage 的文件夹。",
+				text: rectoUiText("settings.zoteroFindHint"),
 			});
 		}
 		if (s.sourceFolder) {
 			if (sourceSetting.descEl.children && sourceSetting.descEl.children.length) sourceSetting.descEl.createEl("br");
-			sourceSetting.descEl.createSpan({ text: "当前数据目录：" });
+			sourceSetting.descEl.createSpan({ text: rectoUiText("settings.currentDataFolder") });
 			sourceSetting.descEl.createEl("code", { text: this.plugin.getZoteroStoragePath() });
 		}
 		sourceSetting.addText(t => {
@@ -17110,8 +20369,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			});
 			return t;
 		});
-		sourceSetting.addButton(b => b.setButtonText("选择文件夹").onClick(async () => {
-			const folder = await this.plugin.pickDirectory("选择 Zotero 数据目录（可直接选择名为 storage 的文件夹）", s.sourceFolder || this.plugin.app.vault.adapter.basePath);
+		sourceSetting.addButton(b => b.setButtonText(rectoUiText("settings.chooseFolder")).onClick(async () => {
+			const folder = await this.plugin.pickDirectory(rectoUiText("settings.chooseZoteroFolder"), s.sourceFolder || this.plugin.app.vault.adapter.basePath);
 			if (!folder) return;
 			const updated = await this.updateSourceFolder(folder, s);
 			this.refreshSetupStatus("zotero");
@@ -17120,8 +20379,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		if (autoDetectedZoteroSource) {
 			const check = sourceSetting.controlEl.createSpan({ cls: "recto-zotero-detected-check" });
 			setChromeIcon(check.createSpan({ cls: "rc-icon" }), "check");
-			check.createSpan({ text: "已检测" });
-			if (check.setAttr) check.setAttr("aria-label", "已检测到 Zotero 数据目录");
+			check.createSpan({ text: rectoUiText("settings.detected") });
+			if (check.setAttr) check.setAttr("aria-label", rectoUiText("settings.zoteroDetected"));
 		}
 		return sourceSetting;
 	}
@@ -17170,24 +20429,24 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		const normalized = this.plugin.normalizeZoteroSourceFolder(next);
 		const storage = this.getReadableZoteroStoragePath(normalized);
 		if (normalized && !storage) {
-			new obsidian.Notice(getZoteroUserFacingErrorMessage(Object.assign(new Error("Zotero 数据目录不可访问"), { code: "ENOENT" })), 8000);
+			new obsidian.Notice(getZoteroUserFacingErrorMessage(Object.assign(new Error(rectoUiText("settings.zoteroInaccessible")), { code: "ENOENT" })), 8000);
 			return false;
 		}
 		settings.sourceFolder = normalized;
 		let recordsCleared = false;
 		if (normalized && prev && normalized !== prev && fs.existsSync(normalized) && (this.plugin.convertedFolders.length || Object.keys(this.plugin.folderMap || {}).length)) {
-			const choice = await this.plugin.openDecision({
-				title: "更换 Zotero 论文库",
-				intro: "检测到 Zotero 源文件夹已改变。",
-				details: ["如果这是另一个 Zotero 库，建议清空旧论文记录，避免状态混淆。"],
+			const choice = await this.plugin.openDecision(() => ({
+				title: rectoUiText("settings.changeZoteroLibrary"),
+				intro: rectoUiText("settings.zoteroSourceChanged"),
+				details: [rectoUiText("settings.zoteroChangeWarning")],
 				actions: [
-					{ label: "取消更换", value: "cancel" },
+					{ label: rectoUiText("settings.cancelChange"), value: "cancel" },
 					// 默认焦点落在这一项而不是第一项「取消更换」：三项里它才是「换库又不丢东西」的
 					// 正解；而「清空记录并更换」会连不可重建的阅读状态一起清掉，绝不能落在回车底下。
-					{ label: "保留现有记录", value: "keep", defaultFocus: true },
-					{ label: "清空记录并更换", value: "clear", warning: true },
+					{ label: rectoUiText("settings.keepRecords"), value: "keep", defaultFocus: true },
+					{ label: rectoUiText("settings.clearRecords"), value: "clear", warning: true },
 				],
-			});
+			}));
 			if (!choice || choice === "cancel") {
 				settings.sourceFolder = prev;
 				return false;
@@ -17211,23 +20470,23 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		const previewSizer = previewView.createDiv({ cls: "markdown-preview-sizer" });
 		// 样例文字够看清中英混排、链接色、段首缩进与两端对齐即可——预览框本来就窄，
 		// 写长了会占掉半屏设置页。两段是下限：只有一段看不出缩进，也看不出段间距。
-		previewSizer.createEl("h2", { text: "3.2 分布式一致性" });
+		previewSizer.createEl("h2", { text: rectoUiText("settings.readerExampleTitle") });
 		const previewParagraph = previewSizer.createEl("p", {
-			text: "交替方向乘子法（ADMM）把全局最优潮流拆成区域子问题，只交换边界变量即可",
+			text: rectoUiText("settings.readerExampleFirst"),
 		});
-		previewParagraph.createEl("a", { text: "迭代收敛" });
+		previewParagraph.createEl("a", { text: rectoUiText("settings.readerExampleLink") });
 		previewParagraph.createSpan({ text: "。" });
 		previewSizer.createEl("p", {
-			text: "自适应罚参数可将迭代次数降低约三成，且对初值不敏感。",
+			text: rectoUiText("settings.readerExampleSecond"),
 		});
 		this.readerPreviewEl = preview;
 		this.readerPreviewNoteEl = container.createEl("p", { cls: "recto-reader-preview-note" });
 		this.refreshReaderPreview();
 
-		new obsidian.Setting(container).setName("主题")
-			.setDesc("安装思源宋体、霞鹜文楷等字体可获得更好效果，缺失时自动回退系统字体。")
+		new obsidian.Setting(container).setName(rectoUiText("settings.theme"))
+			.setDesc(rectoUiText("settings.themeDesc"))
 			.addDropdown(dropdown => {
-				for (const [key, theme] of Object.entries(READER_THEMES)) dropdown.addOption(key, theme.label);
+				for (const key of Object.keys(READER_THEMES)) dropdown.addOption(key, rectoUiText(`settings.readerTheme.${key}`));
 				dropdown.setValue(READER_THEMES[s.readerTheme] ? s.readerTheme : "off");
 				dropdown.onChange(async value => {
 					s.readerTheme = value;
@@ -17239,14 +20498,14 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			});
 		// 主题关掉时下面这些都是空谈——排版层根本没挂上去。沿用处理偏好那一段的渐进披露写法。
 		if (!isReaderThemeActive(s)) return;
-		this.renderReaderPresetSetting(container, "正文栏宽", "", READER_WIDTH_PRESETS, () => getReaderWidthPx(s), value => { s.readerWidthPx = value; });
-		this.renderReaderPresetSetting(container, "行高", "", READER_LINE_HEIGHT_PRESETS, () => getReaderLineHeight(s), value => { s.readerLineHeight = value; });
-		this.renderReaderPresetSetting(container, "字号缩放", "", READER_FONT_SCALE_PRESETS, () => getReaderFontScale(s), value => { s.readerFontScale = value; });
+		this.renderReaderPresetSetting(container, rectoUiText("settings.textWidth"), "", READER_WIDTH_PRESETS, () => getReaderWidthPx(s), value => { s.readerWidthPx = value; });
+		this.renderReaderPresetSetting(container, rectoUiText("settings.lineHeight"), "", READER_LINE_HEIGHT_PRESETS, () => getReaderLineHeight(s), value => { s.readerLineHeight = value; });
+		this.renderReaderPresetSetting(container, rectoUiText("settings.fontScale"), "", READER_FONT_SCALE_PRESETS, () => getReaderFontScale(s), value => { s.readerFontScale = value; });
 		// 作用范围排在三档排版之后：它决定「哪些文档吃这套排版」，是调完观感才要想的事。
-		new obsidian.Setting(container).setName("作用范围")
+		new obsidian.Setting(container).setName(rectoUiText("settings.scope"))
 			.addDropdown(dropdown => {
-				dropdown.addOption("library", "仅论文库");
-				dropdown.addOption("vault", "整个库");
+				dropdown.addOption("library", rectoUiText("settings.libraryOnly"));
+				dropdown.addOption("vault", rectoUiText("settings.wholeVault"));
 				dropdown.setValue(s.readerScope === "vault" ? "vault" : "library");
 				dropdown.onChange(async value => {
 					s.readerScope = value;
@@ -17265,7 +20524,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		for (const preset of presets) {
 			setting.addButton(button => {
 				buttons.push({ button, preset });
-				button.setButtonText(preset.label);
+				button.setButtonText(rectoUiText(`settings.readerPreset.${preset.label}`));
 				if (typeof button.setTooltip === "function") button.setTooltip(String(preset.value));
 				if (Math.abs(preset.value - current) < 0.001) button.setCta();
 				button.onClick(async () => {
@@ -17311,20 +20570,20 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 
 	renderRibbonButtons(container, s) {
 		s.ribbonButtons = { ...DEFAULT_SETTINGS.ribbonButtons, ...(s.ribbonButtons || {}) };
-		const setting = new obsidian.Setting(container).setName("显示在左侧边栏");
+		const setting = new obsidian.Setting(container).setName(rectoUiText("settings.showSidebarButtons"));
 		if (setting.settingEl && setting.settingEl.addClass) setting.settingEl.addClass("recto-reader-presets");
 		const chips = {
-			hub: "论文库",
-			dualPane: "双栏对照",
-			pdfCompare: "PDF 对照",
-			externalPdf: "库外 PDF",
+			hub: rectoUiText("settings.ribbonHub"),
+			dualPane: rectoUiText("settings.ribbonDualPane"),
+			pdfCompare: rectoUiText("settings.ribbonPdfCompare"),
+			externalPdf: rectoUiText("settings.ribbonExternalPdf"),
 		};
 		const buttons = [];
 		for (const btn of RIBBON_BUTTONS) {
 			setting.addButton(button => {
 				buttons.push({ button, key: btn.key });
 				button.setButtonText(chips[btn.key] || btn.name);
-				if (typeof button.setTooltip === "function") button.setTooltip(btn.name);
+				if (typeof button.setTooltip === "function") button.setTooltip(rectoUiText({ hub: "hub.viewTitle", dualPane: "command.toggleDualPane", pdfCompare: "command.togglePdfCompare", externalPdf: "command.convertExternalPdf" }[btn.key]));
 				if (s.ribbonButtons[btn.key]) button.setCta();
 				button.onClick(async () => {
 					s.ribbonButtons[btn.key] = !s.ribbonButtons[btn.key];
@@ -17342,28 +20601,40 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	}
 
 	renderAdvancedSettings(container, s, autoDetectedZoteroSource = null) {
+		container.createEl("h4", { text: rectoUiText("settings.interface") });
+		const languageRow = new obsidian.Setting(container)
+			.setName(rectoUiText("settings.uiLanguage"))
+			.setDesc(rectoUiText("settings.uiLanguageDesc"))
+			.addDropdown(dropdown => {
+				dropdown.addOption("follow", rectoUiText("settings.followObsidian"));
+				for (const locale of RECTO_UI_LANGUAGES) dropdown.addOption(locale, RECTO_UI_LANGUAGE_NAMES[locale]);
+				dropdown.setValue(normalizeRectoUiPreference(s.uiLanguage));
+				dropdown.onChange(value => { void this.plugin.setUiLanguagePreference(value); });
+			});
+		if (languageRow.settingEl && languageRow.settingEl.addClass) languageRow.settingEl.addClass("recto-settings-language");
+
 		// 自动认出来的 Zotero 路径落在这里：绝大多数人一辈子不用看它，
 		// 但换库、搬盘、多 profile 的人必须找得到地方改。认不出来时它在「开始使用」里，这里就不重复。
 		if (this.isSetupConfigured("zotero")) {
 			container.createEl("h4", { text: "Zotero" });
-			this.renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, "Zotero 源文件夹");
+			this.renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, rectoUiText("settings.zoteroSource"));
 		}
 
 		// T83-N-R：后处理只有这一个入口。它默认开着，绝大多数人不必看见；关掉是排错与效果对比用的，
 		// 所以放高级设置而不是「处理偏好」——但改了之后必须在上传确认弹窗里如实告知当前档位。
-		container.createEl("h4", { text: "转换" });
-		new obsidian.Setting(container).setName("PDF 转换后处理")
-			.setDesc("开启后会进一步清理页眉页脚与伪标题、粘合跨页断句，并修正常见的上下标和词内空格问题。关掉后仅保留基础处理，适合排错与效果对比。")
+		container.createEl("h4", { text: rectoUiText("settings.conversion") });
+		new obsidian.Setting(container).setName(rectoUiText("settings.pdfCleanup"))
+			.setDesc(rectoUiText("settings.pdfCleanupDesc"))
 			.addToggle(t => t.setValue(s.enhancedPostprocess !== false)
 				.onChange(async value => { s.enhancedPostprocess = value; await this.plugin.save(); }));
-		new obsidian.Setting(container).setName("自动创建笔记框架")
-			.setDesc("论文处理完成后创建“note-论文名.md”；已有文件不会覆盖。")
+		new obsidian.Setting(container).setName(rectoUiText("settings.autoNote"))
+			.setDesc(rectoUiText("settings.autoNoteDesc"))
 			.addToggle(t => t.setValue(!!s.autoCreateNoteOutline)
 				.onChange(async value => { s.autoCreateNoteOutline = value; await this.plugin.save(); }));
 
-		container.createEl("h4", { text: "阅读" });
-		new obsidian.Setting(container).setName("点击段落时在另一栏标出对应段落")
-			.setDesc("原文与译文双栏对照时，对侧为阅读视图才显示高亮。关掉后仍会联动定位和同步滚动。")
+		container.createEl("h4", { text: rectoUiText("settings.reading") });
+		new obsidian.Setting(container).setName(rectoUiText("settings.dualPaneHighlight"))
+			.setDesc(rectoUiText("settings.dualPaneHighlightDesc"))
 			.addToggle(t => t.setValue(s.dualPaneHighlight !== false).onChange(async value => {
 				s.dualPaneHighlight = value;
 				if (!value && this.plugin.dualPaneSession) this.plugin.dualPaneSession.clearHighlight();
@@ -17371,8 +20642,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			}));
 		// 名字原来写的是「跳页时在 PDF 上叠高亮框」，与实际不符：这个开关管的是**每次点击**都画的
 		// 那个框，而点击默认只高亮、不跳页（轮显的 phase 0），所以「跳页时」三个字是错的。
-		new obsidian.Setting(container).setName("点击段落时在 PDF 上标出对应位置")
-			.setDesc("关掉后仍然会跳页定位，只是不显示高亮框。")
+		new obsidian.Setting(container).setName(rectoUiText("settings.pdfHighlight"))
+			.setDesc(rectoUiText("settings.pdfHighlightDesc"))
 			.addToggle(t => t.setValue(s.pdfCompareHighlight !== false).onChange(async value => {
 				s.pdfCompareHighlight = value;
 				await this.plugin.save();
@@ -17381,9 +20652,9 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		// T84-E-A：自动更新的开关**只此一处**。通知栏上那颗「自动更新」按钮开的就是它，
 		// 关只能来这里——只有开、没有关是缺陷，不是精简。检查更新挂在同一行，
 		// 通知栏同一版本只提示一次，随手关掉的人得有条回头路。
-		container.createEl("h4", { text: "更新" });
-		new obsidian.Setting(container).setName("自动更新 Recto")
-			.setDesc("开启后，启动时发现新版本会自动下载并当场生效，不再询问；关闭则只提醒一次。更新包始终只从 Recto 的公开发布页获取，与社区商店同源。")
+		container.createEl("h4", { text: rectoUiText("settings.updates") });
+		new obsidian.Setting(container).setName(rectoUiText("settings.autoUpdate"))
+			.setDesc(rectoUiText("settings.autoUpdateDesc"))
 			.addToggle(t => t.setValue(normalizeRectoPluginUpdateState(s.pluginUpdate).autoUpdate)
 				.onChange(async value => {
 					// 顺手清掉「忽略过的版本」：用户既然改了主意，就别让一条旧的静音继续生效。
@@ -17394,7 +20665,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					});
 					await this.plugin.save();
 				}))
-			.addButton(b => b.setButtonText("检查更新").onClick(async () => {
+			.addButton(b => b.setButtonText(rectoUiText("settings.checkUpdates")).onClick(async () => {
 				await this.plugin.checkRectoPluginUpdateFromSettings();
 			}));
 	}
@@ -17420,6 +20691,15 @@ function sleep(ms, signal) {
 }
 if (process.env.NODE_ENV === "test") {
 	RectoPlugin.__test = {
+		normalizeDocumentLanguage, migrateDocumentLanguages, documentArtifactPath, documentContentHash, withDocumentArtifactMetadata,
+		RECTO_UI_LANGUAGES,
+		RECTO_UI_MESSAGES,
+		normalizeRectoUiPreference,
+		resolveRectoUiLocale,
+		translateRectoUi,
+		createRectoUiError,
+		localizeStoredUiError,
+		localizeHubTitle,
 		applyObsidianFormulaFallbacks,
 		applyObsidianTranslationFormulaFallbacks,
 		unescapeRectoMathHtmlEntities,
@@ -17431,6 +20711,9 @@ if (process.env.NODE_ENV === "test") {
 		RIBBON_BUTTONS,
 		RectoSettingTab,
 		RectoDualPaneSession,
+		RectoPreviewResizeGuard,
+		isRectoReadingScrollIntent,
+		isRectoVerticalScrollbarHit,
 		RectoDecisionModal,
 		RectoOnboardingModal,
 		RectoHelpFeedbackModal,
@@ -17499,6 +20782,8 @@ if (process.env.NODE_ENV === "test") {
 		buildHubEntries,
 		buildHubQueueView,
 		createRectoHubViewClass,
+		RectoHubNotesStore,
+		parseHubNotesFile,
 		buildImportedPdfTasks,
 		// T84 库外 PDF 纯核
 		sanitizeExternalOutputFolder,
@@ -17544,6 +20829,7 @@ if (process.env.NODE_ENV === "test") {
 		normalizeHubEntry,
 		normalizeHubTranslationQuality,
 		normalizeHubViewState,
+		resolveHubReadActions,
 		resolveHubRangeSelection,
 		sortHubEntries,
 		splitHubQueryMatches,
@@ -17608,6 +20894,8 @@ if (process.env.NODE_ENV === "test") {
 		truncateNameKeepingExtension,
 		describeBackendErrorBody,
 		getUserFacingErrorMessage,
+		createBackendHttpError,
+		backendPublicErrorText,
 		getZoteroUserFacingErrorMessage,
 		createCloudConsentRequiredError,
 		requiresCloudProcessingConsent,
