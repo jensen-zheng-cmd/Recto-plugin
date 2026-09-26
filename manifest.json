@@ -1,7 +1,7 @@
 {
   "id": "recto",
   "name": "Recto Zotero Translation",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "minAppVersion": "1.4.0",
   "description": "Bring your Zotero paper library into Obsidian, convert PDFs to Markdown, generate summaries, and translate into multiple languages for side-by-side reading.",
   "author": "Jensen Zheng",

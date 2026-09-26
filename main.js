@@ -419,8 +419,8 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.openTranslation": "打开译文",
 		"hub.openSource": "打开原文",
 		"hub.openSummary": "打开摘要",
-		"hub.translationSummary": "同时生成摘要（已有摘要将跳过）",
-		"hub.translationSummaryHint": "每次翻译默认关闭；摘要从原文生成，不额外扣翻译页。",
+		"settings.autoSummary": "翻译时自动生成摘要",
+		"settings.autoSummaryDesc": "翻译库内论文时同时生成摘要，语言跟随输出语言；已有摘要将跳过，不额外扣翻译页。",
 		"hub.summaryExists": "{count} 篇已有摘要，已保留并跳过生成。",
 		"hub.summaryFailed": "{stem}：摘要生成失败，译文仍可使用。",
 		"hub.translationFailedSummarySaved": "{stem}：译文未完成，已保存摘要；翻译额度已释放。",
@@ -1245,8 +1245,8 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.openTranslation": "Open translation",
 		"hub.openSource": "Open original",
 		"hub.openSummary": "Open summary",
-		"hub.translationSummary": "Generate a summary too (skip papers with an existing summary)",
-		"hub.translationSummaryHint": "Off for each translation. The summary uses the source text and costs no extra translation pages.",
+		"settings.autoSummary": "Automatically summarize when translating",
+		"settings.autoSummaryDesc": "Generate a summary when translating library papers, using the output language. Existing summaries are skipped; no extra translation pages are charged.",
 		"hub.summaryExists": "{count} papers already have summaries; their files were kept.",
 		"hub.summaryFailed": "{stem}: summary generation failed; the translation remains available.",
 		"hub.translationFailedSummarySaved": "{stem}: translation failed, but the summary was saved and translation pages released.",
@@ -2025,6 +2025,7 @@ const DEFAULT_SETTINGS = {
 	// bbox 只在 sidecar 里，而 sidecar 又必须与 PDF 副本同在一个目录）。默认关：库外文件
 	// 大多不是论文，目录越干净越好；事后想补译由 T84-S 从 markdown 反推。
 	externalKeepSourcePdf: false,
+	generateSummaryOnTranslate: false,
 	summaryDepth: "standard",
 	translationChineseThreshold: 0.35,
 	autoCreateNoteOutline: false,
@@ -3035,6 +3036,84 @@ function migrateDocumentLanguages(settings, remote = {}) {
 	const summary = normalizeDocumentLanguage(current.summaryLanguage || remote.documentLanguages?.summaryLanguage);
 	if (current.unifiedOutput === true) return { version: 1, unifiedOutput: true, translationTarget: target, summaryLanguage: target.id, ocrLanguage: "auto" };
 	return { version: 1, translationTarget: target, summaryLanguage: summary && ["zh-Hans", "en"].includes(summary.id) ? summary.id : "zh-Hans", ocrLanguage: typeof current.ocrLanguage === "string" ? current.ocrLanguage : (remote.documentLanguages?.ocrLanguage || "ch") };
+}
+
+// T88-D: bounded, local-only evidence from body text; OCR packs are unrelated.
+function detectDocumentSourceLanguage(markdown) {
+	const text = String(markdown || "").replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "")
+		.replace(/<!--[\s\S]*?-->/g, "").replace(/^\s*(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\s*\1[^\n]*(?:\n|$)/gm, "")
+		.replace(/\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]/g, " ").replace(/\$[^$\n]+\$|`[^`\n]+`/g, " ")
+		.replace(/^\s*#{1,6}\s*(?:references|bibliography|\u53c2\u8003\u6587\u732e|\u53c3\u8003\u6587\u737b)\s*\^?[^\n]*\n[\s\S]*$/im, "")
+		.replace(/!?\[[^\]]*\]\([^)]*\)|!?\[\[[^\]]*\]\]|https?:\/\/\S+|\^rc-[\w-]+/g, " ")
+		.replace(/^\s*(?:#{1,6}\s|\|).*$/gm, "").replace(/\s+/g, " ").trim();
+	if (!text) return { language: null, strong: false };
+	const lexicons = {
+		en: "the of and to is for that with are this as by on be can from which these we our was were has have their not",
+		fr: "le la les des une est sont dans pour avec cette ces nous notre sur qui que aux du par pas",
+		de: "der die das den dem des und ist sind mit für von auf ein eine einer einem wird werden nicht auch sich",
+		es: "el los las una es son para con esta este estos estas que del por se como más pero sus",
+		pt: "os as uma são para com esta este estes estas que dos das pelo pela não mais também entre",
+		it: "il lo gli una sono per con questa questo questi queste che della delle degli nel nella non più",
+		nl: "het een van en zijn voor met deze dit die dat wordt worden niet ook door bij als",
+	};
+	const dictionaries = Object.entries(lexicons).map(([id, words]) => [id, new Set(words.split(" "))]);
+	const classify = sample => {
+		const letters = sample.match(/\p{L}/gu) || [];
+		if (letters.length < 40) return null;
+		const count = pattern => letters.filter(ch => pattern.test(ch)).length;
+		const han = count(/\p{Script=Han}/u), kana = count(/[\p{Script=Hiragana}\p{Script=Katakana}]/u);
+		if (kana >= 5 && (kana + han) / letters.length > 0.5) return "ja";
+		if (han / letters.length > 0.45) {
+			// Distinct forms only; shared Han characters cannot establish writing form.
+			const simplified = new Set(sample.match(/[\u8fd9\u4e3a\u56fd\u5b66\u672f\u7535\u7f51\u4e0e\u4e2a\u65f6\u8fdb\u53d1\u5e94\u5bf9\u540e\u4ece\u73b0\u6570\u5b9e\u5173\u8fc7\u79cd\u4f53\u53d8\u4f20\u4f18\u8f83\u5c06\u4e1a\u4e1c\u573a\u98ce\u65e0\u4e8e]/g) || []).size;
+			const traditional = new Set(sample.match(/[\u9019\u70ba\u570b\u5b78\u8853\u96fb\u7db2\u8207\u500b\u6642\u9032\u767c\u61c9\u5c0d\u5f8c\u5f9e\u73fe\u6578\u5be6\u95dc\u904e\u7a2e\u9ad4\u8b8a\u50b3\u512a\u8f03\u5c07\u696d\u6771\u5834\u98a8\u7121\u65bc]/g) || []).size;
+			if (simplified >= 3 && simplified > traditional * 3) return "zh-Hans";
+			if (traditional >= 3 && traditional > simplified * 3) return "zh-Hant";
+			return "zh";
+		}
+		for (const [pattern, id] of [[/\p{Script=Hangul}/u, "ko"], [/\p{Script=Greek}/u, "el"], [/\p{Script=Thai}/u, "th"],
+			[/\p{Script=Hebrew}/u, "he"], [/\p{Script=Armenian}/u, "hy"], [/\p{Script=Georgian}/u, "ka"], [/\p{Script=Tamil}/u, "ta"], [/\p{Script=Telugu}/u, "te"]]) {
+			if (count(pattern) / letters.length > 0.7) return id;
+		}
+		// Cyrillic/Arabic/Devanagari identify scripts, not a unique language. Stay uncertain.
+		if (count(/\p{Script=Latin}/u) / letters.length < 0.85) return null;
+		const words = sample.toLocaleLowerCase("en").match(/\p{L}+/gu) || [];
+		const ranked = dictionaries.map(([id, dict]) => {
+			const hits = words.filter(word => dict.has(word));
+			return { id, count: hits.length, distinct: new Set(hits).size };
+		}).sort((a, b) => b.count - a.count);
+		const best = ranked[0];
+		return best.count >= 6 && best.distinct >= 4 && best.count / words.length >= 0.1 && best.count > ranked[1].count * 1.35 ? best.id : null;
+	};
+	const totalChunks = Math.ceil(text.length / 1200), votes = new Map();
+	let sampled = 0;
+	for (let i = 0; i < Math.min(9, totalChunks); i++) {
+		const index = totalChunks <= 9 ? i : Math.round(i * (totalChunks - 1) / 8);
+		const sample = text.slice(index * 1200, (index + 1) * 1200);
+		if ((sample.match(/\p{L}/gu) || []).length < 40) continue;
+		sampled++;
+		const id = classify(sample);
+		if (id) votes.set(id, (votes.get(id) || 0) + 1);
+	}
+	const best = [...votes].sort((a, b) => b[1] - a[1])[0];
+	if (!best || best[1] / sampled < 0.7) return { language: null, strong: false };
+	return { language: normalizeDocumentLanguage(best[0]), strong: best[1] >= 2 };
+}
+
+function resolveDocumentSourceLanguage(markdown, zoteroMetadata) {
+	const raw = getZoteroMetadataField(zoteroMetadata, "language");
+	const aliases = { chinese: "zh", "中文": "zh", french: "fr", german: "de", spanish: "es", portuguese: "pt", italian: "it", korean: "ko", russian: "ru" };
+	// Zotero's computerProgram language means programming language, not publication language.
+	const candidate = zoteroMetadata?.itemType === "computerProgram" ? null : normalizeDocumentLanguage(aliases[raw.toLowerCase()] || raw.replace(/_/g, "-"));
+	const detected = detectDocumentSourceLanguage(markdown);
+	if (candidate && candidate.id !== "zh") {
+		if (detected.strong && detected.language && detected.language.id !== "zh" && detected.language.id !== candidate.id) {
+			return { source: detected.language, evidence: "detected" };
+		}
+		return { source: candidate, evidence: "zotero" };
+	}
+	if (detected.language && detected.language.id !== "zh") return { source: detected.language, evidence: "detected" };
+	return { source: normalizeDocumentLanguage("en"), evidence: "fallback" };
 }
 
 function documentArtifactPath(folder, stem, prefix) {
@@ -10168,6 +10247,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.settings.backendMembershipPeriodEnd = String(this.settings.backendMembershipPeriodEnd || "").trim();
 			this.settings.backendOutputLanguage = normalizeBackendChoice(this.settings.backendOutputLanguage, BACKEND_OUTPUT_LANGUAGES, DEFAULT_SETTINGS.backendOutputLanguage);
 			this.settings.summaryDepth = normalizeBackendChoice(this.settings.summaryDepth, BACKEND_SUMMARY_DEPTHS, DEFAULT_SETTINGS.summaryDepth);
+			this.settings.generateSummaryOnTranslate = this.settings.generateSummaryOnTranslate === true;
 			this.settings.backendTranslationTargetLanguage = normalizeBackendChoice(this.settings.backendTranslationTargetLanguage, BACKEND_TRANSLATION_TARGET_LANGUAGES, DEFAULT_SETTINGS.backendTranslationTargetLanguage);
 			this.settings.ribbonButtons = { ...DEFAULT_SETTINGS.ribbonButtons, ...(d.settings && d.settings.ribbonButtons ? d.settings.ribbonButtons : {}) };
 			for (const legacyKey of ["convertAll", "translateOne", "translateAll", "diagnoseOne", "translateSelected", "singleFile", "convertSelected", "repairPdfs"]) {
@@ -11113,7 +11193,8 @@ class RectoPlugin extends obsidian.Plugin {
 			|| this.findOriginalMarkdownInPaperFolder(this.app.vault.getAbstractFileByPath(folder))?.path;
 		const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath);
 		if (!sourceFile) throw new Error(documentLanguageText("找不到原文，未提交翻译。", "Source file is missing. Translation was not submitted."));
-		const sourceHash = documentContentHash(await this.app.vault.read(sourceFile));
+		const sourceMarkdown = await this.app.vault.read(sourceFile);
+		const sourceHash = documentContentHash(sourceMarkdown);
 		if (recovering) {
 			if (task.sourceContentHash !== sourceHash || task.languageContract.sourceRevisionId !== sidecar.sourceRevision.id) throw new Error(documentLanguageText("原文已改变，无法恢复这次翻译。", "The source changed; this translation cannot be resumed."));
 			return;
@@ -11126,24 +11207,22 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!isRectoMarkdownTranslationTask(task) && (recordedSource?.sourceContentHash || info.sourceContentHash)
 			&& (recordedSource?.sourceContentHash || info.sourceContentHash) !== sourceHash) throw new Error(documentLanguageText("原文已改变，请重新转换以更新定位信息后再翻译。", "The source changed. Convert it again to refresh its structure before translating."));
 		if (!source && recordedSource?.sourceContentHash === sourceHash && recordedSource.sourceRevisionId === sidecar.sourceRevision.id) {
-			source = normalizeDocumentLanguage(recordedSource.sourceLanguage); evidence = source ? "recorded" : "unknown";
+			source = normalizeDocumentLanguage(recordedSource.sourceLanguage); evidence = source ? recordedSource.sourceLanguageEvidence || "recorded" : "unknown";
 		}
 		if (!source && info.sourceRevisionId === sidecar.sourceRevision.id && info.sourceContentHash === sourceHash) {
 			source = normalizeDocumentLanguage(info.sourceLanguage);
-			evidence = source ? info.sourceLanguageEvidence : "unknown";
+			evidence = source ? info.sourceLanguageEvidence || "recorded" : "unknown";
 		}
 		if (!source && !info.namingVersion && !isRectoMarkdownTranslationTask(task) && /^en-/.test(sourceFile.name)) { source = normalizeDocumentLanguage("en"); evidence = "recorded"; }
 		if (!source || source.id === "zh") {
-			const choice = await this.openDecision(() => ({
-				title: documentLanguageText("确认原文语言", "Confirm source language"),
-				intro: sourceFile.basename,
-				languageChoice: { source: true },
-				actions: [{ label: rectoUiText("dialog.cancel"), value: false }, { label: rectoUiText("dialog.continue"), value: true, cta: true }],
-			}));
-			if (!choice || !choice.language) throw new Error(documentLanguageText("未确认原文语言，翻译未提交。", "Source language was not confirmed. Translation was not submitted."));
-			source = choice.language; evidence = "user";
+			const resolved = resolveDocumentSourceLanguage(sourceMarkdown, info.zoteroMetadata || task.zoteroMetadata);
+			source = resolved.source; evidence = resolved.evidence;
 		}
-		if (!target || target.id === "zh" || source.id === target.id) throw new Error(documentLanguageText("原文与目标语言相同，请选择其他目标语言。", "Source and target languages are the same. Choose another target."));
+		if (!target || target.id === "zh" || (source.id === target.id && evidence !== "fallback")) throw new Error(documentLanguageText("原文与目标语言相同，请选择其他目标语言。", "Source and target languages are the same. Choose another target."));
+		if (["zotero", "fallback"].includes(evidence)) {
+			const capabilities = this.documentLanguageCapabilities || await this.ensureDocumentLanguageCapabilities();
+			if (capabilities.automaticSourceLanguage !== 1) throw new Error(documentLanguageText("服务暂不支持自动原文语言，请更新服务后重试。", "Automatic source language is unavailable. Update the service and try again."));
+		}
 		const translationPath = documentArtifactPath(folder, stem, target.prefix);
 		if (!info.namingVersion && !isRectoMarkdownTranslationTask(task) && /^en-/.test(sourceFile.name) && target.id === "zh-Hans"
 			&& this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}/${getChineseMarkdownFileName(stem)}`))) throw new Error(documentLanguageText("已有中文译文，已保留，未重复提交翻译。", "A Chinese translation already exists. It was preserved; no duplicate translation was submitted."));
@@ -14971,6 +15050,7 @@ class RectoPlugin extends obsidian.Plugin {
 			const contract = result.metadata && result.metadata.languageContract;
 			if (!contract || contract.version !== 1 || contract.namingVersion !== 1
 				|| contract.source?.id !== task.languageContract.source?.id || contract.target?.id !== task.languageContract.target?.id
+				|| contract.sourceEvidence !== task.languageContract.sourceEvidence
 				|| contract.sourceRevisionId !== task.sourceRevisionId || contract.ocrLanguage !== task.languageContract.ocrLanguage
 				|| alignment.language !== task.languageContract.target.id
 				|| result.sidecar.sourceRevision?.id !== task.sourceRevisionId) throw new Error("Document language result contract mismatch");
@@ -15058,7 +15138,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// recordId 而跳过，这里不必再判一次。
 		if (task.namingVersion === 1) {
 			const record = { documentId: result.sidecar.document.id, sourceRevisionId: task.sourceRevisionId, sourcePath: task.sourcePath,
-				sourceContentHash: task.sourceContentHash, sourceLanguage: task.languageContract.source,
+				sourceContentHash: task.sourceContentHash, sourceLanguage: task.languageContract.source, sourceLanguageEvidence: task.languageContract.sourceEvidence,
 				targetLanguage: task.languageContract.target, path: translationPath, alignment: prepared.alignment,
 				quality: extractHubTranslationQuality(prepared.sidecar), namingVersion: 1 };
 			if (!markdownTask) {
@@ -15068,7 +15148,7 @@ class RectoPlugin extends obsidian.Plugin {
 			const previous = this.settings.documentArtifacts || {};
 			const sourceRecord = previous[task.sourcePath] || {};
 			this.settings.documentArtifacts = { ...previous, [task.sourcePath]: { ...sourceRecord, documentId: record.documentId,
-				sourceRevisionId: task.sourceRevisionId, sourceContentHash: task.sourceContentHash, sourceLanguage: task.languageContract.source,
+				sourceRevisionId: task.sourceRevisionId, sourceContentHash: task.sourceContentHash, sourceLanguage: task.languageContract.source, sourceLanguageEvidence: task.languageContract.sourceEvidence,
 				translations: { ...(sourceRecord.translations || {}), [`${task.sourceRevisionId}:${task.languageContract.target.id}`]: record } } };
 			try { await this.save(); } catch (error) { this.settings.documentArtifacts = previous; throw error; }
 		} else if (!markdownTask) {
@@ -15449,7 +15529,8 @@ class RectoPlugin extends obsidian.Plugin {
 		setStage("提交译文");
 		const created = options.existing || await this.createBackendTranslationTask(task);
 		if (!options.existing && task.namingVersion === 1 && (created.languageContract?.version !== 1
-			|| created.languageContract.target?.id !== task.languageContract.target.id || created.languageContract.sourceRevisionId !== task.sourceRevisionId)) {
+			|| created.languageContract.target?.id !== task.languageContract.target.id || created.languageContract.sourceRevisionId !== task.sourceRevisionId
+			|| created.languageContract.source?.id !== task.languageContract.source.id || created.languageContract.sourceEvidence !== task.languageContract.sourceEvidence)) {
 			await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(created.taskId)}/cancel`, { method: "POST" }).catch(() => {});
 			throw new Error(documentLanguageText("服务未确认翻译语言，任务未上传或扣费。", "The service did not confirm the language contract. Nothing was uploaded or charged."));
 		}
@@ -15732,7 +15813,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const preferences = this.settings.documentLanguages;
 		for (const task of tasks) {
 			task.namingVersion = 1;
-			task.languageContract = { version: 1, namingVersion: 1, source: null, sourceEvidence: "unknown", target: preferences.translationTarget, sourceRevisionId: null, ocrLanguage: "auto", unifiedOutput: true };
+			task.languageContract = { version: 1, namingVersion: 1, source: null, sourceEvidence: "unknown", target: options.translationTarget || preferences.translationTarget, sourceRevisionId: null, ocrLanguage: "auto", unifiedOutput: true };
 		}
 		for (const task of tasks) if (task.requestSummary) task.summaryLanguage = task.languageContract.target.id;
 		return await this.runBackendBatchWithTasks(tasks, options);
@@ -15771,12 +15852,12 @@ class RectoPlugin extends obsidian.Plugin {
 			protectExistingTranslation: requestTranslation,
 				summaryLanguage: options.summaryLanguage || this.settings.documentLanguages?.summaryLanguage || "zh-CN",
 			summaryDepth: options.summaryDepth || "standard",
-		})), { batchConfirmed: options.batchConfirmed === true });
+		})), { batchConfirmed: options.batchConfirmed === true, translationTarget: options.translationTarget });
 	}
 
 	/**
 	 * T81-S：Hub 的「翻译」入口。同一次点击里可能混着两种论文——未转换的要先转换再译，
-	 * 已转换无译文的只译。两组分别执行，在摘要选择弹窗统一确认整次操作。
+	 * 已转换无译文的只译。两组共用本次设置快照；单篇直接执行，多篇统一确认一次。
 	 */
 	async runHubTranslateForRecords(recordIds) {
 		await this.ensureDocumentLanguageCapabilities();
@@ -15792,6 +15873,13 @@ class RectoPlugin extends obsidian.Plugin {
 		const translateOnly = [];
 		const needConversion = [];
 		const chineseSource = [];
+		// 两组之间可能经过很久；设置改动只影响下一次操作，不改变本次摘要或输出目标。
+		const batchOptions = { batchConfirmed: true, translationTarget: { ...this.settings.documentLanguages.translationTarget } };
+		const summaryOptions = {
+			requestSummary: this.settings.generateSummaryOnTranslate === true,
+			summaryLanguage: batchOptions.translationTarget.id,
+			summaryDepth: normalizeBackendChoice(this.settings.summaryDepth, BACKEND_SUMMARY_DEPTHS, DEFAULT_SETTINGS.summaryDepth),
+		};
 		for (const recordId of wanted) {
 			const info = this.folderMap && this.folderMap[recordId];
 			const converted = this.convertedFolders.includes(recordId) && info && this.hasConvertedOutput(recordId);
@@ -15833,7 +15921,7 @@ class RectoPlugin extends obsidian.Plugin {
 			return null;
 		}
 		const count = tasks.length + needConversion.length;
-		const choice = await this.openDecision(() => ({
+		if (count > 1 && !(await this.openDecision(() => ({
 			title: needConversion.length ? rectoUiText("batch.convertTranslateTitle") : rectoUiText("batch.translateTitle"),
 			intro: rectoUiText("batch.translateIntro", { count }),
 			details: [
@@ -15843,23 +15931,18 @@ class RectoPlugin extends obsidian.Plugin {
 				...(describeBackendAccountView(this.settings).creditPackMode ? [rectoUiText("batch.freeTranslate")] : []),
 				...(needConversion.length ? [rectoUiText("batch.rights")] : []),
 			],
-			summaryChoice: true,
 			actions: [
 				{ label: rectoUiText("dialog.cancel"), value: false },
 				{ label: rectoUiText("batch.translateAction", { count }), value: true, cta: true },
 			],
-		}));
-		if (!choice || choice.accepted !== true) return null;
+		})))) return null;
 		if (chineseSource.length) new obsidian.Notice(rectoUiText("hub.chineseSkipped", { count: chineseSource.length }), 8000);
 		if (needConversion.length) await this.runHubBatchForRecords(needConversion, {
-			requestTranslation: true, requestSummary: choice.requestSummary,
-			summaryDepth: choice.summaryDepth, summaryLanguage: choice.summaryLanguage, batchConfirmed: true,
+			requestTranslation: true, ...summaryOptions, ...batchOptions,
 		});
 		if (!tasks.length) return null;
-		for (const task of tasks) Object.assign(task, {
-			requestSummary: choice.requestSummary, summaryLanguage: choice.summaryLanguage, summaryDepth: choice.summaryDepth,
-		});
-		return await this.runBatchWithTasks(tasks, { batchConfirmed: true });
+		for (const task of tasks) Object.assign(task, summaryOptions);
+		return await this.runBatchWithTasks(tasks, batchOptions);
 	}
 
 	getTranslationPath(stem, subFolder) {
@@ -17929,31 +18012,6 @@ class RectoDecisionModal extends obsidian.Modal {
 			check.addEventListener("change", () => { this.languageConfirmed = check.checked; });
 			confirmation.createSpan({ text: documentLanguageText("我确认此名称明确表示所需语言及书写形式", "I confirm this name specifies the intended language and writing form") });
 		}
-		if (this.options.summaryChoice) {
-			if (this.summaryChecked === undefined) this.summaryChecked = false;
-			if (!this.summaryDepth) this.summaryDepth = "standard";
-			const row = contentEl.createEl("label", { cls: "recto-decision-summary-choice" });
-			const checkbox = row.createEl("input");
-			checkbox.type = "checkbox";
-			checkbox.checked = this.summaryChecked;
-			checkbox.addEventListener("change", () => {
-				this.summaryChecked = checkbox.checked;
-				depthRow.hidden = !checkbox.checked;
-			});
-			row.createSpan({ text: rectoUiText("hub.translationSummary") });
-			contentEl.createEl("p", { cls: "recto-decision-note", text: rectoUiText("hub.translationSummaryHint") });
-			const depthRow = contentEl.createEl("label", { cls: "recto-decision-summary-depth" });
-			depthRow.createSpan({ text: rectoUiText("settings.summaryDetail") });
-			const select = depthRow.createEl("select");
-			for (const value of ["brief", "standard", "detailed"]) {
-				const option = select.createEl("option", { text: rectoUiText(`settings.${value}`) });
-				option.value = value;
-			}
-			select.value = this.summaryDepth;
-			select.addEventListener("change", () => { this.summaryDepth = select.value; });
-			this.summaryLanguage = migrateDocumentLanguages(this.plugin.settings || {}).translationTarget.id;
-			depthRow.hidden = !this.summaryChecked;
-		}
 		const actions = contentEl.createDiv({ cls: "recto-decision-actions" });
 		let preferred = null;
 		let firstSafe = null;
@@ -17993,9 +18051,7 @@ class RectoDecisionModal extends obsidian.Modal {
 			value = { language };
 		}
 		this.resolved = true;
-		this.resolve(this.options && this.options.summaryChoice && value === true
-			? { accepted: true, requestSummary: this.summaryChecked === true, summaryLanguage: this.summaryLanguage || "zh-Hans", summaryDepth: this.summaryDepth || "standard" }
-			: value);
+		this.resolve(value);
 		this.close();
 	}
 
@@ -20632,6 +20688,24 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			.addToggle(t => t.setValue(!!s.autoCreateNoteOutline)
 				.onChange(async value => { s.autoCreateNoteOutline = value; await this.plugin.save(); }));
 
+		container.createEl("h4", { text: rectoUiText("progress.translate") });
+		// 定点显示详略，避免重画设置页使开关失焦或高级设置重新折叠。
+		let summaryDepthRow;
+		new obsidian.Setting(container).setName(rectoUiText("settings.autoSummary"))
+			.setDesc(rectoUiText("settings.autoSummaryDesc"))
+			.addToggle(t => t.setValue(s.generateSummaryOnTranslate === true).onChange(async value => {
+				s.generateSummaryOnTranslate = value;
+				summaryDepthRow.settingEl.hidden = !value;
+				await this.plugin.save();
+			}));
+		summaryDepthRow = new obsidian.Setting(container).setName(rectoUiText("settings.summaryDetail"))
+			.addDropdown(dropdown => {
+				for (const value of BACKEND_SUMMARY_DEPTHS) dropdown.addOption(value, rectoUiText(`settings.${value}`));
+				dropdown.setValue(normalizeBackendChoice(s.summaryDepth, BACKEND_SUMMARY_DEPTHS, DEFAULT_SETTINGS.summaryDepth));
+				dropdown.onChange(async value => { s.summaryDepth = value; await this.plugin.save(); });
+			});
+		summaryDepthRow.settingEl.hidden = s.generateSummaryOnTranslate !== true;
+
 		container.createEl("h4", { text: rectoUiText("settings.reading") });
 		new obsidian.Setting(container).setName(rectoUiText("settings.dualPaneHighlight"))
 			.setDesc(rectoUiText("settings.dualPaneHighlightDesc"))
@@ -20692,6 +20766,7 @@ function sleep(ms, signal) {
 if (process.env.NODE_ENV === "test") {
 	RectoPlugin.__test = {
 		normalizeDocumentLanguage, migrateDocumentLanguages, documentArtifactPath, documentContentHash, withDocumentArtifactMetadata,
+		detectDocumentSourceLanguage, resolveDocumentSourceLanguage,
 		RECTO_UI_LANGUAGES,
 		RECTO_UI_MESSAGES,
 		normalizeRectoUiPreference,
