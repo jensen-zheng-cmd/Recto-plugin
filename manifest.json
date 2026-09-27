@@ -1,9 +1,9 @@
 {
   "id": "recto",
-  "name": "Recto Zotero Translation",
-  "version": "1.1.9",
+  "name": "Zotero PDF OCR and Translation - Recto",
+  "version": "1.1.10",
   "minAppVersion": "1.4.0",
-  "description": "Bring your Zotero paper library into Obsidian, convert PDFs to Markdown, generate summaries, and translate into multiple languages for side-by-side reading.",
+  "description": "Import your Zotero library and PDFs, convert papers to Markdown with OCR, and translate them into multiple languages for side-by-side reading.",
   "author": "Jensen Zheng",
   "isDesktopOnly": true
 }

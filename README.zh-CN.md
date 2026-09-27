@@ -1,4 +1,4 @@
-# Recto
+# Zotero PDF OCR and Translation - Recto
 
 [English](https://github.com/jensen-zheng-cmd/Recto-plugin/blob/main/README.md) | **简体中文**
 

@@ -2914,7 +2914,7 @@ label.recto-sync-preview-row {
 	grid-template-columns: 18px minmax(0, 1fr) 18px;
 	justify-content: start;
 	justify-items: start;
-	column-gap: 8px;
+	gap: 0 8px;
 	min-height: 34px;
 	padding: 6px 8px;
 	border: none;

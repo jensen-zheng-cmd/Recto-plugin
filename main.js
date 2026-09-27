@@ -10227,7 +10227,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.settings.uiLanguage = normalizeRectoUiPreference(this.settings.uiLanguage);
 			this.settings.backendBaseUrl = String(this.settings.backendBaseUrl || DEFAULT_BACKEND_BASE_URL).trim() || DEFAULT_BACKEND_BASE_URL;
 			// T82-B-R：全量切 API 域名，不留过渡；已保存的旧默认地址一次性改写。
-			const legacyApiBase = "https://" + ["api", "paper" + "-brain", "uk"].join(".");
+			const legacyApiBase = "https://api.paper-brain.uk";
 			if (this.settings.backendBaseUrl.replace(/\/+$/, "") === legacyApiBase) {
 				this.settings.backendBaseUrl = DEFAULT_BACKEND_BASE_URL;
 				migrated = true;
@@ -16821,14 +16821,6 @@ function createRectoHubViewClass(api) {
 				? this.entries.filter(entry => hubEntryInCollection(entry, this.filters.collectionPath))
 				: this.entries;
 			const summary = summarizeHubEntries(scoped);
-			// 计数跟着分类走，就必须说清是谁的计数；分类路径可能很长，只取末级名。
-			const collectionParts = this.filters.collectionPath ? splitZoteroCollectionPath(this.filters.collectionPath) : [];
-			const leaf = collectionParts[collectionParts.length - 1];
-			const section = this.navEl.createDiv({
-				cls: "recto-hub-nav-section",
-				text: leaf ? rectoUiText("hub.readingStatusIn", { collection: leaf }) : rectoUiText("hub.readingStatus"),
-			});
-			if (leaf) section.setAttribute("title", rectoUiText("hub.countScope", { collection: collectionParts.join(" / ") }));
 			// 这一列只管「这篇论文和我的关系」这一个维度；转换状态全部交给下面的 chips 行，
 			// 不再一列里混两种筛选（原来的「未转换」与 chips 的同名项是同一个筛选的两个入口）。
 			// **「最近」也是这一维**（T86-C）：正在读/已读/未读是手动标的，「最近」是插件自己记的

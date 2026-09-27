@@ -1,0 +1,63 @@
+name: Attest release assets
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to verify and attest
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  attest:
+    if: github.repository == 'jensen-zheng-cmd/Recto-plugin'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    steps:
+      - name: Validate release tag
+        shell: bash
+        run: '[[ "$RELEASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag || github.event.release.tag_name }}
+          persist-credentials: false
+      - name: Download and verify the published assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir release-assets \
+            --pattern main.js --pattern manifest.json --pattern styles.css
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          assets = Path('release-assets')
+          for name in ('main.js', 'manifest.json', 'styles.css'):
+              # Windows releases may use CRLF; require identical source content.
+              published = (assets / name).read_bytes().replace(b'\r\n', b'\n')
+              committed = Path(name).read_bytes().replace(b'\r\n', b'\n')
+              if published != committed:
+                  raise SystemExit(f'Release asset differs from tagged source: {name}')
+          manifest = json.loads((assets / 'manifest.json').read_text())
+          if manifest['id'] != 'recto' or manifest['version'] != os.environ['RELEASE_TAG']:
+              raise SystemExit('Release tag and manifest do not match')
+          print('All three published assets match the tagged source.')
+          PY
+      - name: Attest the exact downloaded release bytes
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: |
+            release-assets/main.js
+            release-assets/manifest.json
+            release-assets/styles.css
