@@ -430,6 +430,36 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.dualPane": "原文/译文双栏对照",
 		"hub.pdfCompare": "PDF 对照阅读",
 		"hub.copyCitation": "复制引用",
+		"hub.context.copyPaths": "复制论文路径",
+		"hub.context.copyFiles": "复制文件",
+		"hub.context.source": "原文 Markdown",
+		"hub.context.translation": "译文 Markdown",
+		"hub.context.summary": "摘要",
+		"hub.context.revealVault": "在 Obsidian 库中显示",
+		"hub.context.revealSystem": "在资源管理器中显示",
+		"hub.context.revealFinder": "在 Finder 中显示",
+		"hub.context.folderNotFocused": "文件夹已打开，请点击任务栏中的文件夹查看",
+		"hub.context.mark": "标记为",
+		"hub.flag.important": "重点文献",
+		"hub.flag.reproduce": "待复现",
+		"hub.flag.cite": "写作引用",
+		"hub.flag.verify": "待核查",
+		"hub.flags.clear": "清除附加标记",
+		"hub.flags.add": "添加标记",
+		"hub.flags.remove": "点击移除：{label}",
+		"hub.flags.present": "已添加：{label}",
+		"hub.flags.failed": "附加标记未保存，请重试",
+		"hub.context.convert": "转换为 Markdown",
+		"hub.context.translate": "翻译",
+		"hub.context.delete": "删除 Recto 条目…",
+		"hub.context.count": "{label}（{count}）",
+		"hub.context.available": "{label}（{count}/{total}）",
+		"hub.context.pathsCopied": "已复制 {count} 个论文文件夹路径",
+		"hub.context.filesCopied": "已复制 {count} 个文件，可粘贴到支持文件的应用",
+		"hub.context.skipped": "；{count} 篇缺少对应文件，已跳过",
+		"hub.context.unavailable": "当前环境不支持此操作",
+		"hub.context.failed": "操作未完成，请检查文件是否存在后重试",
+		"hub.context.statusFailed": "阅读状态未完整保存，请重试",
 		"hub.deletePaper": "删除本篇（移入系统回收站）",
 		"hub.authors": "作者",
 		"hub.collapseAuthors": "收起",
@@ -1256,6 +1286,36 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.dualPane": "Compare original and translation side by side",
 		"hub.pdfCompare": "Compare PDF and translation",
 		"hub.copyCitation": "Copy citation",
+		"hub.context.copyPaths": "Copy paper path",
+		"hub.context.copyFiles": "Copy files",
+		"hub.context.source": "Original Markdown",
+		"hub.context.translation": "Translated Markdown",
+		"hub.context.summary": "Summary",
+		"hub.context.revealVault": "Reveal in Obsidian vault",
+		"hub.context.revealSystem": "Show in system explorer",
+		"hub.context.revealFinder": "Show in Finder",
+		"hub.context.folderNotFocused": "Folder opened. Click File Explorer in the taskbar to view it",
+		"hub.context.mark": "Mark as",
+		"hub.flag.important": "Key paper",
+		"hub.flag.reproduce": "To reproduce",
+		"hub.flag.cite": "For citation",
+		"hub.flag.verify": "To verify",
+		"hub.flags.clear": "Clear additional marks",
+		"hub.flags.add": "Add mark",
+		"hub.flags.remove": "Click to remove: {label}",
+		"hub.flags.present": "Already added: {label}",
+		"hub.flags.failed": "Additional marks were not saved. Please try again",
+		"hub.context.convert": "Convert to Markdown",
+		"hub.context.translate": "Translate",
+		"hub.context.delete": "Delete Recto item…",
+		"hub.context.count": "{label} ({count})",
+		"hub.context.available": "{label} ({count}/{total})",
+		"hub.context.pathsCopied": "Copied {count} paper folder paths",
+		"hub.context.filesCopied": "Copied {count} files; paste into an app that accepts files",
+		"hub.context.skipped": "; skipped {count} papers with missing files",
+		"hub.context.unavailable": "This operation is unavailable in this environment",
+		"hub.context.failed": "Operation failed. Check that the files exist and try again",
+		"hub.context.statusFailed": "Reading status was not fully saved. Please try again",
 		"hub.deletePaper": "Delete this paper (move to Recycle Bin)",
 		"hub.authors": "Authors",
 		"hub.collapseAuthors": "Show less",
@@ -7088,6 +7148,22 @@ class RectoHubNotesStore {
 	forget(recordId) { this.cancelTimer(recordId); this.records.delete(recordId); }
 }
 
+const HUB_PAPER_FLAGS = Object.freeze([
+	{ id: "important", icon: "star" },
+	{ id: "reproduce", icon: "flask-conical" },
+	{ id: "cite", icon: "quote" },
+	{ id: "verify", icon: "circle-help" },
+]);
+
+function normalizeHubPaperFlags(value) {
+	return HUB_PAPER_FLAGS.map(flag => flag.id).filter(id => Array.isArray(value) && value.includes(id));
+}
+
+function normalizeHubPaperFlagStore(value) {
+	return Object.fromEntries(Object.entries(value && typeof value === "object" && !Array.isArray(value) ? value : {})
+		.map(([id, flags]) => [id, normalizeHubPaperFlags(flags)]).filter(([id, flags]) => id && flags.length));
+}
+
 // 标题遵循「原文原型」契约：titleOriginal 恒为原文，展示用译文兜底原文，排序一律用原文。
 function normalizeHubEntry(raw) {
 	const entry = raw || {};
@@ -7115,6 +7191,7 @@ function normalizeHubEntry(raw) {
 		zoteroCollectionPathParts: getZoteroCollectionPathParts(entry),
 		readingKey: String(entry.readingKey || ""),
 		readingStatus: normalizeReadingStatus(entry.readingStatus),
+		paperFlags: normalizeHubPaperFlags(entry.paperFlags),
 		conversionStatus: entry.conversionStatus === "converted" ? "converted" : "unconverted",
 		hasTranslation,
 		translationStatus: translationQuality.status,
@@ -7144,6 +7221,181 @@ function normalizeHubEntry(raw) {
 
 function buildHubEntries(rawEntries) {
 	return (rawEntries || []).map(normalizeHubEntry);
+}
+
+// T88-F: selection and artifact roles are shared by mouse/keyboard menus and tests.
+function resolveHubContextSelection(visible, selectedIds, targetId) {
+	if (!visible.some(entry => entry.recordId === targetId)) return [];
+	const ids = selectedIds instanceof Set ? selectedIds : new Set(selectedIds || []);
+	return ids.has(targetId) ? visible.filter(entry => ids.has(entry.recordId)) : visible.filter(entry => entry.recordId === targetId);
+}
+
+function collectHubContextFiles(entries, role, baseFolder, vault, verifyDisk = false) {
+	const paths = [], files = [], seen = new Set();
+	let missing = 0;
+	const root = vault?.adapter?.getBasePath?.() || vault?.adapter?.basePath;
+	const keys = { pdf: "pdfPath", source: "sourcePath", translation: "translationPath", summary: "summaryPath" };
+	for (const entry of entries) {
+		try {
+			if (!root || !entry.stem || /[\\/]/.test(entry.stem) || entry.stem === "." || entry.stem === "..") throw new Error();
+			const folder = getPaperFolderVaultPath(baseFolder, entry.stem);
+			const path = role === "folder" ? folder : entry[keys[role]];
+			if (!path || (role !== "folder" && !path.startsWith(toVaultFolderPrefix(folder)))) throw new Error();
+			const absolute = nodePath.resolve(root, path);
+			const relative = nodePath.relative(nodePath.resolve(root, folder), absolute);
+			const fromRoot = nodePath.relative(nodePath.resolve(root), absolute);
+			if (nodePath.isAbsolute(relative) || relative === ".." || relative.startsWith(`..${nodePath.sep}`)
+				|| nodePath.isAbsolute(fromRoot) || fromRoot === ".." || fromRoot.startsWith(`..${nodePath.sep}`)) throw new Error();
+			const file = vault.getAbstractFileByPath(path);
+			if (!file || (role === "folder" ? !Array.isArray(file.children) : Array.isArray(file.children))) throw new Error();
+			if (verifyDisk) {
+				const stat = fs.statSync(absolute);
+				if (role === "folder" ? !stat.isDirectory() : !stat.isFile()) throw new Error();
+			}
+			if (!seen.has(absolute)) { seen.add(absolute); paths.push(absolute); files.push(file); }
+		} catch { missing++; }
+	}
+	return { paths, files, missing };
+}
+
+// Native file clipboard, not text paths. Payload travels through stdin, never shell source.
+// Windows FileDrop: learn.microsoft.com/dotnet/api/system.windows.forms.clipboard.setfiledroplist
+// macOS NSURL/NSPasteboard: Apple's Pasteboard Programming Guide (Writing to a Pasteboard).
+function buildHubFileClipboardCommand(platform = process.platform) {
+	if (platform === "win32") {
+		const script = `$ErrorActionPreference = 'Stop'
+try {
+ Add-Type -AssemblyName System.Windows.Forms
+ $json = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd()))
+ $paths = ConvertFrom-Json -InputObject $json
+ if ($paths.Count -eq 0) { throw 'empty' }
+ $list = New-Object System.Collections.Specialized.StringCollection
+ foreach ($path in $paths) {
+  if (-not [IO.File]::Exists($path)) { throw 'missing' }
+  [void]$list.Add($path)
+ }
+ $data = New-Object System.Windows.Forms.DataObject
+ $data.SetFileDropList($list)
+ $effect = New-Object IO.MemoryStream
+ $effect.Write([byte[]](1,0,0,0), 0, 4)
+ $effect.Position = 0
+ $data.SetData('Preferred DropEffect', $effect)
+ [Windows.Forms.Clipboard]::SetDataObject($data, $true, 5, 100)
+} catch { exit 1 }`;
+		return { command: nodePath.join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe"),
+			args: ["-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")] };
+	}
+	if (platform === "darwin") {
+		const script = `ObjC.import('AppKit'); ObjC.import('Foundation');
+const input = $.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile;
+const encoded = $.NSString.alloc.initWithDataEncoding(input, $.NSUTF8StringEncoding).js;
+const bytes = $.NSData.alloc.initWithBase64EncodedStringOptions($(encoded), 0);
+const paths = JSON.parse($.NSString.alloc.initWithDataEncoding(bytes, $.NSUTF8StringEncoding).js);
+if (!paths.length) throw Error('empty');
+const urls = $.NSMutableArray.alloc.init;
+paths.forEach(function(path) {
+ if (!$.NSFileManager.defaultManager.fileExistsAtPath($(path))) throw Error('missing');
+ urls.addObject($.NSURL.fileURLWithPath($(path)));
+});
+const board = $.NSPasteboard.generalPasteboard;
+board.clearContents;
+if (!board.writeObjects(urls)) throw Error('clipboard');`;
+		return { command: "/usr/bin/osascript", args: ["-l", "JavaScript", "-e", script] };
+	}
+	return null;
+}
+
+function writeHubFilesToClipboard(paths, platform = process.platform, spawn = require("child_process").spawn) {
+	const spec = buildHubFileClipboardCommand(platform);
+	if (!spec || !paths.length) return Promise.reject(new Error("clipboard-unavailable"));
+	return new Promise((resolve, reject) => {
+		const child = spawn(spec.command, spec.args, { windowsHide: true, shell: false, stdio: ["pipe", "ignore", "ignore"] });
+		const timer = setTimeout(() => { child.kill(); reject(new Error("clipboard-timeout")); }, 10000);
+		child.once("error", () => { clearTimeout(timer); reject(new Error("clipboard-failed")); });
+		child.once("close", code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error("clipboard-failed")); });
+		child.stdin.on("error", () => {}); // EPIPE is reported by process exit; never expose filenames/stderr.
+		child.stdin.end(Buffer.from(JSON.stringify(paths), "utf8").toString("base64"));
+	});
+}
+
+function showHubContextMenu(menu, event, anchor) {
+	if (!event || event.type === "keydown") {
+		// Menu placement only; Hub responsive layout still has no JS width decisions.
+		const rect = anchor.getBoundingClientRect();
+		menu.showAtPosition({ x: rect.left + 24, y: rect.bottom }, anchor.ownerDocument);
+	} else menu.showAtMouseEvent(event);
+}
+
+// User-triggered Explorer activation only, restricted to the exact requested folder.
+// SetForegroundWindow respects Windows foreground-lock policy; never synthesize Alt or set topmost.
+function buildHubFolderFocusCommand() {
+	const script = `$ErrorActionPreference = 'Stop'
+try {
+ $target = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd()))
+ if (-not [IO.Directory]::Exists($target)) { exit 1 }
+ $target = [IO.Path]::GetFullPath($target).TrimEnd([char]92)
+ Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class RectoExplorerFocus {
+ [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+ [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int command);
+ [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
+ [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+}
+'@
+ $shell = New-Object -ComObject Shell.Application
+ for ($attempt = 0; $attempt -lt 20; $attempt++) {
+  foreach ($browser in $shell.Windows()) {
+   try {
+    if ([IO.Path]::GetFileName($browser.FullName) -ine 'explorer.exe') { continue }
+    $folder = [IO.Path]::GetFullPath($browser.Document.Folder.Self.Path).TrimEnd([char]92)
+    if ($folder -ine $target) { continue }
+    $handle = [IntPtr]$browser.HWND
+    if ([RectoExplorerFocus]::IsIconic($handle)) { [void][RectoExplorerFocus]::ShowWindowAsync($handle, 9) }
+    [void][RectoExplorerFocus]::SetForegroundWindow($handle)
+    Start-Sleep -Milliseconds 50
+    if ([RectoExplorerFocus]::GetForegroundWindow() -eq $handle) { exit 0 }
+   } catch { }
+  }
+  Start-Sleep -Milliseconds 100
+ }
+ exit 1
+} catch { exit 1 }`;
+	return { command: nodePath.join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe"),
+		args: ["-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")] };
+}
+
+function focusHubFolderWindow(absolutePath, spawn = require("child_process").spawn) {
+	return new Promise(resolve => {
+		const spec = buildHubFolderFocusCommand();
+		let child;
+		try { child = spawn(spec.command, spec.args, { windowsHide: true, shell: false, stdio: ["pipe", "ignore", "ignore"] }); }
+		catch { resolve(false); return; }
+		const timer = setTimeout(() => { child.kill(); resolve(false); }, 6000);
+		child.once("error", () => { clearTimeout(timer); resolve(false); });
+		child.once("close", code => { clearTimeout(timer); resolve(code === 0); });
+		child.stdin.on("error", () => {});
+		child.stdin.end(Buffer.from(absolutePath, "utf8").toString("base64"));
+	});
+}
+
+async function openHubSystemFolder(absolutePath, shell, platform = process.platform, focus = focusHubFolderWindow) {
+	if (platform === "darwin") {
+		if (!shell?.openExternal) throw new Error("folder-open-unavailable");
+		await shell.openExternal(require("url").pathToFileURL(absolutePath).href, { activate: true });
+		return true;
+	}
+	if (!shell?.openPath || await shell.openPath(absolutePath)) throw new Error("folder-open-failed");
+	return platform === "win32" ? focus(absolutePath) : true;
+}
+
+// Popovers use their owning window; Hub layout breakpoints remain CSS-only.
+function positionHubFlagPopover(menu, anchor) {
+	const rect = anchor.getBoundingClientRect(), win = anchor.ownerDocument.defaultView;
+	const width = menu.offsetWidth, height = menu.offsetHeight, gap = 4;
+	menu.style.left = `${Math.max(gap, Math.min(rect.left - 8, win.innerWidth - width - gap))}px`;
+	menu.style.top = `${Math.max(gap, rect.bottom + height + gap <= win.innerHeight ? rect.bottom + gap : rect.top - height - gap)}px`;
 }
 
 function hubEntryMatchesQuery(entry, query) {
@@ -10010,6 +10262,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.convertedFolders = [];
 		this.folderMap = {};
 		this.readingStates = {};
+		this.paperFlags = {};
 		this.readingTouchedAt = {};
 		this.paperOpenTrackingFrom = 0;
 		this.paperActivitySaveTimer = null;
@@ -10266,6 +10519,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.convertedFolders = d.convertedFolders || [];
 			this.folderMap = d.folderMap || {}; // zoteroFolder → { stem, originalName }
 			this.readingStates = d.readingStates || {}; // zoteroItemKey → reading | read
+			this.paperFlags = normalizeHubPaperFlagStore(d.paperFlags); // recordId → independent additional marks
 			this.readingTouchedAt = d.readingTouchedAt || {}; // readingKey → 上次打开或改阅读状态的 ISO 时间（T86-C）
 			this.zoteroImportProjectionPending = d.zoteroImportProjectionPending === true;
 			const resolvedOptIn = resolveZoteroLibraryImportOptIn({
@@ -10316,6 +10570,7 @@ class RectoPlugin extends obsidian.Plugin {
 			folderMap: this.folderMap,
 			readingStates: this.readingStates,
 			readingTouchedAt: this.readingTouchedAt,
+			paperFlags: this.paperFlags || {},
 			zoteroImportProjectionPending: this.zoteroImportProjectionPending === true,
 			zoteroLibraryImportOptedIn: this.zoteroLibraryImportOptedIn === true,
 			zoteroLastAutoCheckAt: Number(this.zoteroLastAutoCheckAt) || 0,
@@ -12792,6 +13047,9 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	pruneReadingStates() {
+		for (const id of Object.keys(this.paperFlags || {})) {
+			if (!Object.prototype.hasOwnProperty.call(this.folderMap || {}, id)) delete this.paperFlags[id];
+		}
 		if (!this.readingStates) this.readingStates = {};
 		if (!this.readingTouchedAt) this.readingTouchedAt = {};
 		const validKeys = new Set(
@@ -13913,6 +14171,7 @@ class RectoPlugin extends obsidian.Plugin {
 				zoteroCollectionPathParts: normalizeZoteroCollectionFields(info).zoteroCollectionPathParts,
 				readingKey,
 				readingStatus: this.getReadingStatus(readingKey),
+				paperFlags: normalizeHubPaperFlags(this.paperFlags?.[folder]),
 				conversionStatus: converted ? "converted" : "unconverted",
 				translationQuality: info.translationQuality || null,
 				unrecognizedSymbolCount: info.unrecognizedSymbolCount,
@@ -14088,9 +14347,10 @@ class RectoPlugin extends obsidian.Plugin {
 
 	// 转换/翻译/恢复写回之后论文库变了，必须让开着的 Hub 自己重读——
 	// 否则用户在 Hub 里点了转换，界面上什么都不会变（T81 第二轮）。
-	refreshHubViews() {
+	refreshHubViews(options = {}) {
 		for (const view of this.getOpenHubViews()) {
-			if (typeof view.reload === "function") view.reload();
+			if (options.paperFlags && typeof view.refreshPaperFlags === "function") view.refreshPaperFlags(options.paperFlags);
+			else if (typeof view.reload === "function") view.reload();
 		}
 	}
 
@@ -14203,6 +14463,90 @@ class RectoPlugin extends obsidian.Plugin {
 		if (action === "summary") return entry.summaryPath;
 		if (action === "pdf") return entry.pdfPath;
 		return entry.translationPath || entry.sourcePath || entry.summaryPath || entry.pdfPath;
+	}
+
+	getHubContextFiles(entries, role, verifyDisk = false) {
+		return collectHubContextFiles(entries, role, this.getValidatedBaseFolder(), this.app.vault, verifyDisk);
+	}
+
+	async copyHubContextFiles(entries, role) {
+		const result = this.getHubContextFiles(entries, role, true);
+		if (!result.paths.length) throw new Error("no-files");
+		if (role === "folder") {
+			const electron = require("electron");
+			if (!electron.clipboard?.writeText) throw new Error("clipboard-unavailable");
+			electron.clipboard.writeText(result.paths.join("\n"));
+		} else await writeHubFilesToClipboard(result.paths);
+		const message = rectoUiText(role === "folder" ? "hub.context.pathsCopied" : "hub.context.filesCopied", { count: result.paths.length });
+		new obsidian.Notice(message + (result.missing ? rectoUiText("hub.context.skipped", { count: result.missing }) : ""), 4000);
+	}
+
+	async revealHubPaperFolder(entries, system = false) {
+		if (entries.length !== 1) return;
+		const result = this.getHubContextFiles(entries, "folder", true);
+		if (result.files.length !== 1) throw new Error("folder-missing");
+		if (system) {
+			const shell = require("electron").shell;
+			if (!await openHubSystemFolder(result.paths[0], shell)) new obsidian.Notice(rectoUiText("hub.context.folderNotFocused"), 5000);
+			return;
+		}
+		const workspace = this.app.workspace;
+		let leaf = workspace.getLeavesOfType("file-explorer")[0];
+		if (!leaf) {
+			leaf = workspace.getLeftLeaf(false);
+			if (!leaf) throw new Error("explorer-unavailable");
+			await leaf.setViewState({ type: "file-explorer", active: true });
+		}
+		// Host 1.13.7 app.js FileExplorerView.revealInFolder expands ancestors and selects the item.
+		if (typeof leaf.view?.revealInFolder !== "function") throw new Error("explorer-unavailable");
+		await workspace.revealLeaf(leaf);
+		leaf.view.revealInFolder(result.files[0]);
+	}
+
+	async setHubPaperFlags(entries, flag, enabled) {
+		if (flag !== "clear" && !HUB_PAPER_FLAGS.some(item => item.id === flag)) throw new Error("invalid-paper-flag");
+		const valid = new Set(this.getHubEntries().map(entry => entry.recordId));
+		const ids = [...new Set(entries.map(entry => entry.recordId))];
+		if (ids.some(id => !valid.has(id))) throw new Error("record-missing");
+		if (!this.paperFlags) this.paperFlags = {};
+		const previous = new Map(ids.map(id => [id, this.paperFlags[id]]));
+		const applied = new Map();
+		for (const id of ids) {
+			const flags = normalizeHubPaperFlags(this.paperFlags[id]);
+			const next = flag === "clear" ? [] : normalizeHubPaperFlags(enabled ? [...flags, flag] : flags.filter(item => item !== flag));
+			if (next.length) this.paperFlags[id] = next; else delete this.paperFlags[id];
+			applied.set(id, this.paperFlags[id]);
+		}
+		try { await this.save(); } catch (error) {
+			for (const [id, old] of previous) {
+				if (this.paperFlags[id] !== applied.get(id)) continue;
+				if (old === undefined) delete this.paperFlags[id]; else this.paperFlags[id] = old;
+			}
+			throw error;
+		}
+		this.refreshHubViews({ paperFlags: ids });
+	}
+
+	async setHubReadingStatus(entries, status) {
+		if (!["unread", "reading", "read"].includes(status)) return;
+		const valid = new Map(this.getZoteroIndexEntries().map(entry => [entry.recordId, entry]));
+		const keys = new Set(entries.map(entry => valid.get(entry.recordId)?.readingKey).filter(Boolean));
+		if (!keys.size) throw new Error("record-missing");
+		const previous = new Map([...keys].map(key => [key, { state: this.readingStates?.[key], touched: this.readingTouchedAt?.[key] }]));
+		for (const key of keys) this.setReadingStatus(key, status);
+		const applied = new Map([...keys].map(key => [key, { state: this.readingStates[key], touched: this.readingTouchedAt[key] }]));
+		try { await this.save(); } catch (error) {
+			for (const [key, old] of previous) {
+				const written = applied.get(key);
+				// Do not undo a newer edit/open from another Hub while save was in flight.
+				if (this.readingStates[key] !== written.state || this.readingTouchedAt[key] !== written.touched) continue;
+				if (old.state === undefined) delete this.readingStates[key]; else this.readingStates[key] = old.state;
+				if (old.touched === undefined) delete this.readingTouchedAt[key]; else this.readingTouchedAt[key] = old.touched;
+			}
+			throw error;
+		}
+		await this.writePaperJsonlIndex();
+		this.refreshHubViews();
 	}
 
 	// Hub 的打开动作复用既有对照阅读入口：先把文件打到非 Hub 的分栏，再走原有 toggle。
@@ -16405,6 +16749,7 @@ function createRectoHubViewClass(api) {
 			this.registerDomEvent(this.listEl, "scroll", () => this.handleListScroll());
 			this.registerDomEvent(this.listEl, "click", (event) => this.handleListClick(event));
 			this.registerDomEvent(this.listEl, "dblclick", (event) => this.handleListDoubleClick(event));
+			this.registerDomEvent(this.listEl, "contextmenu", (event) => this.handleListContextMenu(event));
 			this.registerDomEvent(this.listEl, "keydown", (event) => this.handleListKeydown(event));
 			this.registerDomEvent(this.navEl, "click", (event) => this.handleNavClick(event));
 			this.registerDomEvent(this.crumbsEl, "click", (event) => this.handleCrumbClick(event));
@@ -16464,6 +16809,8 @@ function createRectoHubViewClass(api) {
 		}
 
 		async onClose() {
+			this.closeFlagMenu();
+			this.closeContextMenu();
 			this.closeReadMenu();
 			this.finishHubNote();
 			if (this.searchTimer) clearTimeout(this.searchTimer);
@@ -16540,6 +16887,8 @@ function createRectoHubViewClass(api) {
 		}
 
 		reload(options = {}) {
+			this.closeFlagMenu();
+			this.closeContextMenu();
 			try {
 				this.entries = this.plugin.getHubEntries();
 				this.loadError = "";
@@ -16644,6 +16993,8 @@ function createRectoHubViewClass(api) {
 		// 只重置临时布局状态，不重画列表/详情，保留选中论文、滚动位置与 Note 编辑节点。
 		// 旧 navCollapsed 偏好已不再读取或写入，否则重开/拉宽仍会把分类栏永久隐藏。
 		resetLayout() {
+			this.closeFlagMenu();
+			this.closeContextMenu();
 			this.closeReadMenu();
 			this.setActivePane("list");
 			this.setNavOpen(false);
@@ -16735,6 +17086,8 @@ function createRectoHubViewClass(api) {
 		}
 
 		setSelection(recordIds, currentId, options = {}) {
+			this.closeFlagMenu();
+			this.closeContextMenu();
 			this.selectedIds = new Set(recordIds || []);
 			if (currentId) this.selectedRecordId = currentId;
 			if (options.anchor) this.anchorRecordId = options.anchor;
@@ -16942,6 +17295,7 @@ function createRectoHubViewClass(api) {
 		}
 
 		renderList() {
+			this.closeFlagMenu();
 			this.listEl.empty();
 			// 列头是 listEl 的孩子，empty() 会把它一起摘掉；元素本身还在（内容由 renderHead 填好），
 			// 重新挂回去即可。**必须排在所有分支之前**——空态那两条会提前 return。
@@ -17063,7 +17417,24 @@ function createRectoHubViewClass(api) {
 			const displayTitle = (this.titleMode === "translated" && entry.titleTranslated)
 				? entry.titleTranslated
 				: entry.titleOriginal;
-			this.renderMatchedText(el, localizeHubTitle(displayTitle));
+			el.empty();
+			this.renderMatchedText(el.createSpan({ cls: "recto-hub-title-text" }), localizeHubTitle(displayTitle));
+			const flags = normalizeHubPaperFlags(entry.paperFlags);
+			const marks = el.createSpan({ cls: "recto-hub-paper-flags" });
+			for (const flag of HUB_PAPER_FLAGS.filter(item => flags.includes(item.id))) {
+				const label = rectoUiText("hub.flags.remove", { label: rectoUiText(`hub.flag.${flag.id}`) });
+				const icon = marks.createEl("button", { cls: "recto-hub-paper-flag", attr: { type: "button", "aria-label": label, title: label, "data-paper-flag": flag.id } });
+				setChromeIcon(icon, flag.icon);
+				icon.addEventListener("click", event => { event.stopPropagation(); void this.runInlinePaperFlagAction(entry.recordId, flag.id, false, icon); });
+			}
+			const add = marks.createEl("button", { cls: "recto-hub-flag-add", attr: { type: "button", "aria-label": rectoUiText("hub.flags.add"), title: rectoUiText("hub.flags.add"), "aria-haspopup": "dialog", "aria-expanded": "false" } });
+			setChromeIcon(add, "plus");
+			add.addEventListener("click", event => { event.stopPropagation(); this.openFlagMenu(entry.recordId, add); });
+			marks.addEventListener("dblclick", event => event.stopPropagation());
+			marks.addEventListener("keydown", event => {
+				event.stopPropagation(); // native button Enter/Space must never reach paper opening/list navigation
+				if (event.target === add && ["ArrowDown", "ArrowUp"].includes(event.key)) { event.preventDefault(); this.openFlagMenu(entry.recordId, add); }
+			});
 			el.setAttribute("title", unconverted
 				? rectoUiText("hub.unconvertedTitle", { title: localizeHubTitle(displayTitle) })
 				: (entry.titleTranslated
@@ -17072,6 +17443,7 @@ function createRectoHubViewClass(api) {
 		}
 
 		updateRowTitles() {
+			this.closeFlagMenu();
 			for (const row of Array.from(this.listEl.children)) {
 				if (!row.dataset || !row.dataset.hubRecord) continue;
 				const entry = this.visible.find(item => item.recordId === row.dataset.hubRecord);
@@ -17285,6 +17657,7 @@ function createRectoHubViewClass(api) {
 		}
 
 		openReadMenu(entry, state, actions, split, toggle) {
+			this.closeFlagMenu();
 			this.closeReadMenu();
 			const menu = split.createDiv({ cls: "recto-hub-read-menu", attr: { role: "menu", "aria-label": rectoUiText("hub.chooseReadAction") } });
 			const doc = toggle.ownerDocument;
@@ -17608,10 +17981,199 @@ function createRectoHubViewClass(api) {
 			this.setSelection([recordId], recordId, { anchor: recordId });
 		}
 
+		refreshPaperFlags(recordIds) {
+			if (recordIds.includes(this.flagMenuRecordId)) this.closeFlagMenu();
+			for (const entry of this.entries) {
+				if (!recordIds.includes(entry.recordId)) continue;
+				entry.paperFlags = normalizeHubPaperFlags(this.plugin.paperFlags?.[entry.recordId]);
+				const visible = this.visible.find(item => item.recordId === entry.recordId);
+				if (visible) visible.paperFlags = entry.paperFlags;
+				const cell = this.findRowEl(entry.recordId)?.querySelector(".recto-hub-col-title");
+				if (cell) this.fillRowTitle(cell, entry);
+			}
+		}
+
+		closeFlagMenu(focus = false) {
+			if (this.flagMenuCleanup) this.flagMenuCleanup(focus);
+		}
+
+		async runInlinePaperFlagAction(recordId, flag, enabled, anchor) {
+			if (this.contextActionRunning) return;
+			this.closeFlagMenu(true);
+			const doc = anchor.ownerDocument, hadFocus = doc.activeElement === anchor;
+			this.contextActionRunning = true;
+			try {
+				const entry = this.plugin.getHubEntries().find(item => item.recordId === recordId);
+				if (!entry) throw new Error("record-missing");
+				await this.plugin.setHubPaperFlags([entry], flag, enabled);
+			} catch { new api.Notice(rectoUiText("hub.flags.failed"), 5000); }
+			finally {
+				this.contextActionRunning = false;
+				if (hadFocus && this.rootEl?.isConnected && (doc.activeElement === anchor || doc.activeElement === doc.body)) this.findRowEl(recordId)?.querySelector(".recto-hub-flag-add")?.focus({ preventScroll: true });
+			}
+		}
+
+		openFlagMenu(recordId, anchor) {
+			if (this.contextActionRunning) return;
+			if (this.flagMenuRecordId === recordId) { this.closeFlagMenu(true); return; }
+			this.closeFlagMenu(); this.closeContextMenu(); this.closeReadMenu();
+			const entry = this.plugin.getHubEntries().find(item => item.recordId === recordId);
+			if (!entry) return;
+			const flags = normalizeHubPaperFlags(entry.paperFlags), doc = anchor.ownerDocument, win = doc.defaultView;
+			const menu = doc.body.createDiv({ cls: "recto-ui recto-hub-flag-menu", attr: { role: "dialog", "aria-label": rectoUiText("hub.flags.add"), tabindex: "-1" } });
+			const enabled = [];
+			for (const flag of HUB_PAPER_FLAGS) {
+				const present = flags.includes(flag.id), name = rectoUiText(`hub.flag.${flag.id}`);
+				const label = present ? rectoUiText("hub.flags.present", { label: name }) : name;
+				const button = menu.createEl("button", { cls: "recto-hub-paper-flag", attr: { type: "button", "aria-label": label, title: label, "data-paper-flag": flag.id } });
+				button.disabled = present; setChromeIcon(button, flag.icon);
+				button.addEventListener("click", event => { event.stopPropagation(); void this.runInlinePaperFlagAction(recordId, flag.id, true, anchor); });
+				if (!present) enabled.push(button);
+			}
+			const keydown = event => {
+				if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); this.closeFlagMenu(true); return; }
+				if (!menu.contains(event.target)) return;
+				event.stopPropagation();
+				if (event.key === "Tab") { this.closeFlagMenu(true); return; }
+				if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+				event.preventDefault();
+				const index = enabled.indexOf(doc.activeElement);
+				const next = event.key === "Home" ? 0 : event.key === "End" ? enabled.length - 1 : (index + (["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 1) + enabled.length) % enabled.length;
+				enabled[next]?.focus();
+			};
+			const outside = event => { if (!menu.contains(event.target) && !anchor.contains(event.target)) this.closeFlagMenu(); };
+			const dismiss = () => this.closeFlagMenu();
+			doc.addEventListener("pointerdown", outside, true); doc.addEventListener("focusin", outside);
+			doc.addEventListener("keydown", keydown, true); doc.addEventListener("scroll", dismiss, true);
+			win.addEventListener("resize", dismiss); win.addEventListener("blur", dismiss);
+			anchor.setAttribute("aria-expanded", "true"); this.flagMenuRecordId = recordId;
+			this.flagMenuCleanup = focus => {
+				doc.removeEventListener("pointerdown", outside, true); doc.removeEventListener("focusin", outside);
+				doc.removeEventListener("keydown", keydown, true); doc.removeEventListener("scroll", dismiss, true);
+				win.removeEventListener("resize", dismiss); win.removeEventListener("blur", dismiss);
+				menu.remove(); anchor.setAttribute("aria-expanded", "false");
+				this.flagMenuCleanup = null; this.flagMenuRecordId = null;
+				if (focus && anchor.isConnected) anchor.focus({ preventScroll: true });
+			};
+			positionHubFlagPopover(menu, anchor);
+			(enabled[0] || menu).focus({ preventScroll: true });
+		}
+
+		closeContextMenu() {
+			const menu = this.contextMenu;
+			this.contextMenu = null;
+			if (menu) menu.hide();
+		}
+
+		handleListContextMenu(event) {
+			this.closeFlagMenu();
+			const targetId = this.findRecordId(event.target) || (event.type === "keydown" ? this.selectedRecordId : "");
+			const entries = resolveHubContextSelection(this.visible, this.selectedIds, targetId);
+			if (!entries.length) return;
+			event.preventDefault();
+			event.stopPropagation();
+			this.closeReadMenu();
+			this.closeContextMenu();
+			if (!this.selectedIds.has(targetId)) this.setSelection([targetId], targetId, { anchor: targetId });
+			if (typeof api.Menu !== "function") {
+				new api.Notice(rectoUiText("hub.context.unavailable"), 4000);
+				return;
+			}
+			const menu = new api.Menu();
+			const ids = entries.map(entry => entry.recordId);
+			const busy = !!this.contextActionRunning;
+			const countLabel = (key, count = entries.length) => {
+				const label = rectoUiText(key);
+				return entries.length > 1 ? rectoUiText(count < entries.length ? "hub.context.available" : "hub.context.count", { label, count, total: entries.length }) : label;
+			};
+			const add = (parent, title, icon, action, disabled = false) => parent.addItem(item => {
+				item.setTitle(title).setIcon(icon).setDisabled(disabled || busy).onClick(() => this.runContextAction(ids, action));
+				if (action === "delete" && typeof item.setWarning === "function") item.setWarning(true);
+			});
+			const submenu = (title, icon, build) => menu.addItem(item => {
+				item.setTitle(title).setIcon(icon).setDisabled(busy);
+				if (typeof item.setSubmenu === "function") build(item.setSubmenu());
+				else item.onClick(event => { // Older hosts: another native menu, no custom DOM menu.
+					const child = new api.Menu(); build(child); this.contextMenu = child;
+					child.onHide(() => { if (this.contextMenu === child) this.contextMenu = null; });
+					showHubContextMenu(child, event, this.findRowEl(targetId) || this.listEl);
+				});
+			});
+			const folders = this.plugin.getHubContextFiles(entries, "folder");
+			add(menu, countLabel("hub.context.copyPaths", entries.length - folders.missing), "clipboard", "copy:folder", !folders.paths.length);
+			submenu(countLabel("hub.context.copyFiles"), "copy", child => {
+				for (const role of ["pdf", "source", "translation", "summary"]) {
+					const files = this.plugin.getHubContextFiles(entries, role);
+					const key = role === "pdf" ? "hub.readChoice.pdf" : `hub.context.${role}`;
+					add(child, countLabel(key, entries.length - files.missing), "file-text", `copy:${role}`,
+						!files.paths.length || !["win32", "darwin"].includes(process.platform));
+				}
+			});
+			menu.addSeparator();
+			add(menu, rectoUiText("hub.context.revealVault"), "folder-tree", "reveal:vault", entries.length !== 1 || !folders.paths.length);
+			add(menu, rectoUiText(process.platform === "darwin" ? "hub.context.revealFinder" : "hub.context.revealSystem"), "folder-open", "reveal:system", entries.length !== 1 || !folders.paths.length);
+			menu.addSeparator();
+			submenu(rectoUiText("hub.context.mark"), "circle-check", child => {
+				for (const flag of HUB_PAPER_FLAGS) {
+					const count = entries.filter(entry => normalizeHubPaperFlags(entry.paperFlags).includes(flag.id)).length;
+					const checked = count === entries.length;
+					const label = rectoUiText(`hub.flag.${flag.id}`);
+					child.addItem(item => item.setTitle(count && !checked ? rectoUiText("hub.context.available", { label, count, total: entries.length }) : label)
+						.setIcon(flag.icon).setChecked(checked).setDisabled(busy)
+						.onClick(() => this.runContextAction(ids, `flag:${checked ? "remove" : "add"}:${flag.id}`)));
+				}
+				child.addSeparator();
+				for (const status of ["unread", "reading", "read"]) {
+					child.addItem(item => item.setTitle(rectoUiText(`hub.${status}`))
+						.setChecked(entries.every(entry => entry.readingStatus === status))
+						.setDisabled(busy || !entries.some(entry => entry.readingKey))
+						.onClick(() => this.runContextAction(ids, `status:${status}`)));
+				}
+				child.addSeparator();
+				add(child, rectoUiText("hub.flags.clear"), "", "flag:clear", !entries.some(entry => normalizeHubPaperFlags(entry.paperFlags).length));
+			});
+			const summary = summarizeHubSelection(entries);
+			const target = this.plugin.settings?.documentLanguages?.translationTarget?.id;
+			const translatable = target ? entries.filter(entry => !entry.translations?.some(record => record.targetLanguage.id === target)).length : summary.unconverted + summary.convertedWithoutTranslation;
+			add(menu, countLabel("hub.context.convert", summary.unconverted), "file-cog", "convert", !summary.unconverted);
+			add(menu, countLabel("hub.context.translate", translatable), "languages", "translate", !translatable);
+			menu.addSeparator();
+			add(menu, countLabel("hub.context.delete"), "trash-2", "delete");
+			this.contextMenu = menu;
+			menu.onHide(() => { if (this.contextMenu === menu) this.contextMenu = null; });
+			showHubContextMenu(menu, event, this.findRowEl(targetId) || this.listEl);
+		}
+
+		async runContextAction(recordIds, action) {
+			if (this.contextActionRunning) return;
+			this.contextActionRunning = true;
+			try {
+				// Snapshot menu targets, then refresh their artifacts; later selection never changes the action's scope.
+				const current = new Map(this.plugin.getHubEntries().map(entry => [entry.recordId, entry]));
+				const entries = recordIds.map(id => current.get(id)).filter(Boolean);
+				if (entries.length !== recordIds.length) throw new Error("record-missing");
+				if (action.startsWith("copy:")) await this.plugin.copyHubContextFiles(entries, action.slice(5));
+				else if (action.startsWith("reveal:")) await this.plugin.revealHubPaperFolder(entries, action === "reveal:system");
+				else if (action.startsWith("status:")) await this.plugin.setHubReadingStatus(entries, action.slice(7));
+				else if (action.startsWith("flag:")) {
+					const [, operation, flag] = action.split(":");
+					await this.plugin.setHubPaperFlags(entries, operation === "clear" ? "clear" : flag, operation === "add");
+				}
+				else await this.handleProcessAction(action, entries);
+			} catch {
+				new api.Notice(rectoUiText(action.startsWith("status:") ? "hub.context.statusFailed" : action.startsWith("flag:") ? "hub.flags.failed" : "hub.context.failed"), 5000);
+			} finally { this.contextActionRunning = false; }
+		}
+
 		handleListKeydown(event) {
 			// 列头从 listEl 的**兄弟**变成了它的**孩子**（T86-A 第四轮），键盘事件因此会往这儿冒泡。
 			// 列头单元格挂着 tabindex=0，不挡的话在排序列头上按 Enter 会既排序又打开当前选中的论文。
 			if (event.target && event.target.closest && event.target.closest(".recto-hub-head")) return;
+			if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+				if (event.target?.closest?.("input, textarea, [contenteditable=true], .recto-hub-empty")) return;
+				this.handleListContextMenu(event);
+				return;
+			}
 			// 空态里的按钮同样住在 listEl 里，而它们是真 <button>——Enter 的默认动作就是那一下 click。
 			// 下面「按选中行动作」的分支会无条件 preventDefault 把它吃掉（列表这时是空的，那些分支
 			// 一件事也做不成），于是键盘用户按 Enter 毫无反应。这一档空态才有，挡掉最省事。
@@ -17837,21 +18399,18 @@ function createRectoHubViewClass(api) {
 			void this.plugin.openHubPaper(entry, button.dataset.hubAction);
 		}
 
-		handleProcessAction(action) {
+		handleProcessAction(action, entries = this.getSelectedEntries()) {
 			if (action === "delete") {
-				void this.deleteSelectedRecords();
-				return;
+				return this.deleteSelectedRecords(entries);
 			}
 			if (action !== "convert" && action !== "translate") return;
-			const entries = this.getSelectedEntries();
 		if (action === "convert") {
 			const pending = entries.filter(entry => entry.conversionStatus !== "converted");
 			if (!pending.length) {
 				new api.Notice(rectoUiText("hub.allConverted"), 6000);
 				return;
 			}
-			this.withProcessButtonsDisabled(() => this.plugin.runHubBatchForRecords(pending.map(entry => entry.recordId), { requestTranslation: false }));
-			return;
+			return this.withProcessButtonsDisabled(() => this.plugin.runHubBatchForRecords(pending.map(entry => entry.recordId), { requestTranslation: false }));
 		}
 		// T81-S：待译 = 未转换的 + 已转换但没译文的。已有译文的直接排除，不重复计费。
 		const target = this.plugin.settings?.documentLanguages?.translationTarget?.id;
@@ -17860,13 +18419,12 @@ function createRectoHubViewClass(api) {
 			new api.Notice(rectoUiText("hub.allTranslated"), 6000);
 			return;
 		}
-		this.withProcessButtonsDisabled(() => this.plugin.runHubTranslateForRecords(pending.map(entry => entry.recordId)));
+		return this.withProcessButtonsDisabled(() => this.plugin.runHubTranslateForRecords(pending.map(entry => entry.recordId)));
 	}
 
 		// T83-O：垃圾桶按钮与 Delete 键共用这一条路径。**单篇直接删、多篇才确认**（用户拍板）——
 		// 文件进的是系统回收站还捞得回来，但 folderMap 记录会一并清掉，批量误删的代价明显更高。
-		async deleteSelectedRecords() {
-			const entries = this.getSelectedEntries();
+		async deleteSelectedRecords(entries = this.getSelectedEntries()) {
 			if (!entries.length) return;
 			if (entries.length > 1) {
 				const accepted = await this.plugin.openDecision(() => ({
@@ -17892,8 +18450,9 @@ function createRectoHubViewClass(api) {
 	withProcessButtonsDisabled(run) {
 		const buttons = this.detailEl.findAll(".recto-hub-process button");
 		for (const button of buttons) button.disabled = true;
-		Promise.resolve()
+		return Promise.resolve()
 			.then(run)
+			.catch(() => { new api.Notice(rectoUiText("hub.context.failed"), 5000); })
 			.finally(() => {
 				for (const button of buttons) button.disabled = false;
 			});
@@ -20503,6 +21062,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				this.plugin.convertedFolders = [];
 				this.plugin.folderMap = {};
 				this.plugin.readingStates = {};
+				this.plugin.paperFlags = {};
 				recordsCleared = true;
 			}
 		}
@@ -20847,6 +21407,14 @@ if (process.env.NODE_ENV === "test") {
 		applyBackendPreferencesToSettings,
 		buildChosenPdfTasks,
 		buildHubEntries,
+		resolveHubContextSelection,
+		collectHubContextFiles,
+		buildHubFileClipboardCommand,
+		writeHubFilesToClipboard,
+		showHubContextMenu,
+		buildHubFolderFocusCommand,
+		focusHubFolderWindow,
+		openHubSystemFolder,
 		buildHubQueueView,
 		createRectoHubViewClass,
 		RectoHubNotesStore,
@@ -20894,6 +21462,8 @@ if (process.env.NODE_ENV === "test") {
 		hubEntryInCollection,
 		hubEntryMatchesQuery,
 		normalizeHubEntry,
+		normalizeHubPaperFlags,
+		normalizeHubPaperFlagStore,
 		normalizeHubTranslationQuality,
 		normalizeHubViewState,
 		resolveHubReadActions,
