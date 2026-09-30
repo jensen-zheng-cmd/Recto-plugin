@@ -370,6 +370,9 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.read": "已读",
 		"hub.unread": "未读",
 		"hub.zoteroCollections": "Zotero 分类",
+		"hub.includeSubcollections": "包含子分类论文",
+		"hub.currentCollectionOnly": "仅显示当前分类论文",
+		"hub.collectionScopeHint": "{current}；点击切换为{next}",
 		"hub.filters": "筛选",
 		"hub.clearFilter": "清除这个筛选条件：{label}",
 		"hub.clearAll": "全部清除",
@@ -451,7 +454,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.flags.failed": "附加标记未保存，请重试",
 		"hub.context.convert": "转换为 Markdown",
 		"hub.context.translate": "翻译",
-		"hub.context.delete": "删除 Recto 条目…",
+		"hub.context.delete": "重新导入",
 		"hub.context.count": "{label}（{count}）",
 		"hub.context.available": "{label}（{count}/{total}）",
 		"hub.context.pathsCopied": "已复制 {count} 个论文文件夹路径",
@@ -460,7 +463,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.context.unavailable": "当前环境不支持此操作",
 		"hub.context.failed": "操作未完成，请检查文件是否存在后重试",
 		"hub.context.statusFailed": "阅读状态未完整保存，请重试",
-		"hub.deletePaper": "删除本篇（移入系统回收站）",
+		"hub.deletePaper": "重新导入：清空本篇产物、Note 与标记，从 Zotero 重新读取（旧文件移入回收站）",
 		"hub.authors": "作者",
 		"hub.collapseAuthors": "收起",
 		"hub.moreAuthors": "更多 {count}",
@@ -469,7 +472,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.unconvertedTitle": "{title}（未转换）",
 		"hub.selectionDropped": "已选的 {count} 篇不在当前筛选内，已退出选择。",
 		"hub.navToggle": "分类与阅读状态",
-		"hub.openBatchPane": "打开批量面板：转换、翻译、删除选中",
+		"hub.openBatchPane": "打开批量面板：转换、翻译、重新导入选中",
 		"hub.batchPaneJump": "已选 {count} 篇 · 处理",
 		"hub.backToList": "返回列表",
 		"hub.sort.status": "阅读状态",
@@ -489,14 +492,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.translateMixedHint": "未转换的会先转换再翻译；已转换的只翻译，不重复转换、不重复计费",
 		"hub.translateUnconvertedHint": "未转换的论文会转换并一并产出译文",
 		"hub.translateOnlyHint": "只翻译，不重复转换",
-		"hub.translateMixedNote": "选中的 {total} 篇里，{convert} 篇需要先转换再翻译，{translate} 篇已转换、只需翻译。",
-		"hub.partialSelected": "另有 {count} 篇只译出了一部分，暂不支持重译。",
-		"hub.partialThis": "这篇只译出了一部分，暂不支持重译。",
 		"hub.selectedCount": "已选 {count} 篇",
 		"hub.escapeHint": "按 Esc 收回",
 		"hub.batchSummary": "未转换 {unconverted} · 已转换无译文 {withoutTranslation} · 完整/旧版译文 {translated} · 部分未翻译 {partial}",
-		"hub.deleteSelected": "删除选中（{count} 篇）",
-		"hub.deleteSelectedHint": "选中论文的文件夹与摘要移入系统回收站；删前会再确认一次",
+		"hub.deleteSelected": "重新导入（{count} 篇）",
+		"hub.deleteSelectedHint": "清空选中论文的产物、Note 与标记，从 Zotero 重新读取；执行前确认一次",
 		"hub.morePapers": "另有 {count} 篇",
 		"hub.collapseQueue": "折叠待写回列表",
 		"hub.expandQueue": "展开待写回列表",
@@ -569,11 +569,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.convertTitle": "批量转换",
 		"batch.convertIntro": "即将处理选中的 {count} 篇 PDF。",
 		"batch.convertAction": "{action} {count} 篇",
-		"batch.deleteTitle": "批量删除论文",
-		"batch.deleteIntro": "即将删除选中的 {count} 篇论文。",
+		"batch.deleteTitle": "批量重新导入",
+		"batch.deleteIntro": "从 Zotero 重新导入选中的 {count} 篇论文。",
 		"batch.deleteMore": "另有 {count} 篇",
-		"batch.deleteDesc": "论文文件夹与摘要会移入系统回收站。",
-		"batch.deleteAction": "删除 {count} 篇",
+		"batch.deleteDesc": "原文、译文、摘要和 Note 移入回收站，阅读状态与标记重置，旧写回任务放弃。读取最新 PDF 和论文信息后回到待转换状态。不会自动转换或翻译，已处理额度不退。",
+		"batch.deleteAction": "重新导入 {count} 篇",
 		"recovery.abandoned": "已放弃{paper}，这篇论文可以重新转换；本次已扣的额度不会退回。",
 		"recovery.paperName": "「{name}」",
 		"recovery.task": "该任务",
@@ -738,8 +738,17 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"task.exemption": "其中 {count} 篇的额度差了一点点，已为您补足并把这一篇做完。额度现在已用完，继续处理需要先购买。",
 		"task.failureLog": "，请查看 {path}",
 		"delete.missing": "这些论文已经不在库里了",
-		"delete.preflightFailed": "删除预检失败: {error}",
-		"delete.done": "删除完成：成功 {success}，失败 {failed}",
+		"delete.preflightFailed": "重新导入检查失败: {error}",
+		"delete.done": "重新导入完成：成功 {success}，失败 {failed}。成功的论文已回到待转换状态。",
+		"reimport.checkFailed": "重新导入检查未通过，请刷新论文库后重试。",
+		"reimport.sourceUnavailable": "未找到可确定的 Zotero PDF，请检查附件后重试；原论文已保留。",
+		"reimport.pathOccupied": "恢复路径已被占用，已保留恢复记录和文件。",
+		"reimport.trashFailed": "旧文件未能移入回收站，已保留恢复记录，请重试。",
+		"reimport.sourceChanged": "复制期间 Zotero PDF 发生变化，原论文已保留，请重试。",
+		"reimport.taskRunning": "论文仍在后端处理中，请等待当前任务结束后重新导入。",
+		"reimport.noteUnsaved": "Note 尚未保存，请保存后重新导入。",
+		"reimport.recoveryPending": "上次重新导入尚未恢复，请再次点击重新导入。",
+		"reimport.recoveryFailed": "重新导入恢复未完成：{error}。请再次点击重新导入。",
 		"delete.sourceMissing": "源文件夹不存在",
 		"distribution.done": "脱敏分发包已生成: {file}",
 		"distribution.failed": "分发包生成未完成，请稍后重试。",
@@ -1226,6 +1235,9 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.read": "Read",
 		"hub.unread": "Unread",
 		"hub.zoteroCollections": "Zotero collections",
+		"hub.includeSubcollections": "Include papers from subcollections",
+		"hub.currentCollectionOnly": "Only papers in the current collection",
+		"hub.collectionScopeHint": "{current}; click to switch to {next}",
 		"hub.filters": "Filters",
 		"hub.clearFilter": "Clear this filter: {label}",
 		"hub.clearAll": "Clear all",
@@ -1307,7 +1319,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.flags.failed": "Additional marks were not saved. Please try again",
 		"hub.context.convert": "Convert to Markdown",
 		"hub.context.translate": "Translate",
-		"hub.context.delete": "Delete Recto item…",
+		"hub.context.delete": "Reimport",
 		"hub.context.count": "{label} ({count})",
 		"hub.context.available": "{label} ({count}/{total})",
 		"hub.context.pathsCopied": "Copied {count} paper folder paths",
@@ -1316,7 +1328,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.context.unavailable": "This operation is unavailable in this environment",
 		"hub.context.failed": "Operation failed. Check that the files exist and try again",
 		"hub.context.statusFailed": "Reading status was not fully saved. Please try again",
-		"hub.deletePaper": "Delete this paper (move to Recycle Bin)",
+		"hub.deletePaper": "Reimport from Zotero: reset outputs, Note and flags (old files move to trash)",
 		"hub.authors": "Authors",
 		"hub.collapseAuthors": "Show less",
 		"hub.moreAuthors": "{count} more",
@@ -1325,7 +1337,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.unconvertedTitle": "{title} (not converted)",
 		"hub.selectionDropped": "{count} selected papers are outside the current filters and have been deselected.",
 		"hub.navToggle": "Collections and reading status",
-		"hub.openBatchPane": "Open batch panel to convert, translate, or delete selected papers",
+		"hub.openBatchPane": "Open batch panel to convert, translate, or reimport selected papers",
 		"hub.batchPaneJump": "{count} selected · Process",
 		"hub.backToList": "Back to list",
 		"hub.sort.status": "Reading status",
@@ -1345,14 +1357,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.translateMixedHint": "Unconverted papers will be converted and translated; converted papers will only be translated, without another conversion or charge",
 		"hub.translateUnconvertedHint": "Unconverted papers will be converted and translated",
 		"hub.translateOnlyHint": "Translate only, without converting again",
-		"hub.translateMixedNote": "Of {total} selected papers, {convert} need conversion and translation; {translate} are converted and need only translation.",
-		"hub.partialSelected": "Another {count} papers were only partly translated; retranslating them is not supported yet.",
-		"hub.partialThis": "This paper was only partly translated; retranslating it is not supported yet.",
 		"hub.selectedCount": "{count} selected",
 		"hub.escapeHint": "Press Esc to close",
 		"hub.batchSummary": "Not converted {unconverted} · Converted without translation {withoutTranslation} · Complete/legacy translation {translated} · Partly untranslated {partial}",
-		"hub.deleteSelected": "Delete selected ({count} papers)",
-		"hub.deleteSelectedHint": "Move selected paper folders and summaries to the Recycle Bin; confirmation comes first",
+		"hub.deleteSelected": "Reimport ({count} papers)",
+		"hub.deleteSelectedHint": "Reset outputs, Note and flags and read fresh data from Zotero; confirmation comes first",
 		"hub.morePapers": "Another {count} papers",
 		"hub.collapseQueue": "Collapse pending writeback list",
 		"hub.expandQueue": "Expand pending writeback list",
@@ -1425,11 +1434,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.convertTitle": "Convert selected PDFs",
 		"batch.convertIntro": "Process the {count} selected PDFs now.",
 		"batch.convertAction": "{action} {count} papers",
-		"batch.deleteTitle": "Delete selected papers",
-		"batch.deleteIntro": "Delete the {count} selected papers now.",
+		"batch.deleteTitle": "Reimport selected papers",
+		"batch.deleteIntro": "Reimport {count} selected papers from Zotero.",
 		"batch.deleteMore": "{count} more papers",
-		"batch.deleteDesc": "Paper folders and summaries will move to the system trash.",
-		"batch.deleteAction": "Delete {count} papers",
+		"batch.deleteDesc": "Source, translations, summaries and Note move to trash. Reading state and flags reset; old writebacks are discarded. Fresh PDFs and metadata are imported, ready to convert. Conversion and translation will not start automatically. Processing credits already used are not refunded.",
+		"batch.deleteAction": "Reimport {count} papers",
 		"recovery.abandoned": "Abandoned {paper}. This paper can be converted again; pages already spent will not be refunded.",
 		"recovery.paperName": "{name}",
 		"recovery.task": "this task",
@@ -1594,8 +1603,17 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"task.exemption": "Recto covered the small page shortfall for {count} papers and finished them. Your balance is now empty; purchase more pages to continue.",
 		"task.failureLog": "; see {path}",
 		"delete.missing": "These papers are no longer in the library",
-		"delete.preflightFailed": "Deletion check failed: {error}",
-		"delete.done": "Deletion finished: {success} succeeded, {failed} failed",
+		"delete.preflightFailed": "Reimport check failed: {error}",
+		"delete.done": "Reimport finished: {success} succeeded, {failed} failed. Reimported papers are ready to convert.",
+		"reimport.checkFailed": "Reimport check failed. Refresh the library and retry.",
+		"reimport.sourceUnavailable": "No unambiguous Zotero PDF was found. Check the attachment and retry; the original paper was preserved.",
+		"reimport.pathOccupied": "The recovery path is occupied. Recovery records and files were preserved.",
+		"reimport.trashFailed": "Old files could not move to trash. Recovery records were preserved; please retry.",
+		"reimport.sourceChanged": "The Zotero PDF changed during copying. The original paper was preserved; please retry.",
+		"reimport.taskRunning": "This paper is still processing on the server. Wait for it to finish before reimporting.",
+		"reimport.noteUnsaved": "Note has not been saved. Save it before reimporting.",
+		"reimport.recoveryPending": "The previous reimport needs recovery. Click Reimport again.",
+		"reimport.recoveryFailed": "Reimport recovery is incomplete: {error}. Click Reimport again.",
 		"delete.sourceMissing": "Source folder does not exist",
 		"distribution.done": "Sanitized distribution package created: {file}",
 		"distribution.failed": "Could not create the distribution package. Try again later.",
@@ -2002,11 +2020,11 @@ const DEFAULT_ONBOARDING_STATE = {
 	skipped: [],
 };
 
-// T83-O：Hub 关掉再打开要回到上次那批论文。**只记这五项**——分类文件夹、两个筛选维度、
-// 排序列与升降序。搜索词不记（重开时看到一份被过滤的短列表，很容易以为论文丢了），
+// T83-O / T88-H：Hub 关掉再打开要回到上次那批论文，记分类、范围、两个筛选维度、
+// 排序列与升降序。范围默认包含子分类；搜索词不记（避免重开误以为论文丢了），
 // 选中行、分类树折叠、标题中/英也不记。归一在 normalizeHubViewState：任何一项脏了就退回默认，
 // 不让一份坏状态卡住整个视图。
-const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", status: "all", conversion: "all", sort: "title", descending: false };
+const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", includeSubcollections: true, status: "all", conversion: "all", sort: "title", descending: false };
 
 const DEFAULT_BACKEND_BASE_URL = "https://api.rectoai.uk";
 
@@ -2744,6 +2762,8 @@ function setChromeIcon(el, name) {
 
 // T88-B: authored geometry, shared by the primary action, menu and icon row.
 const HUB_READING_ICON_PATHS = {
+	folder: ["M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z"],
+	"chevron-right": ["m9 6 6 6-6 6"],
 	"recto-source": ["M6 5V3h12v2M12 3v14M9 17h6M7 21h10"],
 	"recto-pdf": ["M5 2h9l5 5v15H5zM14 2v5h5", "M7 16v-5h1a1.25 1.25 0 0 1 0 2.5H7M11 16v-5h1c2 0 2 5 0 5zM16 16v-5h2M16 13.5h1.5"],
 	"recto-pdf-compare": ["M2 4h8v16H2zM4.5 10h3M4.5 14h3", "M14 4h4l4 4v12h-8zM18 4v4h4"],
@@ -4231,7 +4251,7 @@ function validateRectoSidecar(sidecar) {
 	if (sidecar.contentObjectification != null) {
 		const contract = sidecar.contentObjectification;
 		if (!contract || contract.version !== 1 || contract.ruleset !== "recto-content-objects-v1" || !contract.report || !Array.isArray(contract.groups)) throw new Error("Sidecar 内容对象契约无效");
-		const objectBlocks = sidecar.blocks.filter(block => ["formula", "table", "image", "chart"].includes(block.type));
+		const objectBlocks = sidecar.blocks.filter(block => ["formula", "table", "image", "chart"].includes(block.type) || (block.type === "code" && block.contentObject));
 		const partIds = new Set();
 		for (const block of objectBlocks) {
 			const object = block.contentObject;
@@ -4493,9 +4513,8 @@ function renderRectoTranslationDerivation(sidecar, blockById, derivation) {
 		return math ? `$$\n${math}\n$$${derivation.anchor ? `\n^${derivation.anchor}` : ""}` : "";
 	}
 	if (block.type === "code") {
-		const language = clean(block.content && block.content.codeLanguage);
 		const code = String(values.get(`${block.id}\u0000body`) || "").trim();
-		return code ? `\`\`\`${language}\n${code}\n\`\`\`` : "";
+		return renderRectoCodeBlock(sidecar, block, code);
 	}
 	if (block.type === "table") {
 		const parts = translatedParts();
@@ -4530,6 +4549,33 @@ function renderRectoTranslationDerivation(sidecar, blockById, derivation) {
 		return [image, caption, ...parts.footnotes].filter(Boolean).join("\n\n");
 	}
 	return "";
+}
+
+function renderRectoCodeBlock(sidecar, block, body) {
+	// Old Sidecars freeze the original code projection, including empty blocks.
+	if (!block.contentObject) {
+		const content = block.content || {};
+		const code = String(body ?? (content.text || content.markup || "")).trim();
+		const language = String(content.codeLanguage || "").replace(/\r\n?/g, "\n").trim();
+		return code ? `\`\`\`${language}\n${code}\n\`\`\`` : "";
+	}
+	if (block.contentObject && block.contentObject.preferredRepresentation === "code-snapshot") {
+		const snapshot = (block.contentObject.representations || []).find(item => item.kind === "code-snapshot");
+		const resource = snapshot && (sidecar.resources || []).find(item => item.id === snapshot.resourceId);
+		if (resource && resource.path) {
+			const image = `![recto-code-snapshot](${resource.path})`;
+			return snapshot.includesParts ? image : [...(block.content.captions || []), image, ...(block.content.footnotes || [])].filter(Boolean).join("\n\n");
+		}
+	}
+	const content = block.content || {};
+	const code = String(body ?? (content.text || content.markup || "")).trim();
+	const language = /^[\w+-]*$/.test(content.codeLanguage || "") ? content.codeLanguage || "" : "";
+	const runs = code.match(/`{3,}/g) || [];
+	const fence = "`".repeat(Math.max(3, ...runs.map(run => run.length + 1)));
+	const alreadyFenced = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*\n\1$/.test(code);
+	const rendered = code ? alreadyFenced ? code : `${fence}${language}\n${code}\n${fence}`
+		: "> [!warning]\n> Code/algorithm content unavailable. See the original PDF.";
+	return [...(content.captions || []), rendered, ...(content.footnotes || [])].filter(Boolean).join("\n\n");
 }
 
 function renderRectoTranslationMarkdown(sidecar, alignment, blockById) {
@@ -6904,6 +6950,7 @@ function normalizeHubViewState(raw) {
 	const sort = HUB_ALL_SORT_KEYS.includes(value.sort) ? value.sort : HUB_VIEW_STATE_DEFAULT.sort;
 	return {
 		collectionPath: typeof value.collectionPath === "string" ? value.collectionPath : "",
+		includeSubcollections: typeof value.includeSubcollections === "boolean" ? value.includeSubcollections : true,
 		status: HUB_STATUS_FILTERS.includes(value.status) ? value.status : HUB_VIEW_STATE_DEFAULT.status,
 		conversion: HUB_CONVERSION_FILTERS.includes(value.conversion) ? value.conversion : HUB_VIEW_STATE_DEFAULT.conversion,
 		sort,
@@ -7408,13 +7455,13 @@ function hubEntryMatchesQuery(entry, query) {
 	return text.split(/\s+/).every(term => haystack.includes(term));
 }
 
-function hubEntryInCollection(entry, collectionPath) {
+function hubEntryInCollection(entry, collectionPath, includeSubcollections = true) {
 	const path = String(collectionPath || "");
 	if (!path) return true;
 	const paths = getZoteroCollectionPathParts(entry);
 	if (normalizeZoteroCollectionName(path) === UNFILED_COLLECTION) return paths.length === 0;
 	const selected = splitZoteroCollectionPath(path);
-	return paths.some(parts => selected.length <= parts.length
+	return paths.some(parts => (includeSubcollections !== false ? selected.length <= parts.length : selected.length === parts.length)
 		&& selected.every((part, index) => parts[index] === part));
 }
 
@@ -7435,7 +7482,7 @@ function filterHubEntries(entries, filters = {}) {
 		if (conversion === "translated" && !entry.hasTranslation) return false;
 		// 待处理 = 转换/翻译两个操作还能对它做点什么的：未转换的，或已转换但没译文的。
 		if (conversion === "todo" && entry.conversionStatus === "converted" && entry.hasTranslation) return false;
-		if (!hubEntryInCollection(entry, filters.collectionPath)) return false;
+		if (!hubEntryInCollection(entry, filters.collectionPath, filters.includeSubcollections)) return false;
 		return hubEntryMatchesQuery(entry, filters.query);
 	});
 }
@@ -10347,7 +10394,14 @@ class RectoPlugin extends obsidian.Plugin {
 		this.registerEditorExtension(createRectoUnknownGlyphExtension());
 		this.registerReadingStatusClickHandler();
 		this.registerPaperJsonlWatchers();
-		this.app.workspace.onLayoutReady(() => {
+		this.app.workspace.onLayoutReady(async () => {
+			this.suspendPaperJsonlRefresh();
+			try { await this.recoverPaperReimport(); }
+			catch (error) {
+				new obsidian.Notice(rectoUiText("reimport.recoveryFailed", { error: getSanitizedErrorMessage(error) }), 12000);
+				return;
+			}
+			finally { await this.resumePaperJsonlRefresh({ flush: false }); }
 			this.applyReaderTheme();
 			// T86-C：「打开过」的信号。**挂在 onLayoutReady 里面**，再加一段静默期——启动恢复
 			// 的标签也会发 file-open，不挡的话每次重启就把所有开着的论文盖成「刚刚读过」。
@@ -11458,7 +11512,10 @@ class RectoPlugin extends obsidian.Plugin {
 		const target = normalizeDocumentLanguage(task.languageContract && task.languageContract.target || preferences.translationTarget);
 		let source = normalizeDocumentLanguage(task.languageContract && task.languageContract.source);
 		let evidence = source ? task.languageContract.sourceEvidence : "unknown";
-		const recordedSource = this.settings.documentArtifacts?.[sourcePath];
+		const registeredSource = this.settings.documentArtifacts?.[sourcePath];
+		// 路径可被重新导入复用；只有当前文档、当前版本的登记才能参与原文校验。
+		const recordedSource = registeredSource?.documentId === sidecar.document.id
+			&& registeredSource?.sourceRevisionId === sidecar.sourceRevision.id ? registeredSource : null;
 		if (!isRectoMarkdownTranslationTask(task) && (recordedSource?.sourceContentHash || info.sourceContentHash)
 			&& (recordedSource?.sourceContentHash || info.sourceContentHash) !== sourceHash) throw new Error(documentLanguageText("原文已改变，请重新转换以更新定位信息后再翻译。", "The source changed. Convert it again to refresh its structure before translating."));
 		if (!source && recordedSource?.sourceContentHash === sourceHash && recordedSource.sourceRevisionId === sidecar.sourceRevision.id) {
@@ -11823,6 +11880,10 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	beginOperation(label, options = {}) {
+		if (this.settings?.paperReimport) {
+			if (!options.silent) new obsidian.Notice(rectoUiText("reimport.recoveryPending"), 8000);
+			return null;
+		}
 		if (this.activeOperation) {
 			if (!options.silent) new obsidian.Notice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), 6000);
 			return null;
@@ -14893,6 +14954,7 @@ class RectoPlugin extends obsidian.Plugin {
 			body: {
 				...(task.languageContract ? { languageContract: task.languageContract } : {}),
 				estimatedPages: this.estimateBackendTaskPages(task),
+				codeSnapshots: 1,
 				requestedOutputs: this.getBackendRequestedOutputs(task),
 				postprocessProfile: this.getTaskPostprocessProfile(task),
 				sourceName: task.name || task.recordId || "paper.pdf",
@@ -15490,7 +15552,8 @@ class RectoPlugin extends obsidian.Plugin {
 				await this.writeBackendSidecarText(subFolder, `${JSON.stringify(merged, null, 2)}\n`);
 			}
 			const previous = this.settings.documentArtifacts || {};
-			const sourceRecord = previous[task.sourcePath] || {};
+			const priorSource = previous[task.sourcePath];
+			const sourceRecord = priorSource?.documentId === record.documentId && priorSource?.sourceRevisionId === task.sourceRevisionId ? priorSource : {};
 			this.settings.documentArtifacts = { ...previous, [task.sourcePath]: { ...sourceRecord, documentId: record.documentId,
 				sourceRevisionId: task.sourceRevisionId, sourceContentHash: task.sourceContentHash, sourceLanguage: task.languageContract.source, sourceLanguageEvidence: task.languageContract.sourceEvidence,
 				translations: { ...(sourceRecord.translations || {}), [`${task.sourceRevisionId}:${task.languageContract.target.id}`]: record } } };
@@ -16443,8 +16506,7 @@ class RectoPlugin extends obsidian.Plugin {
 		return files[0];
 	}
 
-	// T83-O：删除只剩 Hub 一条入口（设置页那节、命令与选择弹窗都撤了）。Hub 传的是 folderMap 的键，
-	// 候选在这里就地组装；删除本身仍走 deleteSelectedPapers——回收站、记账、索引重写只有那一份实现。
+	// T88-G-T：保留 Hub 的统一桥名，动作改为清空旧产物后立即重新导入。
 	async deletePaperRecords(recordIds) {
 		if (!this.getValidatedBaseFolderOrNotice()) return;
 		const candidates = uniqueStrings(recordIds).map(recordId => {
@@ -16466,52 +16528,192 @@ class RectoPlugin extends obsidian.Plugin {
 
 	async deleteSelectedPapers(candidates) {
 		if (!candidates || !candidates.length) return;
+		if (this.activeOperation || this.paperReimportRecoveryPromise) {
+			new obsidian.Notice(rectoUiText("reimport.taskRunning"));
+			return;
+		}
 		const recordIds = uniqueStrings(candidates.map(candidate => candidate.folder).filter(Boolean));
+		await this.recoverPaperReimport();
 		try {
-			this.preflightTrashRecords(recordIds);
+			for (const recordId of recordIds) this.preflightTrashRecords([recordId]);
 		} catch (e) {
-			const reason = getUserFacingErrorMessage(e, "删除前检查未通过，请刷新论文库后重试。");
+			const reason = getUserFacingErrorMessage(e, rectoUiText("reimport.checkFailed"));
 			new obsidian.Notice(rectoUiText("delete.preflightFailed", { error: reason }), 10000);
 			return { status: "error", reason };
 		}
-		const operation = this.beginOperation("删除库中论文");
+		const operation = this.beginOperation(rectoUiText("hub.context.delete"));
 		if (!operation) return;
-		let deleted = 0;
+		let imported = 0;
 		let failed = 0;
+		const errors = [];
+		this.suspendPaperJsonlRefresh();
 		try {
-			for (const candidate of candidates) {
+			// 等正在查询的恢复器退出，之后 operation 锁保证旧结果不会跨替换写入。
+			if (this.pendingBackendRecoveryPromise) await this.pendingBackendRecoveryPromise;
+			const plan = await this.getPdfScanPlan({ requireMetadata: true, quiet: true, signal: operation.controller.signal });
+			const sources = [...plan.tasks, ...plan.ambiguousGroups.flatMap(group => group.files)];
+			for (const recordId of recordIds) {
+				if (this.shouldStopBeforeNextItem()) break;
 				try {
-					if (this.hubNotesStore && candidate.folder) {
-						if (!this.hubNotesStore.flush(candidate.folder)) throw new Error("Note 尚未保存，请重试后再删除。");
-						this.hubNotesStore.forget(candidate.folder);
+					const info = this.folderMap[recordId];
+					let source = sources.find(task => task.recordId === recordId);
+					if (!source) {
+						const matches = sources.filter(task => task.zoteroAttachmentKey === (info.zoteroAttachmentKey || recordId.split("::")[0]));
+						if (matches.length === 1) source = matches[0];
 					}
-					await this.removeFolderRecursive(candidate.paperPath);
-					await this.removeFolderRecursive(candidate.summaryPath);
-					if (candidate.folder) {
-						this.convertedFolders = this.convertedFolders.filter(f => f !== candidate.folder);
-						delete this.folderMap[candidate.folder];
-					} else {
-						for (const [folder, info] of Object.entries(this.folderMap || {})) {
-							if (info && info.stem === candidate.stem) {
-								this.convertedFolders = this.convertedFolders.filter(f => f !== folder);
-								delete this.folderMap[folder];
-							}
-						}
-					}
-					deleted++;
+					if (!source) throw new Error(rectoUiText("reimport.sourceUnavailable"));
+					// 多 PDF 的附件不得借用另一个已登记论文的身份。
+					if (source.recordId !== recordId && this.folderMap[source.recordId]) throw new Error(rectoUiText("reimport.sourceUnavailable"));
+					await this.reimportPaperRecord(recordId, source);
+					imported++;
 				} catch (e) {
 					failed++;
-					console.warn(`Recto: delete failed for ${candidate.stem}`, getSanitizedErrorMessage(e));
+					errors.push(`${this.folderMap[recordId]?.zoteroTitle || this.folderMap[recordId]?.stem || ""}: ${getSanitizedErrorMessage(e)}`);
+					if (this.settings.paperReimport) break; // 恢复失败时保留事务，禁止继续改库。
 				}
 			}
-			this.pruneReadingStates();
-			await this.save();
 			await this.writePaperJsonlIndex();
-			new obsidian.Notice(rectoUiText("delete.done", { success: deleted, failed }), failed ? 10000 : 6000);
+			new obsidian.Notice([rectoUiText("delete.done", { success: imported, failed }), ...errors].join("\n"), failed ? 12000 : 6000);
 			this.safeRefreshHubViews();
-			return { status: "completed", deleted, failed };
+			return { status: "completed", imported, failed };
+		} catch (error) {
+			const reason = getUserFacingErrorMessage(error, rectoUiText("reimport.checkFailed"));
+			new obsidian.Notice(rectoUiText("delete.preflightFailed", { error: reason }), 10000);
+			return { status: "error", imported, failed, reason };
 		} finally {
+			await this.resumePaperJsonlRefresh({ flush: !this.settings.paperReimport });
 			this.finishOperation(operation);
+		}
+	}
+
+	// 替换前持久化恢复单：旧数据先移到事务目录，提交后整个目录进回收站。
+	// 崩溃后以已保存的新 documentId 为提交依据；未提交则逐项搬回，绝不猜测同名文件。
+	async moveReimportPath(from, to) {
+		const vault = this.app.vault;
+		if (!await vault.adapter.exists(from)) return;
+		if (await vault.adapter.exists(to)) throw new Error(rectoUiText("reimport.pathOccupied"));
+		const file = vault.getAbstractFileByPath(from);
+		if (file) await vault.rename(file, to);
+		else await vault.adapter.rename(from, to);
+	}
+
+	async recoverPaperReimport() {
+		if (this.paperReimportRecoveryPromise) return this.paperReimportRecoveryPromise;
+		if (!this.settings?.paperReimport) return;
+		this.paperReimportRecoveryPromise = this.recoverPaperReimportOnce();
+		try { return await this.paperReimportRecoveryPromise; }
+		finally { this.paperReimportRecoveryPromise = null; }
+	}
+
+	async recoverPaperReimportOnce() {
+		const journal = this.settings?.paperReimport;
+		if (!journal) return;
+		const vault = this.app.vault;
+		if (!/^[a-f0-9]{24}$/.test(journal.id || "")) throw new Error(rectoUiText("reimport.checkFailed"));
+		const root = this.getPaperSubFolder(`recto-reimport-${journal.id}`);
+		documentArtifactPath(root, journal.oldStem, "src");
+		documentArtifactPath(root, journal.newStem, "src");
+		const committed = this.folderMap[journal.recordId]?.documentId === journal.newDocumentId;
+		if (!committed && await vault.adapter.exists(root)) {
+			const newPath = this.getPaperSubFolder(journal.newStem);
+			// staging 消失表示新目录已就位；恢复到 staging 后此步骤也可重复执行。
+			if (!await vault.adapter.exists(`${root}/new`)) await this.moveReimportPath(newPath, `${root}/new`);
+			await this.moveReimportPath(`${root}/old`, this.getPaperSubFolder(journal.oldStem));
+			const base = this.getValidatedBaseFolder();
+			await this.moveReimportPath(`${root}/legacy`, getLegacyPaperFolderVaultPath(base, journal.oldStem));
+			await this.moveReimportPath(`${root}/summary`, getLegacySummaryVaultPath(base, journal.oldStem));
+		}
+		if (await vault.adapter.exists(root)) {
+			const folder = vault.getAbstractFileByPath(root);
+			if (folder) await vault.trash(folder, true);
+			else if (!vault.adapter.trashSystem || !await vault.adapter.trashSystem(root)) {
+				throw new Error(rectoUiText("reimport.trashFailed"));
+			}
+		}
+		delete this.settings.paperReimport;
+		try { await this.save(); }
+		catch (error) { this.settings.paperReimport = journal; throw error; }
+	}
+
+	async reimportPaperRecord(recordId, source) {
+		const old = this.folderMap[recordId];
+		documentArtifactPath(this.getValidatedBaseFolder(), old.stem, "src");
+		const pendingForPaper = entry => entry.recordId === recordId || entry.task?.recordId === recordId
+			|| (old.documentId && entry.task?.documentId === old.documentId);
+		for (const entry of (this.pendingBackendTasks || []).filter(pendingForPaper)) {
+			if (entry.status === "translation_handoff") continue;
+			// 本地状态可能滞后，向后端核对；处理中不丢任务、不改变已冻结额度。
+			let remote;
+			try { remote = await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(entry.taskId)}`, { timeout: 30000 }); }
+			catch (error) { if (isBackendTaskNotFoundError(error)) continue; throw error; }
+			if (!["ready", "terminal"].includes(classifyRecoveredBackendTaskStatus(remote?.status))) throw new Error(rectoUiText("reimport.taskRunning"));
+		}
+		if (this.hubNotesStore && !this.hubNotesStore.flush(recordId)) throw new Error(rectoUiText("reimport.noteUnsaved"));
+		const otherRecords = { ...this.folderMap };
+		delete otherRecords[recordId];
+		const stem = this.allocateUniquePaperStem(stripHubTitleMarkup(source.zoteroTitle) || nodePath.basename(source.name, ".pdf"), recordId, otherRecords,
+			{ canReclaimFolder: candidate => candidate === old.stem });
+		const journal = { id: crypto.randomBytes(12).toString("hex"), recordId, oldStem: old.stem, newStem: stem, newDocumentId: createRectoDocumentId() };
+		const root = this.getPaperSubFolder(`recto-reimport-${journal.id}`);
+		const vault = this.app.vault;
+		const paperPath = this.getPaperSubFolder(old.stem);
+		const newPath = this.getPaperSubFolder(stem);
+		if (await vault.adapter.exists(root)) throw new Error(rectoUiText("reimport.pathOccupied"));
+		if (!await getReadableFileSize(source.path)) throw new Error(rectoUiText("reimport.sourceUnavailable"));
+		try {
+			await this.ensureFolder(`${root}/new`);
+			await this.copyPdfToVault(source.path, `${root}/new/${stem}.pdf`);
+			const staged = resolveVaultRelativeAbsolutePath(vault.adapter.basePath, `${root}/new/${stem}.pdf`);
+			const contentHash = await hashFileSha256(staged);
+			if (contentHash !== await hashFileSha256(source.path)) throw new Error(rectoUiText("reimport.sourceChanged"));
+			this.settings.paperReimport = journal;
+			try { await this.save(); } catch (error) { delete this.settings.paperReimport; throw error; }
+			await this.moveReimportPath(paperPath, `${root}/old`);
+			await this.moveReimportPath(getLegacyPaperFolderVaultPath(this.getValidatedBaseFolder(), old.stem), `${root}/legacy`);
+			await this.moveReimportPath(getLegacySummaryVaultPath(this.getValidatedBaseFolder(), old.stem), `${root}/summary`);
+			await this.moveReimportPath(`${root}/new`, newPath);
+			const snapshot = { folderMap: this.folderMap, convertedFolders: this.convertedFolders, pendingBackendTasks: this.pendingBackendTasks,
+				readingStates: this.readingStates, readingTouchedAt: this.readingTouchedAt, paperFlags: this.paperFlags,
+				compareSessions: this.compareSessions, artifacts: this.settings.documentArtifacts };
+			const now = new Date().toISOString();
+			this.folderMap = { ...otherRecords, [recordId]: { ...this.getZoteroFieldsFromTask(source), stem,
+				originalName: source.name, sourceFileName: source.name, documentId: journal.newDocumentId,
+				conversionStatus: "unconverted", zoteroSyncState: "active", zoteroImportedAt: now, localPdfImportedAt: now,
+				localPdfPath: this.getImportedPdfVaultPath(stem), zoteroPdfContentHash: contentHash, zoteroPdfImportPending: false,
+				...(old.zoteroPdfChoice ? { zoteroPdfChoice: old.zoteroPdfChoice } : {}) } };
+			this.convertedFolders = (this.convertedFolders || []).filter(id => id !== recordId);
+			this.pendingBackendTasks = (this.pendingBackendTasks || []).filter(entry => !pendingForPaper(entry));
+			this.settings.documentArtifacts = Object.fromEntries(Object.entries(this.settings.documentArtifacts || {}).filter(([path, value]) =>
+				!path.startsWith(`${paperPath}/`) && !path.startsWith(`${getLegacyPaperFolderVaultPath(this.getValidatedBaseFolder(), old.stem)}/`)
+				&& !(old.documentId && value.documentId === old.documentId)));
+			this.readingStates = { ...this.readingStates }; this.readingTouchedAt = { ...this.readingTouchedAt }; this.paperFlags = { ...this.paperFlags };
+			const readingKey = this.getReadingStateKey(old, recordId);
+			// 同 Zotero 条目的另一份 PDF 共用阅读状态时保留它的记录。
+			if (!Object.entries(otherRecords).some(([id, info]) => this.getReadingStateKey(info, id) === readingKey)) {
+				delete this.readingStates[readingKey]; delete this.readingTouchedAt[readingKey];
+			}
+			delete this.paperFlags[recordId];
+			this.compareSessions = { ...this.compareSessions };
+			for (const [kind, pair] of Object.entries(this.compareSessions)) {
+				if (pair && Object.values(pair).some(path => String(path).startsWith(`${paperPath}/`))) this.compareSessions[kind] = null;
+			}
+			try { await this.save(); }
+			catch (error) {
+				const { artifacts, ...state } = snapshot;
+				Object.assign(this, state); this.settings.documentArtifacts = artifacts;
+				throw error;
+			}
+			if (this.hubNotesStore) this.hubNotesStore.forget(recordId);
+			if (snapshot.compareSessions?.dualPane && !this.compareSessions.dualPane) this.stopRectoDualPane(false);
+			if (snapshot.compareSessions?.pdfCompare && !this.compareSessions.pdfCompare) this.stopRectoPdfCompare(false);
+			this.alignmentSectionCache = null;
+			this.imageWidthMapCache?.clear();
+			this.notifyTaskQueueChanged();
+			await this.recoverPaperReimport();
+		} catch (error) {
+			if (this.settings.paperReimport) await this.recoverPaperReimport();
+			else if (vault.getAbstractFileByPath(root)) await vault.trash(vault.getAbstractFileByPath(root), true);
+			throw error;
 		}
 	}
 
@@ -16768,6 +16970,8 @@ function createRectoHubViewClass(api) {
 			]) {
 				this.registerDomEvent(el, "keydown", (event) => {
 					if (event.key !== "Enter" && event.key !== " ") return;
+					// Native buttons activate themselves; forwarding would toggle the scope twice.
+					if (event.target.closest && event.target.closest("button")) return;
 					event.preventDefault();
 					handler(event);
 				});
@@ -16933,6 +17137,10 @@ function createRectoHubViewClass(api) {
 
 		// quiet：外部数据变化引起的重排（reload）不提示，只有用户自己改筛选时才提示。
 		applyFilters(options = {}) {
+			const detailKey = () => JSON.stringify([this.selectedRecordId, this.isBatchMode(), [...this.selectedIds].sort()]);
+			const previousDetailKey = options.preserveDetail ? detailKey() : null;
+			const listScrollTop = options.preserveScroll ? this.listEl.scrollTop : 0;
+			const renderedCount = this.renderedCount;
 			this.visible = sortHubEntries(
 				filterHubEntries(this.entries, this.filters),
 				this.filters.sort,
@@ -16963,7 +17171,11 @@ function createRectoHubViewClass(api) {
 			this.renderChips();
 			this.renderHead();
 			this.renderList();
-			this.renderDetail();
+			if (options.preserveScroll) {
+				while (this.renderedCount < Math.min(renderedCount, this.visible.length)) this.appendListChunk();
+				this.listEl.scrollTop = listScrollTop;
+			}
+			if (!options.preserveDetail || previousDetailKey !== detailKey()) this.renderDetail();
 			this.renderPaneJump();
 		}
 
@@ -17171,7 +17383,7 @@ function createRectoHubViewClass(api) {
 		renderNav() {
 			this.navEl.empty();
 			const scoped = this.filters.collectionPath
-				? this.entries.filter(entry => hubEntryInCollection(entry, this.filters.collectionPath))
+				? this.entries.filter(entry => hubEntryInCollection(entry, this.filters.collectionPath, this.filters.includeSubcollections))
 				: this.entries;
 			const summary = summarizeHubEntries(scoped);
 			// 这一列只管「这篇论文和我的关系」这一个维度；转换状态全部交给下面的 chips 行，
@@ -17186,9 +17398,9 @@ function createRectoHubViewClass(api) {
 				{ label: rectoUiText("hub.recent"), count: summary.recent, status: "recent", icon: "clock", separate: true,
 					title: rectoUiText("hub.recentHint") },
 				{ label: rectoUiText("hub.allPapers"), count: summary.total, status: "all" },
-				{ label: `${READING_STATUS_SYMBOLS.reading} ${rectoUiText("hub.reading")}`, count: summary.reading, status: "reading" },
-				{ label: `${READING_STATUS_SYMBOLS.read} ${rectoUiText("hub.read")}`, count: summary.read, status: "read" },
-				{ label: `${READING_STATUS_SYMBOLS.unread} ${rectoUiText("hub.unread")}`, count: summary.unread, status: "unread" },
+				{ label: rectoUiText("hub.reading"), count: summary.reading, status: "reading", symbol: READING_STATUS_SYMBOLS.reading },
+				{ label: rectoUiText("hub.read"), count: summary.read, status: "read", symbol: READING_STATUS_SYMBOLS.read },
+				{ label: rectoUiText("hub.unread"), count: summary.unread, status: "unread", symbol: READING_STATUS_SYMBOLS.unread },
 			];
 			for (const item of quick) {
 				const row = this.navEl.createDiv({ cls: "recto-hub-nav-row" });
@@ -17197,13 +17409,42 @@ function createRectoHubViewClass(api) {
 				row.toggleClass("is-active", this.filters.status === item.status);
 				row.toggleClass("is-standalone", !!item.separate);
 				if (item.title) row.setAttribute("title", item.title);
-				if (item.icon) setChromeIcon(row.createSpan({ cls: "recto-hub-nav-icon" }), item.icon);
+				const icon = row.createSpan({ cls: "recto-hub-nav-icon", attr: { "aria-hidden": "true" } });
+				if (item.icon) setChromeIcon(icon, item.icon);
+				else if (item.symbol) icon.setText(item.symbol);
 				row.createSpan({ cls: "recto-hub-nav-name", text: item.label });
 				row.createSpan({ cls: "recto-hub-nav-count", text: String(item.count) });
 			}
 			if (!this.tree.length) return;
-			this.navEl.createDiv({ cls: "recto-hub-nav-section", text: rectoUiText("hub.zoteroCollections") });
+			const heading = this.navEl.createDiv({ cls: "recto-hub-nav-section" });
+			const scope = heading.createEl("button", { cls: "recto-hub-collection-scope", attr: { type: "button", "data-hub-collection-scope": "" } });
+			setChromeIcon(scope.createSpan({ cls: "recto-hub-scope-back", attr: { "aria-hidden": "true" } }), "folder");
+			setChromeIcon(scope.createSpan({ cls: "recto-hub-scope-front", attr: { "aria-hidden": "true" } }), "folder");
+			heading.createSpan({ cls: "recto-hub-nav-name", text: rectoUiText("hub.zoteroCollections") });
 			this.renderNavTree(this.tree, 0);
+			this.syncNavState();
+		}
+
+		// Patch the existing nodes so rapid toggles keep focus, scroll and CSS transitions.
+		syncNavState() {
+			const include = this.filters.includeSubcollections !== false;
+			const summary = summarizeHubEntries(this.entries.filter(entry =>
+				hubEntryInCollection(entry, this.filters.collectionPath, include)));
+			for (const row of this.navEl.querySelectorAll("[data-hub-status], [data-hub-collection]")) {
+				const status = row.dataset.hubStatus;
+				row.toggleClass("is-active", status !== undefined ? this.filters.status === status : this.filters.collectionPath === row.dataset.hubCollection);
+				const count = status !== undefined ? summary[status === "all" ? "total" : status]
+					: row.dataset[include ? "hubTotalCount" : "hubDirectCount"];
+				row.querySelector(".recto-hub-nav-count").setText(String(count));
+			}
+			const scope = this.navEl.querySelector("[data-hub-collection-scope]");
+			if (!scope) return;
+			scope.setAttribute("aria-pressed", String(include));
+			scope.setAttribute("aria-label", rectoUiText("hub.includeSubcollections"));
+			scope.setAttribute("title", rectoUiText("hub.collectionScopeHint", {
+				current: rectoUiText(include ? "hub.includeSubcollections" : "hub.currentCollectionOnly"),
+				next: rectoUiText(include ? "hub.currentCollectionOnly" : "hub.includeSubcollections"),
+			}));
 		}
 
 		// 生效中的筛选逐条列出、逐条可清；分类与阅读状态同时生效时用「×」连起来，明确是且的关系。
@@ -17249,24 +17490,36 @@ function createRectoHubViewClass(api) {
 			this.clearHubFilter(target.dataset.hubCrumbClear);
 		}
 
-		renderNavTree(nodes, depth) {
+		renderNavTree(nodes, depth, container = this.navEl) {
 			for (const node of nodes) {
-				const row = this.navEl.createDiv({ cls: "recto-hub-nav-row" });
+				const branch = container.createDiv({ cls: "recto-hub-nav-branch" });
+				const row = branch.createDiv({ cls: `recto-hub-nav-row ${depth ? "is-nested" : "is-root"}` });
 				row.dataset.hubCollection = node.path;
-				row.style.paddingLeft = `${8 + depth * 12}px`;
+				row.dataset.hubTotalCount = String(node.count);
+				row.dataset.hubDirectCount = String(node.items.length);
+				row.style.setProperty("--rc-nav-depth", String(depth));
 				row.toggleClass("is-active", this.filters.collectionPath === node.path);
 				const collapsed = this.collapsedPaths.has(node.path);
 				this.markAsButton(row);
 				if (node.children.length) {
-					const caret = row.createSpan({ cls: "recto-hub-nav-caret", text: collapsed ? "▸" : "▾" });
+					const caret = row.createSpan({ cls: "recto-hub-nav-caret" });
+					setChromeIcon(caret, "chevron-right");
 					caret.dataset.hubToggle = node.path;
+					caret.dataset.hubCollectionName = node.name;
+					caret.setAttribute("aria-expanded", String(!collapsed));
 					this.markAsButton(caret, rectoUiText(collapsed ? "hub.expandCollection" : "hub.collapseCollection", { name: node.name }));
 				} else {
 					row.createSpan({ cls: "recto-hub-nav-caret" });
 				}
+				if (!depth) setChromeIcon(row.createSpan({ cls: "recto-hub-nav-folder", attr: { "aria-hidden": "true" } }), "folder");
 				row.createSpan({ cls: "recto-hub-nav-name", text: node.name });
-				row.createSpan({ cls: "recto-hub-nav-count", text: String(node.count) });
-				if (node.children.length && !collapsed) this.renderNavTree(node.children, depth + 1);
+				row.createSpan({ cls: "recto-hub-nav-count", text: String(this.filters.includeSubcollections !== false ? node.count : node.items.length) });
+				if (node.children.length) {
+					const children = branch.createDiv({ cls: "recto-hub-nav-children" });
+					children.toggleClass("is-collapsed", collapsed);
+					children.inert = collapsed;
+					this.renderNavTree(node.children, depth + 1, children.createDiv({ cls: "recto-hub-nav-children-inner" }));
+				}
 			}
 		}
 
@@ -17713,7 +17966,7 @@ function createRectoHubViewClass(api) {
 		// 多选面板不用这个图标，它在那儿有一整行（见 renderBatchDetail）。
 		renderDeleteIcon(icons) {
 			const remove = icons.createEl("button", { cls: "recto-hub-detail-danger" });
-			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "trash-2");
+			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "refresh-cw");
 			remove.dataset.hubProcess = "delete";
 			const title = rectoUiText("hub.deletePaper");
 			remove.setAttribute("title", title);
@@ -17762,10 +18015,9 @@ function createRectoHubViewClass(api) {
 			const summary = summarizeHubSelection(entries);
 			const target = this.plugin.settings?.documentLanguages?.translationTarget?.id;
 			const translatable = target ? entries.filter(entry => !entry.translations?.some(record => record.targetLanguage.id === target)).length : summary.unconverted + summary.convertedWithoutTranslation;
-			// 「部分未翻译」不算进 translatable，是有理由的：重译是整篇重来、按页另计一次费，
-			// 不是把缺的那几个块补上。但 renderBatchDetail 明晃晃地把这个数摆出来，这里却整块
-			// return——数字给了、按钮没了、一句解释也没有。**不造一个点不动的假入口**，如实说一句。
-			if (!translatable && !summary.partialTranslation) return;
+			// 「部分未翻译」不算进 translatable：目前没有仅补译缺失块的操作；
+			// 无可执行动作时不画空按钮区，批量概况仍保留数量。
+			if (!translatable && !summary.unconverted) return;
 			const box = container.createDiv({ cls: "recto-hub-process" });
 			if (summary.unconverted) {
 				const convert = box.createEl("button", { cls: "mod-cta" });
@@ -17787,20 +18039,6 @@ function createRectoHubViewClass(api) {
 					? rectoUiText("hub.translateMixedHint")
 					: rectoUiText(summary.unconverted ? "hub.translateUnconvertedHint" : "hub.translateOnlyHint"));
 			}
-			if (summary.unconverted && summary.convertedWithoutTranslation) {
-				box.createDiv({
-					cls: "recto-hub-process-note",
-					text: rectoUiText("hub.translateMixedNote", { total: translatable, convert: summary.unconverted, translate: summary.convertedWithoutTranslation }),
-				});
-			}
-			if (summary.partialTranslation) {
-				box.createDiv({
-					cls: "recto-hub-process-note",
-					text: summary.total > 1
-						? rectoUiText("hub.partialSelected", { count: summary.partialTranslation })
-						: rectoUiText("hub.partialThis"),
-				});
-			}
 			// T83-N-R：后处理开关搬去了设置页「高级设置」。Hub 这里不再摆第二个入口——
 			// 它当时是主题原生复选框，与设置页的拨杆不是同一套控件；档位改由上传确认弹窗如实告知。
 		}
@@ -17821,7 +18059,7 @@ function createRectoHubViewClass(api) {
 			// 删除接手这个位置，也就不必在多选时另摆一个孤零零的图标按钮。
 			const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
 			const remove = actions.createEl("button", { cls: "recto-hub-detail-danger" });
-			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "trash-2");
+			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "refresh-cw");
 			remove.createSpan({ text: rectoUiText("hub.deleteSelected", { count: summary.total }) });
 			remove.dataset.hubProcess = "delete";
 			remove.setAttribute("title", rectoUiText("hub.deleteSelectedHint"));
@@ -18138,7 +18376,7 @@ function createRectoHubViewClass(api) {
 			add(menu, countLabel("hub.context.convert", summary.unconverted), "file-cog", "convert", !summary.unconverted);
 			add(menu, countLabel("hub.context.translate", translatable), "languages", "translate", !translatable);
 			menu.addSeparator();
-			add(menu, countLabel("hub.context.delete"), "trash-2", "delete");
+			add(menu, countLabel("hub.context.delete"), "refresh-cw", "delete");
 			this.contextMenu = menu;
 			menu.onHide(() => { if (this.contextMenu === menu) this.contextMenu = null; });
 			showHubContextMenu(menu, event, this.findRowEl(targetId) || this.listEl);
@@ -18280,13 +18518,26 @@ function createRectoHubViewClass(api) {
 		}
 
 		handleNavClick(event) {
+			const scope = event.target && event.target.closest ? event.target.closest("[data-hub-collection-scope]") : null;
+			if (scope) {
+				event.stopPropagation();
+				this.filters.includeSubcollections = this.filters.includeSubcollections === false;
+				this.syncNavState();
+				this.applyFilters({ preserveDetail: true, preserveScroll: true });
+				return;
+			}
 			const caret = event.target && event.target.closest ? event.target.closest("[data-hub-toggle]") : null;
 			if (caret) {
 				event.stopPropagation();
 				const path = caret.dataset.hubToggle;
 				if (this.collapsedPaths.has(path)) this.collapsedPaths.delete(path);
 				else this.collapsedPaths.add(path);
-				this.renderNav();
+				const expanded = !this.collapsedPaths.has(path);
+				caret.setAttribute("aria-expanded", String(expanded));
+				caret.setAttribute("aria-label", rectoUiText(expanded ? "hub.collapseCollection" : "hub.expandCollection", { name: caret.dataset.hubCollectionName }));
+				const children = caret.closest(".recto-hub-nav-branch").querySelector(".recto-hub-nav-children");
+				children.toggleClass("is-collapsed", !expanded);
+				children.inert = !expanded;
 				return;
 			}
 			const row = event.target && event.target.closest ? event.target.closest(".recto-hub-nav-row") : null;
@@ -18320,7 +18571,7 @@ function createRectoHubViewClass(api) {
 			}
 			this.selectedRecordId = "";
 			this.selectedIds.clear();
-			this.renderNav();
+			this.syncNavState();
 			// 选中一个分类就收起抽屉（折叠三角走上面那条早退分支，不受影响）。
 			this.setNavOpen(false);
 			this.applyFilters();
@@ -18422,8 +18673,7 @@ function createRectoHubViewClass(api) {
 		return this.withProcessButtonsDisabled(() => this.plugin.runHubTranslateForRecords(pending.map(entry => entry.recordId)));
 	}
 
-		// T83-O：垃圾桶按钮与 Delete 键共用这一条路径。**单篇直接删、多篇才确认**（用户拍板）——
-		// 文件进的是系统回收站还捞得回来，但 folderMap 记录会一并清掉，批量误删的代价明显更高。
+		// T88-G-T：重新导入沿用所有入口，单篇直接执行、多篇一次确认。
 		async deleteSelectedRecords(entries = this.getSelectedEntries()) {
 			if (!entries.length) return;
 			if (entries.length > 1) {
@@ -18442,13 +18692,13 @@ function createRectoHubViewClass(api) {
 				}));
 				if (accepted !== true) return;
 			}
-			await this.plugin.deletePaperRecords(entries.map(entry => entry.recordId));
+			await this.withProcessButtonsDisabled(() => this.plugin.deletePaperRecords(entries.map(entry => entry.recordId)));
 		}
 
 	// 转换/翻译一点出去就把整块按钮禁用，跑到完（或失败）再恢复——
 	// 否则状态栏进度在走，按钮却像没点上，用户会重复提交（T82-C）。
 	withProcessButtonsDisabled(run) {
-		const buttons = this.detailEl.findAll(".recto-hub-process button");
+		const buttons = this.detailEl.findAll(".recto-hub-process button, button[data-hub-process]");
 		for (const button of buttons) button.disabled = true;
 		return Promise.resolve()
 			.then(run)
