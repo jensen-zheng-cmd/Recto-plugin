@@ -2763,6 +2763,7 @@ function setChromeIcon(el, name) {
 // T88-B: authored geometry, shared by the primary action, menu and icon row.
 const HUB_READING_ICON_PATHS = {
 	folder: ["M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z"],
+	"folder-open": ["M2 13V6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v3", "m6 14 1.5-3h11.8a2 2 0 0 1 1.7 2.9l-2.6 5.1a2 2 0 0 1-1.8 1H4a2 2 0 0 1-1.8-2.9L4 13.5"],
 	"chevron-right": ["m9 6 6 6-6 6"],
 	"recto-source": ["M6 5V3h12v2M12 3v14M9 17h6M7 21h10"],
 	"recto-pdf": ["M5 2h9l5 5v15H5zM14 2v5h5", "M7 16v-5h1a1.25 1.25 0 0 1 0 2.5H7M11 16v-5h1c2 0 2 5 0 5zM16 16v-5h2M16 13.5h1.5"],
@@ -17501,17 +17502,22 @@ function createRectoHubViewClass(api) {
 				row.toggleClass("is-active", this.filters.collectionPath === node.path);
 				const collapsed = this.collapsedPaths.has(node.path);
 				this.markAsButton(row);
+				const toggle = row.createSpan({ cls: depth ? "recto-hub-nav-caret" : "recto-hub-nav-folder" });
 				if (node.children.length) {
-					const caret = row.createSpan({ cls: "recto-hub-nav-caret" });
-					setChromeIcon(caret, "chevron-right");
-					caret.dataset.hubToggle = node.path;
-					caret.dataset.hubCollectionName = node.name;
-					caret.setAttribute("aria-expanded", String(!collapsed));
-					this.markAsButton(caret, rectoUiText(collapsed ? "hub.expandCollection" : "hub.collapseCollection", { name: node.name }));
-				} else {
-					row.createSpan({ cls: "recto-hub-nav-caret" });
+					if (depth) setChromeIcon(toggle, "chevron-right");
+					else {
+						toggle.addClass("is-toggle");
+						setChromeIcon(toggle.createSpan({ cls: "recto-hub-folder-closed", attr: { "aria-hidden": "true" } }), "folder");
+						setChromeIcon(toggle.createSpan({ cls: "recto-hub-folder-open", attr: { "aria-hidden": "true" } }), "folder-open");
+					}
+					toggle.dataset.hubToggle = node.path;
+					toggle.dataset.hubCollectionName = node.name;
+					toggle.setAttribute("aria-expanded", String(!collapsed));
+					this.markAsButton(toggle, rectoUiText(collapsed ? "hub.expandCollection" : "hub.collapseCollection", { name: node.name }));
+				} else if (!depth) {
+					toggle.setAttribute("aria-hidden", "true");
+					setChromeIcon(toggle, "folder");
 				}
-				if (!depth) setChromeIcon(row.createSpan({ cls: "recto-hub-nav-folder", attr: { "aria-hidden": "true" } }), "folder");
 				row.createSpan({ cls: "recto-hub-nav-name", text: node.name });
 				row.createSpan({ cls: "recto-hub-nav-count", text: String(this.filters.includeSubcollections !== false ? node.count : node.items.length) });
 				if (node.children.length) {
@@ -18526,16 +18532,16 @@ function createRectoHubViewClass(api) {
 				this.applyFilters({ preserveDetail: true, preserveScroll: true });
 				return;
 			}
-			const caret = event.target && event.target.closest ? event.target.closest("[data-hub-toggle]") : null;
-			if (caret) {
+			const toggle = event.target && event.target.closest ? event.target.closest("[data-hub-toggle]") : null;
+			if (toggle) {
 				event.stopPropagation();
-				const path = caret.dataset.hubToggle;
+				const path = toggle.dataset.hubToggle;
 				if (this.collapsedPaths.has(path)) this.collapsedPaths.delete(path);
 				else this.collapsedPaths.add(path);
 				const expanded = !this.collapsedPaths.has(path);
-				caret.setAttribute("aria-expanded", String(expanded));
-				caret.setAttribute("aria-label", rectoUiText(expanded ? "hub.collapseCollection" : "hub.expandCollection", { name: caret.dataset.hubCollectionName }));
-				const children = caret.closest(".recto-hub-nav-branch").querySelector(".recto-hub-nav-children");
+				toggle.setAttribute("aria-expanded", String(expanded));
+				toggle.setAttribute("aria-label", rectoUiText(expanded ? "hub.collapseCollection" : "hub.expandCollection", { name: toggle.dataset.hubCollectionName }));
+				const children = toggle.closest(".recto-hub-nav-branch").querySelector(".recto-hub-nav-children");
 				children.toggleClass("is-collapsed", !expanded);
 				children.inert = !expanded;
 				return;

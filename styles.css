@@ -2305,8 +2305,49 @@ label.recto-sync-preview-row {
 	align-items: center;
 	justify-content: center;
 	width: 16px;
+	height: 20px;
 	color: var(--rc-nav-folder-color);
 	pointer-events: none;
+}
+
+.recto-hub-nav-folder.is-toggle {
+	position: relative;
+	border-radius: var(--rc-radius-s);
+	align-self: center;
+	cursor: pointer;
+	pointer-events: auto;
+}
+
+.recto-hub-nav-folder.is-toggle::before {
+	content: "";
+	position: absolute;
+	inset: -2px -4px;
+}
+
+.recto-hub-folder-closed,
+.recto-hub-folder-open {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+	transition: opacity 150ms ease-out, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.recto-hub-folder-open {
+	opacity: 0;
+	transform: translateY(1px) scale(0.94);
+}
+
+.recto-hub-nav-folder[aria-expanded="true"] .recto-hub-folder-closed {
+	opacity: 0;
+	transform: translateY(-1px) scale(0.94);
+}
+
+.recto-hub-nav-folder[aria-expanded="true"] .recto-hub-folder-open {
+	opacity: 1;
+	transform: none;
 }
 
 .recto-hub-nav-row.is-active .recto-hub-nav-folder {
@@ -2437,6 +2478,8 @@ label.recto-sync-preview-row {
 	.recto-ui .recto-hub-collection-scope,
 	.recto-hub-scope-front,
 	.recto-hub-scope-back,
+	.recto-hub-folder-closed,
+	.recto-hub-folder-open,
 	.recto-hub-nav-caret svg,
 	.recto-hub-nav-children,
 	.recto-hub-nav-children.is-collapsed {
