@@ -7,6 +7,7 @@ const https = require("https");
 const http = require("http");
 const crypto = require("crypto");
 const zlib = require("zlib");
+const { AsyncLocalStorage } = require("async_hooks");
 
 const RECTO_UI_LANGUAGES = Object.freeze(["zh-CN", "en"]);
 const RECTO_UI_LANGUAGE_NAMES = Object.freeze({
@@ -518,7 +519,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"consent.intro": "首次启用时只确认这一次。接受后，单篇处理会直接开始，多篇处理仍会显示篇数确认。",
 		"consent.upload": "您主动处理论文时，Recto 会上传所选 PDF，或上传论文正文与结构信息。",
 		"consent.process": "内容由 Recto 云端处理，并可能由受托第三方协助完成。",
-		"consent.retention": "处理结果写回本地后会从云端删除；未领取结果最多保留 {hours} 小时。",
+		"consent.retention": "原 PDF、文本结构与处理结果在完成或失败后保留 {hours} 小时，写回后仍可由管理员核验；到期停止访问并清理。操作诊断保留 30 天。",
 		"consent.later": "暂不启用",
 		"consent.agree": "同意并继续",
 		"update.newVersion": "{brand} 有新版本 {version}",
@@ -1383,7 +1384,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"consent.intro": "Confirm this once to get started. Single-paper jobs will then start directly; multi-paper jobs will still show a count for confirmation.",
 		"consent.upload": "When you choose to process a paper, Recto uploads the selected PDF or the paper text and structure.",
 		"consent.process": "Recto processes the content in the cloud, possibly with contracted third parties.",
-		"consent.retention": "Results are deleted from the cloud after they are written locally. Unclaimed results are kept for at most {hours} hours.",
+		"consent.retention": "The source PDF, text structure and results are retained for {hours} hours after completion or failure, including after local writeback, for administrator verification. Access stops at expiry and files are cleaned up. Operation diagnostics are retained for 30 days.",
 		"consent.later": "Not now",
 		"consent.agree": "Agree and continue",
 		"update.newVersion": "{brand} version {version} is available",
@@ -3062,6 +3063,8 @@ const RECTO_POSTPROCESS_PROFILE_BASIC = "basic";
 // 就不知道往哪写。**降级风险记在这里**：`sanitizePersistedPendingTask` 按白名单裁剪，
 // 用户降回不认识这两个字段的旧插件版本时它们会被裁掉（见 AGENT_WORKFLOW.md 的 Ship order）。
 const PENDING_BACKEND_TASK_FIELDS = [
+	"diagnosticOperationId",
+	"diagnosticUserId",
 	"languageContract", "sourcePath", "translationPath", "sourceContentHash", "sourceRevisionId", "namingVersion",
 	"name", "recordId", "folder", "path", "fileSize", "sourceFileName", "documentId", "requestTranslation",
 	"translateOnly", "stem", "postprocessProfile", "outputRoot", "keepSourcePdf",
@@ -6064,7 +6067,9 @@ async function requestBackendJson(settings, path, options = {}) {
 	try {
 		return JSON.parse(text);
 	} catch {
-		throw new Error(`Backend returned invalid JSON: ${text.slice(0, 120)}`);
+		const error = new Error("Backend returned invalid JSON");
+		error.code = "INVALID_BACKEND_JSON";
+		throw error;
 	}
 }
 
@@ -6150,7 +6155,9 @@ async function requestBackendMultipartJson(settings, path, parts, options = {}) 
 	try {
 		return JSON.parse(text);
 	} catch {
-		throw new Error(`Backend returned invalid JSON: ${text.slice(0, 120)}`);
+		const error = new Error("Backend returned invalid JSON");
+		error.code = "INVALID_BACKEND_JSON";
+		throw error;
 	}
 }
 
@@ -6173,6 +6180,211 @@ function sanitizeLogText(value) {
 		s = `${s.slice(0, MAX_SANITIZED_LOG_TEXT_LENGTH)}...[truncated ${s.length - MAX_SANITIZED_LOG_TEXT_LENGTH} chars]`;
 	}
 	return s;
+}
+
+// T88-J: only machine fields and plugin source locations are diagnostics. Exception prose,
+// custom fields and response bodies may contain a document or credentials and never leave here.
+const RECTO_DIAGNOSTIC_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const RECTO_DIAGNOSTIC_MAX_BATCH_BYTES = 60000;
+const RECTO_DIAGNOSTIC_METRICS = ["items", "pages", "characters", "bytes", "attempt", "failureCount", "httpStatus", "durationMs", "dropped", "expiredUnacknowledged", "queueResets", "neededPages", "availablePages", "shortfallPages"];
+function rectoDiagnosticTag(value, fallback = "unknown") {
+	return typeof value === "string" && /^[a-zA-Z][a-zA-Z0-9_.:-]{0,79}$/.test(value) ? value : fallback;
+}
+function rectoDiagnosticMetrics(value) {
+	const out = {};
+	for (const key of RECTO_DIAGNOSTIC_METRICS) {
+		const n = value && value[key];
+		if (typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1e12) out[key] = n;
+	}
+	return out;
+}
+function buildRectoDiagnosticError(error, depth = 0) {
+	if (!error || depth > 2) return null;
+	const frames = [];
+	for (const line of String(error.stack || "").split("\n").slice(1, 16)) {
+		const hit = /\b(main\.js):(\d+):(\d+)/.exec(line);
+		if (!hit) continue;
+		const symbol = /^\s*at\s+([a-zA-Z_$][\w.$<>]*)\s/.exec(line)?.[1] || "anonymous";
+		frames.push({ symbol: rectoDiagnosticTag(symbol), module: "main.js", line: Number(hit[2]), column: Number(hit[3]) });
+	}
+	return { name: ["Error", "TypeError", "SyntaxError", "RangeError", "ReferenceError", "URIError", "EvalError", "AggregateError", "AbortError", "DOMException"].includes(error.name) ? error.name : "Error", code: classifyRectoDiagnosticError(error),
+		publicCode: /^[A-Z][A-Z0-9_]{1,79}$/.test(error.backendErrorCode || "") ? error.backendErrorCode : "unknown",
+		uiKey: Object.prototype.hasOwnProperty.call(RECTO_UI_MESSAGES.en, error.rectoUiKey || "") ? error.rectoUiKey : "unknown", frames,
+		cause: error.cause === error ? null : buildRectoDiagnosticError(error.cause, depth + 1) };
+}
+function classifyRectoDiagnosticError(error) {
+	if (error?.code) return /^[A-Z][A-Z0-9_]{1,79}$/.test(error.code) ? error.code : "UNCLASSIFIED_EXCEPTION";
+	if (error?.backendErrorCode) return rectoDiagnosticTag(error.backendErrorCode, "BACKEND_REQUEST_FAILED");
+	if (error?.rectoUiKey) return "LOCAL_PRODUCT_ERROR";
+	const message = String(error?.message || "");
+	for (const [pattern, code] of [
+		[/原文.*改变|source changed/i, "SOURCE_REVISION_MISMATCH"],
+		[/原文与目标语言相同|languages are the same/i, "SAME_TARGET_LANGUAGE"],
+		[/译文.*已存在|已有.*译文|target.*already exists|translation already exists/i, "TARGET_ALREADY_EXISTS"],
+		[/找不到原文|Source file is missing/i, "SOURCE_FILE_MISSING"],
+		[/请先购买翻译页|额度不足|not enough|insufficient credits/i, "INSUFFICIENT_CREDITS"],
+		[/24\s*(?:MiB|MB)|sidecar.*too large/i, "SIDECAR_TOO_LARGE"],
+		[/Sidecar|结构信息|源 Markdown|translation alignment|译文.*校验|对齐.*校验/i, "DOCUMENT_STRUCTURE_INVALID"],
+		[/不支持.*语言|language.*unavailable|未确认.*语言|confirm.*language/i, "LANGUAGE_CAPABILITY_UNAVAILABLE"],
+		[/polling timed out/i, "TASK_POLL_TIMEOUT"],
+		[/ECONN|ENOTFOUND|network|timed?\s*out/i, "NETWORK_FAILURE"],
+	]) if (pattern.test(message)) return code;
+	return error?.name === "TypeError" ? "JS_TYPE_ERROR" : error?.name === "SyntaxError" ? "JS_SYNTAX_ERROR" : "UNCLASSIFIED_EXCEPTION";
+}
+function buildRectoDiagnosticEvent(context, input = {}) {
+	return {
+		eventId: crypto.randomUUID(), operationId: normalizeRectoUuid(context.operationId),
+		taskId: normalizeRectoUuid(input.taskId || context.taskId) || null,
+		occurredAt: new Date().toISOString(), operation: rectoDiagnosticTag(context.operation),
+		stage: rectoDiagnosticTag(input.stage || context.stage), outcome: input.outcome || "stage",
+		code: rectoDiagnosticTag(input.code), pluginVersion: /^\d+(?:\.\d+){1,3}$/.test(context.pluginVersion) ? context.pluginVersion : null,
+		platform: ["win32", "darwin", "linux", "android", "ios"].includes(process.platform) ? process.platform : null,
+		buildId: /^[a-f0-9]{64}$/.test(context.buildId || "") ? context.buildId : null,
+		appVersion: /^\d+(?:\.\d+){1,3}$/.test(obsidian.apiVersion || "") ? obsidian.apiVersion : null,
+		metrics: rectoDiagnosticMetrics(input.metrics), error: buildRectoDiagnosticError(input.error),
+		requestId: normalizeRectoUuid(input.requestId) || null,
+		requestState: ["not_sent", "sending", "responded", "transport_failed"].includes(input.requestState) ? input.requestState : "not_sent",
+		route: input.route || null, method: input.method || null,
+	};
+}
+function normalizeStoredDiagnosticEntry(entry) {
+	const e = entry?.event;
+	if (!e || !normalizeRectoUuid(e.eventId) || !normalizeRectoUuid(e.operationId) || !Number.isFinite(Date.parse(e.occurredAt))
+		|| !["started", "stage", "succeeded", "failed", "blocked", "skipped", "cancelled", "interrupted"].includes(e.outcome)) return null;
+	const cleanError = (error, depth = 0) => {
+		if (!error || depth > 2) return null;
+		return { name: ["Error", "TypeError", "SyntaxError", "RangeError", "ReferenceError", "URIError", "EvalError", "AggregateError", "AbortError", "DOMException"].includes(error.name) ? error.name : "Error",
+			code: /^[A-Z][A-Z0-9_]{1,79}$/.test(error.code || "") ? error.code : "UNCLASSIFIED_EXCEPTION",
+			publicCode: /^[A-Z][A-Z0-9_]{1,79}$/.test(error.publicCode || "") ? error.publicCode : "unknown",
+			uiKey: Object.prototype.hasOwnProperty.call(RECTO_UI_MESSAGES.en, error.uiKey || "") ? error.uiKey : "unknown",
+			frames: (Array.isArray(error.frames) ? error.frames : []).slice(0, 15).filter(f => f?.module === "main.js" && Number.isSafeInteger(f.line) && f.line > 0 && Number.isSafeInteger(f.column) && f.column > 0)
+				.map(f => ({ symbol: rectoDiagnosticTag(f.symbol), module: "main.js", line: f.line, column: f.column })), cause: cleanError(error.cause, depth + 1) };
+	};
+	const route = typeof e.route === "string" && /^\/api\/v1\/tasks(?:\/(?:translation|capabilities|:taskId(?:\/(?:upload|sidecar|submit|run-real|result|result\/ack|cancel|retry))?))?$/.test(e.route) ? e.route : null;
+	return { userId: normalizeRectoUuid(entry.userId) || null, attempts: Math.max(0, Math.min(20, Number(entry.attempts) || 0)), nextAttemptAt: Math.max(0, Math.min(Date.now() + 3600000, Number(entry.nextAttemptAt) || 0)),
+		event: { eventId: e.eventId, operationId: e.operationId, taskId: normalizeRectoUuid(e.taskId) || null, occurredAt: new Date(e.occurredAt).toISOString(),
+			operation: rectoDiagnosticTag(e.operation), stage: rectoDiagnosticTag(e.stage), outcome: e.outcome, code: rectoDiagnosticTag(e.code),
+			pluginVersion: /^\d+(?:\.\d+){1,3}$/.test(e.pluginVersion || "") ? e.pluginVersion : null,
+			buildId: /^[a-f0-9]{64}$/.test(e.buildId || "") ? e.buildId : null, appVersion: /^\d+(?:\.\d+){1,3}$/.test(e.appVersion || "") ? e.appVersion : null,
+			platform: ["win32", "darwin", "linux", "android", "ios"].includes(e.platform) ? e.platform : null,
+			metrics: rectoDiagnosticMetrics(e.metrics), error: cleanError(e.error), requestId: normalizeRectoUuid(e.requestId) || null,
+			requestState: ["not_sent", "sending", "responded", "transport_failed"].includes(e.requestState) ? e.requestState : "not_sent", route, method: ["GET", "POST"].includes(e.method) ? e.method : null } };
+}
+
+class RectoDiagnosticQueue {
+	constructor(filePath, send, account) {
+		this.filePath = filePath; this.send = send; this.account = account;
+		this.state = null; this.serial = Promise.resolve(); this.flushing = null;
+		this.persistenceFailures = 0; this.stopped = false;
+		this.dirty = false;
+	}
+	mutate(callback) {
+		const work = this.serial.then(async () => {
+			if (!this.state) {
+				try {
+					const bytes = await fs.promises.readFile(this.filePath);
+					if (bytes.length > 2 * 1024 * 1024) { const error = new Error("Invalid diagnostic queue"); error.code = "DIAGNOSTIC_QUEUE_CORRUPT"; throw error; }
+					const parsed = JSON.parse(bytes.toString("utf8"));
+					if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.entries)) { const error = new Error("Invalid diagnostic queue"); error.code = "DIAGNOSTIC_QUEUE_CORRUPT"; throw error; }
+					const entries = parsed.entries.map(normalizeStoredDiagnosticEntry).filter(Boolean).slice(-250);
+					this.state = { version: 1, entries, dropped: Math.max(0, Number(parsed.dropped) || 0) + parsed.entries.length - entries.length,
+						expiredUnacknowledged: Math.max(0, Number(parsed.expiredUnacknowledged) || 0), queueResets: Math.max(0, Number(parsed.queueResets) || 0) };
+					this.dirty = JSON.stringify(this.state) !== bytes.toString("utf8");
+				} catch (error) {
+					const corrupt = error instanceof SyntaxError || error.code === "DIAGNOSTIC_QUEUE_CORRUPT";
+					if (error.code !== "ENOENT" && !corrupt) throw error; // disk access failures remain fail open
+					this.state = { version: 1, dropped: 0, expiredUnacknowledged: 0, queueResets: corrupt ? 1 : 0, entries: [] };
+					this.dirty = corrupt;
+				}
+			}
+			const next = JSON.parse(JSON.stringify(this.state));
+			const result = callback(next);
+			const encoded = JSON.stringify(next);
+			if (!this.dirty && encoded === JSON.stringify(this.state)) return result;
+			const temp = `${this.filePath}.tmp`;
+			const handle = await fs.promises.open(temp, "w", 0o600);
+			try { await handle.writeFile(encoded, "utf8"); await handle.sync(); }
+			finally { await handle.close(); }
+			await fs.promises.rename(temp, this.filePath);
+			this.state = JSON.parse(encoded);
+			this.dirty = false;
+			return result;
+		});
+		this.serial = work.catch(() => { this.persistenceFailures++; });
+		return work;
+	}
+	pruneExpired(state, now) {
+		const before = state.entries.length;
+		state.entries = state.entries.filter(e => now - Date.parse(e.event.occurredAt) < RECTO_DIAGNOSTIC_TTL_MS);
+		const expired = before - state.entries.length;
+		state.dropped = (state.dropped || 0) + expired;
+		state.expiredUnacknowledged = (state.expiredUnacknowledged || 0) + expired;
+	}
+	async append(userId, event) {
+		return this.mutate(state => {
+			const now = Date.now();
+			this.pruneExpired(state, now);
+			event.metrics = { ...event.metrics, dropped: (state.dropped || 0) + this.persistenceFailures, expiredUnacknowledged: state.expiredUnacknowledged || 0, queueResets: state.queueResets || 0 };
+			state.entries.push({ userId: normalizeRectoUuid(userId) || null, event, attempts: 0, nextAttemptAt: 0 });
+			while (state.entries.length > 250 || Buffer.byteLength(JSON.stringify(state)) > 1024 * 1024) {
+				state.entries.shift(); state.dropped = (state.dropped || 0) + 1;
+			}
+			state.entries[state.entries.length - 1].event.metrics.dropped = (state.dropped || 0) + this.persistenceFailures;
+		});
+	}
+	async flush() {
+		if (this.stopped) return;
+		if (this.flushing) return this.flushing;
+		const work = (async () => { for (let i = 0; i < 6 && !this.stopped; i++) { if (!await this.flushOnce()) break; } })();
+		this.flushing = work;
+		try { await work; } finally { if (this.flushing === work) this.flushing = null; }
+	}
+	async flushOnce() {
+		const account = this.account();
+		const selected = await this.mutate(state => {
+			const now = Date.now();
+			this.pruneExpired(state, now);
+			const batch = [];
+			for (const entry of state.entries.filter(e => account?.allowed && account?.token && e.userId && e.userId === account.userId && e.nextAttemptAt <= now)) {
+				const bytes = Buffer.byteLength(JSON.stringify({ events: [...batch.map(e => e.event), entry.event] }), "utf8");
+				if (bytes > RECTO_DIAGNOSTIC_MAX_BATCH_BYTES) {
+					if (batch.length) break;
+					// An unexpected oversized single entry must not block the rest of the queue.
+					state.entries = state.entries.filter(e => e !== entry);
+					state.dropped = (state.dropped || 0) + 1;
+					continue;
+				}
+				batch.push(entry);
+				if (batch.length === 10) break;
+			}
+			return batch;
+		});
+		if (!selected.length || this.stopped) return;
+		const ids = new Set(selected.map(e => e.event.eventId));
+		let ack = new Set();
+		let expiredAck = new Set();
+		try {
+			this.controller = new AbortController();
+			const receipt = await this.send(selected.map(e => e.event), account, this.controller.signal);
+			if (receipt?.version === 1 && Array.isArray(receipt.acceptedEventIds) && Array.isArray(receipt.expiredEventIds)) {
+				ack = new Set([...receipt.acceptedEventIds, ...receipt.expiredEventIds].filter(id => ids.has(id)));
+				expiredAck = new Set(receipt.expiredEventIds.filter(id => ids.has(id) && !receipt.acceptedEventIds.includes(id)));
+			}
+		} catch { /* no recursive diagnostics, no toast, no business signal */ }
+		finally { this.controller = null; }
+		await this.mutate(state => {
+			const expired = state.entries.filter(e => e.userId === account.userId && expiredAck.has(e.event.eventId)).length;
+			state.dropped = (state.dropped || 0) + expired;
+			state.expiredUnacknowledged = (state.expiredUnacknowledged || 0) + expired;
+			state.entries = state.entries.filter(e => e.userId !== account.userId || !ack.has(e.event.eventId));
+			for (const e of state.entries) if (e.userId === account.userId && ids.has(e.event.eventId)) {
+				e.attempts = Math.min(20, e.attempts + 1);
+				e.nextAttemptAt = Date.now() + Math.min(3600000, 15000 * 2 ** (e.attempts - 1));
+			}
+		});
+		return ack.size;
+	}
+	stop() { this.stopped = true; this.controller?.abort(); }
 }
 
 function getSanitizedErrorMessage(error) {
@@ -6229,6 +6441,7 @@ function createBackendHttpError(status, bodyText) {
 	}
 	// Keep the status prefix for retry and 404 classification; never embed server diagnostics.
 	const error = new Error(`Backend HTTP ${status}: ${publicError ? publicError.code : "REQUEST_FAILED"}`);
+	error.httpStatus = status;
 	if (publicError) {
 		error.backendErrorCode = publicError.code;
 		error.backendErrorParams = publicError.params;
@@ -10351,6 +10564,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.pendingAuthHandoff = null;
 		this.browserLoginListeners = new Set();
 		await this.loadPluginData();
+		this.initializeOperationDiagnostics();
 		this.refreshUiLanguage({ initial: true });
 		this.addSettingTab(new RectoSettingTab(this.app, this));
 		if (typeof obsidian.addIcon === "function") obsidian.addIcon(RECTO_ICON_ID, RECTO_ICON_SVG);
@@ -10510,6 +10724,8 @@ class RectoPlugin extends obsidian.Plugin {
 	onunload() {
 		if (this.hubNotesStore) this.hubNotesStore.flushAll();
 		this.isUnloading = true;
+		if (this.diagnosticUploadTimer) clearInterval(this.diagnosticUploadTimer);
+		this.diagnosticQueue?.stop();
 		// 保留对照关联记忆，供下次启动恢复。
 		this.stopRectoDualPane(false);
 		this.stopRectoPdfCompare(false);
@@ -10691,6 +10907,7 @@ class RectoPlugin extends obsidian.Plugin {
 	// 结果是该论文被锁死到 24 小时后端 TTL 到期为止（T81-R 的真实故障）。
 	// 因此同一个错误连续出现到阈值就标记 blocked，停止空转并在 Hub 里给出人工出口。
 	async recordPendingBackendTaskFailure(taskId, reason) {
+		await this.captureOperationDiagnostic({ stage: "recovery_failure", outcome: "failed", code: "RECOVERY_FAILED", taskId, error: reason instanceof Error ? reason : null });
 		if (!Array.isArray(this.pendingBackendTasks) || !taskId) return null;
 		const id = String(taskId);
 		const entry = this.pendingBackendTasks.find(item => item && item.taskId === id);
@@ -10860,17 +11077,21 @@ class RectoPlugin extends obsidian.Plugin {
 	async recoverPendingBackendTasksOnce(signal) {
 		const pending = Array.isArray(this.pendingBackendTasks) ? this.pendingBackendTasks.slice() : [];
 		const summary = { recovered: 0, dropped: 0, kept: 0 };
+		let diagnosticRecoveryFailed = false;
+		let diagnosticRecoveryCancelled = false;
 		this.pendingBackendLastRecoveryError = "";
-		if (!pending.length) return summary;
+		if (!pending.length) { await this.diagnosticExit("NO_PENDING_TASKS", "skipped"); return summary; }
 		// 没有有效会话时无法向后端核对，全部保留待下次恢复。
 		if (!this.hasBackendAccountSession()) {
 			this.pendingBackendLastRecoveryError = rectoUiText("recovery.signIn");
 			summary.kept = pending.length;
+			await this.diagnosticExit("SESSION_REQUIRED", "blocked", { items: pending.length });
 			return summary;
 		}
 		for (let index = 0; index < pending.length; index++) {
 			const entry = pending[index];
 			if (this.isUnloading || (signal && signal.aborted)) {
+				diagnosticRecoveryCancelled = true;
 				summary.kept += pending.length - index;
 				break;
 			}
@@ -10879,6 +11100,7 @@ class RectoPlugin extends obsidian.Plugin {
 			// 已判定为确定性失败的条目不再空转重试：它只会以同一个错误再失败一次。
 			// 由用户在 Hub 队列条里「重试一次」或「放弃这个任务」来决定。
 			if (entry.blocked) {
+				await this.captureOperationDiagnostic({ code: "RECOVERY_RETRY_BLOCKED", outcome: "blocked", taskId });
 				this.pendingBackendLastRecoveryError = entry.lastFailure
 					? getUserFacingErrorMessage(entry.lastFailure, "结果写回未完成，请稍后重试。")
 					: this.pendingBackendLastRecoveryError;
@@ -10893,8 +11115,10 @@ class RectoPlugin extends obsidian.Plugin {
 					await this.resumeBackendTranslationHandoff(taskId, entry.task, null, operation);
 					summary.recovered++;
 				} catch (error) {
+					diagnosticRecoveryFailed = true;
+					await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
 					this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "转换已恢复，翻译未完成。");
-					const marked = await this.recordPendingBackendTaskFailure(taskId, this.pendingBackendLastRecoveryError);
+					const marked = await this.recordPendingBackendTaskFailure(taskId, error);
 					if (marked && marked.blocked) summary.blocked = (summary.blocked || 0) + 1;
 					summary.kept++;
 				} finally { this.finishOperation(operation); }
@@ -10904,6 +11128,8 @@ class RectoPlugin extends obsidian.Plugin {
 			try {
 				remote = await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(taskId)}`, { timeout: 30000, signal });
 			} catch (error) {
+				diagnosticRecoveryFailed = true;
+				await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
 				// 404 说明后端已无此任务，可安全丢弃；其余（网络/鉴权）保留待下次。
 				if (isBackendTaskNotFoundError(error)) { await this.clearPendingBackendTask(taskId); summary.dropped++; }
 				else {
@@ -10928,8 +11154,10 @@ class RectoPlugin extends obsidian.Plugin {
 						await this.runBackendTranslationPhase(entry.task, entry.task.stem, null, operation, null, { existing: remote });
 						summary.recovered++;
 					} catch (error) {
+						diagnosticRecoveryFailed = true;
+						await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
 						this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "翻译未完成，请稍后重试。");
-						const marked = await this.recordPendingBackendTaskFailure(taskId, this.pendingBackendLastRecoveryError);
+						const marked = await this.recordPendingBackendTaskFailure(taskId, error);
 						if (marked && marked.blocked) summary.blocked = (summary.blocked || 0) + 1;
 						summary.kept++;
 					} finally { this.finishOperation(operation); }
@@ -10940,6 +11168,8 @@ class RectoPlugin extends obsidian.Plugin {
 					await this.clearPendingBackendTask(taskId);
 					summary.dropped++;
 				} catch (error) {
+					diagnosticRecoveryFailed = true;
+					await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
 					if (isBackendTaskNotFoundError(error)) { await this.clearPendingBackendTask(taskId); summary.dropped++; }
 					else {
 						this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
@@ -10948,6 +11178,7 @@ class RectoPlugin extends obsidian.Plugin {
 				}
 			} else if (kind === "ready") {
 				if (this.activeOperation) {
+					await this.captureOperationDiagnostic({ code: "OPERATION_BUSY", outcome: "blocked", taskId });
 					this.pendingBackendLastRecoveryError = rectoUiText("recovery.operationRunning", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") });
 					summary.kept++;
 					continue;
@@ -10956,12 +11187,15 @@ class RectoPlugin extends obsidian.Plugin {
 				try {
 					result = await this.fetchBackendTaskResult(taskId, null, { signal });
 				} catch (error) {
+					diagnosticRecoveryFailed = true;
+					await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
 					this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
 					summary.kept++;
 					continue;
 				}
 				// mock 占位结果绝不 ack/删除，保住已付费的真实结果（与 T39 一致）。
 				if (shouldRejectBackendMockResult(result, true)) {
+					await this.captureOperationDiagnostic({ code: "MOCK_RESULT_REJECTED", outcome: "blocked", taskId });
 					this.pendingBackendLastRecoveryError = rectoUiText("recovery.writeUnavailable");
 					summary.kept++;
 					continue;
@@ -10994,12 +11228,14 @@ class RectoPlugin extends obsidian.Plugin {
 						summary.recovered++;
 					}
 				} catch (error) {
+					diagnosticRecoveryFailed = true;
+					await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
 					// 写回/ack 失败则保留条目，下轮再试；真实结果未 ack 不会被删。
 					// 但同一个错误反复出现说明它是确定性的（后端结果本身过不了本地校验），
 					// 记次数、到阈值就标 blocked，停止空转并把出路交给用户。
 					const reason = getUserFacingErrorMessage(error, "结果写回未完成，请稍后重试。");
 					this.pendingBackendLastRecoveryError = reason;
-					const marked = await this.recordPendingBackendTaskFailure(taskId, reason);
+					const marked = await this.recordPendingBackendTaskFailure(taskId, error);
 					if (marked && marked.blocked) summary.blocked = (summary.blocked || 0) + 1;
 					summary.kept++;
 				} finally {
@@ -11018,6 +11254,9 @@ class RectoPlugin extends obsidian.Plugin {
 			await this.save();
 			await this.writePaperJsonlIndex().catch(() => {});
 		}
+		if (diagnosticRecoveryFailed) await this.diagnosticExit("RECOVERY_HAS_FAILURES", "failed", { items: summary.kept });
+		else if (diagnosticRecoveryCancelled) await this.diagnosticExit("RECOVERY_INTERRUPTED", "cancelled", { items: summary.kept });
+		else if (summary.kept) await this.diagnosticExit("RECOVERY_PENDING", summary.blocked || this.pendingBackendLastRecoveryError ? "blocked" : "stage", { items: summary.kept });
 		return summary;
 	}
 
@@ -11149,20 +11388,142 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
+	initializeOperationDiagnostics(options = {}) {
+		if (this.diagnosticScope) return;
+		this.diagnosticScope = new AsyncLocalStorage();
+		try { this.diagnosticBuildId = crypto.createHash("sha256").update(fs.readFileSync(__filename)).digest("hex"); } catch { this.diagnosticBuildId = null; }
+		const base = this.app?.vault?.adapter?.getBasePath?.();
+		const dir = this.manifest?.dir || `${this.app?.vault?.configDir || ".obsidian"}/plugins/${this.manifest?.id || "recto"}`;
+		const filePath = options.filePath || (base ? nodePath.join(base, dir, ".recto-diagnostics.json") : "");
+		if (filePath) this.diagnosticQueue = new RectoDiagnosticQueue(filePath,
+			(events, account, signal) => requestBackendJson({ backendBaseUrl: account.baseUrl, backendSessionToken: account.token }, "/api/v1/diagnostics", {
+				method: "POST", body: { events }, signal, timeout: 10000,
+			}),
+			() => ({ userId: normalizeRectoUuid(this.settings.backendUserId), token: this.settings.backendSessionToken,
+				baseUrl: this.settings.backendBaseUrl, allowed: this.hasCloudProcessingConsent() && !this.isUnloading }),
+		);
+		const entries = {
+			runHubTranslateForRecords: "hub_translation", runHubBatchForRecords: "hub_conversion",
+			convertExternalPdfsFromCommand: "external_conversion", translateActiveMarkdownFromCommand: "markdown_translation",
+			runBackendBatchWithTasks: "batch", recoverPendingBackendTasksOnce: "recovery",
+		};
+		const stages = {
+			prepareDocumentTranslation: "language_preflight", readLocalPaperSidecarText: "read_sidecar",
+			buildMarkdownTranslationSidecarText: "read_markdown", createBackendHostedTask: "create_conversion",
+			createBackendTranslationTask: "create_translation", uploadBackendTaskPdf: "upload_pdf", uploadBackendTaskSidecar: "upload_sidecar",
+			runBackendRealTask: "submit", pollBackendTaskStatus: "poll", fetchBackendTaskResult: "fetch_result",
+			writeBackendTaskResult: "write_conversion", writeBackendTranslationArtifacts: "write_translation",
+			acknowledgeBackendTaskResult: "ack", persistPendingBackendTask: "persist_task", clearPendingBackendTask: "clear_task",
+			commitConvertedTaskRecord: "index", runBackendTranslationPhase: "translation_phase",
+		};
+		for (const [name, stage] of Object.entries({ ...entries, ...stages })) {
+			const original = this[name];
+			if (typeof original !== "function") continue;
+			this[name] = async (...args) => {
+				const parent = this.diagnosticScope.getStore();
+				const task = name === "persistPendingBackendTask" ? args[1] : args[0];
+				const recovered = this.resolveDiagnosticTask(task);
+				const savedId = normalizeRectoUuid(recovered?.task?.diagnosticOperationId || task?.diagnosticOperationId);
+				const context = { operationId: savedId || parent?.operationId || crypto.randomUUID(),
+					operation: parent?.operation || stage, stage, taskId: parent?.taskId || null,
+					userId: normalizeRectoUuid(recovered?.task?.diagnosticUserId || task?.diagnosticUserId) || parent?.userId || normalizeRectoUuid(this.settings.backendUserId) || null,
+					pluginVersion: this.manifest?.version || "0.0.0", buildId: this.diagnosticBuildId };
+				if (recovered) context.taskId = recovered.taskId;
+				if (name.startsWith("createBackend")) context.taskId = null;
+				if (typeof args[0] === "string" && normalizeRectoUuid(args[0])) context.taskId = args[0];
+				if (name === "persistPendingBackendTask" && args[1]) args[1] = { ...args[1], diagnosticOperationId: context.operationId, diagnosticUserId: context.userId };
+				const started = Date.now();
+				return this.diagnosticScope.run(context, async () => {
+					await this.captureOperationDiagnostic({ outcome: entries[name] ? "started" : "stage", code: "ENTER", metrics: {
+						items: Array.isArray(args[0]) ? args[0].length : 1, bytes: name === "uploadBackendTaskSidecar" ? Buffer.byteLength(args[1] || "", "utf8") : (task?.fileSize || args[1]?.fileSize), pages: task?.translationQuotePages,
+					} });
+					try {
+						const result = await original.apply(this, args);
+						if (name.startsWith("createBackend") && result?.taskId) {
+							context.taskId = result.taskId;
+							if (parent) parent.taskId = result.taskId;
+							if (task && typeof task === "object") { task.diagnosticOperationId = context.operationId; task.diagnosticUserId = context.userId; }
+						}
+						await this.captureOperationDiagnostic({ outcome: context.outcome || "succeeded", code: context.code || "COMPLETE",
+							metrics: { durationMs: Date.now() - started } });
+						if (context.outcome && parent && entries[name]) { parent.outcome = context.outcome; parent.code = context.code; }
+						return result;
+					} catch (error) {
+						await this.captureOperationDiagnostic({ outcome: isCancellationError(error) ? "cancelled" : (["SAME_TARGET_LANGUAGE", "TARGET_ALREADY_EXISTS", "INSUFFICIENT_CREDITS", "SOURCE_REVISION_MISMATCH"].includes(classifyRectoDiagnosticError(error)) ? "blocked" : "failed"),
+							code: "PHASE_FAILED", error, metrics: { durationMs: Date.now() - started } });
+						throw error;
+					}
+				});
+			};
+		}
+		if (this.diagnosticQueue && options.timer !== false) {
+			const flush = () => { void this.diagnosticScope.run(null, () => this.diagnosticQueue.flush()).catch(() => {}); };
+			this.diagnosticUploadTimer = setInterval(flush, 15000);
+			this.diagnosticUploadTimer.unref?.();
+			flush();
+		}
+	}
+	async captureOperationDiagnostic(input = {}) {
+		const context = this.diagnosticScope?.getStore();
+		if (!context || !this.diagnosticQueue) return false;
+		const recovered = input.taskId && this.resolveDiagnosticTask(input.taskId);
+		const resolved = recovered ? { ...context,
+			operationId: normalizeRectoUuid(recovered.task?.diagnosticOperationId) || context.operationId,
+			userId: normalizeRectoUuid(recovered.task?.diagnosticUserId) || context.userId,
+		} : context;
+		try {
+			await this.diagnosticQueue.append(resolved.userId, buildRectoDiagnosticEvent(resolved, input));
+			return true;
+		} catch { return false; } // queue tracks persistence gaps; never interrupt business work
+	}
+	resolveDiagnosticTask(value) {
+		return (this.pendingBackendTasks || []).find(e => typeof value === "string" ? e.taskId === value
+			: value && (e.task === value || (value.recordId && e.recordId === value.recordId && !!e.task?.translateOnly === !!value.translateOnly)));
+	}
+	async diagnosticExit(code, outcome = "blocked", metrics = {}) {
+		const context = this.diagnosticScope?.getStore();
+		if (context) { context.code = code; context.outcome = outcome; }
+		await this.captureOperationDiagnostic({ code, outcome, metrics });
+	}
+	async withDiagnosticRequest(path, options, callback) {
+		const context = this.diagnosticScope?.getStore();
+		if (!context || !/^\/api\/v1\/tasks(?:\/|$)/.test(path)) return callback(options);
+		const taskId = normalizeRectoUuid(String(path).split("/")[4]);
+		const saved = taskId && this.pendingBackendTasks?.find(e => e.taskId === taskId)?.task;
+		const requestContext = { ...context, operationId: normalizeRectoUuid(saved?.diagnosticOperationId) || context.operationId, taskId: taskId || context.taskId };
+		const requestId = crypto.randomUUID();
+		const route = taskId ? path.replace(taskId, ":taskId") : path;
+		const input = { taskId, requestId, route, method: options.method || "GET" };
+		const started = Date.now();
+		return this.diagnosticScope.run(requestContext, async () => {
+			// Successful status polling is represented by its phase, not 120 identical events.
+			const polling = taskId && path === `/api/v1/tasks/${taskId}`;
+			if (!polling) await this.captureOperationDiagnostic({ ...input, code: "REQUEST_START", requestState: "sending" });
+			try {
+				const result = await callback({ ...options, headers: { ...options.headers, "X-Recto-Operation-Id": requestContext.operationId, "X-Recto-Request-Id": requestId } });
+				if (!polling) await this.captureOperationDiagnostic({ ...input, outcome: "stage", code: "REQUEST_COMPLETE", requestState: "responded", metrics: { durationMs: Date.now() - started } });
+				return result;
+			} catch (error) {
+				await this.captureOperationDiagnostic({ ...input, outcome: isCancellationError(error) ? "cancelled" : "failed", code: "REQUEST_FAILED", error,
+					requestState: error.httpStatus ? "responded" : "transport_failed", metrics: { httpStatus: error.httpStatus, durationMs: Date.now() - started } });
+				throw error;
+			}
+		});
+	}
 	async backendRequest(path, options = {}) {
 		this.assertCloudProcessingConsent(path);
-		return await requestBackendJson(this.settings, path, {
-			...options,
+		return await this.withDiagnosticRequest(path, options, traced => requestBackendJson(this.settings, path, {
+			...traced,
 			signal: options.signal || this.getActiveSignal(),
-		});
+		}));
 	}
 
 	async backendMultipartRequest(path, parts, options = {}) {
 		this.assertCloudProcessingConsent(path);
-		return await requestBackendMultipartJson(this.settings, path, parts, {
-			...options,
+		return await this.withDiagnosticRequest(path, options, traced => requestBackendMultipartJson(this.settings, path, parts, {
+			...traced,
 			signal: options.signal || this.getActiveSignal(),
-		});
+		}));
 	}
 
 	applyBackendAccountStatus(payload) {
@@ -12713,17 +13074,18 @@ class RectoPlugin extends obsidian.Plugin {
 	 */
 	async convertExternalPdfsFromCommand(options = {}) {
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
+			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
 			new obsidian.Notice(rectoUiText("external.noConsent"), 6000);
 			return;
 		}
-		if (!this.hasBackendAccountSession()) { new obsidian.Notice(rectoUiText("external.signIn")); return; }
-		if (this.activeOperation) { new obsidian.Notice(rectoUiText("external.busy"), 6000); return; }
+		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return; }
+		if (this.activeOperation) { await this.diagnosticExit("OPERATION_BUSY", "blocked"); new obsidian.Notice(rectoUiText("external.busy"), 6000); return; }
 		const files = await this.pickExternalPdfFiles();
-		if (!files.length) return;
+		if (!files.length) { await this.diagnosticExit("FILE_PICKER_CANCELLED", "cancelled"); return; }
 		// 多选一定在同一个目录里（一次 showOpenDialog 选不到跨目录的文件），所以「PDF 所在目录」
 		// 用第一个文件的目录代表整批是准确的，不是近似。
 		const outputRoot = await this.resolveExternalOutputRootForRun(files[0].path);
-		if (!outputRoot) return;
+		if (!outputRoot) { await this.diagnosticExit("OUTPUT_DIRECTORY_CANCELLED", "cancelled"); return; }
 		const tasks = buildExternalPdfTasks(files, {
 			outputRoot,
 			keepSourcePdf: this.settings.externalKeepSourcePdf === true,
@@ -12732,14 +13094,14 @@ class RectoPlugin extends obsidian.Plugin {
 			// 要译文必须由用户明确选那条命令。
 			requestTranslation: options.requestTranslation === true,
 		});
-		if (!tasks.length) { new obsidian.Notice(rectoUiText("external.noPdf"), 6000); return; }
+		if (!tasks.length) { await this.diagnosticExit("NO_PDF_SELECTED", "skipped"); new obsidian.Notice(rectoUiText("external.noPdf"), 6000); return; }
 		const { fresh, duplicates } = splitExternalDuplicateTasks(tasks, this.externalConversions);
 		let selected = fresh;
 		if (duplicates.length) {
 			if (await this.confirmExternalDuplicateRun(duplicates)) selected = tasks;
-			else if (!fresh.length) { new obsidian.Notice(rectoUiText("external.cancelled"), 4000); return; }
+			else if (!fresh.length) { await this.diagnosticExit("DUPLICATE_DECLINED", "cancelled"); new obsidian.Notice(rectoUiText("external.cancelled"), 4000); return; }
 		}
-		if (!selected.length) { new obsidian.Notice(rectoUiText("external.cancelled"), 4000); return; }
+		if (!selected.length) { await this.diagnosticExit("NO_TASK_SELECTED", "cancelled"); new obsidian.Notice(rectoUiText("external.cancelled"), 4000); return; }
 		await this.runBatchWithTasks(selected);
 	}
 
@@ -14194,10 +14556,12 @@ class RectoPlugin extends obsidian.Plugin {
 		return !!changed;
 	}
 
-	getZoteroIndexEntries() {
+	getZoteroIndexEntries(recordIds = null) {
 		const base = this.getValidatedBaseFolder();
 		const out = [];
-		for (const [folder, info] of Object.entries(this.folderMap || {})) {
+		const records = recordIds === null ? Object.entries(this.folderMap || {})
+			: [...new Set(recordIds)].map(id => [id, this.folderMap?.[id]]);
+		for (const [folder, info] of records) {
 			if (!info || !info.stem) continue;
 			if (info.zoteroSyncState === "orphaned") continue;
 			const converted = info.conversionStatus !== "unconverted"
@@ -14452,14 +14816,15 @@ class RectoPlugin extends obsidian.Plugin {
 		return this.hubNotesStore;
 	}
 
-	getHubEntries() {
+	getHubEntries(recordIds = null) {
 		const base = this.getValidatedBaseFolder();
 		const vault = this.app.vault;
-		this.hubBriefCache = new Map();
-		this.hubTranslationQualityCache = new Map();
+		if (recordIds === null || !this.hubBriefCache) this.hubBriefCache = new Map();
+		if (recordIds === null || !this.hubTranslationQualityCache) this.hubTranslationQualityCache = new Map();
 		const vaultBasePath = vault && vault.adapter && vault.adapter.basePath || "";
-		return buildHubEntries(this.getZoteroIndexEntries().map(entry => {
+		return buildHubEntries(this.getZoteroIndexEntries(recordIds).map(entry => {
 			const folderPath = getPaperFolderVaultPath(base, entry.stem);
+			if (recordIds !== null) this.hubTranslationQualityCache.delete(folderPath);
 			const folder = vault.getAbstractFileByPath(folderPath);
 			let translationPath = obsidian.normalizePath(`${folderPath}/${getChineseMarkdownFileName(entry.stem)}`);
 			const sourceFile = folder ? this.findOriginalMarkdownInPaperFolder(folder) : null;
@@ -14567,9 +14932,8 @@ class RectoPlugin extends obsidian.Plugin {
 
 	async setHubPaperFlags(entries, flag, enabled) {
 		if (flag !== "clear" && !HUB_PAPER_FLAGS.some(item => item.id === flag)) throw new Error("invalid-paper-flag");
-		const valid = new Set(this.getHubEntries().map(entry => entry.recordId));
 		const ids = [...new Set(entries.map(entry => entry.recordId))];
-		if (ids.some(id => !valid.has(id))) throw new Error("record-missing");
+		if (ids.some(id => !this.folderMap?.[id]?.stem || this.folderMap[id].zoteroSyncState === "orphaned")) throw new Error("record-missing");
 		if (!this.paperFlags) this.paperFlags = {};
 		const previous = new Map(ids.map(id => [id, this.paperFlags[id]]));
 		const applied = new Map();
@@ -15032,12 +15396,12 @@ class RectoPlugin extends obsidian.Plugin {
 	async translateActiveMarkdownFromCommand() {
 		await this.ensureDocumentLanguageCapabilities();
 		const file = this.app.workspace.getActiveFile();
-		if (!file || !/\.md$/i.test(String(file.path || ""))) {
+		if (!file || !/\.md$/i.test(String(file.path || ""))) { await this.diagnosticExit("MARKDOWN_NOT_SELECTED", "skipped");
 			new obsidian.Notice(rectoUiText("markdown.openFirst"), 6000);
 			return;
 		}
 		const target = resolveRectoMarkdownTranslationTarget(file.path, this.settings.documentLanguages.translationTarget);
-		if (!target) {
+		if (!target) { await this.diagnosticExit("INVALID_TRANSLATION_SOURCE", "blocked");
 			new obsidian.Notice(rectoUiText("markdown.invalidSource"), 8000);
 			return;
 		}
@@ -15045,28 +15409,33 @@ class RectoPlugin extends obsidian.Plugin {
 		try {
 			markdown = await this.app.vault.read(file);
 		} catch (error) {
+			await this.captureOperationDiagnostic({ code: "MARKDOWN_READ_FAILED", outcome: "failed", error });
+			await this.diagnosticExit("MARKDOWN_READ_FAILED", "failed");
 			new obsidian.Notice(rectoUiText("markdown.readFailed", { error: getUserFacingErrorMessage(error) }), 8000);
 			return;
 		}
 		// 中文源不提供翻译，判据与后端在冻结之前那道复判同源（不变量 11）。这里先拦一次，
 		// 免得用户等到扣费那一步才被拒。
 		if (!this.settings.documentLanguages && detectMarkdownLanguage(markdown, this.settings.translationChineseThreshold) === "zh") {
+			await this.diagnosticExit("SAME_TARGET_LANGUAGE", "blocked");
 			new obsidian.Notice(rectoUiText("markdown.alreadyChinese"), 8000);
 			return;
 		}
 		const estimate = estimateRectoMarkdownTranslationPages(markdown);
-		if (!estimate.pages) {
+		if (!estimate.pages) { await this.diagnosticExit("NO_TRANSLATABLE_CONTENT", "skipped");
 			new obsidian.Notice(rectoUiText("markdown.empty"), 6000);
 			return;
 		}
+		await this.captureOperationDiagnostic({ code: "DOCUMENT_MEASURED", metrics: { pages: estimate.pages, characters: markdown.length } });
 		const quote = describeTranslationQuote(this.settings, estimate.pages);
 		if (quote.active && quote.shortfall > 0) {
+			await this.diagnosticExit("INSUFFICIENT_CREDITS", "blocked", { neededPages: estimate.pages, availablePages: quote.available, shortfallPages: quote.shortfall });
 			new obsidian.Notice(rectoUiText("markdown.buyPages", { quote: quote.text }), 10000);
 			this.openAccountModal();
 			return;
 		}
 		if (this.app.vault.getAbstractFileByPath(target.targetPath)) {
-			if (this.settings.documentLanguages) { new obsidian.Notice(documentLanguageText("目标译文已存在，已保留原文件。", "The target translation already exists and was preserved.")); return; }
+			if (this.settings.documentLanguages) { await this.diagnosticExit("TARGET_ALREADY_EXISTS", "skipped"); new obsidian.Notice(documentLanguageText("目标译文已存在，已保留原文件。", "The target translation already exists and was preserved.")); return; }
 			const replace = await this.openDecision(() => ({
 				title: rectoUiText("markdown.replaceTitle"),
 				intro: rectoUiText("markdown.replaceIntro", { path: target.targetPath }),
@@ -15076,7 +15445,7 @@ class RectoPlugin extends obsidian.Plugin {
 					{ label: rectoUiText("markdown.retranslate"), value: true, cta: true },
 				],
 			}));
-			if (!replace) return;
+			if (!replace) { await this.diagnosticExit("USER_CANCELLED", "cancelled"); return; }
 		}
 		const writeAnchors = this.settings.markdownTranslationWriteAnchors === true;
 		// 单篇零确认是 T84-F 的既有决定，所以量级用 Notice 说而不是再弹一次窗——但**必须说**：
@@ -15986,23 +16355,24 @@ class RectoPlugin extends obsidian.Plugin {
 		// 拒绝云端确认（或按 Esc 关掉）不能一声不吭地返回：用户刚点过转换/翻译，界面毫无反应
 		// 与「点坏了」分不开。措辞与库外 PDF 那条入口一致。
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
+			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
 			new obsidian.Notice(rectoUiText("task.noConsent"), 6000);
 			return;
 		}
-		if (!this.hasBackendAccountSession()) { new obsidian.Notice(rectoUiText("external.signIn")); return; }
-		if (!tasks || !tasks.length) { new obsidian.Notice(rectoUiText("task.noTasks")); return; }
+		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return; }
+		if (!tasks || !tasks.length) { await this.diagnosticExit("NO_TASKS", "skipped"); new obsidian.Notice(rectoUiText("task.noTasks")); return; }
 		tasks = tasks.map(task => ({ ...task, recordId: task.recordId || task.folder || task.name }));
 		// 只翻译的批次没有 PDF，走的是 Sidecar 上传；其余每一篇都必须有本地 PDF 可上传。
 		const translateOnly = tasks.every(task => task.translateOnly === true);
-		if (!translateOnly && tasks.some(task => !task.path)) {
+		if (!translateOnly && tasks.some(task => !task.path)) { await this.diagnosticExit("PDF_PATH_MISSING", "blocked");
 			new obsidian.Notice(rectoUiText("task.pdfPathMissing"), 8000);
 			return;
 		}
 		if (!options.batchConfirmed && tasks.length > 1 && translateOnly) {
-			if (!(await this.confirmBackendTranslationRun(tasks))) {
+			if (!(await this.confirmBackendTranslationRun(tasks))) { await this.diagnosticExit("USER_CANCELLED", "cancelled");
 				return;
 			}
-		} else if (!options.batchConfirmed && tasks.length > 1 && !(await this.confirmBackendRealProviderRun(tasks))) {
+		} else if (!options.batchConfirmed && tasks.length > 1 && !(await this.confirmBackendRealProviderRun(tasks))) { await this.diagnosticExit("USER_CANCELLED", "cancelled");
 			return;
 		}
 		// T84-S：翻译任意 Markdown 与论文库无关——产物落在**原文同目录**。没配过论文库的用户
@@ -16010,9 +16380,9 @@ class RectoPlugin extends obsidian.Plugin {
 		// （与写回那里跳过 `recto/` 是同一条产品前提：默认不碰用户的文件）。
 		const markdownOnly = tasks.every(task => isRectoMarkdownTranslationTask(task));
 		const base = markdownOnly ? "" : this.getValidatedBaseFolderOrNotice();
-		if (!markdownOnly && !base) return;
+		if (!markdownOnly && !base) { await this.diagnosticExit("LIBRARY_PATH_INVALID"); return; }
 		const operation = this.beginOperation(rectoUiText("task.cloudProcessing"));
-		if (!operation) return;
+		if (!operation) { await this.diagnosticExit("OPERATION_BUSY"); return; }
 		let modal = null;
 		let suspended = false;
 		let exemptedCount = 0;
@@ -16025,7 +16395,7 @@ class RectoPlugin extends obsidian.Plugin {
 				const info = this.folderMap && this.folderMap[task.recordId];
 				return this.convertedFolders.includes(task.recordId) && info && this.hasConvertedOutput(task.recordId);
 			});
-			if (blocked.length) {
+			if (blocked.length) { await this.diagnosticExit("DUPLICATE_OPERATION_BLOCKED", "blocked");
 				// 命令的真实显示名就是「恢复未完成的云端处理」，没有「立即」二字——照着提示去搜是搜不到的。
 			new obsidian.Notice(rectoUiText("task.blockedDuplicate", { count: blocked.length }), 12000);
 				return;
@@ -16057,6 +16427,7 @@ class RectoPlugin extends obsidian.Plugin {
 				modal.setQueuedRemaining(tasks.length - index - 1);
 				if (this.shouldStopBeforeNextItem()) {
 					stoppedEarly = tasks.length - index;
+					await this.diagnosticExit("QUEUED_ITEMS_CANCELLED", "cancelled", { items: stoppedEarly });
 					modal.log(`已按用户请求取消尚未开始的 ${stoppedEarly} 篇`);
 					break;
 				}
@@ -16105,12 +16476,15 @@ class RectoPlugin extends obsidian.Plugin {
 					// T82-A-S-U：刚写完的正文若是 `ch-*.md`，说明原文就是中文——不跑第二段。
 					// 判据与右栏按钮完全一致（磁盘上有没有 `en-*.md`），两处不会漂移。
 					if (this.wantsTranslationForTask(task) && !this.hasForeignSourceMarkdownForTask(task, stem)) {
+						await this.captureOperationDiagnostic({ stage: "translation_phase", outcome: "skipped", code: "SAME_TARGET_LANGUAGE", taskId: backendTaskId });
 						modal.log(`${stem}：原文是中文，跳过翻译`);
 					} else if (this.wantsTranslationForTask(task)) {
 						try {
 							const phase = await this.resumeBackendTranslationHandoff(ready.taskId, { ...task, stem }, modal, operation, id => { backendTaskId = id; });
 							if (phase.tailExemption) exemptedCount += 1;
 						} catch (translationError) {
+							await this.diagnosticExit("TRANSLATION_FAILED_AFTER_CONVERSION", isCancellationError(translationError) ? "cancelled" : "failed");
+							await this.captureOperationDiagnostic({ stage: "translation_phase", outcome: isCancellationError(translationError) ? "cancelled" : "failed", code: "TRANSLATION_FAILED_AFTER_CONVERSION", error: translationError, taskId: backendTaskId });
 							if (isCancellationError(translationError, this.getActiveSignal())) throw translationError;
 							const reason = getUserFacingErrorMessage(translationError, "翻译未完成，请稍后重试。");
 							modal.log(`${task.name || task.recordId}：${reason}`);
@@ -16129,6 +16503,7 @@ class RectoPlugin extends obsidian.Plugin {
 					results.push({ task, status: "success", stem });
 					modal.setProgress(results.length, tasks.length, "done");
 				} catch (error) {
+					await this.captureOperationDiagnostic({ outcome: isCancellationError(error) ? "cancelled" : "failed", code: "ITEM_FAILED", error, taskId: backendTaskId });
 					if (isCancellationError(error, this.getActiveSignal())) {
 						if (backendTaskId) {
 							await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(backendTaskId)}/cancel`, {
@@ -16155,6 +16530,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.clearPendingPaperJsonlRefresh();
 			const successCount = results.filter(item => item.status === "success").length;
 			const failedCount = results.length - successCount;
+			if (failedCount) await this.diagnosticExit("BATCH_HAS_FAILURES", "failed", { items: failedCount });
 			// 日志文件名可能被顺延过（撞上用户的同名笔记），所以提示里报的是真正写到的那个。
 			let failureLogPath = "";
 			if (failedCount) {
@@ -16189,6 +16565,8 @@ class RectoPlugin extends obsidian.Plugin {
 				);
 			}
 		} catch (error) {
+			await this.captureOperationDiagnostic({ outcome: isCancellationError(error) ? "cancelled" : "failed", code: "BATCH_FAILED", error });
+			await this.diagnosticExit(isCancellationError(error) ? "USER_CANCELLED" : "BATCH_FAILED", isCancellationError(error) ? "cancelled" : "failed");
 			const cancelled = isCancellationError(error, operation.controller.signal);
 			const reason = getUserFacingErrorMessage(error, rectoUiText("error.remoteTask"));
 			let failureLogPath = "";
@@ -16232,17 +16610,17 @@ class RectoPlugin extends obsidian.Plugin {
 	// requestTranslation 只挂在任务对象上（并随任务持久化），不改设置页的全局偏好。
 	async runHubBatchForRecords(recordIds, options = {}) {
 		const wanted = new Set((recordIds || []).map(id => String(id || "")).filter(Boolean));
-		if (!wanted.size) {
+		if (!wanted.size) { await this.diagnosticExit("NO_SELECTION", "skipped");
 			new obsidian.Notice(rectoUiText("hub.noSelection"), 5000);
 			return null;
 		}
-		if (!this.hasBackendAccountSession()) { new obsidian.Notice(rectoUiText("external.signIn")); return null; }
-		if (!this.getValidatedBaseFolderOrNotice()) return null;
-		if (await this.blockedByUnsupportedRectoVersion()) return null;
+		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return null; }
+		if (!this.getValidatedBaseFolderOrNotice()) { await this.diagnosticExit("LIBRARY_PATH_INVALID"); return null; }
+		if (await this.blockedByUnsupportedRectoVersion()) { await this.diagnosticExit("PLUGIN_VERSION_UNSUPPORTED"); return null; }
 		const available = await this.preparePdfTasks();
-		if (available == null) return null;
+		if (available == null) { await this.diagnosticExit("PDF_PREPARATION_STOPPED", "skipped"); return null; }
 		const picked = available.filter(task => wanted.has(String(task.recordId || task.folder || "")));
-		if (!picked.length) {
+		if (!picked.length) { await this.diagnosticExit("NO_CONVERTIBLE_PDF", "skipped");
 			new obsidian.Notice(rectoUiText("hub.noConvertible"), 8000);
 			return null;
 		}
@@ -16270,13 +16648,13 @@ class RectoPlugin extends obsidian.Plugin {
 	async runHubTranslateForRecords(recordIds) {
 		await this.ensureDocumentLanguageCapabilities();
 		const wanted = (recordIds || []).map(id => String(id || "")).filter(Boolean);
-		if (!wanted.length) {
+		if (!wanted.length) { await this.diagnosticExit("NO_SELECTION", "skipped");
 			new obsidian.Notice(rectoUiText("hub.noSelection"), 5000);
 			return null;
 		}
-		if (!this.hasBackendAccountSession()) { new obsidian.Notice(rectoUiText("external.signIn")); return null; }
-		if (!this.getValidatedBaseFolderOrNotice()) return null;
-		if (await this.blockedByUnsupportedRectoVersion()) return null;
+		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return null; }
+		if (!this.getValidatedBaseFolderOrNotice()) { await this.diagnosticExit("LIBRARY_PATH_INVALID"); return null; }
+		if (await this.blockedByUnsupportedRectoVersion()) { await this.diagnosticExit("PLUGIN_VERSION_UNSUPPORTED"); return null; }
 
 		const translateOnly = [];
 		const needConversion = [];
@@ -16297,7 +16675,7 @@ class RectoPlugin extends obsidian.Plugin {
 				else chineseSource.push(info.stem);
 			} else needConversion.push(recordId);
 		}
-		if (!translateOnly.length && !needConversion.length) {
+		if (!translateOnly.length && !needConversion.length) { await this.diagnosticExit("NO_TRANSLATABLE_SELECTION", "skipped");
 			if (chineseSource.length) new obsidian.Notice(rectoUiText("hub.chineseSkipped", { count: chineseSource.length }), 8000);
 			return null;
 		}
@@ -16314,13 +16692,15 @@ class RectoPlugin extends obsidian.Plugin {
 			try {
 				const sidecarText = await this.readLocalPaperSidecarText(task.stem, task);
 				task.translationQuotePages = estimateRectoSidecarTranslationPages(sidecarText);
-			} catch {
+			} catch (error) {
+				await this.captureOperationDiagnostic({ code: "QUOTE_READ_FAILED", outcome: "stage", error });
 				// 正式执行会给出原有的 Sidecar 错误；报价失败不能把错误吞掉或另造一条路径。
 			}
 		}
 		const quotedPages = tasks.reduce((total, task) => total + (Number(task.translationQuotePages) || 0), 0);
 		const quote = describeTranslationQuote(this.settings, quotedPages);
 		if (quote.active && quote.shortfall > 0) {
+			await this.diagnosticExit("INSUFFICIENT_CREDITS", "blocked", { neededPages: quotedPages, availablePages: quote.available, shortfallPages: quote.shortfall });
 			new obsidian.Notice(
 				rectoUiText("markdown.buyPages", { quote: tasks.length === 1 ? quote.text : rectoUiText("batch.shortfall", { needed: formatTranslationPages(quotedPages), available: formatTranslationPages(quote.available), shortfall: formatTranslationPages(quote.shortfall) }) }),
 				10000,
@@ -16343,7 +16723,7 @@ class RectoPlugin extends obsidian.Plugin {
 				{ label: rectoUiText("dialog.cancel"), value: false },
 				{ label: rectoUiText("batch.translateAction", { count }), value: true, cta: true },
 			],
-		})))) return null;
+		})))) { await this.diagnosticExit("USER_CANCELLED", "cancelled"); return null; }
 		if (chineseSource.length) new obsidian.Notice(rectoUiText("hub.chineseSkipped", { count: chineseSource.length }), 8000);
 		if (needConversion.length) await this.runHubBatchForRecords(needConversion, {
 			requestTranslation: true, ...summaryOptions, ...batchOptions,
@@ -17650,6 +18030,7 @@ function createRectoHubViewClass(api) {
 				attr: { role: "button", tabindex: "0", "aria-label": rectoUiText(`hub.${entry.readingStatus}`) },
 			});
 			status.dataset.hubStatusToggle = entry.recordId;
+			status.setAttribute("aria-busy", String(!!this.pendingStatusIds?.has(entry.recordId)));
 			status.setAttribute("title", rectoUiText("hub.statusToggle", { status: rectoUiText(`hub.${entry.readingStatus}`) }));
 			const title = row.createSpan({ cls: "recto-hub-col-title" });
 			this.fillRowTitle(title, entry);
@@ -17678,27 +18059,48 @@ function createRectoHubViewClass(api) {
 				: entry.titleOriginal;
 			el.empty();
 			this.renderMatchedText(el.createSpan({ cls: "recto-hub-title-text" }), localizeHubTitle(displayTitle));
-			const flags = normalizeHubPaperFlags(entry.paperFlags);
-			const marks = el.createSpan({ cls: "recto-hub-paper-flags" });
-			for (const flag of HUB_PAPER_FLAGS.filter(item => flags.includes(item.id))) {
-				const label = rectoUiText("hub.flags.remove", { label: rectoUiText(`hub.flag.${flag.id}`) });
-				const icon = marks.createEl("button", { cls: "recto-hub-paper-flag", attr: { type: "button", "aria-label": label, title: label, "data-paper-flag": flag.id } });
-				setChromeIcon(icon, flag.icon);
-				icon.addEventListener("click", event => { event.stopPropagation(); void this.runInlinePaperFlagAction(entry.recordId, flag.id, false, icon); });
-			}
-			const add = marks.createEl("button", { cls: "recto-hub-flag-add", attr: { type: "button", "aria-label": rectoUiText("hub.flags.add"), title: rectoUiText("hub.flags.add"), "aria-haspopup": "dialog", "aria-expanded": "false" } });
-			setChromeIcon(add, "plus");
-			add.addEventListener("click", event => { event.stopPropagation(); this.openFlagMenu(entry.recordId, add); });
-			marks.addEventListener("dblclick", event => event.stopPropagation());
-			marks.addEventListener("keydown", event => {
-				event.stopPropagation(); // native button Enter/Space must never reach paper opening/list navigation
-				if (event.target === add && ["ArrowDown", "ArrowUp"].includes(event.key)) { event.preventDefault(); this.openFlagMenu(entry.recordId, add); }
-			});
+			this.syncRowPaperFlags(el, entry);
 			el.setAttribute("title", unconverted
 				? rectoUiText("hub.unconvertedTitle", { title: localizeHubTitle(displayTitle) })
 				: (entry.titleTranslated
 					? `${localizeHubTitle(entry.titleOriginal)}\n${entry.titleTranslated}`
 					: localizeHubTitle(displayTitle)));
+		}
+
+		syncRowPaperFlags(el, entry) {
+			const flags = normalizeHubPaperFlags(entry.paperFlags);
+			let marks = el.querySelector(".recto-hub-paper-flags");
+			if (!marks) {
+				marks = el.createSpan({ cls: "recto-hub-paper-flags" });
+				const add = marks.createEl("button", { cls: "recto-hub-flag-add", attr: { type: "button", "aria-label": rectoUiText("hub.flags.add"), title: rectoUiText("hub.flags.add"), "aria-haspopup": "dialog", "aria-expanded": "false" } });
+				setChromeIcon(add, "plus");
+				add.addEventListener("click", event => { event.stopPropagation(); this.openFlagMenu(entry.recordId, add); });
+				marks.addEventListener("dblclick", event => event.stopPropagation());
+				marks.addEventListener("keydown", event => {
+					event.stopPropagation(); // native button Enter/Space must never reach paper opening/list navigation
+					if (event.target === add && ["ArrowDown", "ArrowUp"].includes(event.key)) { event.preventDefault(); this.openFlagMenu(entry.recordId, add); }
+				});
+			}
+			const add = marks.querySelector(".recto-hub-flag-add");
+			for (const button of marks.querySelectorAll("[data-paper-flag]")) {
+				if (!flags.includes(button.dataset.paperFlag)) button.remove();
+			}
+			let previous = null;
+			for (const flag of HUB_PAPER_FLAGS.filter(item => flags.includes(item.id))) {
+				let icon = marks.querySelector(`[data-paper-flag="${flag.id}"]`);
+				if (!icon) {
+					const label = rectoUiText("hub.flags.remove", { label: rectoUiText(`hub.flag.${flag.id}`) });
+					icon = marks.createEl("button", { cls: "recto-hub-paper-flag", attr: { type: "button", "aria-label": label, title: label, "data-paper-flag": flag.id } });
+					setChromeIcon(icon, flag.icon);
+					icon.addEventListener("click", event => { event.stopPropagation(); void this.runInlinePaperFlagAction(entry.recordId, flag.id, false, icon); });
+				}
+				const next = previous ? previous.nextElementSibling : marks.firstElementChild;
+				if (icon !== next) marks.insertBefore(icon, next || add);
+				previous = icon;
+			}
+			const busy = this.pendingFlagRecordId === entry.recordId;
+			marks.setAttribute("aria-busy", String(busy));
+			for (const button of marks.querySelectorAll("button")) button.setAttribute("aria-disabled", String(busy));
 		}
 
 		updateRowTitles() {
@@ -17974,6 +18376,7 @@ function createRectoHubViewClass(api) {
 			const remove = icons.createEl("button", { cls: "recto-hub-detail-danger" });
 			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "refresh-cw");
 			remove.dataset.hubProcess = "delete";
+			remove.disabled = !!this.processActionRunning;
 			const title = rectoUiText("hub.deletePaper");
 			remove.setAttribute("title", title);
 			remove.setAttribute("aria-label", title);
@@ -18032,6 +18435,7 @@ function createRectoHubViewClass(api) {
 					text: summary.total > 1 ? rectoUiText("hub.convertSelected", { count: summary.unconverted }) : rectoUiText("hub.convertThis"),
 				});
 				convert.dataset.hubProcess = "convert";
+				convert.disabled = !!this.processActionRunning;
 				convert.setAttribute("title", rectoUiText("hub.convertHint"));
 			}
 			if (translatable) {
@@ -18041,6 +18445,7 @@ function createRectoHubViewClass(api) {
 					text: summary.total > 1 ? rectoUiText("hub.translateSelected", { count: translatable }) : rectoUiText("hub.translateThis"),
 				});
 				translate.dataset.hubProcess = "translate";
+				translate.disabled = !!this.processActionRunning;
 				translate.setAttribute("title", summary.unconverted && summary.convertedWithoutTranslation
 					? rectoUiText("hub.translateMixedHint")
 					: rectoUiText(summary.unconverted ? "hub.translateUnconvertedHint" : "hub.translateOnlyHint"));
@@ -18068,6 +18473,7 @@ function createRectoHubViewClass(api) {
 			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "refresh-cw");
 			remove.createSpan({ text: rectoUiText("hub.deleteSelected", { count: summary.total }) });
 			remove.dataset.hubProcess = "delete";
+			remove.disabled = !!this.processActionRunning;
 			remove.setAttribute("title", rectoUiText("hub.deleteSelectedHint"));
 			const list = this.detailEl.createDiv({ cls: "recto-hub-batch-list" });
 			for (const entry of entries.slice(0, 8)) {
@@ -18105,6 +18511,7 @@ function createRectoHubViewClass(api) {
 			label.dataset.hubQueue = "toggle";
 			const recover = head.createEl("button", { text: rectoUiText(view.counts.blocked ? "hub.tryAgain" : "hub.recoverNow") });
 			recover.dataset.hubQueue = view.counts.blocked ? "retry-blocked" : "recover";
+			recover.disabled = !!this.queueActionRunning;
 			recover.setAttribute("title", rectoUiText("hub.recoverHint"));
 			if (!this.queueExpanded) return;
 			for (const row of view.rows) {
@@ -18119,6 +18526,7 @@ function createRectoHubViewClass(api) {
 					// 唯一的人工出路：放弃这条登记，让这篇论文重新可转换。
 					const abandon = el.createEl("button", { text: rectoUiText("hub.abandon") });
 					abandon.dataset.hubQueue = "abandon";
+					abandon.disabled = !!this.queueActionRunning;
 					abandon.dataset.hubQueueTask = row.taskId;
 					abandon.setAttribute("title", rectoUiText("hub.abandonHint"));
 				}
@@ -18144,15 +18552,19 @@ function createRectoHubViewClass(api) {
 				this.renderQueue();
 				return;
 			}
-			if (action === "retry-blocked") {
-				void this.plugin.retryBlockedPendingBackendTasks();
-				return;
-			}
-			if (action === "abandon") {
-				void this.plugin.abandonPendingBackendTask(button.dataset.hubQueueTask);
-				return;
-			}
-			if (action === "recover") void this.plugin.recoverPendingBackendTasksFromCommand();
+			if (this.queueActionRunning || !["retry-blocked", "abandon", "recover"].includes(action)) return;
+			const taskId = button.dataset.hubQueueTask;
+			this.queueActionRunning = true;
+			const sync = () => {
+				for (const item of this.queueEl.querySelectorAll("button[data-hub-queue]")) item.disabled = !!this.queueActionRunning;
+			};
+			sync();
+			return this.yieldForActionFeedback().then(() => {
+				if (action === "retry-blocked") return this.plugin.retryBlockedPendingBackendTasks();
+				if (action === "abandon") return this.plugin.abandonPendingBackendTask(taskId);
+				return this.plugin.recoverPendingBackendTasksFromCommand();
+			}).catch(() => { new api.Notice(rectoUiText("hub.context.failed"), 5000); })
+				.finally(() => { this.queueActionRunning = false; sync(); });
 		}
 
 		handleListScroll() {
@@ -18233,7 +18645,7 @@ function createRectoHubViewClass(api) {
 				const visible = this.visible.find(item => item.recordId === entry.recordId);
 				if (visible) visible.paperFlags = entry.paperFlags;
 				const cell = this.findRowEl(entry.recordId)?.querySelector(".recto-hub-col-title");
-				if (cell) this.fillRowTitle(cell, entry);
+				if (cell) this.syncRowPaperFlags(cell, entry);
 			}
 		}
 
@@ -18246,13 +18658,18 @@ function createRectoHubViewClass(api) {
 			this.closeFlagMenu(true);
 			const doc = anchor.ownerDocument, hadFocus = doc.activeElement === anchor;
 			this.contextActionRunning = true;
+			this.pendingFlagRecordId = recordId;
+			this.refreshPaperFlags([recordId]);
 			try {
-				const entry = this.plugin.getHubEntries().find(item => item.recordId === recordId);
+				await this.yieldForActionFeedback();
+				const entry = this.entries.find(item => item.recordId === recordId);
 				if (!entry) throw new Error("record-missing");
 				await this.plugin.setHubPaperFlags([entry], flag, enabled);
 			} catch { new api.Notice(rectoUiText("hub.flags.failed"), 5000); }
 			finally {
 				this.contextActionRunning = false;
+				this.pendingFlagRecordId = null;
+				this.refreshPaperFlags([recordId]);
 				if (hadFocus && this.rootEl?.isConnected && (doc.activeElement === anchor || doc.activeElement === doc.body)) this.findRowEl(recordId)?.querySelector(".recto-hub-flag-add")?.focus({ preventScroll: true });
 			}
 		}
@@ -18261,9 +18678,9 @@ function createRectoHubViewClass(api) {
 			if (this.contextActionRunning) return;
 			if (this.flagMenuRecordId === recordId) { this.closeFlagMenu(true); return; }
 			this.closeFlagMenu(); this.closeContextMenu(); this.closeReadMenu();
-			const entry = this.plugin.getHubEntries().find(item => item.recordId === recordId);
+			const entry = this.entries.find(item => item.recordId === recordId);
 			if (!entry) return;
-			const flags = normalizeHubPaperFlags(entry.paperFlags), doc = anchor.ownerDocument, win = doc.defaultView;
+			const flags = normalizeHubPaperFlags(this.plugin.paperFlags?.[recordId]), doc = anchor.ownerDocument, win = doc.defaultView;
 			const menu = doc.body.createDiv({ cls: "recto-ui recto-hub-flag-menu", attr: { role: "dialog", "aria-label": rectoUiText("hub.flags.add"), tabindex: "-1" } });
 			const enabled = [];
 			for (const flag of HUB_PAPER_FLAGS) {
@@ -18325,7 +18742,7 @@ function createRectoHubViewClass(api) {
 			}
 			const menu = new api.Menu();
 			const ids = entries.map(entry => entry.recordId);
-			const busy = !!this.contextActionRunning;
+			const busy = !!(this.contextActionRunning || this.processActionRunning);
 			const countLabel = (key, count = entries.length) => {
 				const label = rectoUiText(key);
 				return entries.length > 1 ? rectoUiText(count < entries.length ? "hub.context.available" : "hub.context.count", { label, count, total: entries.length }) : label;
@@ -18389,11 +18806,13 @@ function createRectoHubViewClass(api) {
 		}
 
 		async runContextAction(recordIds, action) {
-			if (this.contextActionRunning) return;
+			if (this.contextActionRunning || this.processActionRunning) return;
 			this.contextActionRunning = true;
+			this.closeContextMenu();
 			try {
+				await this.yieldForActionFeedback();
 				// Snapshot menu targets, then refresh their artifacts; later selection never changes the action's scope.
-				const current = new Map(this.plugin.getHubEntries().map(entry => [entry.recordId, entry]));
+				const current = new Map(this.plugin.getHubEntries(recordIds).map(entry => [entry.recordId, entry]));
 				const entries = recordIds.map(id => current.get(id)).filter(Boolean);
 				if (entries.length !== recordIds.length) throw new Error("record-missing");
 				if (action.startsWith("copy:")) await this.plugin.copyHubContextFiles(entries, action.slice(5));
@@ -18407,6 +18826,19 @@ function createRectoHubViewClass(api) {
 			} catch {
 				new api.Notice(rectoUiText(action.startsWith("status:") ? "hub.context.statusFailed" : action.startsWith("flag:") ? "hub.flags.failed" : "hub.context.failed"), 5000);
 			} finally { this.contextActionRunning = false; }
+		}
+
+		yieldForActionFeedback() {
+			// Close menus / paint busy controls before any synchronous filesystem work.
+			// The timeout also releases actions in a hidden or closing owner window.
+			return new Promise(resolve => {
+				const win = this.rootEl?.ownerDocument?.defaultView;
+				let frame;
+				const finish = () => { clearTimeout(timer); if (frame) win.cancelAnimationFrame(frame); resolve(); };
+				const timer = setTimeout(finish, 100);
+				if (win?.requestAnimationFrame) frame = win.requestAnimationFrame(() => setTimeout(finish, 0));
+				else { clearTimeout(timer); setTimeout(resolve, 0); }
+			});
 		}
 
 		handleListKeydown(event) {
@@ -18682,35 +19114,42 @@ function createRectoHubViewClass(api) {
 		// T88-G-T：重新导入沿用所有入口，单篇直接执行、多篇一次确认。
 		async deleteSelectedRecords(entries = this.getSelectedEntries()) {
 			if (!entries.length) return;
-			if (entries.length > 1) {
-				const accepted = await this.plugin.openDecision(() => ({
-					title: rectoUiText("batch.deleteTitle"),
-					intro: rectoUiText("batch.deleteIntro", { count: entries.length }),
-					details: [
-						...entries.slice(0, 5).map(entry => localizeHubTitle(entry.titleOriginal)),
-						entries.length > 5 ? rectoUiText("batch.deleteMore", { count: entries.length - 5 }) : "",
-						rectoUiText("batch.deleteDesc"),
-					],
-					actions: [
-						{ label: rectoUiText("dialog.cancel"), value: false },
-						{ label: rectoUiText("batch.deleteAction", { count: entries.length }), value: true, warning: true },
-					],
-				}));
-				if (accepted !== true) return;
-			}
-			await this.withProcessButtonsDisabled(() => this.plugin.deletePaperRecords(entries.map(entry => entry.recordId)));
+			return this.withProcessButtonsDisabled(async () => {
+				if (entries.length > 1) {
+					const accepted = await this.plugin.openDecision(() => ({
+						title: rectoUiText("batch.deleteTitle"),
+						intro: rectoUiText("batch.deleteIntro", { count: entries.length }),
+						details: [
+							...entries.slice(0, 5).map(entry => localizeHubTitle(entry.titleOriginal)),
+							entries.length > 5 ? rectoUiText("batch.deleteMore", { count: entries.length - 5 }) : "",
+							rectoUiText("batch.deleteDesc"),
+						],
+						actions: [
+							{ label: rectoUiText("dialog.cancel"), value: false },
+							{ label: rectoUiText("batch.deleteAction", { count: entries.length }), value: true, warning: true },
+						],
+					}));
+					if (accepted !== true) return;
+				}
+				await this.plugin.deletePaperRecords(entries.map(entry => entry.recordId));
+			});
 		}
 
 	// 转换/翻译一点出去就把整块按钮禁用，跑到完（或失败）再恢复——
 	// 否则状态栏进度在走，按钮却像没点上，用户会重复提交（T82-C）。
 	withProcessButtonsDisabled(run) {
-		const buttons = this.detailEl.findAll(".recto-hub-process button, button[data-hub-process]");
-		for (const button of buttons) button.disabled = true;
+		if (this.processActionRunning) return Promise.resolve();
+		this.processActionRunning = true;
+		const sync = () => {
+			for (const button of this.detailEl.findAll(".recto-hub-process button, button[data-hub-process]")) button.disabled = !!this.processActionRunning;
+		};
+		sync();
 		return Promise.resolve()
 			.then(run)
 			.catch(() => { new api.Notice(rectoUiText("hub.context.failed"), 5000); })
 			.finally(() => {
-				for (const button of buttons) button.disabled = false;
+				this.processActionRunning = false;
+				sync();
 			});
 	}
 
@@ -18732,24 +19171,33 @@ function createRectoHubViewClass(api) {
 		async cycleStatus(recordId) {
 			const entry = this.entries.find(item => item.recordId === recordId);
 			if (!entry || !entry.readingKey) return;
-			const next = await this.plugin.cycleReadingStatusByKey(entry.readingKey);
-			if (!next) return;
-			entry.readingStatus = next;
-			this.renderNav();
-			// 只在按阅读状态筛选（这条可能要离开列表）或按状态排序时才重排；
-			// 否则原地改这一个圆点就够了，不必重画列表把滚动位置丢掉。
-			if (this.filters.status !== "all" || this.filters.sort === "status") {
-				this.applyFilters();
-				return;
-			}
-			const row = this.findRowEl(recordId);
-			const dot = row ? row.querySelector("[data-hub-status-toggle]") : null;
-			if (dot) {
-				dot.className = `recto-hub-dot is-${next}`;
-				dot.setAttribute("aria-label", rectoUiText(`hub.status.${next}`));
-				dot.setAttribute("title", rectoUiText("hub.statusToggle", { status: rectoUiText(`hub.status.${next}`) }));
-			}
-			if (!this.isBatchMode()) this.renderDetail();
+			if (!this.pendingStatusIds) this.pendingStatusIds = new Set();
+			if (this.pendingStatusIds.has(recordId)) return;
+			this.pendingStatusIds.add(recordId);
+			const sync = () => this.findRowEl(recordId)?.querySelector("[data-hub-status-toggle]")?.setAttribute("aria-busy", String(this.pendingStatusIds.has(recordId)));
+			sync();
+			try {
+				await this.yieldForActionFeedback();
+				const next = await this.plugin.cycleReadingStatusByKey(entry.readingKey);
+				if (!next) return;
+				entry.readingStatus = next;
+				this.renderNav();
+				// 只在按阅读状态筛选（这条可能要离开列表）或按状态排序时才重排；
+				// 否则原地改这一个圆点就够了，不必重画列表把滚动位置丢掉。
+				if (this.filters.status !== "all" || this.filters.sort === "status") {
+					this.applyFilters();
+					return;
+				}
+				const row = this.findRowEl(recordId);
+				const dot = row ? row.querySelector("[data-hub-status-toggle]") : null;
+				if (dot) {
+					dot.className = `recto-hub-dot is-${next}`;
+					dot.setAttribute("aria-label", rectoUiText(`hub.status.${next}`));
+					dot.setAttribute("title", rectoUiText("hub.statusToggle", { status: rectoUiText(`hub.status.${next}`) }));
+				}
+				if (!this.isBatchMode()) this.renderDetail();
+			} catch { new api.Notice(rectoUiText("hub.context.statusFailed"), 5000); }
+			finally { this.pendingStatusIds.delete(recordId); sync(); }
 		}
 	};
 }
@@ -21573,6 +22021,10 @@ function sleep(ms, signal) {
 }
 if (process.env.NODE_ENV === "test") {
 	RectoPlugin.__test = {
+		RectoDiagnosticQueue,
+		buildRectoDiagnosticEvent,
+		buildRectoDiagnosticError,
+		classifyRectoDiagnosticError,
 		normalizeDocumentLanguage, migrateDocumentLanguages, documentArtifactPath, documentContentHash, withDocumentArtifactMetadata,
 		detectDocumentSourceLanguage, resolveDocumentSourceLanguage,
 		RECTO_UI_LANGUAGES,

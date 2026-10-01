@@ -2844,7 +2844,7 @@ label.recto-sync-preview-row {
 	width: 22px;
 	color: var(--text-muted);
 	opacity: 0;
-	transition: opacity 120ms ease-out, background-color 120ms ease-out;
+	transition: background-color 120ms ease-out;
 }
 
 .recto-hub-flag-add svg {
@@ -2855,8 +2855,14 @@ label.recto-sync-preview-row {
 .recto-hub-row.is-selected .recto-hub-flag-add,
 .recto-hub-paper-flags:hover .recto-hub-flag-add,
 .recto-hub-paper-flags:focus-within .recto-hub-flag-add,
+.recto-hub-paper-flags[aria-busy="true"] .recto-hub-flag-add,
 .recto-ui .recto-hub-flag-add[aria-expanded="true"] {
 	opacity: 1;
+}
+
+.recto-hub-paper-flags[aria-busy="true"] button {
+	cursor: progress;
+	background: var(--background-modifier-hover);
 }
 
 .recto-ui button.recto-hub-paper-flag:hover,
@@ -3024,6 +3030,11 @@ label.recto-sync-preview-row {
 .recto-hub-dot:focus-visible {
 	outline: 2px solid var(--rc-accent);
 	outline-offset: 2px;
+}
+
+.recto-hub-dot[aria-busy="true"] {
+	cursor: progress;
+	opacity: 0.55;
 }
 
 .recto-hub-detail-sub {
