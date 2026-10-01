@@ -2,7 +2,7 @@
 
 Honest disclosure for Obsidian Community review and for users. 与真实行为一致，不美化。
 
-最后更新 / Last updated: 2026-09-26
+最后更新 / Last updated: 2026-10-01
 
 ## 什么会离开本机 / What leaves your computer
 
@@ -27,6 +27,41 @@ Honest disclosure for Obsidian Community review and for users. 与真实行为�
   主动选择**翻译已有 Markdown 文件**时，该文件文本会以结构化内容发送至 Recto，并可能交由第三方
   服务处理。选择一个文件不会上传 vault 中的其他笔记。
 
+## 操作诊断 / Operation diagnostics
+
+When you use conversion, translation or recovery, Recto records operation starts, stages and outcomes,
+including local checks that stop a request before submission. After cloud processing is enabled and
+while signed in, it silently sends structured diagnostics to Recto for support. Reports contain random
+operation/request IDs, the associated task ID, plugin/app versions, plugin source hash, operating system, timing, numeric sizes,
+stable error codes and code locations/cause codes. They do not contain document text, PDF copies,
+filenames, local paths, passwords/tokens, arbitrary exception messages or HTTP bodies/headers.
+They are not forwarded to processing providers and do not track reading or browsing activity.
+
+使用转换、翻译或恢复时，Recto 记录操作开始、阶段及结果，包括提交请求前的本地拦截。
+启用云端处理且登录后，插件静默向 Recto 上传结构化诊断，供排障使用；包括随机操作/请求编号、
+关联任务编号、插件/应用版本、插件源码哈希、操作系统、耗时、数字量级、稳定错误码、代码位置及原因链错误码。
+诊断不含正文、PDF 副本、文件名、本地路径、密码/凭据、任意异常消息或请求/响应内容，
+不转发至处理供应商，不跟踪阅读或浏览行为。
+
+Pending reports are stored separately in the plugin directory (at most 250 events / 1 MiB).
+Network failures are retried with backoff across restarts. Reports are bound to the original account;
+signing into another account cannot upload them as that account. Reports created without an account
+remain local. Local reports expire after 30 days; server reports become unavailable after 30 days
+and are physically deleted by an hourly sweep. Only administrators can query them. A full queue may
+discard its oldest events and record a gap count; corrupt queue contents are reset and the reset count
+is recorded. An unreadable disk or permanent offline state can
+prevent delivery. Contact the author using the details below for diagnostic deletion requests.
+Reports that expire before confirmed delivery increment a persistent expiry gap count, included
+in subsequent reports; expiry cannot establish whether a server received a report without its acknowledgment.
+
+待传报告独立保存在插件目录，最多 250 条 / 1 MiB；断网时退避重传，重启后继续。
+报告绑定原账号，换账号不会替原账号上传；未登录时产生的报告只留本地。
+本地报告 30 天过期；服务端报告 30 天后不可查询，由每小时扫描物理删除，仅管理员可查。
+队列满时可能丢弃最早报告并记录缺口计数，磁盘不可写或永久离线会阻止送达。
+损坏的队列内容会被重建并记录重建次数。
+送达未确认即过期的报告会累计持久化缺口计数，随以后的报告上传；缺少确认不代表服务器一定没收到。
+如需删除诊断，可通过下方联系方式联系作者。
+
 ## 什么留在本地 / What stays local
 
 - Your vault stores generated Markdown / images / Sidecar, `papers.jsonl`, and plugin settings
@@ -39,9 +74,9 @@ Honest disclosure for Obsidian Community review and for users. 与真实行为�
   explicitly queue for cloud processing are uploaded.
   **Zotero**：Recto 可能读取 vault **之外**的本地 Zotero 数据库与 **storage**（只读导入）。不会整库
   上传；只有你明确加入云端处理队列的 PDF（或 Sidecar）才会上传。
-- Recto does **not** ship client-side telemetry, ads, or a self-update channel separate from
+- Recto does **not** collect general usage analytics or ship ads or a self-update channel separate from
   Obsidian's normal Community Plugin updates.
-  插件**不做**客户端遥测、动态广告，也不在 Obsidian 社区更新机制之外另做自我更新。
+  插件不采集一般使用行为统计、不展示动态广告；上面的操作诊断仅供排障。
 
 ## 服务观测与反馈 / Service analytics and feedback
 
@@ -59,13 +94,27 @@ Honest disclosure for Obsidian Community review and for users. 与真实行为�
 
 ## 保留策略 / Retention
 
-- **Task files** (uploaded PDFs, intermediates, result packages) are temporary. After the plugin
-  acknowledges a successful write-back they are deleted promptly; if not pulled, results expire on a
-  **24-hour** TTL. Failed-task files are kept briefly for retry, then purged (also on a **24-hour**
-  window). Cancel deletes server-side task files immediately.
-  **任务文件**（上传的 PDF、中间产物、结果包）为临时数据：插件确认写回成功后尽快删除；未拉取的结果约
-  **24 小时**过期。失败任务文件短暂保留供重试后清理（同样约 **24 小时**）。取消任务会立即删除服务端
-  任务文件。
+- **Task files** (uploaded PDFs or text/structure, intermediates and result packages) remain
+  available for **24 hours from completion or failure**, including after the plugin acknowledges
+  local writeback. Receipt does not extend the window. Files are private; authenticated administrators
+  may download them within that window for support verification, with an audit record and stated reason.
+  At expiry, all task-file endpoints deny access immediately. A scheduled sweep deletes the objects
+  and historical versions, retries failed deletion, and uses a terminal-only storage lifecycle as a
+  backstop. Physical deletion may lag access expiry during outages. Cancellation requests immediate
+  deletion with retries; uploads never started expire after 24 hours. Active processing is not cleaned
+  up based on upload age. A retry inside the failure window starts a new attempt and a new window
+  when that attempt ends. Task outcome, receipt and file cleanup are separate metadata; diagnostic
+  reports retain their independent **30-day** window. This is temporary verification, not a backup.
+  **任务文件**（上传的 PDF 或文本结构、中间产物和结果包）从**完成或失败时起保留 24 小时**，
+  插件确认本地写回后仍保留；领取不延长窗口。文件私有，管理员可凭鉴权在窗口内下载核验，须填写理由并记录审计。
+  到期立即禁止任务文件接口访问，应用定时删除对象及历史版本，失败重试，终态文件生命周期兜底；故障期间物理删除可能延迟。
+  取消请求立即清理并重试；未启动的上传任务 24 小时后过期。在途处理不按上传年龄清理。
+  在失败窗口内重试会进入新一轮，结束后重新计算保留窗口。处理结果、领取和清理分别记录；诊断仍独立保留 **30 天**。
+  这是临时核验窗口，不是永久备份。
+
+  Rollout: the T88-K backend migrations and private COS lifecycle rules went live on 2026-10-01.
+  Acknowledgement now records receipt without immediately deleting the verification files.
+  上线说明：T88-K 后端迁移及私有 COS 生命周期规则已于 2026-10-01 上线；领取只记录接收，不立即删除核验文件。
 - **Account records** (email, membership, credit ledger, orders) are kept so billing and support
   remain consistent. There is currently **no self-service "delete my account" button** in the
   product; contact the author if you need account closure.
