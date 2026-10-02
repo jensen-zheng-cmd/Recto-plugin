@@ -25,6 +25,14 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"command.syncZotero": "同步 Zotero 数据",
 		"command.recoverPending": "恢复未完成的云端处理",
 		"command.cancelQueued": "取消未开始的任务",
+		"queue.added": "已加入本地等待队列：{count} 项。尚未上传或扣费。",
+		"queue.waiting": "等待执行（未提交）",
+		"queue.executing": "正在提交",
+		"queue.blocked": "已停止，请取消后重新发起",
+		"queue.sourceChanged": "{name}：源文件或输出位置已改变，已停止此项。请取消后重新确认。",
+		"queue.cancelled": "已取消本地等待项。",
+		"queue.saveFailed": "本地等待队列保存或执行未完成，请查看队列后重试。",
+		"queue.count": "本地队列 {count} 项",
 		"command.cycleReaderTheme": "切换论文阅读主题",
 		"command.toggleDualPane": "对照阅读：原文/译文双栏",
 		"command.togglePdfCompare": "PDF 对照阅读：原文 PDF/译文",
@@ -894,6 +902,14 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"command.syncZotero": "Sync Zotero data",
 		"command.recoverPending": "Recover unfinished cloud tasks",
 		"command.cancelQueued": "Cancel tasks not yet started",
+		"queue.added": "Added {count} item(s) to the local queue. Nothing uploaded or charged yet.",
+		"queue.waiting": "Waiting (not submitted)",
+		"queue.executing": "Submitting",
+		"queue.blocked": "Stopped; cancel and start again",
+		"queue.sourceChanged": "{name}: the source or output location changed. This item stopped. Cancel it and confirm a new request.",
+		"queue.cancelled": "Local waiting item cancelled.",
+		"queue.saveFailed": "The local queue could not be saved or completed. Check the queue and retry.",
+		"queue.count": "{count} in local queue",
 		"command.cycleReaderTheme": "Switch paper reading theme",
 		"command.toggleDualPane": "Compare original and translation side by side",
 		"command.togglePdfCompare": "Compare original PDF and translation",
@@ -5013,6 +5029,26 @@ function sanitizePersistedPendingTask(task) {
 		out[key] = task[key];
 	}
 	return out;
+}
+
+// Local intents have no backend taskId and never contain credentials or file contents.
+// An executing intent is safe to restore as waiting: receipt persistence removes it
+// atomically BEFORE any upload. After that, only pendingBackendTasks owns recovery.
+function normalizeLocalTaskIntents(value) {
+	if (value?.version !== 1 || !Array.isArray(value.items)) return [];
+	const ids = new Set();
+	return value.items.flatMap(item => {
+		const id = normalizeRectoUuid(item?.id), accountId = normalizeRectoUuid(item?.accountId);
+		const task = sanitizePersistedPendingTask(item?.task);
+		if (!id || !accountId || !task.recordId || !/^[a-f0-9]{64}$/.test(item.inputHash || "") || ids.has(id)) return [];
+		ids.add(id);
+		return [{ id, batchId: normalizeRectoUuid(item.batchId) || id, accountId,
+			backendBaseUrl: String(item.backendBaseUrl || ""), libraryBase: String(item.libraryBase || ""),
+			createdAt: String(item.createdAt || ""), state: item.state === "blocked" ? "blocked" : "waiting",
+			failure: ["source", "input", "execution"].includes(item.failure) ? item.failure : "",
+			inputHash: item.inputHash, sidecarHash: /^[a-f0-9]{64}$/.test(item.sidecarHash || "") ? item.sidecarHash : "",
+			task: JSON.parse(JSON.stringify(task)) }];
+	});
 }
 
 function rollbackPendingBackendTaskChanges(current, previous, applied, taskIds) {
@@ -10673,6 +10709,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.zoteroPendingOrphaned = 0;
 		this.zoteroAutoCheckTimer = null;
 		this.pendingBackendTasks = [];
+		this.localTaskIntents = [];
 		// T84：库外转换的去重记录。不是论文对象，不参与任何投影层——只为了在花钱之前
 		// 认出「这个 PDF 你已经转过了」。
 		this.externalConversions = [];
@@ -10722,7 +10759,9 @@ class RectoPlugin extends obsidian.Plugin {
 		this.addLocalizedCommand("recover-pending-backend-tasks", "command.recoverPending", () => { void this.recoverPendingBackendTasksFromCommand(); });
 		// T85-C：软取消原本只有状态栏浮层里那一个按钮，而浮层只有 hover / focus-within 打得开，
 		// 键盘与读屏用户够不到，卡住时只能等自动放弃。命令与那个按钮走同一条软取消。
-		this.addLocalizedCommand("cancel-queued-tasks", "command.cancelQueued", () => this.cancelQueuedTasksFromCommand());
+		this.addLocalizedCommand("cancel-queued-tasks", "command.cancelQueued", () => {
+			void this.cancelQueuedTasksFromCommand().catch(() => { new obsidian.Notice(rectoUiText("queue.saveFailed"), 8000); });
+		});
 		this.addLocalizedCommand("cycle-reader-theme", "command.cycleReaderTheme", () => { void this.cycleReaderTheme(); });
 		this.addLocalizedCommand("toggle-dual-pane", "command.toggleDualPane", () => { void this.toggleRectoDualPane(); });
 		this.addLocalizedCommand("toggle-pdf-compare", "command.togglePdfCompare", () => { void this.toggleRectoPdfCompare(); });
@@ -10774,9 +10813,10 @@ class RectoPlugin extends obsidian.Plugin {
 			// 会被当成 EULA 无脑点掉，反而削弱知情本身；而四个上传入口本来就各自惰性问过。
 			// **只有还压着断点任务时才问**，因为恢复会立刻上传或领取结果。新装用户没有断点
 			// 任务，所以装完打开 Obsidian 一个弹窗都不出现（引导也改到打开论文库时才来）。
-			if (Array.isArray(this.pendingBackendTasks) && this.pendingBackendTasks.length) {
+			if (this.pendingBackendTasks?.length || this.localTaskIntents?.length) {
 				void this.ensureCloudProcessingConsent({ interactive: true, startup: true }).then(accepted => {
 					if (!accepted) return;
+					this.scheduleLocalTaskQueue();
 					return this.recoverPendingBackendTasks();
 				}).catch((error) => {
 					console.warn("Recto: recover pending backend tasks failed", getSanitizedErrorMessage(error));
@@ -10869,6 +10909,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.clearReaderTheme();
 		if (this.paperJsonlRefreshTimer) clearTimeout(this.paperJsonlRefreshTimer);
 		if (this.pendingBackendRecoveryTimer) clearTimeout(this.pendingBackendRecoveryTimer);
+		if (this.localTaskQueueTimer) clearTimeout(this.localTaskQueueTimer);
 		if (this.zoteroAutoCheckTimer) clearTimeout(this.zoteroAutoCheckTimer);
 		this.zoteroAutoCheckTimer = null;
 		if (this.rectoUpdateCheckTimer) clearTimeout(this.rectoUpdateCheckTimer);
@@ -10948,6 +10989,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.zoteroPendingAmbiguous = Math.max(0, Number(d.zoteroPendingAmbiguous) || 0);
 			this.zoteroPendingOrphaned = Math.max(0, Number(d.zoteroPendingOrphaned) || 0);
 			this.pendingBackendTasks = normalizePendingBackendTasks(d.pendingBackendTasks); // 在途后端任务，用于重启恢复
+			this.localTaskIntents = normalizeLocalTaskIntents(d.localTaskIntents);
 			this.externalConversions = normalizeExternalConversions(d.externalConversions); // T84 库外转换去重记录
 			this.compareSessions = normalizeRectoCompareSessions(d.compareSessions); // 对照阅读关联，用于重启恢复
 		}
@@ -11007,6 +11049,7 @@ class RectoPlugin extends obsidian.Plugin {
 			zoteroPendingAmbiguous: Math.max(0, Number(this.zoteroPendingAmbiguous) || 0),
 			zoteroPendingOrphaned: Math.max(0, Number(this.zoteroPendingOrphaned) || 0),
 			pendingBackendTasks: this.pendingBackendTasks,
+			localTaskIntents: { version: 1, items: this.localTaskIntents || [] },
 			externalConversions: normalizeExternalConversions(this.externalConversions),
 			compareSessions: this.compareSessions,
 		});
@@ -11040,8 +11083,12 @@ class RectoPlugin extends obsidian.Plugin {
 				this.pendingBackendTasks[index] = { ...existing, ...entry, createdAt: existing.createdAt || entry.createdAt };
 			} else this.pendingBackendTasks.push(entry);
 			const applied = this.pendingBackendTasks;
+			const previousIntents = this.localTaskIntents || [];
+			const localIds = this.operationScope?.getStore()?.localIntentIds;
+			this.localTaskIntents = previousIntents.filter(item => !(localIds?.has(item.id) && item.task.recordId === recordId));
 			return () => {
 				this.pendingBackendTasks = rollbackPendingBackendTaskChanges(this.pendingBackendTasks, previous, applied, [id, options.replacesTaskId]);
+				this.localTaskIntents = previousIntents;
 			};
 		});
 		this.notifyTaskQueueChanged();
@@ -11105,7 +11152,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	isPendingBackendTaskRecovering(taskId) {
-		return !!(this.pendingBackendRecoveryTaskIds?.has(taskId) || this.pendingBackendRetryTaskIds?.has(taskId));
+		return !!(this.pendingBackendRecoveryTaskIds?.has(taskId) || this.pendingBackendRetryTaskIds?.has(taskId) || this.pendingBackendCloudRecovery?.taskIds.has(taskId));
 	}
 
 	async clearPendingBackendTask(taskId) {
@@ -11208,18 +11255,13 @@ class RectoPlugin extends obsidian.Plugin {
 			new obsidian.Notice(rectoUiText("recovery.none"), 6000);
 			return { recovered: 0, dropped: 0, kept: 0 };
 		}
-		// 紧邻的两道门（未登录、有任务在跑）都给提示，这一道也不能例外——三条都是用户点了
-		// 「再试一次 / 恢复」之后什么都没发生。
+		// 主动恢复未获云端许可时要有反馈；已完成结果不因无关前台任务而退出。
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
 			new obsidian.Notice(rectoUiText("recovery.noConsent"), 6000);
 			return { recovered: 0, dropped: 0, kept: count };
 		}
 		if (!this.hasBackendAccountSession()) {
 			new obsidian.Notice(rectoUiText("recovery.signIn"), 8000);
-			return { recovered: 0, dropped: 0, kept: count };
-		}
-		if (this.activeOperation) {
-			new obsidian.Notice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), 6000);
 			return { recovered: 0, dropped: 0, kept: count };
 		}
 		const progressNotice = new obsidian.Notice(rectoUiText("recovery.start", { count }), 0);
@@ -11250,6 +11292,55 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
+	startPendingBackendCloudRecovery(candidate) {
+		// READY 扫描与长时间云端续译各自单实例；续译全程仍占唯一云端槽。
+		if (this.pendingBackendCloudRecovery || this.activeOperation || this.isUnloading) return false;
+		const entry = this.pendingBackendTasks?.find(item => item.taskId === candidate.taskId);
+		if (!entry || entry.blocked || this.hubQueueAbandonIds?.has(entry.taskId)) return false;
+		if (entry.status !== "translation_handoff" && !(entry.task?.translateOnly && entry.task?.resumeTranslationSubmit && candidate.existing)) return false;
+		const task = { ...entry.task, recordId: entry.recordId || entry.task?.recordId };
+		if (this.operationResources?.conflicts(null, this.getTaskResourceKeys(task))) return false;
+		const recovery = { taskIds: new Set([entry.taskId]), promise: null };
+		this.pendingBackendCloudRecovery = recovery;
+		// 不继承扫描的取消信号或诊断结果；卸载/账号变更由独立 operation 守护。
+		const diagnostic = this.diagnosticScope?.getStore();
+		const work = () => this.withOperationContext("backend-cloud-recovery", async operation => {
+			this.throwIfUnloaded();
+			const accountId = task.ownerAccountId || task.diagnosticUserId;
+			if (accountId && accountId !== operation.account.backendUserId) return;
+			if (!this.beginOperation(rectoUiText("progress.translate"), { silent: true })) return;
+			this.claimTaskResources(task);
+			return this.withDiagnosticItem(task, async () => {
+				let failureTaskId = entry.taskId;
+				try {
+					const onCreated = id => { failureTaskId = id; recovery.taskIds.add(id); };
+					if (entry.status === "translation_handoff") {
+						await this.resumeBackendTranslationHandoff(entry.taskId, task, null, operation, onCreated);
+					} else {
+						await this.runBackendTranslationPhase(task, task.stem, null, operation, onCreated, { existing: candidate.existing });
+					}
+					await this.writePaperJsonlIndex();
+					this.safeRefreshHubViews();
+				} catch (error) {
+					await this.diagnosticExit("RECOVERY_FAILED", "failed");
+					this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "翻译未完成，请稍后重试。");
+					// 子任务登记失败仍保留父交接；登记成功后的上传/轮询失败归到子任务。
+					const id = this.pendingBackendTasks?.some(item => item.taskId === failureTaskId) ? failureTaskId : entry.taskId;
+					await this.recordPendingBackendTaskFailure(id, error);
+				}
+			}, { taskId: entry.taskId });
+		}, { independent: true });
+		recovery.promise = (diagnostic
+			? this.diagnosticScope.run({ ...diagnostic, outcome: null, code: null }, work) : work())
+			.catch(error => { this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "翻译未完成，请稍后重试。"); })
+			.finally(() => {
+				if (this.pendingBackendCloudRecovery === recovery) this.pendingBackendCloudRecovery = null;
+				this.notifyTaskQueueChanged();
+				this.schedulePendingBackendTaskRecovery(1000);
+			});
+		return true;
+	}
+
 	async recoverPendingBackendTasksOnce(signal) {
 		return await this.withOperationContext("backend-recovery", () => this.recoverPendingBackendTasksUnlocked(signal), { signal, independent: true });
 	}
@@ -11258,6 +11349,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const pending = Array.isArray(this.pendingBackendTasks)
 			? this.pendingBackendTasks.filter(entry => !this.hubQueueAbandonIds?.has(entry?.taskId)) : [];
 		const summary = { recovered: 0, dropped: 0, kept: 0 };
+		const cloudCandidates = [];
 		let diagnosticRecoveryFailed = false;
 		let diagnosticRecoveryCancelled = false;
 		this.pendingBackendLastRecoveryError = "";
@@ -11276,177 +11368,162 @@ class RectoPlugin extends obsidian.Plugin {
 				summary.kept += pending.length - index;
 				break;
 			}
-			const taskId = entry && entry.taskId;
-			if (!taskId) { summary.dropped++; continue; }
-			const ownerAccountId = entry.task?.ownerAccountId || entry.task?.diagnosticUserId;
-			if (ownerAccountId && ownerAccountId !== this.operationScope?.getStore()?.account.backendUserId) {
-				this.pendingBackendLastRecoveryError = rectoUiText("recovery.signIn");
-				summary.kept++;
-				continue;
-			}
-			try { this.claimTaskResources({ ...entry.task, recordId: entry.recordId || entry.task?.recordId }); }
-			catch (error) {
-				if (error.code !== "RECTO_RESOURCE_BUSY") throw error;
-				summary.kept++;
-				continue;
-			}
-			// 已判定为确定性失败的条目不再空转重试：它只会以同一个错误再失败一次。
-			// 由用户在 Hub 队列条里「重试一次」或「放弃这个任务」来决定。
-			if (entry.blocked) {
-				await this.captureOperationDiagnostic({ code: "RECOVERY_RETRY_BLOCKED", outcome: "blocked", taskId });
-				this.pendingBackendLastRecoveryError = entry.lastFailure
-					? getUserFacingErrorMessage(entry.lastFailure, "结果写回未完成，请稍后重试。")
-					: this.pendingBackendLastRecoveryError;
-				summary.blocked = (summary.blocked || 0) + 1;
-				summary.kept++;
-				continue;
-			}
-			if (entry.status === "translation_handoff") {
-				const operation = this.beginOperation(rectoUiText("progress.translate"), { silent: true });
-				if (!operation) { summary.kept++; continue; }
+			// 每项单独持有资源；本项结束即释放，不继承前台 owner 或进度。
+			this.throwIfUnloaded();
+			await this.withOperationContext("backend-recovery-item", () => this.withDiagnosticItem(entry?.task || {}, async () => {
+				const signal = this.getActiveSignal();
+				const taskId = entry && entry.taskId;
+				if (!taskId) { summary.dropped++; return; }
+				const ownerAccountId = entry.task?.ownerAccountId || entry.task?.diagnosticUserId;
+				if (ownerAccountId && ownerAccountId !== this.operationScope?.getStore()?.account.backendUserId) {
+					this.pendingBackendLastRecoveryError = rectoUiText("recovery.signIn");
+					summary.kept++;
+					return;
+				}
+				try { this.claimTaskResources({ ...entry.task, recordId: entry.recordId || entry.task?.recordId }); }
+				catch (error) {
+					if (error.code !== "RECTO_RESOURCE_BUSY") throw error;
+					summary.kept++;
+					return;
+				}
+				// 已判定为确定性失败的条目不再空转重试：它只会以同一个错误再失败一次。
+				// 由用户在 Hub 队列条里「重试一次」或「放弃这个任务」来决定。
+				if (entry.blocked) {
+					await this.captureOperationDiagnostic({ code: "RECOVERY_RETRY_BLOCKED", outcome: "blocked", taskId });
+					this.pendingBackendLastRecoveryError = entry.lastFailure
+						? getUserFacingErrorMessage(entry.lastFailure, "结果写回未完成，请稍后重试。")
+						: this.pendingBackendLastRecoveryError;
+					summary.blocked = (summary.blocked || 0) + 1;
+					summary.kept++;
+					return;
+				}
+				if (entry.status === "translation_handoff") {
+					cloudCandidates.push({ taskId });
+					summary.kept++;
+					return;
+				}
+				let remote;
 				try {
-					await this.resumeBackendTranslationHandoff(taskId, entry.task, null, operation);
-					summary.recovered++;
+					remote = await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(taskId)}`, { timeout: 30000, signal });
 				} catch (error) {
 					diagnosticRecoveryFailed = true;
 					await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
-					this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "转换已恢复，翻译未完成。");
-					const marked = await this.recordPendingBackendTaskFailure(taskId, error);
-					if (marked && marked.blocked) summary.blocked = (summary.blocked || 0) + 1;
-					summary.kept++;
-				} finally { this.finishOperation(operation); }
-				continue;
-			}
-			let remote;
-			try {
-				remote = await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(taskId)}`, { timeout: 30000, signal });
-			} catch (error) {
-				diagnosticRecoveryFailed = true;
-				await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
-				// 404 说明后端已无此任务，可安全丢弃；其余（网络/鉴权）保留待下次。
-				if (isBackendTaskNotFoundError(error)) { await this.clearPendingBackendTask(taskId); summary.dropped++; }
-				else {
-					this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
-					summary.kept++;
-				}
-				continue;
-			}
-			const kind = classifyRecoveredBackendTaskStatus(remote && remote.status);
-			// 把真实远端状态写回本地登记：否则队列条会一直显示提交时那个 "submitted"
-			// （「后端处理中」），而后端其实早就 READY、真正的问题在写回（T81-R）。
-			if (remote && remote.status && entry.status !== remote.status) {
-				entry.status = String(remote.status);
-				await this.save();
-				this.notifyTaskQueueChanged();
-			}
-			if (kind === "abandoned") {
-				if (entry.task && entry.task.translateOnly && entry.task.resumeTranslationSubmit) {
-					const operation = this.beginOperation(rectoUiText("progress.translate"), { silent: true });
-					if (!operation) { summary.kept++; continue; }
-					try {
-						await this.runBackendTranslationPhase(entry.task, entry.task.stem, null, operation, null, { existing: remote });
-						summary.recovered++;
-					} catch (error) {
-						diagnosticRecoveryFailed = true;
-						await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
-						this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "翻译未完成，请稍后重试。");
-						const marked = await this.recordPendingBackendTaskFailure(taskId, error);
-						if (marked && marked.blocked) summary.blocked = (summary.blocked || 0) + 1;
-						summary.kept++;
-					} finally { this.finishOperation(operation); }
-					continue;
-				}
-				try {
-					await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(taskId)}/cancel`, { method: "POST", timeout: 30000, signal });
-					await this.clearPendingBackendTask(taskId);
-					summary.dropped++;
-				} catch (error) {
-					diagnosticRecoveryFailed = true;
-					await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
+					// 404 说明后端已无此任务，可安全丢弃；其余（网络/鉴权）保留待下次。
 					if (isBackendTaskNotFoundError(error)) { await this.clearPendingBackendTask(taskId); summary.dropped++; }
 					else {
 						this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
 						summary.kept++;
 					}
+					return;
 				}
-			} else if (kind === "ready") {
-				if (this.activeOperation) {
-					await this.captureOperationDiagnostic({ code: "OPERATION_BUSY", outcome: "blocked", taskId });
-					this.pendingBackendLastRecoveryError = rectoUiText("recovery.operationRunning", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") });
-					summary.kept++;
-					continue;
+				const kind = classifyRecoveredBackendTaskStatus(remote && remote.status);
+				// 把真实远端状态写回本地登记：否则队列条会一直显示提交时那个 "submitted"
+				// （「后端处理中」），而后端其实早就 READY、真正的问题在写回（T81-R）。
+				if (remote && remote.status && entry.status !== remote.status) {
+					entry.status = String(remote.status);
+					await this.save();
+					this.notifyTaskQueueChanged();
 				}
-				let result;
-				try {
-					result = await this.fetchBackendTaskResult(taskId, null, { signal });
-				} catch (error) {
-					diagnosticRecoveryFailed = true;
-					await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
-					this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
-					summary.kept++;
-					continue;
-				}
-				// mock 占位结果绝不 ack/删除，保住已付费的真实结果（与 T39 一致）。
-				if (shouldRejectBackendMockResult(result, true)) {
-					await this.captureOperationDiagnostic({ code: "MOCK_RESULT_REJECTED", outcome: "blocked", taskId });
-					this.pendingBackendLastRecoveryError = rectoUiText("recovery.writeUnavailable");
-					summary.kept++;
-					continue;
-				}
-				const operation = this.beginOperation("写回已完成的论文结果", { silent: true });
-				if (!operation) { summary.kept++; continue; }
-				try {
-					const task = { ...(entry.task || {}), recordId: entry.recordId || (entry.task && entry.task.recordId) };
-					// T81-S：译文任务的结果里没有正文，必须走译文/可选摘要的写回路，
-					// 否则会卡在「后端结果缺少源 Markdown」上反复重试到 blocked。
-					if (task.translateOnly) {
-						await this.writeBackendTranslationArtifacts(task, task.stem, result, null);
-						await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
+				if (kind === "abandoned") {
+					if (entry.task && entry.task.translateOnly && entry.task.resumeTranslationSubmit) {
+						cloudCandidates.push({ taskId, existing: remote });
+						summary.kept++;
+						return;
+					}
+					try {
+						await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(taskId)}/cancel`, { method: "POST", timeout: 30000, signal });
 						await this.clearPendingBackendTask(taskId);
-						summary.recovered++;
-					} else {
-						const stem = await this.writeBackendTaskResult(task, result, null);
-						// T84：必须走与前台批次同一段建档分叉，否则库外产物会被写进 folderMap
-						// → papers.jsonl → 被 Zotero 同步判成 orphaned。转换耗时长、中途重启
-						// 是真实场景，这条路径不是边角。
-						await this.commitConvertedTaskRecord(task, stem, result);
-						// 库外任务不接着译；库内任务若有冻结的翻译意图，仍需保留 Sidecar。
-						await this.cleanupExternalPaperMetadata(task, stem);
-						if (await this.prepareBackendTranslationHandoff(taskId, task, stem, operation)) {
-							await this.resumeBackendTranslationHandoff(taskId, { ...task, stem }, null, operation);
-						} else {
+						summary.dropped++;
+					} catch (error) {
+						diagnosticRecoveryFailed = true;
+						await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
+						if (isBackendTaskNotFoundError(error)) { await this.clearPendingBackendTask(taskId); summary.dropped++; }
+						else {
+							this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
+							summary.kept++;
+						}
+					}
+				} else if (kind === "ready") {
+					let result;
+					try {
+						result = await this.fetchBackendTaskResult(taskId, null, { signal });
+					} catch (error) {
+						diagnosticRecoveryFailed = true;
+						await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
+						this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
+						summary.kept++;
+						return;
+					}
+					// mock 占位结果绝不 ack/删除，保住已付费的真实结果（与 T39 一致）。
+					if (shouldRejectBackendMockResult(result, true)) {
+						await this.captureOperationDiagnostic({ code: "MOCK_RESULT_REJECTED", outcome: "blocked", taskId });
+						this.pendingBackendLastRecoveryError = rectoUiText("recovery.writeUnavailable");
+						summary.kept++;
+						return;
+					}
+					const operation = this.beginOperation("写回已完成的论文结果", { silent: true, exclusive: false });
+					if (!operation) { summary.kept++; return; }
+					try {
+						const task = { ...(entry.task || {}), recordId: entry.recordId || (entry.task && entry.task.recordId) };
+						// T81-S：译文任务的结果里没有正文，必须走译文/可选摘要的写回路，
+						// 否则会卡在「后端结果缺少源 Markdown」上反复重试到 blocked。
+						if (task.translateOnly) {
+							await this.writeBackendTranslationArtifacts(task, task.stem, result, null);
 							await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
 							await this.clearPendingBackendTask(taskId);
+							summary.recovered++;
+						} else {
+							const stem = await this.writeBackendTaskResult(task, result, null);
+							// T84：必须走与前台批次同一段建档分叉，否则库外产物会被写进 folderMap
+							// → papers.jsonl → 被 Zotero 同步判成 orphaned。转换耗时长、中途重启
+							// 是真实场景，这条路径不是边角。
+							await this.commitConvertedTaskRecord(task, stem, result);
+							// 库外任务不接着译；库内任务若有冻结的翻译意图，仍需保留 Sidecar。
+							await this.cleanupExternalPaperMetadata(task, stem);
+							if (await this.prepareBackendTranslationHandoff(taskId, task, stem, operation)) {
+								// 先完成本轮 READY 写回；云端交接使用独立操作，不占扫描 promise。
+								await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
+								cloudCandidates.push({ taskId });
+								summary.kept++;
+							} else {
+								await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
+								await this.clearPendingBackendTask(taskId);
+							}
+							summary.recovered++;
 						}
-						summary.recovered++;
+					} catch (error) {
+						diagnosticRecoveryFailed = true;
+						await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
+						// 写回/ack 失败则保留条目，下轮再试；真实结果未 ack 不会被删。
+						// 但同一个错误反复出现说明它是确定性的（后端结果本身过不了本地校验），
+						// 记次数、到阈值就标 blocked，停止空转并把出路交给用户。
+						const reason = getUserFacingErrorMessage(error, "结果写回未完成，请稍后重试。");
+						this.pendingBackendLastRecoveryError = reason;
+						const marked = await this.recordPendingBackendTaskFailure(taskId, error);
+						if (marked && marked.blocked) summary.blocked = (summary.blocked || 0) + 1;
+						summary.kept++;
+					} finally {
+						this.finishOperation(operation);
 					}
-				} catch (error) {
-					diagnosticRecoveryFailed = true;
-					await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
-					// 写回/ack 失败则保留条目，下轮再试；真实结果未 ack 不会被删。
-					// 但同一个错误反复出现说明它是确定性的（后端结果本身过不了本地校验），
-					// 记次数、到阈值就标 blocked，停止空转并把出路交给用户。
-					const reason = getUserFacingErrorMessage(error, "结果写回未完成，请稍后重试。");
-					this.pendingBackendLastRecoveryError = reason;
-					const marked = await this.recordPendingBackendTaskFailure(taskId, error);
-					if (marked && marked.blocked) summary.blocked = (summary.blocked || 0) + 1;
+				} else if (kind === "terminal") {
+					// failed/canceled/expired：后端已释放或从未扣费，丢弃。
+					await this.clearPendingBackendTask(taskId);
+					summary.dropped++;
+				} else {
+					// 单次快照仍在处理：释放前台，稍后由调度器再次核对。
 					summary.kept++;
-				} finally {
-					this.finishOperation(operation);
 				}
-			} else if (kind === "terminal") {
-				// failed/canceled/expired：后端已释放或从未扣费，丢弃。
-				await this.clearPendingBackendTask(taskId);
-				summary.dropped++;
-			} else {
-				// 单次快照仍在处理：释放前台，稍后由调度器再次核对。
-				summary.kept++;
-			}
+			}, { taskId: entry?.taskId }), { signal: this.getActiveSignal(), independent: true });
 		}
 		if (summary.recovered) {
 			await this.save();
 			await this.writePaperJsonlIndex().catch(() => {});
 		}
+		this.throwIfUnloaded();
+		for (const candidate of cloudCandidates) {
+			if (this.startPendingBackendCloudRecovery(candidate)) break;
+		}
+		if (this.diagnosticScope?.getStore()?.outcome === "failed") return summary;
 		if (diagnosticRecoveryFailed) await this.diagnosticExit("RECOVERY_HAS_FAILURES", "failed", { items: summary.kept });
 		else if (diagnosticRecoveryCancelled) await this.diagnosticExit("RECOVERY_INTERRUPTED", "cancelled", { items: summary.kept });
 		else if (summary.kept) await this.diagnosticExit("RECOVERY_PENDING", summary.blocked || this.pendingBackendLastRecoveryError ? "blocked" : "stage", { items: summary.kept });
@@ -11664,10 +11741,12 @@ class RectoPlugin extends obsidian.Plugin {
 			flush();
 		}
 	}
-	async withDiagnosticItem(task, work) {
+	async withDiagnosticItem(task, work, options = {}) {
 		const parent = this.diagnosticScope?.getStore();
 		if (!parent) return work();
-		const context = { ...parent, taskId: null, scope: "item", stage: "item", outcome: null, code: null,
+		const context = { ...parent, taskId: options.taskId || null, scope: "item", stage: "item", outcome: null, code: null,
+			operationId: normalizeRectoUuid(task.diagnosticOperationId) || parent.operationId,
+			userId: normalizeRectoUuid(task.diagnosticUserId) || parent.userId,
 			itemId: normalizeRectoUuid(task.diagnosticItemId) || crypto.randomUUID() };
 		task.diagnosticItemId = context.itemId;
 		return this.diagnosticScope.run(context, async () => {
@@ -11899,11 +11978,19 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	getHubQueueView() {
-		return buildHubQueueView(
+		const view = buildHubQueueView(
 			this.pendingBackendTasks,
 			Date.now(),
 			(this.activeOperation && this.activeOperation.runId) || ""
 		);
+		const rows = (this.localTaskIntents || []).map(item => ({ taskId: item.id, local: true,
+			recordId: item.task.recordId, name: item.task.name || item.task.recordId, kind: "local",
+			status: item.state, blocked: item.state === "blocked", ageText: "", failure: "" }));
+		view.counts.local = rows.length;
+		view.counts.localBlocked = rows.filter(row => row.blocked).length;
+		view.rows.push(...rows);
+		view.empty = !view.rows.length;
+		return view;
 	}
 
 	openExternalUrl(url) {
@@ -12485,6 +12572,11 @@ class RectoPlugin extends obsidian.Plugin {
 		const operation = { label, controller: new AbortController(), stopAfterCurrent: false,
 			libraryBase: this.settings?.baseFolder,
 			runId: crypto.randomBytes(8).toString("hex"),
+			translationTarget: this.settings?.documentLanguages?.translationTarget ? { ...this.settings.documentLanguages.translationTarget } : null,
+			processingChoices: { requestSummary: this.settings?.generateSummaryOnTranslate === true, summaryDepth: this.settings?.summaryDepth,
+				postprocessProfile: this.settings?.enhancedPostprocess === false ? RECTO_POSTPROCESS_PROFILE_BASIC : RECTO_POSTPROCESS_PROFILE_STANDARD,
+				markdownWriteAnchors: this.settings?.markdownTranslationWriteAnchors === true,
+				keepSourcePdf: this.settings?.externalKeepSourcePdf === true },
 			account: { backendBaseUrl: this.settings?.backendBaseUrl, backendSessionToken: this.settings?.backendSessionToken,
 				backendUserId: this.settings?.backendUserId }, stemClaims: new Map(), externalStemClaims: new Set() };
 		if (!this.operations) this.operations = new Map();
@@ -12524,6 +12616,11 @@ class RectoPlugin extends obsidian.Plugin {
 		const id = String(task.recordId || task.folder || task.name || "");
 		if (id) keys.push(`record:${id}`);
 		const paths = [task.markdownPath, task.sourcePath, task.translationPath];
+		if (task.path) {
+			const root = this.app?.vault?.adapter?.getBasePath?.() || this.app?.vault?.adapter?.basePath;
+			const relative = root && nodePath.relative(nodePath.resolve(root), nodePath.resolve(task.path));
+			paths.push(relative && !relative.startsWith("..") && !nodePath.isAbsolute(relative) ? relative : task.path);
+		}
 		if (!isRectoMarkdownTranslationTask(task)) {
 			const stem = task.stem || this.folderMap?.[id]?.stem;
 			if (stem && (task.outputRoot || this.settings?.baseFolder)) {
@@ -12540,7 +12637,7 @@ class RectoPlugin extends obsidian.Plugin {
 	claimTaskResources(task) {
 		this.throwIfUnloaded();
 		const operation = this.operationScope?.getStore();
-		if (!operation || !this.operationResources.acquire(operation, this.getTaskResourceKeys(task))) {
+		if (!operation || this.isLocalTaskResourceBusy(task) || !this.operationResources.acquire(operation, this.getTaskResourceKeys(task))) {
 			throw Object.assign(createRectoUiError("reimport.taskRunning"), { code: "RECTO_RESOURCE_BUSY", rectoBatchSkipReason: "pending" });
 		}
 	}
@@ -12556,12 +12653,19 @@ class RectoPlugin extends obsidian.Plugin {
 
 	isTaskResourceBusy(task) {
 		const keys = this.getTaskResourceKeys(task);
+		if (this.isLocalTaskResourceBusy(task)) return true;
 		if (this.operationResources?.conflicts(this.operationScope?.getStore(), keys)) return true;
 		return (this.pendingBackendTasks || []).some(entry => {
 			if (classifyRecoveredBackendTaskStatus(entry.status) === "abandoned" && !entry.task?.resumeTranslationSubmit) return false;
 			return this.getTaskResourceKeys({ ...entry.task, recordId: entry.recordId || entry.task?.recordId })
 				.some(value => keys.some(key => rectoResourcesOverlap(key, value)));
 		});
+	}
+
+	isLocalTaskResourceBusy(task) {
+		const keys = this.getTaskResourceKeys(task), own = this.operationScope?.getStore()?.localIntentIds;
+		return (this.localTaskIntents || []).some(item => !own?.has(item.id)
+			&& this.getTaskResourceKeys(item.task).some(value => keys.some(key => rectoResourcesOverlap(key, value))));
 	}
 
 	throwIfUnloaded() {
@@ -12588,7 +12692,8 @@ class RectoPlugin extends obsidian.Plugin {
 			if (!options.silent) new obsidian.Notice(rectoUiText("reimport.recoveryPending"), 8000);
 			return null;
 		}
-		if (options.exclusive !== false && this.activeOperation) {
+		if (options.exclusive !== false && this.activeOperation
+			&& !(options.reuseCurrent && this.activeOperation === this.operationScope?.getStore())) {
 			if (!options.silent) new obsidian.Notice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), 6000);
 			return null;
 		}
@@ -12604,7 +12709,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// Wrapped entries own the context until their outermost finally. Legacy
 		// callers may finish a cloud slot before the entry's index/cleanup tail.
 		if (this.activeOperation === operation) this.activeOperation = null;
-		if (operation.managed && !options.complete) { this.notifyTaskQueueChanged(); return; }
+		if (operation.managed && !options.complete) { this.notifyTaskQueueChanged(); this.scheduleLocalTaskQueue(); return; }
 		operation.finished = true;
 		this.operationResources?.release(operation);
 		this.operations?.delete(operation.runId);
@@ -12615,6 +12720,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// activeOperation 现在是队列条的一个输入（用于过滤本次运行自己的条目），
 		// 所以它一变就得让队列条重算：批次结束后仍在的条目此刻才该现身。
 		this.notifyTaskQueueChanged();
+		this.scheduleLocalTaskQueue();
 	}
 
 	// 软取消：不打断在跑的那篇，只让批次循环在下一篇之前停下。返回被放弃的篇数供提示用。
@@ -12631,23 +12737,38 @@ class RectoPlugin extends obsidian.Plugin {
 	// 命令面板版的软取消，判定与状态栏浮层按钮（StatusBarProgress.requestCancel）逐条一致：
 	// 没有活动操作、已经请求过、或只剩正在跑的这一篇，都不该把 stopAfterCurrent 置上去。
 	// 状态栏那一行不用在这里手动刷——spinner 每 120ms 重画一次，读的就是同一个 operation。
-	cancelQueuedTasksFromCommand() {
+	async cancelQueuedTasksFromCommand() {
+		if (this.isUnloading || this.rectoPluginUpdateInstalling) return false;
 		const operation = this.activeOperation;
-		if (!operation || operation.controller.signal.aborted) {
-			new obsidian.Notice(rectoUiText("batch.noActiveTask"), 5000);
-			return false;
-		}
-		if (operation.stopAfterCurrent) {
-			new obsidian.Notice(rectoUiText("batch.cancelAlreadyRequested"), 6000);
-			return false;
-		}
-		if ((Number(operation.queuedRemaining) || 0) <= 0) {
-			new obsidian.Notice(rectoUiText("batch.onlyCurrent"), 8000);
-			return false;
-		}
-		const dropped = this.requestStopAfterCurrent();
-		new obsidian.Notice(rectoUiText("batch.cancelledQueued", { count: dropped }), 8000);
-		return true;
+		return await this.withOperationContext("cancel-waiting-tasks", async () => {
+			let localCount = 0;
+			await this.updateLocalTaskIntents(previous => {
+				this.throwIfUnloaded();
+				return previous.filter(item => {
+					if (item.state === "executing") return true;
+					localCount++; return false;
+				});
+			});
+			if (localCount) new obsidian.Notice(rectoUiText("batch.cancelledQueued", { count: localCount }), 6000);
+			if (!operation || operation.finished || operation.controller.signal.aborted) {
+				if (localCount) return true;
+				new obsidian.Notice(rectoUiText("batch.noActiveTask"), 5000);
+				return false;
+			}
+			if (operation.stopAfterCurrent) {
+				if (localCount) return true;
+				new obsidian.Notice(rectoUiText("batch.cancelAlreadyRequested"), 6000);
+				return false;
+			}
+			if ((Number(operation.queuedRemaining) || 0) <= 0) {
+				if (localCount) return true;
+				new obsidian.Notice(rectoUiText("batch.onlyCurrent"), 8000);
+				return false;
+			}
+			const dropped = this.requestStopAfterCurrent(operation);
+			new obsidian.Notice(rectoUiText("batch.cancelledQueued", { count: dropped }), 8000);
+			return true;
+		}, { independent: true });
 	}
 
 	getActiveSignal() {
@@ -13418,7 +13539,7 @@ class RectoPlugin extends obsidian.Plugin {
 	 * 防护（都走 runBackendBatchWithTasks），不变量真正要守的东西没丢。
 	 */
 	async convertExternalPdfsFromCommand(options = {}) {
-		return await this.withOperationContext("convertExternalPdfsFromCommand", () => this.convertExternalPdfsFromCommandScoped(options));
+		return await this.withOperationContext("convertExternalPdfsFromCommand", op => { op.intakeOnly = true; return this.convertExternalPdfsFromCommandScoped(options); });
 	}
 
 	async convertExternalPdfsFromCommandScoped(options = {}) {
@@ -13428,7 +13549,6 @@ class RectoPlugin extends obsidian.Plugin {
 			return;
 		}
 		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return; }
-		if (this.activeOperation) { await this.diagnosticExit("OPERATION_BUSY", "blocked"); new obsidian.Notice(rectoUiText("external.busy"), 6000); return; }
 		const files = await this.pickExternalPdfFiles();
 		if (!files.length) { await this.diagnosticExit("FILE_PICKER_CANCELLED", "cancelled"); return; }
 		// 多选一定在同一个目录里（一次 showOpenDialog 选不到跨目录的文件），所以「PDF 所在目录」
@@ -13437,7 +13557,7 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!outputRoot) { await this.diagnosticExit("OUTPUT_DIRECTORY_CANCELLED", "cancelled"); return; }
 		const tasks = buildExternalPdfTasks(files, {
 			outputRoot,
-			keepSourcePdf: this.settings.externalKeepSourcePdf === true,
+			keepSourcePdf: this.operationScope?.getStore()?.processingChoices.keepSourcePdf ?? (this.settings.externalKeepSourcePdf === true),
 			// **默认不带翻译**：转换与翻译是两段独立计费，默认带上会让用户点一次被扣两段费。
 			// 与旧本地处理路径（转换 / 转换并翻译两个动作）和 Hub（两个显式按钮）保持同一个口径：
 			// 要译文必须由用户明确选那条命令。
@@ -15134,6 +15254,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 	// 登录、退出、额度或订单变化后，让已经打开的 Hub 额度徽章跟上，不必用户手点刷新。
 	refreshAccountDependentViews() {
+		this.scheduleLocalTaskQueue();
 		for (const view of this.getOpenHubViews()) {
 			if (typeof view.refreshCreditsBadge === "function") view.refreshCreditsBadge();
 		}
@@ -15695,7 +15816,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async createBackendHostedTaskUnlocked(task) {
 		if (task.namingVersion === 1) {
 			const desired = task.stem || sanitizeStem(task.zoteroTitle || String(task.name || "paper").replace(/\.pdf$/i, ""));
-			task.stem = isRectoExternalTask(task) ? this.allocateExternalTaskStem(task, desired) : this.allocateUniquePaperStem(desired, task.recordId);
+			if (!task.localIntentId) task.stem = isRectoExternalTask(task) ? this.allocateExternalTaskStem(task, desired) : this.allocateUniquePaperStem(desired, task.recordId);
 			task.sourcePath = documentArtifactPath(this.resolveTaskPaperFolder(task, task.stem), task.stem, "src");
 			if (this.app.vault.getAbstractFileByPath(task.sourcePath)) throw new Error(documentLanguageText("原文路径已存在，未提交转换。", "The source path already exists. Conversion was not submitted."));
 		}
@@ -15724,6 +15845,8 @@ class RectoPlugin extends obsidian.Plugin {
 		if (nodePath.extname(sourcePath).toLowerCase() !== ".pdf") throw new Error("Only PDF files can be uploaded to Recto backend");
 		if (stat.size > PDF_MAX_BYTES) throw new Error("PDF exceeds the 50 MB upload limit");
 		const fileData = await fs.promises.readFile(sourcePath);
+		this.throwIfUnloaded();
+		if (task.localInputHash && crypto.createHash("sha256").update(fileData).digest("hex") !== task.localInputHash) throw new Error(rectoUiText("queue.sourceChanged", { name: task.name || task.recordId }));
 		return await this.backendMultipartRequest(`/api/v1/tasks/${encodeURIComponent(taskId)}/upload`, [{
 			name: "pdf",
 			filename: task.name || nodePath.basename(sourcePath) || "paper.pdf",
@@ -15781,7 +15904,7 @@ class RectoPlugin extends obsidian.Plugin {
 	 * T84 库外转换产出的 `en-*.md` 事后补译、Sidecar 降级的老论文补译。
 	 */
 	async translateActiveMarkdownFromCommand() {
-		return await this.withOperationContext("translateActiveMarkdownFromCommand", () => this.translateActiveMarkdownFromCommandScoped());
+		return await this.withOperationContext("translateActiveMarkdownFromCommand", op => { op.intakeOnly = true; return this.translateActiveMarkdownFromCommandScoped(); });
 	}
 
 	async translateActiveMarkdownFromCommandScoped() {
@@ -15791,7 +15914,8 @@ class RectoPlugin extends obsidian.Plugin {
 			new obsidian.Notice(rectoUiText("markdown.openFirst"), 6000);
 			return;
 		}
-		const target = resolveRectoMarkdownTranslationTarget(file.path, this.settings.documentLanguages.translationTarget);
+		const translationTarget = this.operationScope?.getStore()?.translationTarget || this.settings.documentLanguages.translationTarget;
+		const target = resolveRectoMarkdownTranslationTarget(file.path, translationTarget);
 		if (!target) { await this.diagnosticExit("INVALID_TRANSLATION_SOURCE", "blocked");
 			new obsidian.Notice(rectoUiText("markdown.invalidSource"), 8000);
 			return;
@@ -15838,7 +15962,7 @@ class RectoPlugin extends obsidian.Plugin {
 			}));
 			if (!replace) { await this.diagnosticExit("USER_CANCELLED", "cancelled"); return; }
 		}
-		const writeAnchors = this.settings.markdownTranslationWriteAnchors === true;
+		const writeAnchors = this.operationScope?.getStore()?.processingChoices.markdownWriteAnchors ?? (this.settings.markdownTranslationWriteAnchors === true);
 		// 单篇零确认是 T84-F 的既有决定，所以量级用 Notice 说而不是再弹一次窗——但**必须说**：
 		// 额度是按字符扣的，用户事先看不见量级就等于蒙着眼花钱。
 		new obsidian.Notice(
@@ -15852,6 +15976,7 @@ class RectoPlugin extends obsidian.Plugin {
 			recordId: buildRectoMarkdownRecordId(file.path),
 			stem: target.stem,
 			translateOnly: true,
+			languageContract: { version: 1, namingVersion: 1, target: translationTarget, unifiedOutput: true },
 			markdownPath: file.path,
 			markdownDocumentId: createRectoDocumentId(),
 			translationQuotePages: estimate.pages,
@@ -15881,6 +16006,8 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		if (!path || !(await adapter.exists(path))) throw new Error("要翻译的文档已不在原来的位置");
 		const markdown = await adapter.read(path);
+		this.throwIfUnloaded();
+		if (task.localInputHash && documentContentHash(markdown) !== task.localInputHash) throw new Error(rectoUiText("queue.sourceChanged", { name: task.name || task.recordId }));
 		if (task.namingVersion === 1) {
 			const prior = this.settings.documentArtifacts?.[path];
 			if (prior && prior.sourceContentHash === documentContentHash(markdown)) {
@@ -16855,6 +16982,175 @@ class RectoPlugin extends obsidian.Plugin {
 		return await this.withOperationContext("backend-batch", () => this.runBackendBatchWithTasksUnlocked(tasks, options));
 	}
 
+	async localTaskInputHash(task) {
+		this.throwIfUnloaded();
+		if (!task.translateOnly) {
+			const stat = await fs.promises.stat(task.path);
+			if (!stat.isFile() || stat.size > PDF_MAX_BYTES) throw new Error("PDF input unavailable");
+			const hash = crypto.createHash("sha256");
+			for await (const bytes of fs.createReadStream(task.path)) { this.throwIfUnloaded(); hash.update(bytes); }
+			return hash.digest("hex");
+		}
+		const file = this.app.vault.getAbstractFileByPath(task.sourcePath || task.markdownPath);
+		if (!file) throw new Error("Translation input unavailable");
+		return documentContentHash(await this.app.vault.read(file));
+	}
+
+	async updateLocalTaskIntents(change) {
+		await this.save(() => {
+			const previous = this.localTaskIntents || [];
+			this.localTaskIntents = change(previous);
+			return () => { this.localTaskIntents = previous; };
+		});
+		this.notifyTaskQueueChanged();
+	}
+
+	async enqueueLocalTaskIntents(tasks) {
+		const operation = this.operationScope.getStore();
+		const accountId = normalizeRectoUuid(operation.account.backendUserId);
+		if (!accountId) throw createRectoUiError("account.signInRequired");
+		const batchId = crypto.randomUUID(), items = [], skipped = [];
+		const diagnostic = this.diagnosticScope?.getStore();
+		for (const original of tasks) {
+			const task = JSON.parse(JSON.stringify(sanitizePersistedPendingTask(original)));
+			if (this.isTaskResourceBusy(task) || this.hasPendingBackendTaskForRecord(task.recordId)) { skipped.push({ task, reason: "pending" }); continue; }
+			try {
+				// Freeze both the directory choice and final document paths. Allocation
+				// only reserves names; it creates no vault files and no backend task.
+				if (!task.translateOnly && task.namingVersion === 1) {
+					const desired = task.stem || this.folderMap?.[task.recordId]?.stem || sanitizeStem(task.zoteroTitle || String(task.name || "paper").replace(/\.pdf$/i, ""));
+					task.stem = isRectoExternalTask(task) ? this.allocateExternalTaskStem(task, desired) : this.allocateUniquePaperStem(desired, task.recordId);
+					task.sourcePath = documentArtifactPath(this.resolveTaskPaperFolder(task, task.stem), task.stem, "src");
+				}
+				this.claimTaskResources(task);
+				const inputHash = await this.localTaskInputHash(task);
+				this.throwIfUnloaded();
+				if (task.sourceContentHash && task.sourceContentHash !== inputHash) throw new Error("Translation input changed");
+				task.ownerAccountId = accountId;
+				task.diagnosticOperationId = normalizeRectoUuid(diagnostic?.operationId) || crypto.randomUUID();
+				task.diagnosticUserId = accountId;
+				task.diagnosticItemId = crypto.randomUUID();
+				if (!task.translateOnly) task.postprocessProfile = this.getTaskPostprocessProfile(task);
+				items.push({ id: crypto.randomUUID(), batchId, accountId, backendBaseUrl: operation.account.backendBaseUrl,
+					libraryBase: operation.libraryBase || "", createdAt: new Date().toISOString(), state: "waiting", failure: "",
+					inputHash, sidecarHash: original.translationSidecarHash || "", task });
+			} catch (error) {
+				if (isCancellationError(error, this.getActiveSignal()) || this.isUnloading) throw error;
+				skipped.push({ task, reason: error.code === "RECTO_RESOURCE_BUSY" ? "pending" : "unavailable" });
+			}
+		}
+		this.reportSkippedBackendTasks(skipped, items.length);
+		if (!items.length) return { queued: 0 };
+		await this.updateLocalTaskIntents(previous => {
+			this.throwIfUnloaded();
+			return [...previous, ...items];
+		});
+		new obsidian.Notice(rectoUiText("queue.added", { count: items.length }), 6000);
+		// Durable intents now reserve these resources; the intake context must
+		// relinquish its temporary claims before the independent executor starts.
+		this.operationResources.release(operation);
+		if (operation.intakeOnly || this.activeOperation || this.localTaskQueuePromise) {
+			this.scheduleLocalTaskQueue();
+			return { queued: items.length };
+		}
+		await this.drainLocalTaskQueue();
+		return { queued: items.length };
+	}
+
+	scheduleLocalTaskQueue() {
+		if (this.isUnloading || this.rectoPluginUpdateInstalling || this.localTaskQueueTimer || this.localTaskQueuePromise
+			|| !(this.localTaskIntents || []).some(item => item.state === "waiting")) return;
+		this.localTaskQueueTimer = setTimeout(() => {
+			this.localTaskQueueTimer = null;
+			void this.drainLocalTaskQueue().catch(() => { new obsidian.Notice(rectoUiText("queue.saveFailed"), 8000); });
+		}, 0);
+	}
+
+	drainLocalTaskQueue() {
+		if (this.localTaskQueuePromise) return this.localTaskQueuePromise;
+		if (this.isUnloading || this.rectoPluginUpdateInstalling || this.activeOperation || this.settings?.paperReimport
+			|| !this.hasBackendAccountSession() || !this.hasCloudProcessingConsent()) return Promise.resolve();
+		const work = async () => {
+			while (!this.isUnloading && !this.rectoPluginUpdateInstalling && !this.activeOperation && !this.settings?.paperReimport) {
+				const first = (this.localTaskIntents || []).find(item => item.state === "waiting"
+					&& item.accountId === this.settings.backendUserId && item.backendBaseUrl === this.settings.backendBaseUrl);
+				if (!first) break;
+				const items = this.localTaskIntents.filter(item => item.batchId === first.batchId && item.state === "waiting");
+				await this.withOperationContext("local-task-queue", async operation => {
+					operation.localIntentIds = new Set(items.map(item => item.id));
+					try {
+						if (!this.beginOperation(rectoUiText("task.cloudProcessing"), { silent: true })) return;
+						operation.queuedRemaining = items.length;
+						await this.updateLocalTaskIntents(previous => previous.map(item => operation.localIntentIds.has(item.id)
+							? { ...item, state: "executing" } : item));
+						const valid = [];
+						for (const item of items) {
+							// Cancellation may have won the serialized save before this executor.
+							if (!this.localTaskIntents.some(entry => entry.id === item.id)) continue;
+							try {
+								if (rectoResourcePath(item.libraryBase) !== rectoResourcePath(this.settings.baseFolder || "")) throw new Error("Library changed");
+								this.claimTaskResources(item.task);
+								if (await this.localTaskInputHash(item.task) !== item.inputHash) throw new Error("Source changed");
+								if (item.sidecarHash && !isRectoMarkdownTranslationTask(item.task)
+									&& documentContentHash(await this.readLocalPaperSidecarText(item.task.stem, item.task)) !== item.sidecarHash) throw new Error("Sidecar changed");
+								this.throwIfUnloaded();
+								valid.push(item);
+							} catch (error) {
+								this.throwIfUnloaded();
+								if (isCancellationError(error, this.getActiveSignal()) || this.isUnloading) throw error;
+								await this.updateLocalTaskIntents(previous => previous.map(entry => entry.id === item.id ? { ...entry, state: "blocked", failure: "source" } : entry));
+								new obsidian.Notice(rectoUiText("queue.sourceChanged", { name: item.task.name || item.task.recordId }), 10000);
+							}
+						}
+						if (!valid.length) return;
+						const ids = new Set(valid.map(item => item.id));
+						const tasks = valid.map(item => ({ ...item.task, localInputHash: item.inputHash, localIntentId: item.id,
+							...(item.sidecarHash ? { translationSidecarHash: item.sidecarHash } : {}) }));
+						try {
+							const execute = () => this.runBackendBatchWithTasks(tasks, { batchConfirmed: true, localQueueExecution: true });
+							await (this.diagnosticScope ? this.diagnosticScope.run({ operationId: tasks[0].diagnosticOperationId,
+								userId: tasks[0].diagnosticUserId, operation: "batch", taskId: null, itemId: null }, execute) : execute());
+						} finally {
+							// Entries whose receipt was saved are already gone. Keep unsubmitted
+							// failures visible, rather than automatically creating another task.
+							await this.updateLocalTaskIntents(previous => previous.flatMap(item => {
+								if (!ids.has(item.id)) return [item];
+								if (operation.stopAfterCurrent) return [];
+								if (this.isUnloading || operation.account.backendUserId !== this.settings.backendUserId) return [{ ...item, state: "waiting" }];
+								return [{ ...item, state: "blocked", failure: "execution" }];
+							}));
+						}
+					} finally {
+						if ((this.localTaskIntents || []).some(item => operation.localIntentIds.has(item.id) && item.state === "executing")) {
+							await this.updateLocalTaskIntents(previous => previous.map(item => operation.localIntentIds.has(item.id) && item.state === "executing"
+								? { ...item, state: "waiting" } : item));
+						}
+					}
+				}, { independent: true });
+			}
+		};
+		// A microtask installs the single-instance marker before the first await.
+		const run = Promise.resolve().then(() => this.diagnosticScope ? this.diagnosticScope.run(null, work) : work());
+		this.localTaskQueuePromise = run.finally(() => { this.localTaskQueuePromise = null; this.notifyTaskQueueChanged(); });
+		return this.localTaskQueuePromise;
+	}
+
+	async cancelLocalTaskIntent(id) {
+		if (this.isUnloading || this.rectoPluginUpdateInstalling) return false;
+		return await this.withOperationContext("cancel-local-intent", async () => {
+			let cancelled = false;
+			await this.updateLocalTaskIntents(previous => {
+				this.throwIfUnloaded();
+				return previous.filter(item => {
+					if (item.id !== id || item.state === "executing") return true;
+					cancelled = true; return false;
+				});
+			});
+			if (cancelled) new obsidian.Notice(rectoUiText("queue.cancelled"), 5000);
+			return cancelled;
+		}, { independent: true });
+	}
+
 	async runBackendBatchWithTasksUnlocked(tasks, options = {}) {
 		const s = this.settings;
 		// 拒绝云端确认（或按 Esc 关掉）不能一声不吭地返回：用户刚点过转换/翻译，界面毫无反应
@@ -16866,7 +17162,8 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return; }
 		if (!tasks || !tasks.length) { await this.diagnosticExit("NO_TASKS", "skipped"); new obsidian.Notice(rectoUiText("task.noTasks")); return; }
-		tasks = tasks.map(task => ({ ...task, recordId: task.recordId || task.folder || task.name }));
+		tasks = tasks.map(task => ({ ...task, recordId: task.recordId || task.folder || task.name,
+			...(!task.translateOnly && !task.postprocessProfile ? { postprocessProfile: this.operationScope?.getStore()?.processingChoices.postprocessProfile || this.getBackendPostprocessProfile() } : {}) }));
 		const selection = await this.prepareRunnableBackendTasks(tasks);
 		this.reportSkippedBackendTasks(selection.skipped, selection.runnable.length);
 		tasks = selection.runnable;
@@ -16886,7 +17183,8 @@ class RectoPlugin extends obsidian.Plugin {
 		const markdownOnly = tasks.every(task => isRectoMarkdownTranslationTask(task));
 		const base = markdownOnly ? "" : this.getValidatedBaseFolderOrNotice();
 		if (!markdownOnly && !base) { await this.diagnosticExit("LIBRARY_PATH_INVALID"); return; }
-		const operation = this.beginOperation(rectoUiText("task.cloudProcessing"));
+		if (!options.localQueueExecution) return await this.enqueueLocalTaskIntents(tasks);
+		const operation = this.beginOperation(rectoUiText("task.cloudProcessing"), { reuseCurrent: options.localQueueExecution === true });
 		if (!operation) { await this.diagnosticExit("OPERATION_BUSY"); return; }
 		let modal = null;
 		let suspended = false;
@@ -16945,6 +17243,11 @@ class RectoPlugin extends obsidian.Plugin {
 				await this.withDiagnosticItem(task, async () => {
 				let backendTaskId = "";
 				try {
+					if (task.localInputHash && (await this.localTaskInputHash(task) !== task.localInputHash
+						|| (task.translationSidecarHash && !isRectoMarkdownTranslationTask(task)
+							&& documentContentHash(await this.readLocalPaperSidecarText(task.stem, task)) !== task.translationSidecarHash))) {
+						throw Object.assign(createRectoUiError("queue.sourceChanged", { name: task.name || task.recordId }), { code: "SOURCE_REVISION_MISMATCH" });
+					}
 					if (task.translateOnly) {
 						const phase = await this.runBackendTranslationPhase(task, task.stem, modal, operation, id => { backendTaskId = id; });
 						if (phase.tailExemption) exemptedCount += 1;
@@ -16956,13 +17259,16 @@ class RectoPlugin extends obsidian.Plugin {
 					const created = await this.createBackendHostedTask(task);
 					if (task.namingVersion === 1 && created.languageContract?.version !== 1) throw new Error(documentLanguageText("服务未确认文档语言功能，文件未上传。", "The service did not confirm document language support. The file was not uploaded."));
 					backendTaskId = created.taskId;
+					// Receipt ownership moves from the local intent to recovery before
+					// uploading anything. A failed save cannot expose a paid duplicate.
+					await this.persistPendingBackendTask(backendTaskId, task, "submitted", { ownerRunId: operation.runId });
 					modal.log(`[${index + 1}/${tasks.length}] 已提交：${task.name || "未命名论文"}`);
 					modal.setStage("上传", task.name);
 					const uploaded = await this.uploadBackendTaskPdf(backendTaskId, task);
 					modal.log(`[${index + 1}/${tasks.length}] 文件已上传`);
 					modal.setStage("排队", task.name);
 					await this.runBackendRealTask(backendTaskId);
-					// 提交成功后后端将在 READY 时扣费，从这一刻起持久化以便重启恢复、避免重复提交与重复扣费。
+					// 上传前已有登记；这里更新提交后的状态，继续按原 ID 恢复。
 					// 打上本次运行的 runId：这一篇正被前台循环盯着，队列条不该把它显示成待恢复的滞留任务。
 					await this.persistPendingBackendTask(backendTaskId, task, "submitted", { ownerRunId: operation.runId });
 					const ready = await this.pollBackendTaskStatus(backendTaskId, modal);
@@ -17116,7 +17422,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const preferences = this.settings.documentLanguages;
 		for (const task of tasks) {
 			task.namingVersion = 1;
-			task.languageContract = { version: 1, namingVersion: 1, source: null, sourceEvidence: "unknown", target: options.translationTarget || preferences.translationTarget, sourceRevisionId: null, ocrLanguage: "auto", unifiedOutput: true };
+			task.languageContract = { version: 1, namingVersion: 1, source: null, sourceEvidence: "unknown", target: options.translationTarget || this.operationScope?.getStore()?.translationTarget || preferences.translationTarget, sourceRevisionId: null, ocrLanguage: "auto", unifiedOutput: true };
 		}
 		for (const task of tasks) if (task.requestSummary) task.summaryLanguage = task.languageContract.target.id;
 		return await this.runBackendBatchWithTasks(tasks, options);
@@ -17126,7 +17432,7 @@ class RectoPlugin extends obsidian.Plugin {
 	// 上传确认、状态栏进度、可取消、额度扣减、失败日志与重启恢复全部沿用，不写平行实现。
 	// requestTranslation 只挂在任务对象上（并随任务持久化），不改设置页的全局偏好。
 	async runHubBatchForRecords(recordIds, options = {}) {
-		return await this.withOperationContext("runHubBatchForRecords", () => this.runHubBatchForRecordsScoped(recordIds, options));
+		return await this.withOperationContext("runHubBatchForRecords", op => { op.intakeOnly = true; return this.runHubBatchForRecordsScoped(recordIds, options); });
 	}
 
 	async runHubBatchForRecordsScoped(recordIds, options = {}) {
@@ -17153,7 +17459,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const requestTranslation = options.requestTranslation === true;
 		// T83-N：profile 在这里定死一次，整批共用同一个值——批次跑到一半用户改了开关，
 		// 后半批不该悄悄换一套规则。
-		const postprocessProfile = this.getBackendPostprocessProfile();
+		const postprocessProfile = this.operationScope?.getStore()?.processingChoices.postprocessProfile || this.getBackendPostprocessProfile();
 		return await this.runBatchWithTasks(picked.map(task => ({
 			...task, requestTranslation, postprocessProfile,
 			requestSummary: requestTranslation && options.requestSummary === true,
@@ -17168,7 +17474,7 @@ class RectoPlugin extends obsidian.Plugin {
 	 * 已转换无译文的只译。两组共用本次设置快照；单篇直接执行，多篇统一确认一次。
 	 */
 	async runHubTranslateForRecords(recordIds) {
-		return await this.withOperationContext("runHubTranslateForRecords", () => this.runHubTranslateForRecordsScoped(recordIds));
+		return await this.withOperationContext("runHubTranslateForRecords", op => { op.intakeOnly = true; return this.runHubTranslateForRecordsScoped(recordIds); });
 	}
 
 	async runHubTranslateForRecordsScoped(recordIds) {
@@ -17186,11 +17492,12 @@ class RectoPlugin extends obsidian.Plugin {
 		const needConversion = [];
 		const skipped = [];
 		// 两组之间可能经过很久；设置改动只影响下一次操作，不改变本次摘要或输出目标。
-		const batchOptions = { batchConfirmed: true, translationTarget: { ...this.settings.documentLanguages.translationTarget } };
+		const batchOptions = { batchConfirmed: true, translationTarget: { ...(this.operationScope?.getStore()?.translationTarget || this.settings.documentLanguages.translationTarget) } };
+		const choices = this.operationScope?.getStore()?.processingChoices;
 		const summaryOptions = {
-			requestSummary: this.settings.generateSummaryOnTranslate === true,
+			requestSummary: choices ? choices.requestSummary : this.settings.generateSummaryOnTranslate === true,
 			summaryLanguage: batchOptions.translationTarget.id,
-			summaryDepth: normalizeBackendChoice(this.settings.summaryDepth, BACKEND_SUMMARY_DEPTHS, DEFAULT_SETTINGS.summaryDepth),
+			summaryDepth: normalizeBackendChoice(choices ? choices.summaryDepth : this.settings.summaryDepth, BACKEND_SUMMARY_DEPTHS, DEFAULT_SETTINGS.summaryDepth),
 		};
 		for (const recordId of wanted) {
 			if (this.hasPendingBackendTaskForRecord(recordId)) { skipped.push({ task: { recordId }, reason: "pending" }); continue; }
@@ -17393,6 +17700,7 @@ class RectoPlugin extends obsidian.Plugin {
 			const reservedBy = this.stemReservations && this.stemReservations.get(candidate);
 			if (reservedBy && reservedBy !== recordId) return false;
 			const keys = [`path:${rectoResourcePath(this.getPaperSubFolder(candidate))}`];
+			if (this.isLocalTaskResourceBusy({ sourcePath: this.getPaperSubFolder(candidate) })) return false;
 			if (this.operationResources?.conflicts(this.operationScope?.getStore(), keys)) return false;
 			const paper = this.app.vault.getAbstractFileByPath(this.getPaperSubFolder(candidate));
 			const summary = this.app.vault.getAbstractFileByPath(this.getSummaryPath(candidate))
@@ -19117,19 +19425,23 @@ function createRectoHubViewClass(api) {
 			const view = this.plugin.getHubQueueView();
 			this.queueEl.toggleClass("is-hidden", view.empty);
 			// 只按「原因」报警，不按时长：写回反复失败才是真出事了。
-			this.queueEl.toggleClass("is-stale", !!view.counts.blocked);
+			this.queueEl.toggleClass("is-stale", !!(view.counts.blocked || view.counts.localBlocked));
 			if (view.empty) return;
 			// blocked 的条目默认展开——自动重试已经停了，用户必须看见并处置它。
-			if (view.counts.blocked) this.queueExpanded = true;
+			if (view.counts.blocked || view.counts.localBlocked) this.queueExpanded = true;
 			const head = this.queueEl.createDiv({ cls: "recto-hub-queue-head" });
 			const caret = head.createSpan({ cls: "recto-hub-queue-caret", text: this.queueExpanded ? "▾" : "▸" });
 			caret.dataset.hubQueue = "toggle";
 			// 同一行的「再试一次 / 立即恢复」本来就是真 <button>，只有这个折叠三角键盘够不到。
 			// 旁边那段摘要文字也挂着同一个 toggle，但它只是鼠标的大命中区，不再占一个 Tab 位。
 			this.markAsButton(caret, rectoUiText(this.queueExpanded ? "hub.collapseQueue" : "hub.expandQueue"));
-			const summary = view.counts.blocked
-				? rectoUiText("hub.writebackFailedCount", { count: view.counts.blocked })
-				: [rectoUiText("hub.pendingWritebackCount", { count: view.rows.length }), view.oldestAgeText ? rectoUiText("hub.oldest", { age: view.oldestAgeText }) : ""].filter(Boolean).join(" · ");
+			const cloudCount = view.rows.length - (view.counts.local || 0);
+			const summary = [
+				view.counts.local ? rectoUiText("queue.count", { count: view.counts.local }) : "",
+				view.counts.blocked ? rectoUiText("hub.writebackFailedCount", { count: view.counts.blocked })
+					: cloudCount ? rectoUiText("hub.pendingWritebackCount", { count: cloudCount }) : "",
+				view.oldestAgeText ? rectoUiText("hub.oldest", { age: view.oldestAgeText }) : "",
+			].filter(Boolean).join(" · ");
 			const label = head.createSpan({ cls: "recto-hub-queue-label", text: summary });
 			label.dataset.hubQueue = "toggle";
 			const recover = head.createEl("button", { text: rectoUiText(view.counts.blocked ? "hub.tryAgain" : "hub.recoverNow") });
@@ -19143,9 +19455,14 @@ function createRectoHubViewClass(api) {
 				el.createSpan({ cls: "recto-hub-queue-name", text: row.name });
 				el.createSpan({
 					cls: "recto-hub-queue-status",
-					text: [row.blocked ? rectoUiText("hub.writebackFailed") : rectoUiText(`hub.queueStatus.${row.kind}`), row.ageText].filter(Boolean).join(" · "),
+					text: [row.local ? rectoUiText(`queue.${row.status}`) : row.blocked ? rectoUiText("hub.writebackFailed") : rectoUiText(`hub.queueStatus.${row.kind}`), row.ageText].filter(Boolean).join(" · "),
 				});
-				if (row.blocked) {
+				if (row.local && row.status !== "executing") {
+					const cancel = el.createEl("button", { text: rectoUiText("dialog.cancel") });
+					cancel.dataset.hubQueue = "cancel-local";
+					cancel.dataset.hubQueueTask = row.taskId;
+					cancel.disabled = this.isQueueActionBusy("cancel-local", row.taskId);
+				} else if (row.blocked && !row.local) {
 					// 唯一的人工出路：放弃这条登记，让这篇论文重新可转换。
 					const abandon = el.createEl("button", { text: rectoUiText("hub.abandon") });
 					abandon.dataset.hubQueue = "abandon";
@@ -19176,6 +19493,13 @@ function createRectoHubViewClass(api) {
 				return;
 			}
 			const taskId = button.dataset.hubQueueTask;
+			if (action === "cancel-local") {
+				if (this.isQueueActionBusy(action, taskId)) return;
+				const pending = this.plugin.localQueueCancelIds ||= new Set();
+				pending.add(taskId); button.disabled = true;
+				return this.plugin.cancelLocalTaskIntent(taskId).catch(() => { new api.Notice(rectoUiText("queue.saveFailed"), 6000); })
+					.finally(() => { pending.delete(taskId); this.renderQueue(); });
+			}
 			if (!["retry-blocked", "abandon", "recover"].includes(action) || this.isQueueActionBusy(action, taskId)) return;
 			const abandoning = action === "abandon";
 			if (abandoning) (this.plugin.hubQueueAbandonIds ||= new Set()).add(taskId);
@@ -19185,6 +19509,7 @@ function createRectoHubViewClass(api) {
 			};
 			sync();
 			return this.yieldForActionFeedback().then(() => {
+				this.plugin.scheduleLocalTaskQueue?.();
 				if (action === "retry-blocked") return this.plugin.retryBlockedPendingBackendTasks();
 				if (action === "abandon") return this.plugin.abandonPendingBackendTask(taskId);
 				return this.plugin.recoverPendingBackendTasksFromCommand();
@@ -19197,6 +19522,7 @@ function createRectoHubViewClass(api) {
 		}
 
 		isQueueActionBusy(action, taskId) {
+			if (action === "cancel-local") return !!this.plugin.localQueueCancelIds?.has(taskId);
 			if (action === "abandon") return !!(this.plugin.hubQueueAbandonIds?.has(taskId) || this.plugin.isPendingBackendTaskRecovering?.(taskId));
 			return !!this.queueActionRunning;
 		}
@@ -19432,7 +19758,7 @@ function createRectoHubViewClass(api) {
 			const reimportIds = new Set(this.plugin.hubReimportRecordIds || []);
 			if (this.plugin.settings?.paperReimport?.recordId) reimportIds.add(this.plugin.settings.paperReimport.recordId);
 			return isHubContextActionBlocked(entries, action, {
-				processing: !!(this.processActionRunning || this.plugin.activeOperation),
+				processing: !!this.processActionRunning || (action === "delete" && !!this.plugin.activeOperation),
 				locks: this.plugin.hubContextActionLocks,
 				reimportIds,
 				localRecordIds: new Set([...(this.plugin.hubContextActionRecords?.values() || [])].flat()),
@@ -22686,6 +23012,7 @@ function sleep(ms, signal) {
 if (process.env.NODE_ENV === "test") {
 	RectoPlugin.__test = {
 		RectoOperationResources,
+		normalizeLocalTaskIntents,
 		rectoResourcePath,
 		rectoResourcesOverlap,
 		StatusBarProgress,
