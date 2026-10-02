@@ -86,10 +86,10 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.chooseVaultFolder": "请选择 Vault 内的文件夹。",
 		"settings.libraryMoved": "论文库文件夹已改为「{folder}」。旧目录不会自动改名，里面的论文仍在原处。",
 		"settings.importLibrary": "导入 Zotero 论文库",
-		"settings.autoSyncOn": "已开启自动同步：新的单 PDF 条目会静默入库；多 PDF 与已删除条目只记待确认，不自动删文件。点「立即检查」可立刻强制同步。",
+		"settings.autoSyncOn": "已开启自动同步：新的单 PDF 条目会静默入库；多 PDF 与已删除条目只记待确认，不自动删文件。点「立即同步」可立刻强制同步。",
 		"settings.autoSyncOff": "首次点「一键导入」并完成后才会开启自动同步。导入只在本地建文件夹与复制 PDF，不转换、不扣额度。",
-		"settings.checkNow": "立即检查",
-		"settings.checking": "检查中…",
+		"settings.checkNow": "立即同步",
+		"settings.checking": "同步中…",
 		"settings.importNow": "一键导入",
 		"settings.runtimeUnsupported": "当前运行时不支持",
 		"settings.importing": "导入中…",
@@ -102,7 +102,19 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.replayOnboarding": "再看一次引导",
 		"settings.zoteroDetectedDesc": "已自动检测并填入 Zotero 数据目录；云端附件未下载时，转换会显示缺失。",
 		"settings.zoteroMissingDesc": "未自动检测到 Zotero 数据目录。请手动选择 Zotero 数据目录；云端附件未下载时，转换会显示缺失。",
-		"settings.zoteroFindHint": "查找方法：在 Zotero 中右键任意 PDF 附件，打开文件所在位置后返回上一级，选择名为 storage 的文件夹。",
+		"settings.zoteroFindHint": "查找方法：打开 Zotero 设置 → 高级 → 文件和文件夹 → 显示数据目录，选择该目录或其中的 storage 文件夹。",
+		"settings.zoteroDetectAgain": "重新检测",
+		"settings.zoteroEditPath": "选择或填写 Zotero 库位置",
+		"settings.zoteroSavePath": "保存",
+		"settings.zoteroNoPath": "未设置，请点击文件夹图标",
+		"settings.zoteroLocation": "Zotero 库位置：{path}",
+		"settings.zoteroCheckHint": "· 点击「立即同步」同步论文更新",
+		"settings.zoteroImportHint": "· 点击「一键导入」导入论文并开启自动同步",
+		"settings.zoteroChooseDetected": "请选择 Zotero 数据目录",
+		"settings.zoteroChooseDetectedDesc": "请核对 Zotero 中“显示数据目录”的位置，再选择要连接的论文库。",
+		"settings.zoteroStorageMissing": "已找到数据目录，但附件文件夹尚不可访问。请在 Zotero 中下载 PDF 附件，并检查目录权限。",
+		"settings.zoteroInvalidSource": "请选择包含 zotero.sqlite 的 Zotero 数据目录，或其中的 storage 文件夹，并确认目录可读。",
+		"settings.zoteroSaveFailed": "目录保存失败，请重新检测或选择文件夹后重试。",
 		"settings.currentDataFolder": "当前数据目录：",
 		"settings.chooseZoteroFolder": "选择 Zotero 数据目录（可直接选择名为 storage 的文件夹）",
 		"settings.detected": "已检测",
@@ -654,13 +666,13 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"compare.pdfDocumentMismatch": "PDF 与当前 Markdown 不属于同一篇论文",
 		"compare.pdfRevisionMismatch": "PDF 来源修订与当前 Markdown 不一致",
 		"compare.pdfNoPageInfo": "这篇论文没有可用的页码定位信息",
-		"import.runtimeUnsupported": "当前环境无法读取 Zotero 论文库。请更新 Obsidian 后重试。",
+		"import.runtimeUnsupported": "当前环境无法读取 Zotero 论文库。请从 Obsidian 官网重新下载安装包并安装，仅在应用内检查更新可能无效。",
 		"import.chooseSource": "请先设置 Zotero 源文件夹",
 		"import.cancelled": "已取消导入，未导入任何论文。",
 		"import.noPdf": "没有找到可读的本地 Zotero PDF，未导入任何内容",
 		"import.failed": "Zotero 导入未完成，请稍后重试。",
 		"import.dbBusy": "Zotero 数据库正在被占用。请关闭 Zotero 后重试导入或检查。",
-		"import.runtimeUpgrade": "当前环境无法读取 Zotero 论文库，请更新 Obsidian 后重试。",
+		"import.runtimeUpgrade": "当前环境无法读取 Zotero 论文库。请从 Obsidian 官网重新下载安装包并安装，仅在应用内检查更新可能无效。",
 		"import.folderMissing": "找不到或无法读取 Zotero 论文库文件夹。请在 Recto 设置中重新选择 Zotero 数据目录。",
 		"import.autoSync": "Zotero 自动同步",
 		"import.autoAdded": "新增 {count} 篇",
@@ -845,6 +857,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"progress.pendingCopy": "{count} 篇待复制",
 		"error.default": "操作未完成，请稍后重试。",
 		"error.cloudConsent": "请先同意 Recto 云端处理说明。",
+		"error.documentLanguageUnsupported": "服务暂不支持新的文档语言功能，请更新服务后重试。",
 		"error.remoteTask": "处理未完成，请稍后重试。",
 		"error.sessionExpired": "登录状态已失效，请重新登录 Recto。",
 		"error.taskExpired": "这项处理已失效，请重新提交。",
@@ -963,10 +976,10 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.chooseVaultFolder": "Choose a folder inside this vault.",
 		"settings.libraryMoved": "Paper library folder changed to “{folder}”. The old folder was not renamed; its papers remain in their original location.",
 		"settings.importLibrary": "Import Zotero library",
-		"settings.autoSyncOn": "Automatic sync is on. New entries with one PDF are imported silently; entries with multiple PDFs and deleted entries await your choice. Files are never deleted automatically. Use “Check now” to sync immediately.",
+		"settings.autoSyncOn": "Automatic sync is on. New entries with one PDF are imported silently; entries with multiple PDFs and deleted entries await your choice. Files are never deleted automatically. Use “Sync now” to sync immediately.",
 		"settings.autoSyncOff": "Automatic sync starts after your first successful import. Import creates folders and copies PDFs locally; it does not convert papers or use credits.",
-		"settings.checkNow": "Check now",
-		"settings.checking": "Checking…",
+		"settings.checkNow": "Sync now",
+		"settings.checking": "Syncing…",
 		"settings.importNow": "Import now",
 		"settings.runtimeUnsupported": "Not supported in this runtime",
 		"settings.importing": "Importing…",
@@ -979,7 +992,19 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.replayOnboarding": "Replay onboarding",
 		"settings.zoteroDetectedDesc": "The Zotero data folder was detected and filled in. Conversion will report any cloud attachments that have not been downloaded.",
 		"settings.zoteroMissingDesc": "The Zotero data folder was not detected. Choose it manually. Conversion will report any cloud attachments that have not been downloaded.",
-		"settings.zoteroFindHint": "To find it, right click any PDF attachment in Zotero and open its file location. Go up one level and choose the folder named storage.",
+		"settings.zoteroFindHint": "In Zotero, open Settings → Advanced → Files and Folders → Show Data Directory. Select that folder or its storage subfolder.",
+		"settings.zoteroDetectAgain": "Detect again",
+		"settings.zoteroEditPath": "Choose or enter the Zotero library location",
+		"settings.zoteroSavePath": "Save",
+		"settings.zoteroNoPath": "Not set; click the folder icon",
+		"settings.zoteroLocation": "Zotero location: {path}",
+		"settings.zoteroCheckHint": "· Sync now to update your library",
+		"settings.zoteroImportHint": "· Import to add papers and enable automatic sync",
+		"settings.zoteroChooseDetected": "Choose the Zotero data folder",
+		"settings.zoteroChooseDetectedDesc": "Compare these locations with Show Data Directory in Zotero, then choose the library to connect.",
+		"settings.zoteroStorageMissing": "The data folder was found, but its attachment folder is not accessible yet. Download PDF attachments in Zotero and check folder permissions.",
+		"settings.zoteroInvalidSource": "Choose a readable Zotero data folder containing zotero.sqlite, or its storage subfolder.",
+		"settings.zoteroSaveFailed": "Could not save the folder. Detect again or choose a folder to retry.",
 		"settings.currentDataFolder": "Current data folder:",
 		"settings.chooseZoteroFolder": "Choose the Zotero data folder (you can select the folder named storage)",
 		"settings.detected": "Detected",
@@ -1531,13 +1556,13 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"compare.pdfDocumentMismatch": "The PDF and current Markdown belong to different papers",
 		"compare.pdfRevisionMismatch": "The PDF source revision differs from the current Markdown",
 		"compare.pdfNoPageInfo": "This paper has no usable PDF page location data",
-		"import.runtimeUnsupported": "This environment cannot read the Zotero library. Update Obsidian and try again.",
+		"import.runtimeUnsupported": "This environment cannot read the Zotero library. Download and run the latest installer from the Obsidian website; an in-app update may not update the required runtime.",
 		"import.chooseSource": "Choose a Zotero source folder first",
 		"import.cancelled": "Import cancelled. No papers were imported.",
 		"import.noPdf": "No readable local Zotero PDFs were found; nothing was imported",
 		"import.failed": "Zotero import did not finish. Try again later.",
 		"import.dbBusy": "The Zotero database is in use. Close Zotero and retry import or check.",
-		"import.runtimeUpgrade": "This environment cannot read the Zotero library. Update Obsidian and try again.",
+		"import.runtimeUpgrade": "This environment cannot read the Zotero library. Download and run the latest installer from the Obsidian website; an in-app update may not update the required runtime.",
 		"import.folderMissing": "Could not find or read the Zotero library folder. Choose the Zotero data directory again in Recto settings.",
 		"import.autoSync": "Zotero automatic sync",
 		"import.autoAdded": "Added {count} papers",
@@ -1722,6 +1747,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"progress.pendingCopy": "{count} papers awaiting copy",
 		"error.default": "Could not complete the operation. Try again later.",
 		"error.cloudConsent": "Accept Recto's cloud processing notice first.",
+		"error.documentLanguageUnsupported": "Document language support is unavailable. Update the service and try again.",
 		"error.remoteTask": "Processing did not finish. Try again later.",
 		"error.sessionExpired": "Your session expired. Sign in to Recto again.",
 		"error.taskExpired": "This task expired. Submit it again.",
@@ -2896,13 +2922,34 @@ function validateVaultRelativeFolder(raw) {
 	return clean;
 }
 
-function normalizeZoteroDataDirCandidate(raw) {
-	const text = String(raw || "").trim();
-	if (!text) return "";
-	const resolved = nodePath.resolve(text);
-	return nodePath.basename(resolved).toLowerCase() === "storage"
-		? nodePath.dirname(resolved)
-		: resolved;
+function normalizeZoteroLocalPath(raw, options = {}) {
+	const platform = options.platform || process.platform;
+	const path = platform === "win32" ? nodePath.win32 : nodePath.posix;
+	const env = options.env || process.env;
+	const home = options.homeDir ?? (platform === "win32"
+		? env.USERPROFILE || (env.HOMEDRIVE && env.HOMEPATH && `${env.HOMEDRIVE}${env.HOMEPATH}`)
+		: env.HOME) ?? (!options.env ? require("os").homedir() : "");
+	let text = String(raw || "").trim();
+	if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) text = text.slice(1, -1);
+	if (/^~(?:[\\/]|$)/.test(text) && home) text = home + text.slice(1);
+	if (platform === "win32") text = text.replace(/%([^%]+)%/g, (match, key) => {
+		const name = Object.keys(env).find(name => name.toLowerCase() === key.toLowerCase());
+		return name ? env[name] : match;
+	});
+	// Never turn an incomplete input (or another OS's path) into a path under Obsidian's cwd.
+	if (!text || text.includes("\0") || !path.isAbsolute(text)) return "";
+	if (platform === "win32" && !/^(?:[A-Za-z]:[\\/]|[\\/]{2}[^\\/]+[\\/][^\\/]+)/.test(text)) return "";
+	return path.normalize(text);
+}
+
+function normalizeZoteroDataDirCandidate(raw, options = {}) {
+	const path = (options.platform || process.platform) === "win32" ? nodePath.win32 : nodePath.posix;
+	const resolved = normalizeZoteroLocalPath(raw, options);
+	if (!resolved) return "";
+	// A custom data root can itself be named storage; its database takes precedence.
+	if (path.basename(resolved).toLowerCase() !== "storage"
+		|| isRegularFile(path.join(resolved, "zotero.sqlite"), options.fs || options.io || fs)) return resolved;
+	return path.dirname(resolved);
 }
 
 function isReadableDirectory(target, io = fs) {
@@ -2925,24 +2972,77 @@ function isRegularFile(target, io = fs) {
 	}
 }
 
-function collectWindowsZoteroProfileDataDirs(appData, io = fs) {
-	const root = String(appData || "").trim();
-	if (!root) return [];
-	const profilesDir = nodePath.join(root, "Zotero", "Zotero", "Profiles");
-	let entries;
-	try { entries = io.readdirSync(profilesDir, { withFileTypes: true }); }
-	catch { return []; }
-	return entries
-		.filter(entry => entry && entry.isDirectory && entry.isDirectory())
-		.map(entry => nodePath.join(profilesDir, entry.name, "zotero"))
-		.sort((a, b) => a.localeCompare(b));
+function readZoteroDetectionText(target, io) {
+	try {
+		const stat = io.statSync(target);
+		if (!stat.isFile() || stat.size > 2 * 1024 * 1024) return "";
+		return io.readFileSync(target, "utf8");
+	} catch { return ""; }
+}
+
+function parseZoteroDirectoryPrefs(text) {
+	const prefs = {};
+	const uncommented = String(text || "").replace(/"(?:[^"\\]|\\.)*"|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g,
+		token => token.startsWith("/") ? token.replace(/[^\r\n]/g, " ") : token);
+	// Parse only the two required preferences; never evaluate prefs.js or expose its other values.
+	for (const line of uncommented.split(/\r?\n/)) {
+		const match = line.match(/^\s*user_pref\("extensions\.zotero\.(useDataDir|dataDir)",\s*(true|false|"(?:[^"\\]|\\.)*")\s*\);\s*(?:\/\/.*)?$/);
+		if (!match) continue;
+		try { prefs[match[1]] = JSON.parse(match[2]); } catch { /* Ignore malformed literals. */ }
+	}
+	return prefs;
+}
+
+function collectZoteroProfileDirs(root, options) {
+	const { io, path } = options;
+	const profiles = new Set();
+	let incomplete = false;
+	const registry = path.join(root, "profiles.ini");
+	const registryText = readZoteroDetectionText(registry, io);
+	if (!registryText) {
+		try { io.statSync(registry); incomplete = true; }
+		catch (error) { if (error.code && error.code !== "ENOENT" && error.code !== "ENOTDIR") incomplete = true; }
+	}
+	let section = null;
+	const sections = [];
+	for (const line of registryText.split(/\r?\n/)) {
+		const header = line.trim().match(/^\[([^\]]+)\]$/);
+		if (header) { section = {}; if (/^Profile\d+$/i.test(header[1])) sections.push(section); continue; }
+		const entry = line.match(/^\s*(Path|IsRelative)\s*=\s*(.*?)\s*$/);
+		if (section && entry) section[entry[1]] = entry[2];
+	}
+	if (sections.length > 64) incomplete = true;
+	for (const entry of sections.slice(0, 64)) {
+		if (!entry.Path) { incomplete = true; continue; }
+		const target = entry.IsRelative === "0" ? entry.Path : path.resolve(root, entry.Path);
+		const normalized = normalizeZoteroLocalPath(target, options);
+		if (normalized) profiles.add(normalized);
+		else incomplete = true;
+	}
+	// An intact registry is authoritative; fallback supports old/unregistered standard profiles.
+	if (!profiles.size) {
+		try {
+			const entries = io.readdirSync(path.join(root, "Profiles"), { withFileTypes: true }).filter(entry => entry.isDirectory());
+			if (entries.length > 64) incomplete = true;
+			for (const entry of entries.slice(0, 64)) {
+				profiles.add(path.join(root, "Profiles", entry.name));
+			}
+		} catch (error) { if (error.code && error.code !== "ENOENT" && error.code !== "ENOTDIR") incomplete = true; }
+	}
+	return { dirs: Array.from(profiles), incomplete };
 }
 
 function buildZoteroDefaultPathCandidates(options = {}) {
 	const io = options.fs || fs;
 	const env = options.env || process.env;
 	const platform = options.platform || process.platform;
+	const path = platform === "win32" ? nodePath.win32 : nodePath.posix;
+	const home = options.homeDir ?? (platform === "win32"
+		? env.USERPROFILE || (env.HOMEDRIVE && env.HOMEPATH && `${env.HOMEDRIVE}${env.HOMEPATH}`)
+		: env.HOME) ?? (!options.env ? require("os").homedir() : "");
+	const context = { ...options, platform, env, homeDir: home, path, io };
 	const roots = [];
+	let unresolvedProfile = false;
 	const addRoot = (rawPath, source, priority) => {
 		if (!String(rawPath || "").trim()) return;
 		roots.push({ rawPath, source, priority });
@@ -2950,40 +3050,84 @@ function buildZoteroDefaultPathCandidates(options = {}) {
 	if (Array.isArray(options.additionalRoots)) {
 		options.additionalRoots.forEach((rawPath, index) => addRoot(rawPath, "additional", index));
 	}
+	if (home) addRoot(path.join(home, "Zotero"), "home", 10);
+	const profileRoots = [];
 	if (platform === "win32") {
-		addRoot(env.USERPROFILE && nodePath.join(env.USERPROFILE, "Zotero"), "windows-user-profile", 10);
-		if (env.HOMEDRIVE && env.HOMEPATH) {
-			addRoot(nodePath.join(`${env.HOMEDRIVE}${env.HOMEPATH}`, "Zotero"), "windows-home-path", 20);
+		if (env.HOMEDRIVE && env.HOMEPATH) addRoot(path.join(`${env.HOMEDRIVE}${env.HOMEPATH}`, "Zotero"), "windows-home-path", 20);
+		const appData = env.APPDATA || (home && path.join(home, "AppData", "Roaming"));
+		if (appData) {
+			profileRoots.push(path.join(appData, "Zotero", "Zotero"));
+			addRoot(path.join(appData, "Zotero"), "windows-appdata", 30);
 		}
-		if (env.APPDATA) {
-			addRoot(nodePath.join(env.APPDATA, "Zotero"), "windows-appdata", 30);
-			collectWindowsZoteroProfileDataDirs(env.APPDATA, io)
-				.forEach((rawPath, index) => addRoot(rawPath, "windows-appdata-profile", 40 + index));
+	} else if (home) {
+		profileRoots.push(platform === "darwin" ? path.join(home, "Library", "Application Support", "Zotero") : path.join(home, ".zotero", "zotero"));
+	}
+	for (const profileRoot of profileRoots) {
+		const profiles = collectZoteroProfileDirs(profileRoot, context);
+		unresolvedProfile ||= profiles.incomplete;
+		for (const profile of profiles.dirs) {
+			const text = readZoteroDetectionText(path.join(profile, "prefs.js"), io);
+			const prefs = parseZoteroDirectoryPrefs(text);
+			if (prefs.useDataDir === true) {
+				const configured = normalizeZoteroLocalPath(prefs.dataDir, context);
+				if (configured) addRoot(configured, "profile-config", 0);
+				else unresolvedProfile = true;
+			} else if (!text) {
+				unresolvedProfile = true;
+			}
+			// Legacy data is a fallback, never a replacement for an inaccessible configured library.
+			addRoot(path.join(profile, "zotero"), "profile-legacy", 40);
 		}
-	} else if (env.HOME) {
-		addRoot(nodePath.join(env.HOME, "Zotero"), "home", 10);
 	}
 
 	const seen = new Map();
 	for (const root of roots) {
-		const dataDir = normalizeZoteroDataDirCandidate(root.rawPath);
+		const dataDir = normalizeZoteroDataDirCandidate(root.rawPath, context);
 		if (!dataDir) continue;
-		const storageDir = nodePath.join(dataDir, "storage");
-		if (!isReadableDirectory(storageDir, io)) continue;
-		const hasDatabase = isRegularFile(nodePath.join(dataDir, "zotero.sqlite"), io);
+		const storageDir = path.join(dataDir, "storage");
+		const databasePath = path.join(dataDir, "zotero.sqlite");
+		let hasDatabase = isRegularFile(databasePath, io);
+		try { if (hasDatabase && io.accessSync) io.accessSync(databasePath, fs.constants.R_OK); }
+		catch { hasDatabase = false; }
+		if (!hasDatabase || !isReadableDirectory(dataDir, io)) {
+			if (root.source === "profile-config") unresolvedProfile = true;
+			continue;
+		}
+		const storageReadable = isReadableDirectory(storageDir, io);
 		const rank = (hasDatabase ? 0 : 1000) + root.priority;
 		const candidate = {
 			dataDir,
 			storageDir,
 			source: root.source,
 			hasDatabase,
+			storageReadable,
 			rank,
 		};
-		const key = platform === "win32" ? storageDir.toLowerCase() : storageDir;
+		let canonical = storageDir;
+		try { if (io.realpathSync) canonical = path.join(io.realpathSync(dataDir), "storage"); } catch { /* Keep lexical path. */ }
+		const key = platform === "win32" ? canonical.toLowerCase() : canonical;
 		const existing = seen.get(key);
 		if (!existing || candidate.rank < existing.rank) seen.set(key, candidate);
 	}
-	return Array.from(seen.values()).sort((a, b) => a.rank - b.rank || a.storageDir.localeCompare(b.storageDir));
+	return Array.from(seen.values()).map(candidate => ({ ...candidate, autoSelect: !unresolvedProfile }))
+		.sort((a, b) => a.rank - b.rank || a.storageDir.localeCompare(b.storageDir));
+}
+
+function selectZoteroSourceCandidate(candidates) {
+	const valid = (Array.isArray(candidates) ? candidates : []).filter(candidate => candidate.hasDatabase === true);
+	if (valid.some(candidate => candidate.autoSelect === false)) return null;
+	const configured = valid.filter(candidate => candidate.source === "profile-config");
+	return configured.length === 1 ? configured[0] : configured.length ? null : valid.length === 1 ? valid[0] : null;
+}
+
+function isReadableZoteroSource(source, io = fs) {
+	const dataDir = normalizeZoteroDataDirCandidate(source, { fs: io });
+	if (!dataDir || !isReadableDirectory(dataDir, io)) return false;
+	const dbPath = nodePath.join(dataDir, "zotero.sqlite");
+	if (!isRegularFile(dbPath, io)) return false;
+	try { if (io.accessSync) io.accessSync(dbPath, fs.constants.R_OK); } catch { return false; }
+	// A new or cloud-only library may not have storage yet. Detection must not create it.
+	return true;
 }
 
 function isLocalHttpHost(hostname) {
@@ -12154,11 +12298,18 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async ensureDocumentLanguageCapabilities() {
+		// Request failures retain their code for diagnostics and safe, actionable UI messages.
 		let capabilities;
 		try { capabilities = await this.backendRequest("/api/v1/tasks/capabilities", { timeout: 30000 }); }
-		catch { throw new Error(documentLanguageText("服务暂不支持新的文档语言功能，请更新服务后重试。", "Document language support is unavailable. Update the service and try again.")); }
+		catch (error) {
+			if (!isBackendTaskNotFoundError(error)) throw error;
+			// A missing capability endpoint is an older service, not an expired paper task.
+			const unsupported = createRectoUiError("error.documentLanguageUnsupported");
+			unsupported.cause = error;
+			throw unsupported;
+		}
 		if (!capabilities || capabilities.version !== 1 || capabilities.namingVersion !== 1 || capabilities.unifiedOutput !== true || !Array.isArray(capabilities.ocrLanguages)) {
-			throw new Error(documentLanguageText("服务暂不支持新的文档语言功能，请更新服务后重试。", "Document language support is unavailable. Update the service and try again."));
+			throw createRectoUiError("error.documentLanguageUnsupported");
 		}
 		if (!this.settings.documentLanguages || this.settings.documentLanguages.unifiedOutput !== true) {
 			const remote = await this.backendRequest("/api/v1/me/preferences", { timeout: 30000 });
@@ -13584,10 +13735,9 @@ class RectoPlugin extends obsidian.Plugin {
 	getZoteroStoragePath() {
 		const src = String(this.settings.sourceFolder || "").trim();
 		if (!src) throw new Error("请先在 Recto 设置中选择 Zotero 数据目录");
-		const resolved = nodePath.resolve(src);
-		return nodePath.basename(resolved).toLowerCase() === "storage"
-			? resolved
-			: nodePath.join(resolved, "storage");
+		const dataDir = normalizeZoteroDataDirCandidate(src);
+		if (!dataDir) throw new Error("Zotero 数据目录不可访问");
+		return nodePath.join(dataDir, "storage");
 	}
 
 	getZoteroDefaultPathCandidates(options = {}) {
@@ -13603,27 +13753,22 @@ class RectoPlugin extends obsidian.Plugin {
 			console.warn("Recto: Zotero default path detection failed", getSanitizedErrorMessage(error));
 			return null;
 		}
-		const candidate = Array.isArray(candidates) && candidates.length ? candidates[0] : null;
+		const candidate = selectZoteroSourceCandidate(candidates);
 		if (!candidate || !candidate.storageDir) return null;
-		const resolved = nodePath.resolve(String(candidate.storageDir || "").trim());
-		const storage = nodePath.basename(resolved).toLowerCase() === "storage"
-			? resolved
-			: nodePath.join(resolved, "storage");
-		if (!isReadableDirectory(storage)) return null;
+		const storage = this.normalizeZoteroSourceFolder(candidate.storageDir);
+		if (!isReadableZoteroSource(storage)) return null;
 		settings.sourceFolder = this.normalizeZoteroSourceFolder(storage);
-		const savePromise = Promise.resolve(this.save()).catch(error => {
-			console.warn("Recto: failed to save detected Zotero storage", getSanitizedErrorMessage(error));
+		const savePromise = (async () => this.save())().catch(() => {
+			if (settings.sourceFolder === storage) settings.sourceFolder = "";
+			new obsidian.Notice(rectoUiText("settings.zoteroSaveFailed"), 8000);
+			return false;
 		});
 		return { ...candidate, storageDir: storage, savePromise };
 	}
 
 	normalizeZoteroSourceFolder(raw) {
-		const text = String(raw || "").trim();
-		if (!text) return "";
-		const resolved = nodePath.resolve(text);
-		if (nodePath.basename(resolved).toLowerCase() === "storage") return resolved;
-		const storage = nodePath.join(resolved, "storage");
-		return fs.existsSync(storage) ? storage : resolved;
+		const dataDir = normalizeZoteroDataDirCandidate(raw);
+		return dataDir ? nodePath.join(dataDir, "storage") : "";
 	}
 
 	assertZoteroStorageRootAccessible() {
@@ -14688,7 +14833,7 @@ class RectoPlugin extends obsidian.Plugin {
 	getZoteroSetupStatusSnapshot() {
 		let pathConfigured = false;
 		try {
-			pathConfigured = !!(this.settings.sourceFolder && isReadableDirectory(this.getZoteroStoragePath()));
+			pathConfigured = !!(this.settings.sourceFolder && isReadableZoteroSource(this.settings.sourceFolder) && isReadableDirectory(this.getZoteroStoragePath()));
 		} catch {
 			pathConfigured = false;
 		}
@@ -14757,7 +14902,7 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
-	// T82-D-S：启动延迟 / 打开 Hub / 设置页「立即检查」共用。自动路径静默降级，不弹错。
+	// T82-D-S：启动延迟 / 打开 Hub / 设置页「立即同步」共用。自动路径静默降级，不弹错。
 	// T83-A：未点过「一键导入」不开静默导入；路径探测与冷却判定仍可走，但这里直接跳过整轮。
 	async maybeRunZoteroAutoCheck(options = {}) {
 		return await this.withOperationContext("maybeRunZoteroAutoCheck", () => this.maybeRunZoteroAutoCheckScoped(options));
@@ -14779,7 +14924,7 @@ class RectoPlugin extends obsidian.Plugin {
 		});
 		if (!decision.run) return { skipped: true, reason: decision.reason };
 		// 这道门在 beginOperation 之前，走不到那边的忙碌提示；不补一句的话，用户在设置页点
-		// 「立即检查」撞上别的任务时是彻底静默的。自动轮询（force = false）照旧沉默。
+		// 「立即同步」撞上别的任务时是彻底静默的。自动轮询（force = false）照旧沉默。
 		if (this.activeOperation) {
 			if (force) new obsidian.Notice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), 6000);
 			return { skipped: true, reason: "busy" };
@@ -14888,7 +15033,7 @@ class RectoPlugin extends obsidian.Plugin {
 			await this.save().catch(() => {});
 			this.refreshSettingsStatusIfOpen();
 			if (force) {
-				// 自动轮询继续静默；用户主动点「立即检查」时，瞬时占用也要给出可执行的下一步。
+				// 自动轮询继续静默；用户主动点「立即同步」时，瞬时占用也要给出可执行的下一步。
 				new obsidian.Notice(getZoteroUserFacingErrorMessage(error, rectoUiText("import.checkFailed")), 8000);
 			}
 			return {
@@ -15908,6 +16053,11 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async translateActiveMarkdownFromCommandScoped() {
+		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
+			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
+			new obsidian.Notice(rectoUiText("task.noConsent"), 6000);
+			return;
+		}
 		await this.ensureDocumentLanguageCapabilities();
 		const file = this.app.workspace.getActiveFile();
 		if (!file || !/\.md$/i.test(String(file.path || ""))) { await this.diagnosticExit("MARKDOWN_NOT_SELECTED", "skipped");
@@ -17418,6 +17568,12 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async runBatchWithTasksScoped(tasks, options = {}) {
+		// Capabilities are also guarded by cloud consent; the downstream batch gate is too late.
+		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
+			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
+			new obsidian.Notice(rectoUiText("task.noConsent"), 6000);
+			return;
+		}
 		await this.ensureDocumentLanguageCapabilities();
 		const preferences = this.settings.documentLanguages;
 		for (const task of tasks) {
@@ -17478,6 +17634,11 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async runHubTranslateForRecordsScoped(recordIds) {
+		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
+			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
+			new obsidian.Notice(rectoUiText("task.noConsent"), 6000);
+			return null;
+		}
 		await this.ensureDocumentLanguageCapabilities();
 		const wanted = uniqueStrings((recordIds || []).map(id => String(id || "")));
 		if (!wanted.length) { await this.diagnosticExit("NO_SELECTION", "skipped");
@@ -20133,7 +20294,7 @@ function createRectoHubViewClass(api) {
 		sync();
 		return Promise.resolve()
 			.then(run)
-			.catch(() => { new api.Notice(rectoUiText("hub.context.failed"), 5000); })
+			.catch(error => { new api.Notice(getUserFacingErrorMessage(error), 5000); })
 			.finally(() => {
 				for (const id of reimportIds) this.plugin.hubReimportRecordIds.delete(id);
 				this.processActionRunning = false;
@@ -22305,10 +22466,10 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		if (key === "credits") return lights.account.state === "ready" && lights.credits.state === "ready";
 		if (key === "account") return lights.account.state === "ready";
 		if (key === "zotero") {
-			// 「开始使用」里是否隐藏 Zotero 路径步骤：有可读 storage 即算配好。
+			// 「开始使用」里是否隐藏 Zotero 路径步骤：数据库与 storage 都可读才算配好。
 			const s = this.plugin.settings;
 			if (!s.sourceFolder) return false;
-			try { return isReadableDirectory(this.plugin.getZoteroStoragePath()); }
+			try { return isReadableZoteroSource(this.plugin.getZoteroStoragePath()) && isReadableDirectory(this.plugin.getZoteroStoragePath()); }
 			catch { return false; }
 		}
 		return false;
@@ -22505,18 +22666,9 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	}
 
 	renderQuickStart(container, s, autoDetectedZoteroSource = null) {
-		// 步骤号是数出来的：Zotero 认出来时那一格不占号，剩下的步骤自动前移，
-		// 不会出现「1、3、4」这种看着像漏了一步的编号。
 		let step = 0;
 		const stepName = name => `${++step}. ${name}`;
 		this.renderAccountEntry(container, s, stepName(rectoUiText("settings.account")));
-
-		// Zotero 自动检测覆盖默认数据目录与 Windows 上的 Zotero 配置目录，命中率足够高；
-		// 认出来了它就是一件已经办好的事，不该在「开始使用」里占一格——改路径的入口留在高级设置。
-		// 认不出来（多见于自定义数据目录）才必须让用户当场动手，这时它就是一个正经步骤。
-		if (!this.isSetupConfigured("zotero")) {
-			this.renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, stepName(rectoUiText("settings.zoteroSource")));
-		}
 
 		// 只说「必须在 Vault 内」——这条不写清楚，用户会粘一个绝对路径进来然后被静默拒绝。
 		this.baseFolderSetting = new obsidian.Setting(container).setName(stepName(rectoUiText("settings.libraryFolder")))
@@ -22571,16 +22723,11 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 
 		// 转换与翻译的入口只有一个：论文库（Hub）的详情栏。设置页只负责把论文导进来，
 		// 再把人送到那里去——两处各有一套选择弹窗，是 T82-D 之前最大的重复。
-		const pending = (Number(this.plugin.zoteroPendingAmbiguous) || 0)
-			+ (Number(this.plugin.zoteroPendingOrphaned) || 0);
 		const optedIn = resolveZoteroLibraryImportOptIn({
 			optedIn: this.plugin.zoteroLibraryImportOptedIn === true,
 			folderMap: this.plugin.folderMap,
 		});
-		new obsidian.Setting(container).setName(stepName(rectoUiText("settings.importLibrary")))
-			.setDesc(optedIn
-				? rectoUiText("settings.autoSyncOn")
-				: rectoUiText("settings.autoSyncOff"))
+		this.renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, stepName(rectoUiText("settings.importLibrary")))
 			.addButton(b => {
 				if (optedIn) {
 					b.setButtonText(rectoUiText("settings.checkNow"));
@@ -22598,7 +22745,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				return b.onClick(() => this.runSettingButton(b, importLabel, rectoUiText("settings.importing"), () =>
 					this.plugin.importZoteroLibrary({ hostEl: this.containerEl })));
 			});
-		// 这一行**常显但按需隐藏**，不再条件渲染：点「立即检查」发现新的待确认项时它要能当场
+		// 这一行**常显但按需隐藏**，不再条件渲染：点「立即同步」发现新的待确认项时它要能当场
 		// 出现，而条件渲染的行只有整页重绘才长得出来。重绘（display()）会把滚动位置与焦点甩回
 		// 页首（T84 真机实测过），所以这里与库外 PDF 输出目录那一行同一个口径——定点更新，
 		// 一次 display() 都不调。出现时走一条极短的淡入，避免凭空跳一行出来。
@@ -22611,86 +22758,127 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				})));
 		this.refreshZoteroPendingRow({ animate: false });
 
-		// 自动识别 Zotero 时接在打开论文库后；需手动配置时仍固定为第 5 项。
-		const outputBeforeOpen = step === 4;
-		if (outputBeforeOpen) this.renderBackendPreferences(container, s, stepName(documentLanguageText("输出语言", "Output language")));
 		// 这一句留着：转换入口只在 Hub，不说清楚用户会在设置页里找按钮。
 		// 「打开论文库」也占步骤号（T86-D-B）；「待确认」不给号——它是异常态提示，不是步骤。
 		new obsidian.Setting(container).setName(stepName(rectoUiText("settings.openLibrary")))
 			.setDesc(rectoUiText("settings.libraryActionsDesc"))
 			.addButton(b => b.setButtonText(rectoUiText("settings.open")).setCta().onClick(() => { void this.plugin.activateRectoHub(); }))
 			.addButton(b => b.setButtonText(rectoUiText("settings.replayOnboarding")).onClick(() => this.plugin.openOnboardingReplay()));
-		if (!outputBeforeOpen) this.renderBackendPreferences(container, s, stepName(documentLanguageText("输出语言", "Output language")));
+		this.renderBackendPreferences(container, s, stepName(documentLanguageText("输出语言", "Output language")));
 	}
 
 	renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, name) {
-		const sourceSetting = new obsidian.Setting(container).setName(name);
-		sourceSetting.setDesc("");
-		if (autoDetectedZoteroSource) {
-			sourceSetting.descEl.createSpan({
-				text: rectoUiText("settings.zoteroDetectedDesc"),
-			});
-		} else if (!s.sourceFolder) {
-			sourceSetting.descEl.createSpan({
-				text: rectoUiText("settings.zoteroMissingDesc"),
-			});
-		}
-		if (!s.sourceFolder && !autoDetectedZoteroSource) {
-			sourceSetting.descEl.createEl("br");
-			sourceSetting.descEl.createSpan({
-				text: rectoUiText("settings.zoteroFindHint"),
-			});
-		}
-		if (s.sourceFolder) {
-			if (sourceSetting.descEl.children && sourceSetting.descEl.children.length) sourceSetting.descEl.createEl("br");
-			sourceSetting.descEl.createSpan({ text: rectoUiText("settings.currentDataFolder") });
-			sourceSetting.descEl.createEl("code", { text: this.plugin.getZoteroStoragePath() });
-		}
-		sourceSetting.addText(t => {
-			t.inputEl.style.width = "100%";
-			t.setPlaceholder("C:\\Users\\...\\Zotero\\storage").setValue(s.sourceFolder);
-			// **不挂 onChange**，与「论文库文件夹」同一套：失焦（或回车）才校验落盘，
-			// 无效就退回上一个好值。逐键校验在这里比那边更危险——updateSourceFolder 里还挂着
-			// 「更换 Zotero 论文库」那个决策弹窗，敲到一半的路径万一真存在，弹窗当场糊在脸上。
-			// 而原来校验失败只弹一句 Notice、既不回退也不标红：settings 保持旧值，关掉设置页
-			// 再打开，输入框里那个存不进去的残值就悄悄跳回，用户根本不知道自己改了个寂寞。
-			t.inputEl.addEventListener("blur", async () => {
-				const raw = t.inputEl.value.trim();
-				const previous = s.sourceFolder || "";
-				if (raw === previous) return;
-				const updated = await this.updateSourceFolder(raw, s);
-				// false = 目录读不到，或用户在「更换 Zotero 论文库」里选了取消。两种都没落盘。
-				t.setValue(updated === false ? previous : (s.sourceFolder || ""));
-				t.inputEl.toggleClass("is-rejected", updated === false);
-				this.refreshSetupStatus("zotero");
-			});
-			// 回车即提交；不按回车直接切走时 blur 也会收，两条路同一个终点。
-			t.inputEl.addEventListener("keydown", event => {
-				if (event.key === "Enter") t.inputEl.blur();
-			});
-			return t;
+		const row = new obsidian.Setting(container).setName(name);
+		row.settingEl.addClass("recto-zotero-setting");
+		this.zoteroSourceDescription = row.descEl.createDiv({ cls: "recto-zotero-source-description" });
+		this.zoteroSourceWarning = row.descEl.createDiv({ cls: "recto-zotero-source-warning" });
+		const editor = row.descEl.createDiv({ cls: "recto-zotero-source-editor" });
+		editor.hidden = true;
+		const input = editor.createEl("input", { type: "text" });
+		input.value = s.sourceFolder || "";
+		input.placeholder = process.platform === "win32" ? "C:\\Users\\...\\Zotero\\storage" : "~/Zotero/storage";
+		input.setAttr("aria-label", rectoUiText("settings.zoteroSource"));
+		const save = editor.createEl("button", { text: rectoUiText("settings.zoteroSavePath") });
+		const browse = editor.createEl("button", { text: rectoUiText("settings.chooseFolder") });
+		editor.createSpan({ cls: "recto-zotero-source-help", text: rectoUiText("settings.zoteroFindHint") });
+		let folderButton;
+		const closeEditor = () => {
+			editor.hidden = true;
+			input.value = s.sourceFolder || "";
+			folderButton.buttonEl.setAttr("aria-expanded", "false");
+			folderButton.buttonEl.focus?.();
+		};
+		let saving = false;
+		const commit = async value => {
+			if (saving) return;
+			saving = true;
+			save.disabled = browse.disabled = input.disabled = true;
+			try {
+				const updated = await this.updateSourceFolder(value, s);
+				input.toggleClass("is-rejected", updated === false);
+				if (updated !== false) {
+					this.refreshZoteroSourceDescription();
+					this.refreshAllSetupStatus();
+					closeEditor();
+				} else input.value = s.sourceFolder || "";
+			} catch (error) {
+				new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("settings.zoteroSaveFailed")), 8000);
+			} finally {
+				saving = false;
+				save.disabled = browse.disabled = input.disabled = false;
+			}
+		};
+		save.addEventListener("click", () => commit(input.value.trim()));
+		input.addEventListener("keydown", event => {
+			if (event.isComposing) return;
+			if (event.key === "Enter") { event.preventDefault?.(); void commit(input.value.trim()); }
+			if (event.key === "Escape" && !saving) { event.preventDefault?.(); event.stopPropagation?.(); closeEditor(); }
 		});
-		sourceSetting.addButton(b => b.setButtonText(rectoUiText("settings.chooseFolder")).onClick(async () => {
-			const folder = await this.plugin.pickDirectory(rectoUiText("settings.chooseZoteroFolder"), s.sourceFolder || this.plugin.app.vault.adapter.basePath);
-			if (!folder) return;
-			const updated = await this.updateSourceFolder(folder, s);
-			this.refreshSetupStatus("zotero");
-			if (updated !== false) this.display();
-		}));
-		if (autoDetectedZoteroSource) {
-			const check = sourceSetting.controlEl.createSpan({ cls: "recto-zotero-detected-check" });
-			setChromeIcon(check.createSpan({ cls: "rc-icon" }), "check");
-			check.createSpan({ text: rectoUiText("settings.detected") });
-			if (check.setAttr) check.setAttr("aria-label", rectoUiText("settings.zoteroDetected"));
-		}
-		return sourceSetting;
+		browse.addEventListener("click", async () => {
+			if (browse.disabled) return;
+			browse.disabled = true;
+			try {
+				const folder = await this.plugin.pickDirectory(rectoUiText("settings.chooseZoteroFolder"), s.sourceFolder || this.plugin.app.vault.adapter.basePath);
+				if (folder) await commit(folder);
+			} finally { browse.disabled = false; }
+		});
+		const addIcon = (icon, label, action) => row.addButton(button => {
+			button.buttonEl.addClass("recto-zotero-icon-button");
+			button.buttonEl.addClass("clickable-icon");
+			button.buttonEl.setAttr("aria-label", label);
+			button.buttonEl.setAttr("title", label);
+			if (icon === "folder-open") button.buttonEl.setAttr("aria-expanded", "false");
+			setChromeIcon(button.buttonEl.createSpan({ cls: "rc-icon" }), icon);
+			button.onClick(() => action(button));
+		});
+		addIcon("refresh-cw", rectoUiText("settings.zoteroDetectAgain"), async button => {
+			if (button.buttonEl.disabled) return;
+			button.setDisabled(true);
+			button.buttonEl.setAttr("aria-busy", "true");
+			try { await this.redetectZoteroSource(s); }
+			finally { button.setDisabled(false); button.buttonEl.setAttr("aria-busy", "false"); }
+		});
+		addIcon("folder-open", rectoUiText("settings.zoteroEditPath"), button => {
+			folderButton = button;
+			if (saving) return;
+			if (!editor.hidden) { closeEditor(); return; }
+			editor.hidden = false;
+			input.value = s.sourceFolder || "";
+			input.toggleClass("is-rejected", false);
+			button.buttonEl.setAttr("aria-expanded", "true");
+			input.focus?.();
+			input.select?.();
+		});
+		this.refreshZoteroSourceDescription();
+		return row;
+	}
+
+	refreshZoteroSourceDescription() {
+		if (!this.zoteroSourceDescription) return;
+		const s = this.plugin.settings;
+		const desc = this.zoteroSourceDescription;
+		desc.empty();
+		let storage = "";
+		try { storage = this.plugin.getZoteroStoragePath(); } catch { /* Missing or stale source. */ }
+		const path = storage || s.sourceFolder || rectoUiText("settings.zoteroNoPath");
+		const location = desc.createSpan({ cls: "recto-zotero-source-path", text: rectoUiText("settings.zoteroLocation", { path }) });
+		location.setAttr("title", path);
+		const optedIn = resolveZoteroLibraryImportOptIn({ optedIn: this.plugin.zoteroLibraryImportOptedIn === true, folderMap: this.plugin.folderMap });
+		desc.createSpan({ cls: "recto-zotero-source-purpose", text: rectoUiText(optedIn ? "settings.zoteroCheckHint" : "settings.zoteroImportHint") });
+		let warning = "";
+		if (this.plugin.hasNodeSqlite === false) warning = rectoUiText("import.runtimeUpgrade");
+		else if (s.sourceFolder && !isReadableZoteroSource(storage)) warning = rectoUiText("settings.zoteroInvalidSource");
+		else if (s.sourceFolder && !isReadableDirectory(storage)) warning = rectoUiText("settings.zoteroStorageMissing");
+		this.zoteroSourceWarning.empty();
+		this.zoteroSourceWarning.hidden = !warning;
+		if (warning) this.zoteroSourceWarning.createSpan({ text: warning });
 	}
 
 	getDetectedZoteroSourceCandidate() {
 		if (!this.plugin.getZoteroDefaultPathCandidates) return null;
 		try {
 			const candidates = this.plugin.getZoteroDefaultPathCandidates();
-			return Array.isArray(candidates) && candidates.length ? candidates[0] : null;
+			return selectZoteroSourceCandidate(candidates);
 		} catch (error) {
 			console.warn("Recto: Zotero default path detection failed", getSanitizedErrorMessage(error));
 			return null;
@@ -22700,11 +22888,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	getReadableZoteroStoragePath(source) {
 		const text = String(source || "").trim();
 		if (!text) return "";
-		const resolved = nodePath.resolve(text);
-		const storage = nodePath.basename(resolved).toLowerCase() === "storage"
-			? resolved
-			: nodePath.join(resolved, "storage");
-		return isReadableDirectory(storage) ? storage : "";
+		const dataDir = normalizeZoteroDataDirCandidate(text);
+		return dataDir && isReadableZoteroSource(dataDir) ? nodePath.join(dataDir, "storage") : "";
 	}
 
 	autoFillDetectedZoteroSourceIfNeeded(settings) {
@@ -22719,23 +22904,57 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		settings.sourceFolder = this.plugin.normalizeZoteroSourceFolder
 			? this.plugin.normalizeZoteroSourceFolder(storage)
 			: storage;
-		Promise.resolve(this.plugin.save()).catch(error => {
-			console.warn("Recto: failed to save detected Zotero storage", getSanitizedErrorMessage(error));
+		const savePromise = (async () => this.plugin.save())().catch(() => {
+			if (settings.sourceFolder === storage) settings.sourceFolder = "";
+			new obsidian.Notice(rectoUiText("settings.zoteroSaveFailed"), 8000);
+			return false;
 		});
-		return { ...candidate, storageDir: storage };
+		return { ...candidate, storageDir: storage, savePromise };
+	}
+
+	async redetectZoteroSource(settings) {
+		try {
+			const candidates = this.plugin.getZoteroDefaultPathCandidates();
+			let candidate = selectZoteroSourceCandidate(candidates);
+			if (!candidates.length) {
+				new obsidian.Notice(`${rectoUiText("settings.zoteroMissingDesc")} ${rectoUiText("settings.zoteroFindHint")}`, 10000);
+				return false;
+			}
+			if (!candidate) {
+				const choice = await this.plugin.openDecision(() => ({
+					title: rectoUiText("settings.zoteroChooseDetected"),
+					intro: rectoUiText("settings.zoteroChooseDetectedDesc"),
+					actions: [
+						{ label: rectoUiText("settings.cancelChange"), value: "cancel", defaultFocus: true },
+						...candidates.map((item, index) => ({ label: item.dataDir, value: String(index) })),
+					],
+				}));
+				candidate = candidates.find((_, index) => String(index) === choice);
+				if (!candidate) return false;
+			}
+			const saved = await this.updateSourceFolder(candidate.storageDir, settings);
+			if (saved) {
+				if (this.zoteroSourceDescription) { this.refreshZoteroSourceDescription(); this.refreshAllSetupStatus(); }
+				else this.display();
+			}
+			return saved;
+		} catch {
+			new obsidian.Notice(rectoUiText("settings.zoteroSaveFailed"), 8000);
+			return false;
+		}
 	}
 
 	async updateSourceFolder(next, settings) {
 		const prev = settings.sourceFolder || "";
 		const normalized = this.plugin.normalizeZoteroSourceFolder(next);
 		const storage = this.getReadableZoteroStoragePath(normalized);
-		if (normalized && !storage) {
-			new obsidian.Notice(getZoteroUserFacingErrorMessage(Object.assign(new Error(rectoUiText("settings.zoteroInaccessible")), { code: "ENOENT" })), 8000);
+		if (String(next || "").trim() && (!normalized || !storage)) {
+			new obsidian.Notice(rectoUiText("settings.zoteroInvalidSource"), 8000);
 			return false;
 		}
-		settings.sourceFolder = normalized;
+		if (normalized === prev || (normalized && normalized === this.plugin.normalizeZoteroSourceFolder(prev))) return true;
 		let recordsCleared = false;
-		if (normalized && prev && normalized !== prev && fs.existsSync(normalized) && (this.plugin.convertedFolders.length || Object.keys(this.plugin.folderMap || {}).length)) {
+		if (normalized && prev && ((this.plugin.convertedFolders || []).length || Object.keys(this.plugin.folderMap || {}).length)) {
 			const choice = await this.plugin.openDecision(() => ({
 				title: rectoUiText("settings.changeZoteroLibrary"),
 				intro: rectoUiText("settings.zoteroSourceChanged"),
@@ -22749,18 +22968,37 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				],
 			}));
 			if (!choice || choice === "cancel") {
-				settings.sourceFolder = prev;
 				return false;
 			}
 			if (choice === "clear") {
-				this.plugin.convertedFolders = [];
-				this.plugin.folderMap = {};
-				this.plugin.readingStates = {};
-				this.plugin.paperFlags = {};
 				recordsCleared = true;
 			}
 		}
-		await this.plugin.save();
+		try { await this.plugin.save(() => {
+			if (settings.sourceFolder !== prev) throw new Error("Zotero source changed while choosing a folder");
+			const previousRecords = recordsCleared ? {
+				convertedFolders: this.plugin.convertedFolders, folderMap: this.plugin.folderMap,
+				readingStates: this.plugin.readingStates, paperFlags: this.plugin.paperFlags,
+			} : null;
+			const cleared = { convertedFolders: [], folderMap: {}, readingStates: {}, paperFlags: {} };
+			settings.sourceFolder = normalized;
+			if (recordsCleared) Object.assign(this.plugin, cleared);
+			return () => {
+				if (settings.sourceFolder === normalized) settings.sourceFolder = prev;
+				if (previousRecords) {
+					this.plugin.convertedFolders = [...new Set([...(previousRecords.convertedFolders || []), ...(this.plugin.convertedFolders || [])])];
+					// Restore removed entries without overwriting registrations made while save was pending.
+					// The applied state was empty; cleared itself may already contain concurrent writes.
+					for (const key of ["folderMap", "readingStates", "paperFlags"]) {
+						this.plugin[key] = rollbackObjectChanges(this.plugin[key], previousRecords[key], {});
+					}
+				}
+			};
+		}); }
+		catch {
+			new obsidian.Notice(rectoUiText("settings.zoteroSaveFailed"), 8000);
+			return false;
+		}
 		if (recordsCleared) await this.plugin.writePaperJsonlIndex();
 		return true;
 	}
@@ -22914,13 +23152,6 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				dropdown.onChange(value => { void this.plugin.setUiLanguagePreference(value); });
 			});
 		if (languageRow.settingEl && languageRow.settingEl.addClass) languageRow.settingEl.addClass("recto-settings-language");
-
-		// 自动认出来的 Zotero 路径落在这里：绝大多数人一辈子不用看它，
-		// 但换库、搬盘、多 profile 的人必须找得到地方改。认不出来时它在「开始使用」里，这里就不重复。
-		if (this.isSetupConfigured("zotero")) {
-			container.createEl("h4", { text: "Zotero" });
-			this.renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, rectoUiText("settings.zoteroSource"));
-		}
 
 		// T83-N-R：后处理只有这一个入口。它默认开着，绝大多数人不必看见；关掉是排错与效果对比用的，
 		// 所以放高级设置而不是「处理偏好」——但改了之后必须在上传确认弹窗里如实告知当前档位。
@@ -23191,6 +23422,9 @@ if (process.env.NODE_ENV === "test") {
 		dedupeZoteroPdfCandidates,
 		buildZoteroCollectionTree,
 		buildZoteroDefaultPathCandidates,
+		normalizeZoteroLocalPath,
+		parseZoteroDirectoryPrefs,
+		selectZoteroSourceCandidate,
 		classifyRecoveredBackendTaskStatus,
 		buildRectoAnchorRepairs,
 		createRectoAnchorExtension,
