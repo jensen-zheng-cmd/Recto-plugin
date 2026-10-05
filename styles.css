@@ -1,3 +1,42 @@
+/* T90-A: native compact task feedback; updates preserve row geometry and focus. */
+.notice.rc-task-receipt { width: max-content; max-width: calc(100vw - 32px); margin-left: auto; padding: 8px 13px; color: color-mix(in srgb, var(--color-green) 65%, var(--text-normal)); background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: 0 2px 6px -2px color-mix(in srgb, var(--background-modifier-box-shadow) 45%, transparent); font-size: var(--font-ui-small); }
+.rc-task-status { display: flex; gap: 6px; max-width: min(420px, 80vw); cursor: pointer; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rc-task-status[hidden], .rc-task-popup [hidden] { display: none !important; }
+.rc-task-status-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rc-task-status-meter { width: 48px; height: 3px; flex: 0 0 48px; overflow: hidden; border-radius: 2px; background: var(--background-modifier-border); }
+.rc-task-status-meter .rc-task-meter-fill { display: block; }
+.rc-task-status-meter[hidden] { display: none; }
+.rc-task-status-icon, .rc-task-row-icon { width: 14px; flex: 0 0 14px; text-align: center; color: var(--text-muted); }
+.rc-task-popup {
+	position: fixed; z-index: var(--layer-popover, 30); width: 390px; max-width: calc(100vw - 16px);
+	padding: 6px 10px; border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m, 8px);
+	background: var(--background-primary); box-shadow: var(--shadow-s); color: var(--text-normal); font-family: var(--font-interface);
+	font-size: var(--font-ui-small); opacity: 0; transform: translateY(4px); visibility: hidden; pointer-events: none;
+	transition: opacity 150ms ease, transform 150ms ease, visibility 150ms;
+}
+.rc-task-popup.is-open { opacity: 1; transform: translateY(0); visibility: visible; pointer-events: auto; }
+.rc-task-head { display: flex; align-items: center; gap: 6px; height: 30px; }
+.rc-task-title { font-weight: var(--font-semibold); margin-right: auto; }
+.rc-task-popup button.rc-task-action { flex: 0 0 auto; min-height: 24px; height: 24px; padding: 0 5px; border: 0; background: transparent; box-shadow: none; color: var(--text-muted); font-size: var(--font-ui-smaller); cursor: pointer; }
+.rc-task-popup button.rc-task-close { width: 24px; font-size: 19px; }
+.rc-task-popup button.rc-task-action:hover:not(:disabled) { background: var(--background-modifier-hover); color: var(--text-normal); }
+.rc-task-popup button.rc-task-action:disabled { opacity: 0.45; cursor: default; }
+.rc-task-status:focus-visible, .rc-task-popup button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 1px; }
+.rc-task-list { max-height: min(280px, 55vh); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.rc-task-row { position: relative; display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 4px 0; border-top: 1px solid var(--background-modifier-border); }
+.rc-task-name { min-width: 30px; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-task-phase { flex: 0 0 auto; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: var(--font-ui-smaller); font-variant-numeric: tabular-nums; }
+.rc-task-row[data-state="success"] .rc-task-phase, .rc-task-row[data-state="success"] .rc-task-row-icon { color: color-mix(in srgb, var(--color-green) 65%, var(--text-normal)); }
+.rc-task-row[data-state="partial"] .rc-task-phase, .rc-task-row[data-state="blocked"] .rc-task-phase, .rc-task-row[data-state="failed"] .rc-task-phase { color: color-mix(in srgb, var(--color-orange) 65%, var(--text-normal)); }
+.rc-task-meter { position: absolute; bottom: 0; left: 21px; right: 0; height: 2px; overflow: hidden; background: var(--background-modifier-border); }
+.rc-task-meter-fill { height: 100%; width: 100%; background: var(--interactive-accent); transform-origin: left; transition: transform 180ms ease; }
+.rc-task-status .is-working, .rc-task-row .is-working { width: 12px; height: 12px; flex-basis: 12px; border: 1.5px solid var(--background-modifier-border); border-top-color: var(--text-muted); border-radius: 50%; font-size: 0; animation: rc-task-spin 1s linear infinite; }
+@keyframes rc-task-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+	.rc-task-popup, .rc-task-meter-fill { transition: none; }
+	.rc-task-status .is-working, .rc-task-row .is-working { animation: none; }
+}
+
 /* 批次进度（T81 第三轮）：进度只占状态栏一行，字符条 ▰▱ + 布莱叶盲文 spinner。
    取消不显式引导——默认没有按钮，鼠标悬停才浮出「取消未开始的 N 篇」。 */
 .rc-statusbar { font-weight: 600; color: var(--text-accent); }
@@ -2212,6 +2251,7 @@ label.recto-sync-preview-row {
 }
 
 .recto-hub {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -2583,6 +2623,41 @@ label.recto-sync-preview-row {
 	padding-right: var(--rc-gap-2);
 	margin-right: var(--rc-gap-1);
 	border-right: var(--rc-row-border);
+}
+
+.recto-ui .recto-hub-brand-button {
+	align-items: center;
+	height: 26px;
+	padding: 0 var(--rc-gap-2) 0 0;
+	border: none;
+	border-right: var(--rc-row-border);
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	font-weight: 650;
+	cursor: pointer;
+}
+
+.recto-ui .recto-hub-brand-button:hover {
+	background: transparent;
+	box-shadow: none;
+	color: var(--rc-accent);
+}
+
+.recto-ui .recto-hub-brand-button:focus-visible {
+	outline: 2px solid var(--rc-accent);
+	outline-offset: -2px;
+}
+
+.recto-hub-confetti {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: 20;
 }
 
 .recto-hub-search {
@@ -3818,7 +3893,7 @@ label.recto-sync-preview-row {
 	/* 工具栏与 chips 行都住在中间栏里，所以挤不挤由**中间栏**说了算，不是 Hub 总宽（T86-A 第五轮
 	   从 `recto-hub (max-width: 700px)` 挪过来的：单栏门槛降到 520 之后，两栏档里中间栏可以只有
 	   280px，而那一档的 Hub 总宽有 520——按总宽判的话品牌与百分比会一直挤在里面）。 */
-	.recto-hub-toolbar .recto-brand {
+	.recto-hub-toolbar .recto-brand-label {
 		display: none;
 	}
 

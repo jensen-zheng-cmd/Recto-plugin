@@ -27,6 +27,28 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"command.cancelQueued": "取消未开始的任务",
 		"queue.added": "已加入本地等待队列：{count} 项。尚未上传或扣费。",
 		"queue.waiting": "等待执行（未提交）",
+		"feedback.received.convert": "已收到转换请求",
+		"feedback.received.translate": "已收到翻译请求",
+		"feedback.alreadyReceived": "这篇论文的请求已收到",
+		"feedback.unavailable": "这篇论文正在更新，请稍后再试",
+		"feedback.title": "任务",
+		"feedback.cancelWaiting": "取消未开始",
+		"feedback.preparing": "准备中",
+		"feedback.waiting": "等待",
+		"feedback.executing": "处理中",
+		"feedback.blocked": "需要处理",
+		"feedback.success": "已完成",
+		"feedback.partial": "部分完成",
+		"feedback.translationIncomplete": "翻译未完成",
+		"feedback.failed": "未完成",
+		"feedback.pending": "云端继续",
+		"feedback.retrying": "连接重试中",
+		"feedback.recover": "恢复",
+		"feedback.open": "打开",
+		"feedback.retry": "重试",
+		"feedback.close": "关闭任务面板",
+		"feedback.empty": "暂无任务",
+		"feedback.partialSuffix": "，{count} 篇部分完成",
 		"queue.executing": "正在提交",
 		"queue.blocked": "已停止，请取消后重新发起",
 		"queue.sourceChanged": "{name}：源文件或输出位置已改变，已停止此项。请取消后重新确认。",
@@ -519,10 +541,27 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.deleteSelected": "重新导入（{count} 篇）",
 		"hub.deleteSelectedHint": "清空选中论文的产物、Note 与标记，从 Zotero 重新读取；执行前确认一次",
 		"hub.morePapers": "另有 {count} 篇",
-		"hub.collapseQueue": "折叠待写回列表",
-		"hub.expandQueue": "展开待写回列表",
+		"hub.collapseQueue": "折叠任务列表",
+		"hub.expandQueue": "展开任务列表",
 		"hub.writebackFailedCount": "⚠ {count} 篇写回失败，已停止自动重试",
 		"hub.pendingWritebackCount": "{count} 篇已提交待写回",
+		"hub.cloudWaitingCount": "{count} 篇云端等待",
+		"hub.cloudProcessingCount": "{count} 篇云端处理",
+		"hub.resultReadyCount": "{count} 篇结果待写回",
+		"hub.queueStatus.queued": "云端排队中",
+		"hub.queueStatus.processing": "云端处理中",
+		"hub.queueStatus.finalizing": "整理结果中",
+		"recovery.waiting": "仍有 {queued} 篇云端排队、{processing} 篇处理中。任务已保留，无需重复提交。",
+		"recovery.terminal": "任务已结束：{reason}",
+		"recovery.unconfirmed": "任务已保留，正在等待状态确认，无需重复提交。",
+		"task.pendingSuffix": "，{count} 篇云端继续处理",
+		"progress.phase.queued": "云端排队",
+		"progress.phase.finalizing": "整理结果",
+		"progress.cloudPending": "云端继续处理",
+		"error.queueTimeout": "云端排队超过等待上限，任务已停止，请稍后再试。",
+		"error.runningTimeout": "处理超过时间上限，任务已停止，请稍后再试。",
+		"error.queryUnavailable": "持续无法查询处理状态，任务已超过等待上限并停止，请联系支持。",
+		"error.submissionUncertain": "提交结果暂时无法确认，请联系支持核实，勿重复提交。",
 		"hub.oldest": "最早 {age}",
 		"hub.tryAgain": "再试一次",
 		"hub.recoverNow": "立即恢复",
@@ -875,6 +914,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"error.ocrSourceUnsupported": "暂不支持这份文档的文字识别，请先将文档转换为 Markdown。",
 		"error.ocrUnreadable": "未能可靠识别正文，请提供更清晰的 PDF 或 Markdown。",
 		"error.languageContract": "请更新 Recto 和服务后使用文档语言功能。",
+		"error.documentFormat": "请更新 Recto 后再处理此文档。",
 		"error.sourceRevision": "原文版本不一致，请重新提交当前原文。",
 		"error.pdfRequired": "请先选择 PDF 文件。",
 		"error.pdfInvalid": "请选择有效的 PDF 文件。",
@@ -917,6 +957,28 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"command.cancelQueued": "Cancel tasks not yet started",
 		"queue.added": "Added {count} item(s) to the local queue. Nothing uploaded or charged yet.",
 		"queue.waiting": "Waiting (not submitted)",
+		"feedback.received.convert": "Conversion request received",
+		"feedback.received.translate": "Translation request received",
+		"feedback.alreadyReceived": "Request already received for this paper",
+		"feedback.unavailable": "This paper is being updated. Try again shortly.",
+		"feedback.title": "Tasks",
+		"feedback.cancelWaiting": "Cancel waiting",
+		"feedback.preparing": "Preparing",
+		"feedback.waiting": "Waiting",
+		"feedback.executing": "Processing",
+		"feedback.blocked": "Needs attention",
+		"feedback.success": "Completed",
+		"feedback.partial": "Partially completed",
+		"feedback.translationIncomplete": "Translation incomplete",
+		"feedback.failed": "Incomplete",
+		"feedback.pending": "Continuing in cloud",
+		"feedback.retrying": "Reconnecting",
+		"feedback.recover": "Recover",
+		"feedback.open": "Open",
+		"feedback.retry": "Retry",
+		"feedback.close": "Close task panel",
+		"feedback.empty": "No tasks",
+		"feedback.partialSuffix": ", {count} partially completed",
 		"queue.executing": "Submitting",
 		"queue.blocked": "Stopped; cancel and start again",
 		"queue.sourceChanged": "{name}: the source or output location changed. This item stopped. Cancel it and confirm a new request.",
@@ -1409,10 +1471,27 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.deleteSelected": "Reimport ({count} papers)",
 		"hub.deleteSelectedHint": "Reset outputs, Note and flags and read fresh data from Zotero; confirmation comes first",
 		"hub.morePapers": "Another {count} papers",
-		"hub.collapseQueue": "Collapse pending writeback list",
-		"hub.expandQueue": "Expand pending writeback list",
+		"hub.collapseQueue": "Collapse task list",
+		"hub.expandQueue": "Expand task list",
 		"hub.writebackFailedCount": "⚠ Writeback failed for {count} papers; automatic retries stopped",
 		"hub.pendingWritebackCount": "{count} papers submitted and awaiting writeback",
+		"hub.cloudWaitingCount": "{count} papers waiting in the cloud",
+		"hub.cloudProcessingCount": "{count} papers processing in the cloud",
+		"hub.resultReadyCount": "{count} papers ready to write",
+		"hub.queueStatus.queued": "Queued in the cloud",
+		"hub.queueStatus.processing": "Processing in the cloud",
+		"hub.queueStatus.finalizing": "Preparing results",
+		"recovery.waiting": "{queued} papers are queued and {processing} are processing in the cloud. Tasks are saved; do not submit them again.",
+		"recovery.terminal": "Task ended: {reason}",
+		"recovery.unconfirmed": "Tasks are saved and awaiting a status check. Do not submit them again.",
+		"task.pendingSuffix": ", {count} continuing in the cloud",
+		"progress.phase.queued": "Queued in the cloud",
+		"progress.phase.finalizing": "Preparing results",
+		"progress.cloudPending": "Continuing in the cloud",
+		"error.queueTimeout": "Cloud queue waiting limit reached. The task stopped; try again later.",
+		"error.runningTimeout": "Processing time limit reached. The task stopped; try again later.",
+		"error.queryUnavailable": "Status remained unavailable until the waiting limit. The task stopped; contact support.",
+		"error.submissionUncertain": "Submission could not be confirmed. Contact support before submitting again.",
 		"hub.oldest": "Oldest: {age}",
 		"hub.tryAgain": "Try again",
 		"hub.recoverNow": "Recover now",
@@ -1765,6 +1844,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"error.ocrSourceUnsupported": "This document writing system is not supported for OCR. Convert the document to Markdown first.",
 		"error.ocrUnreadable": "The document text could not be reliably extracted. Provide a clearer PDF or Markdown.",
 		"error.languageContract": "Update Recto and the service to use document languages.",
+		"error.documentFormat": "Update Recto to process this document.",
 		"error.sourceRevision": "The source version does not match. Submit the current source again.",
 		"error.pdfRequired": "Choose a PDF to upload.",
 		"error.pdfInvalid": "Choose a valid PDF file.",
@@ -4521,7 +4601,7 @@ function getRectoTranslationSourceSegments(block) {
 	}
 	if (block.type === "list") {
 		const items = Array.isArray(block.content && block.content.listItems)
-			? block.content.listItems.map(value => String(value || "").trim()).filter(Boolean)
+			? block.content.listItems.map(value => block.content.listType === "source_markdown" ? String(value || "").replace(/\r/g, "") : String(value || "").trim()).filter(Boolean)
 			: [String(block.normalized && block.normalized.text || "").trim()].filter(Boolean);
 		return items.map((text, index) => make(`item:${String(index).padStart(4, "0")}`, text, true, "list-item"));
 	}
@@ -4695,8 +4775,9 @@ function renderRectoTranslationDerivation(sidecar, blockById, derivation) {
 		return text ? `${text}${suffix}` : "";
 	}
 	if (block.type === "list") {
-		const items = derivation.segments.filter(item => item.sourceBlockId === block.id).map(item => clean(item.text)).filter(Boolean);
-		const prefix = clean(block.content && block.content.listType).toLowerCase() === "reference_list" ? "" : "- ";
+		const sourceMarkdown = block.content && block.content.listType === "source_markdown";
+		const items = derivation.segments.filter(item => item.sourceBlockId === block.id).map(item => sourceMarkdown ? String(item.text || "").replace(/\r/g, "") : clean(item.text)).filter(Boolean);
+		const prefix = sourceMarkdown || clean(block.content && block.content.listType).toLowerCase() === "reference_list" ? "" : "- ";
 		return items.map((item, index) => `${prefix}${item}${derivation.anchor && index === items.length - 1 ? suffix : ""}`).join("\n");
 	}
 	if (block.type === "formula") {
@@ -5216,6 +5297,18 @@ function rollbackObjectChanges(current, previous, applied) {
 	return restored;
 }
 
+function normalizeBackendProcessingStage(value) {
+	return ["queued", "processing", "finalizing"].includes(value) ? value : "";
+}
+
+function resolveBackendProcessingStage(status, stage) {
+	const value = String(status || "").toLowerCase();
+	if (["queued", "processing_submitted", "processing", "submitted"].includes(value)) {
+		return normalizeBackendProcessingStage(stage) || (value === "queued" ? "queued" : "processing");
+	}
+	return "";
+}
+
 function normalizePendingBackendTasks(list) {
 	if (!Array.isArray(list)) return [];
 	const seen = new Set();
@@ -5231,6 +5324,7 @@ function normalizePendingBackendTasks(list) {
 			taskId,
 			recordId: String((item && item.recordId) || ""),
 			status: String((item && item.status) || ""),
+			processingStage: normalizeBackendProcessingStage(item && item.processingStage),
 			task: sanitizePersistedPendingTask(item && item.task),
 			createdAt: String((item && item.createdAt) || ""),
 			lastFailure: String((item && item.lastFailure) || ""),
@@ -6667,12 +6761,15 @@ const BACKEND_PUBLIC_ERROR_KEYS = Object.freeze({
 	DOCUMENT_LANGUAGE_CONFIRMATION_REQUIRED: "error.languageConfirmation", DOCUMENT_OCR_LANGUAGE_UNSUPPORTED: "error.ocrLanguage",
 	DOCUMENT_OCR_SOURCE_UNSUPPORTED: "error.ocrSourceUnsupported", DOCUMENT_OCR_TEXT_UNREADABLE: "error.ocrUnreadable",
 	DOCUMENT_LANGUAGE_CONTRACT_UNSUPPORTED: "error.languageContract", DOCUMENT_SOURCE_REVISION_MISMATCH: "error.sourceRevision",
+	DOCUMENT_FORMAT_UNSUPPORTED: "error.documentFormat",
 	PDF_INVALID: "error.pdfInvalid", PDF_TOO_LARGE: "error.pdfTooLarge",
 	PLAN_UNAVAILABLE: "error.planUnavailable", PLAN_NOT_PURCHASABLE: "error.planNotPurchasable",
 	CHECKOUT_EXPIRED: "error.checkoutExpired", ORDER_NOT_FOUND: "error.orderNotFound",
 	PAYMENT_UNAVAILABLE: "error.paymentUnavailable", PAYMENT_METHOD_UNAVAILABLE: "error.paymentMethodUnavailable",
 	TASK_STATE_CONFLICT: "error.taskStateConflict", PAGE_LIMIT_EXCEEDED: "error.pageLimitExceeded",
 	TRANSLATION_PAGE_LIMIT_EXCEEDED: "error.translationPageLimitExceeded",
+	TASK_QUEUE_TIMEOUT: "error.queueTimeout", TASK_RUNNING_TIMEOUT: "error.runningTimeout",
+	TASK_QUERY_UNAVAILABLE: "error.queryUnavailable", TASK_SUBMISSION_UNCERTAIN: "error.submissionUncertain",
 	TASK_PROCESSING_FAILED: "error.remoteTask", SESSION_EXPIRED: "error.sessionExpired",
 	RATE_LIMITED: "error.busy", SERVICE_UNAVAILABLE: "error.unavailable",
 	REQUEST_INVALID: "error.requestInvalid", RESOURCE_NOT_FOUND: "error.resourceUnavailable",
@@ -7759,7 +7856,8 @@ function resolveHubContextSelection(visible, selectedIds, targetId) {
 }
 
 function getHubContextActionLockKeys(entries, action) {
-	if (["convert", "translate", "delete"].includes(action)) return ["process"];
+	if (action === "delete") return ["process"];
+	if (["convert", "translate"].includes(action)) return entries.map(entry => `intake:${entry.recordId}`);
 	if (action.startsWith("copy:")) return ["clipboard"];
 	if (action.startsWith("reveal:")) return [action];
 	if (action.startsWith("flag:")) return entries.map(entry => `flags:${entry.recordId}`);
@@ -8089,6 +8187,8 @@ const BATCH_PHASE_WEIGHTS = { submit: 0.02, upload: 0.08, processing: 0.55, summ
 const BATCH_PHASE_LABELS = {
 	submit: "提交",
 	upload: "上传",
+	queued: "云端排队",
+	finalizing: "整理结果",
 	processing: "解析",
 	summary: "摘要",
 	translation: "翻译",
@@ -8109,6 +8209,8 @@ const BATCH_DISPLAY_TEXT_KEYS = Object.freeze({
 	"取结果": "progress.fetchResult", "已完成": "progress.finished",
 	"已中止": "progress.stopped", "已失败": "progress.failedStatus",
 	"已完成一篇": "progress.completedOne", "上一篇失败": "progress.previousFailed",
+	"云端继续处理": "progress.cloudPending",
+	"云端排队": "progress.phase.queued", "整理结果": "progress.phase.finalizing",
 });
 function localizeBatchDisplayText(value, fallbackKey = "progress.inProgress") {
 	const raw = String(value || "");
@@ -8122,11 +8224,11 @@ function localizeBatchDisplayText(value, fallbackKey = "progress.inProgress") {
 	if (papers) return rectoUiText(papers[2] ? "progress.pendingCopy" : "progress.paperCount", { count: papers[1] });
 	return !fallbackKey || activeRectoUiLocale === "zh-CN" || !/[\u3400-\u9fff]/.test(raw) ? raw : rectoUiText(fallbackKey);
 }
-// 后端公开状态 → 本地阶段。queued 归到解析：用户视角里排队就是「等解析」。
+// 旧后端缺少 processingStage 时按原公开状态回退；排队与解析分别显示。
 const BACKEND_STATUS_PHASES = {
 	awaiting_upload: "upload",
-	uploaded: "processing",
-	queued: "processing",
+	uploaded: "queued",
+	queued: "queued",
 	processing_submitted: "processing",
 	processing: "processing",
 	summary_running: "summary",
@@ -8138,12 +8240,18 @@ const BATCH_PHASE_ORDER = ["submit", "upload", "processing", "summary", "transla
 const BATCH_STAGE_PHASES = {
 	提交: "submit",
 	上传: "upload",
-	排队: "processing",
+	排队: "queued",
 	解析: "processing",
 	摘要: "summary",
 	翻译: "translation",
 	取结果: "write",
 	写回: "write",
+	读取文档: "submit",
+	读取论文内容: "submit",
+	提交译文: "submit",
+	上传论文内容: "upload",
+	取译文: "write",
+	写回译文: "write",
 };
 // setStage 与 setProgress 共用的同一条判定，绝不各写一份（T85-B 修的就是它们漂开之后的事故：
 // setProgress 曾无条件写死 phase = "submit"，把一键导入的「扫描 / 建档 / 复制 PDF」三个真阶段
@@ -8165,8 +8273,8 @@ const BATCH_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "
 
 // 单篇内部的完成比例。子进度只在它所属的那个阶段里插值，拿不到就停在阶段起点——
 // 长阶段里假装匀速爬是骗人的，让 spinner 表示「在动」更诚实。
-function computeBatchItemFraction(phase, wantsTranslation, sub, wantsSummary = true) {
-	const weights = { ...BATCH_PHASE_WEIGHTS };
+function computeBatchItemFraction(phase, wantsTranslation, sub, wantsSummary = true, translateOnly = false) {
+	const weights = translateOnly ? { submit: 0.02, upload: 0.08, processing: 0, summary: 0, translation: 0.85, write: 0.05 } : { ...BATCH_PHASE_WEIGHTS };
 	if (!wantsTranslation) {
 		weights.processing += weights.translation;
 		weights.translation = 0;
@@ -8194,13 +8302,14 @@ function computeBatchProgressFraction(state) {
 	const sizes = Array.isArray(state && state.sizes) ? state.sizes.map(value => Math.max(0, Number(value) || 0)) : [];
 	const total = Math.max(0, Number(state && state.total) || sizes.length);
 	if (!total) return 0;
+	if (Number(state.current) >= total) return 1;
 	const index = Math.max(0, Math.min(total - 1, Number(state && state.index) || 0));
-	const useSizes = sizes.length === total && sizes.some(value => value > 0);
+	const useSizes = sizes.length === total && sizes.every(value => value > 0);
 	const weights = useSizes ? sizes : new Array(total).fill(1);
 	const sum = weights.reduce((acc, value) => acc + value, 0) || 1;
 	let done = 0;
 	for (let i = 0; i < index; i++) done += weights[i];
-	done += weights[index] * computeBatchItemFraction(state.phase, state.wantsTranslation, state.sub, state.wantsSummary !== false);
+	done += weights[index] * computeBatchItemFraction(state.phase, state.wantsTranslation, state.sub, state.wantsSummary !== false, state.translateOnly === true);
 	return Math.max(0, Math.min(1, done / sum));
 }
 
@@ -8226,6 +8335,9 @@ function describeBatchStatusLine(progress, tick = 0) {
 		? ` ${snapshot.sub.done}/${snapshot.sub.total}${snapshot.phase === "processing" ? rectoUiText("progress.pages") : ""}`
 		: "";
 	const failed = snapshot.failed ? ` · ${rectoUiText("progress.failed", { count: snapshot.failed })}` : "";
+	if (!sub || ["queued", "finalizing"].includes(snapshot.phase)) {
+		return `${spinner} ${localizeBatchDisplayText(snapshot.label, "progress.defaultLabel")}${counter} · ${phaseLabel}${failed}`;
+	}
 	return `${spinner} ${localizeBatchDisplayText(snapshot.label, "progress.defaultLabel")}${counter} ${renderBatchBar(fraction)} ${Math.round(fraction * 100)}% · ${phaseLabel}${sub}${failed}`;
 }
 
@@ -8366,6 +8478,7 @@ function buildHubQueueView(pendingTasks, nowMs = 0, activeRunId = "") {
 			recordId: entry.recordId || String(task.recordId || ""),
 			name: String(task.name || task.recordId || entry.recordId || rectoUiText("hub.untitledPaper")),
 			status: entry.status,
+			processingStage: resolveBackendProcessingStage(entry.status, entry.processingStage),
 			kind: task.resumeTranslationSubmit && BACKEND_ABANDONED_PRE_SUBMIT_STATUSES.has(String(entry.status).toLowerCase())
 				? "pending" : classifyRecoveredBackendTaskStatus(entry.status),
 			ageMs,
@@ -11045,6 +11158,9 @@ class RectoPlugin extends obsidian.Plugin {
 	onunload() {
 		if (this.hubNotesStore) this.hubNotesStore.flushAll();
 		this.isUnloading = true;
+		this.taskFeedback?.destroy();
+		this.taskReceiptNotice?.hide?.();
+		this.activeStatusProgress?.stopSpinner();
 		if (this.diagnosticUploadTimer) clearInterval(this.diagnosticUploadTimer);
 		this.diagnosticQueue?.stop();
 		// 保留对照关联记忆，供下次启动恢复。
@@ -11359,6 +11475,11 @@ class RectoPlugin extends obsidian.Plugin {
 			const summary = await recovery;
 			// 恢复写回过的论文库要立刻反映到 Hub；没写回任何东西就不必打扰列表。
 			if (summary && summary.recovered > 0) this.safeRefreshHubViews();
+			// 前台等待已经结束时，终止原因也必须可见；共享扫描只通知一次。
+			if (summary?.terminalReason) {
+				new obsidian.Notice(rectoUiText("recovery.terminal", { reason: summary.terminalReason }), 12000);
+				summary.terminalNotified = true;
+			}
 			return summary;
 		} finally {
 			if (this.pendingBackendRecoveryPromise === recovery) this.pendingBackendRecoveryPromise = null;
@@ -11414,6 +11535,8 @@ class RectoPlugin extends obsidian.Plugin {
 			if (progressNotice && typeof progressNotice.hide === "function") progressNotice.hide();
 			if (summary.recovered > 0) {
 				new obsidian.Notice(rectoUiText("recovery.done", { count: summary.recovered }), 8000);
+			} else if (summary.terminalReason) {
+				if (!summary.terminalNotified) new obsidian.Notice(rectoUiText("recovery.terminal", { reason: summary.terminalReason }), 12000);
 			} else if (summary.dropped > 0 && summary.kept === 0) {
 				new obsidian.Notice(rectoUiText("recovery.dropped", { count: summary.dropped }), 8000);
 			} else if (summary.blocked) {
@@ -11424,7 +11547,9 @@ class RectoPlugin extends obsidian.Plugin {
 				);
 			} else {
 				const detail = this.pendingBackendLastRecoveryError ? rectoUiText("recovery.lastError", { error: localizeStoredUiError(this.pendingBackendLastRecoveryError) }) : "";
-				new obsidian.Notice(rectoUiText("recovery.pending", { detail }), 12000);
+				new obsidian.Notice(detail ? rectoUiText("recovery.pending", { detail })
+					: summary.queued || summary.processing ? rectoUiText("recovery.waiting", { queued: summary.queued || 0, processing: summary.processing || 0 })
+					: rectoUiText("recovery.unconfirmed"), 12000);
 			}
 			return summary;
 		} catch (error) {
@@ -11458,11 +11583,13 @@ class RectoPlugin extends obsidian.Plugin {
 				let failureTaskId = entry.taskId;
 				try {
 					const onCreated = id => { failureTaskId = id; recovery.taskIds.add(id); };
+					let phase;
 					if (entry.status === "translation_handoff") {
-						await this.resumeBackendTranslationHandoff(entry.taskId, task, null, operation, onCreated);
+						phase = await this.resumeBackendTranslationHandoff(entry.taskId, task, null, operation, onCreated);
 					} else {
-						await this.runBackendTranslationPhase(task, task.stem, null, operation, onCreated, { existing: candidate.existing });
+						phase = await this.runBackendTranslationPhase(task, task.stem, null, operation, onCreated, { existing: candidate.existing });
 					}
+					if (phase && !phase.pending) this.taskFeedback?.remember({ task, stem: phase.stem, status: phase.partial ? "partial" : "success", partialKind: phase.partial });
 					await this.writePaperJsonlIndex();
 					this.safeRefreshHubViews();
 				} catch (error) {
@@ -11563,11 +11690,7 @@ class RectoPlugin extends obsidian.Plugin {
 				const kind = classifyRecoveredBackendTaskStatus(remote && remote.status);
 				// 把真实远端状态写回本地登记：否则队列条会一直显示提交时那个 "submitted"
 				// （「后端处理中」），而后端其实早就 READY、真正的问题在写回（T81-R）。
-				if (remote && remote.status && entry.status !== remote.status) {
-					entry.status = String(remote.status);
-					await this.save();
-					this.notifyTaskQueueChanged();
-				}
+				await this.rememberBackendTaskStatus(taskId, remote);
 				if (kind === "abandoned") {
 					if (entry.task && entry.task.translateOnly && entry.task.resumeTranslationSubmit) {
 						cloudCandidates.push({ taskId, existing: remote });
@@ -11612,9 +11735,11 @@ class RectoPlugin extends obsidian.Plugin {
 						// T81-S：译文任务的结果里没有正文，必须走译文/可选摘要的写回路，
 						// 否则会卡在「后端结果缺少源 Markdown」上反复重试到 blocked。
 						if (task.translateOnly) {
-							await this.writeBackendTranslationArtifacts(task, task.stem, result, null);
+							const feedback = { log() {}, itemPartial: "" };
+							await this.writeBackendTranslationArtifacts(task, task.stem, result, feedback);
 							await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
 							await this.clearPendingBackendTask(taskId);
+							this.taskFeedback?.remember({ task, stem: task.stem, status: feedback.itemPartial ? "partial" : "success", partialKind: feedback.itemPartial });
 							summary.recovered++;
 						} else {
 							const stem = await this.writeBackendTaskResult(task, result, null);
@@ -11632,6 +11757,7 @@ class RectoPlugin extends obsidian.Plugin {
 							} else {
 								await this.acknowledgeBackendTaskResult(taskId, { signal: operation.controller.signal });
 								await this.clearPendingBackendTask(taskId);
+								this.taskFeedback?.remember({ task, stem, status: "success" });
 							}
 							summary.recovered++;
 						}
@@ -11650,11 +11776,15 @@ class RectoPlugin extends obsidian.Plugin {
 						this.finishOperation(operation);
 					}
 				} else if (kind === "terminal") {
-					// failed/canceled/expired：后端已释放或从未扣费，丢弃。
+					// failed/canceled/expired：保留安全原因供这次手动恢复反馈。
+					if (remote.safeErrorCode) summary.terminalReason = backendPublicErrorText(remote.safeErrorCode, remote.safeErrorParams);
 					await this.clearPendingBackendTask(taskId);
 					summary.dropped++;
 				} else {
 					// 单次快照仍在处理：释放前台，稍后由调度器再次核对。
+					const stage = resolveBackendProcessingStage(remote.status, remote.processingStage);
+					const key = stage === "queued" ? "queued" : "processing";
+					summary[key] = (summary[key] || 0) + 1;
 					summary.kept++;
 				}
 			}, { taskId: entry?.taskId }), { signal: this.getActiveSignal(), independent: true });
@@ -12112,6 +12242,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	notifyTaskQueueChanged() {
+		this.ensureTaskFeedback()?.render();
 		for (const listener of this.taskQueueListeners || []) {
 			try {
 				listener();
@@ -12135,6 +12266,48 @@ class RectoPlugin extends obsidian.Plugin {
 		view.rows.push(...rows);
 		view.empty = !view.rows.length;
 		return view;
+	}
+
+	ensureTaskFeedback() {
+		if (this.isUnloading) return null;
+		if (!this.taskFeedback && typeof document !== "undefined" && document.body && typeof this.addStatusBarItem === "function") {
+			this.taskFeedback = new RectoTaskFeedback(this);
+		}
+		return this.taskFeedback;
+	}
+
+	showTaskReceipt(action, repeated = false) {
+		this.taskReceiptNotice?.hide?.();
+		const notice = new obsidian.Notice(rectoUiText(repeated ? "feedback.alreadyReceived" : `feedback.received.${action}`), 2200);
+		this.taskReceiptNotice = notice;
+		// Native noticeEl is the inner message; style the enclosing toast (also works on older outer noticeEl).
+		notice.noticeEl?.closest?.(".notice")?.classList.add("rc-task-receipt");
+	}
+
+	async runHubTaskIntake(action, entries, run) {
+		if (!entries.length) return;
+		const requests = this.hubTaskRequests ||= new Map();
+		const available = entries.filter(entry => !requests.has(entry.recordId)
+			&& !this.hubReimportRecordIds?.has(entry.recordId)
+			&& this.settings?.paperReimport?.recordId !== entry.recordId);
+		if (!available.length) {
+			if (entries.some(entry => requests.has(entry.recordId))) this.showTaskReceipt(action, true);
+			else new obsidian.Notice(rectoUiText("feedback.unavailable"), 2200);
+			return;
+		}
+		for (const entry of available) requests.set(entry.recordId, { name: entry.titleOriginal || entry.recordId, action });
+		this.showTaskReceipt(action);
+		this.notifyTaskQueueChanged();
+		try {
+			// Let the receipt paint before PDF inspection / hashing starts.
+			await new Promise(resolve => setTimeout(resolve, 30));
+			await run(available.map(entry => entry.recordId));
+		} catch (error) {
+			new obsidian.Notice(getUserFacingErrorMessage(error), 6000);
+		} finally {
+			for (const entry of available) requests.delete(entry.recordId);
+			this.notifyTaskQueueChanged();
+		}
 	}
 
 	openExternalUrl(url) {
@@ -12298,6 +12471,8 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async ensureDocumentLanguageCapabilities() {
+		const operation = this.operationScope?.getStore();
+		if (operation?.documentLanguageCapabilities) { this.throwIfUnloaded(); return operation.documentLanguageCapabilities; }
 		// Request failures retain their code for diagnostics and safe, actionable UI messages.
 		let capabilities;
 		try { capabilities = await this.backendRequest("/api/v1/tasks/capabilities", { timeout: 30000 }); }
@@ -12319,6 +12494,7 @@ class RectoPlugin extends obsidian.Plugin {
 			await this.save();
 		}
 		this.documentLanguageCapabilities = capabilities;
+		if (operation) operation.documentLanguageCapabilities = capabilities;
 		return capabilities;
 	}
 
@@ -15973,6 +16149,7 @@ class RectoPlugin extends obsidian.Plugin {
 				...(task.languageContract ? { languageContract: task.languageContract } : {}),
 				estimatedPages: this.estimateBackendTaskPages(task),
 				codeSnapshots: 1,
+				sourceMarkdownLists: 1,
 				requestedOutputs: this.getBackendRequestedOutputs(task),
 				postprocessProfile: this.getTaskPostprocessProfile(task),
 				sourceName: task.name || task.recordId || "paper.pdf",
@@ -16015,6 +16192,7 @@ class RectoPlugin extends obsidian.Plugin {
 		return await this.backendRequest("/api/v1/tasks/translation", {
 			method: "POST",
 			body: {
+				sourceMarkdownLists: 1,
 				...(task.languageContract ? { languageContract: task.languageContract } : {}),
 				sourceName: task.name || task.recordId || "paper.pdf",
 				documentId,
@@ -16243,11 +16421,31 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
+	async rememberBackendTaskStatus(taskId, remote) {
+		const stage = normalizeBackendProcessingStage(remote?.processingStage);
+		const current = this.pendingBackendTasks?.find(item => item.taskId === taskId);
+		if (!current || !remote?.status || (current.status === remote.status && (current.processingStage || "") === stage)) return;
+		await this.save(() => {
+			const entry = this.pendingBackendTasks?.find(item => item.taskId === taskId);
+			if (!entry) return;
+			const previous = { status: entry.status, processingStage: entry.processingStage };
+			entry.status = String(remote.status);
+			entry.processingStage = stage;
+			return () => Object.assign(entry, previous);
+		});
+		this.notifyTaskQueueChanged();
+	}
+
 	async pollBackendTaskStatus(taskId, modal, options = {}) {
 		const finalStatuses = new Set(["ready", "failed", "canceled", "expired"]);
 		const waitMs = Math.min(getPollIntervalMs(this.settings), 5000);
 		const maxTransientErrors = 8;
 		let transientErrors = 0;
+		let lastTask = { taskId, status: "submitted" };
+		const defer = async (queryUnavailable = false) => {
+			await this.diagnosticExit("CLOUD_TASK_PENDING", "stage");
+			return { ...lastTask, taskId, pending: true, queryUnavailable };
+		};
 		for (let attempt = 1; attempt <= 120; attempt++) {
 			this.throwIfUnloaded();
 			let task;
@@ -16261,17 +16459,21 @@ class RectoPlugin extends obsidian.Plugin {
 				if (isCancellationError(error, this.getActiveSignal())) throw error;
 				if (!isRetryableBackendRequestError(error)) throw error;
 				transientErrors += 1;
+				modal?.setRetrying?.(true);
 				if (modal) modal.log(`状态检查暂时未完成（${transientErrors}/${maxTransientErrors}）：${getUserFacingErrorMessage(error, "网络连接不稳定，请稍后重试。")}`);
-				if (transientErrors >= maxTransientErrors) throw error;
+				if (transientErrors >= maxTransientErrors) return await defer(true);
 				await sleep(waitMs, this.getActiveSignal());
 				continue;
 			}
 			transientErrors = 0;
-			if (modal) modal.log(`处理状态：${BATCH_PHASE_LABELS[BACKEND_STATUS_PHASES[String(task.status || "").toLowerCase()]] || "进行中"}`);
+			modal?.setRetrying?.(false);
+			lastTask = task;
+			await this.rememberBackendTaskStatus(taskId, task);
+			if (modal) modal.log(`处理状态：${BATCH_PHASE_LABELS[resolveBackendProcessingStage(task.status, task.processingStage) || BACKEND_STATUS_PHASES[String(task.status || "").toLowerCase()]] || "进行中"}`);
 			// 后端阶段与可选子进度（解析页数 / 翻译批次）驱动进度条。progress 字段只放在后端内存里，
-			// 重启或多实例时会缺——缺了就只按阶段权重走，绝不因此报错。
+			// 重启或多实例时会缺——解析缺页数时仅报阶段，不画估算百分比。
 			// modal 是可选协作者（恢复写回时传 null），方法也按可选处理。
-			if (modal && typeof modal.setBackendPhase === "function") modal.setBackendPhase(task.status, task.progress);
+			if (modal && typeof modal.setBackendPhase === "function") modal.setBackendPhase(task.status, task.progress, task.processingStage);
 			if (task.status === "ready") return task;
 			if (finalStatuses.has(task.status)) {
 				if (options.returnTerminalStatus) return task;
@@ -16284,7 +16486,7 @@ class RectoPlugin extends obsidian.Plugin {
 			}
 			await sleep(waitMs, this.getActiveSignal());
 		}
-		throw new Error(`Backend task polling timed out: ${taskId}`);
+		return await defer();
 	}
 
 	async requestBackendTaskResult(taskId, options = {}) {
@@ -16641,6 +16843,7 @@ class RectoPlugin extends obsidian.Plugin {
 		if (task.requestSummary !== true) {
 			const written = await this.writeBackendTranslationResult(task, stem, result, modal);
 			if (result.translationAlignment?.status === "degraded") {
+				if (modal) modal.itemPartial = "translation";
 				await this.captureOperationDiagnostic({ code: "ARTIFACT_RESULTS", outcome: "failed", artifacts: { translation: "degraded" } });
 				await this.diagnosticExit("TRANSLATION_DEGRADED", "failed");
 			}
@@ -16716,6 +16919,7 @@ class RectoPlugin extends obsidian.Plugin {
 			summary: summaryError || status.summary === "failed" ? "failed" : "succeeded",
 		};
 		const partial = Object.values(artifacts).some(value => value === "failed" || value === "degraded");
+		if (partial && modal) modal.itemPartial = artifacts.translation === "succeeded" ? "summary" : "translation";
 		await this.captureOperationDiagnostic({ code: "ARTIFACT_RESULTS", outcome: partial ? "failed" : "stage", artifacts, error: translationError || summaryError });
 		if (partial) await this.diagnosticExit("PARTIAL_RESULT", "failed");
 		return stem;
@@ -17057,16 +17261,18 @@ class RectoPlugin extends obsidian.Plugin {
 			ownerRunId: operation ? operation.runId : "",
 		});
 		const ready = await this.pollBackendTaskStatus(translationTaskId, modal);
+		if (ready.pending) return { stem, pending: true, queryUnavailable: ready.queryUnavailable };
 		setStage("取译文");
 		const result = await this.fetchBackendTaskResult(ready.taskId, modal);
 		if (shouldRejectBackendMockResult(result, true)) throw new Error("后端返回测试占位结果，任务已保留且未写入");
 		setStage("写回译文");
-		await this.writeBackendTranslationArtifacts(task, stem, result, modal);
+		const resultFeedback = modal || { log() {}, itemPartial: "" };
+		await this.writeBackendTranslationArtifacts(task, stem, result, resultFeedback);
 		await this.acknowledgeBackendTaskResult(ready.taskId);
 		await this.clearPendingBackendTask(ready.taskId);
 		// 豁免发生在冻结那一刻（上传 Sidecar），READY 只是把它带回来；两个都看是为了让
 		// 重启恢复后拿到的状态也算数。
-		return { stem, tailExemption: backendTaskUsedTailExemption(uploaded) || backendTaskUsedTailExemption(ready) };
+		return { stem, partial: resultFeedback.itemPartial || (result.translationAlignment?.status === "degraded" ? "translation" : ""), tailExemption: backendTaskUsedTailExemption(uploaded) || backendTaskUsedTailExemption(ready) };
 	}
 
 	selectRunnableBackendTasks(tasks, options = {}) {
@@ -17195,7 +17401,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.throwIfUnloaded();
 			return [...previous, ...items];
 		});
-		new obsidian.Notice(rectoUiText("queue.added", { count: items.length }), 6000);
+		if (!items.some(item => this.hubTaskRequests?.has(item.task.recordId))) new obsidian.Notice(rectoUiText("queue.added", { count: items.length }), 3500);
 		// Durable intents now reserve these resources; the intake context must
 		// relinquish its temporary claims before the independent executor starts.
 		this.operationResources.release(operation);
@@ -17231,8 +17437,6 @@ class RectoPlugin extends obsidian.Plugin {
 					try {
 						if (!this.beginOperation(rectoUiText("task.cloudProcessing"), { silent: true })) return;
 						operation.queuedRemaining = items.length;
-						await this.updateLocalTaskIntents(previous => previous.map(item => operation.localIntentIds.has(item.id)
-							? { ...item, state: "executing" } : item));
 						const valid = [];
 						for (const item of items) {
 							// Cancellation may have won the serialized save before this executor.
@@ -17244,10 +17448,11 @@ class RectoPlugin extends obsidian.Plugin {
 								if (item.sidecarHash && !isRectoMarkdownTranslationTask(item.task)
 									&& documentContentHash(await this.readLocalPaperSidecarText(item.task.stem, item.task)) !== item.sidecarHash) throw new Error("Sidecar changed");
 								this.throwIfUnloaded();
-								valid.push(item);
+								if (this.localTaskIntents.some(entry => entry.id === item.id && entry.state === "waiting")) valid.push(item);
 							} catch (error) {
 								this.throwIfUnloaded();
 								if (isCancellationError(error, this.getActiveSignal()) || this.isUnloading) throw error;
+								if (!this.localTaskIntents.some(entry => entry.id === item.id)) continue;
 								await this.updateLocalTaskIntents(previous => previous.map(entry => entry.id === item.id ? { ...entry, state: "blocked", failure: "source" } : entry));
 								new obsidian.Notice(rectoUiText("queue.sourceChanged", { name: item.task.name || item.task.recordId }), 10000);
 							}
@@ -17296,9 +17501,35 @@ class RectoPlugin extends obsidian.Plugin {
 					cancelled = true; return false;
 				});
 			});
-			if (cancelled) new obsidian.Notice(rectoUiText("queue.cancelled"), 5000);
+			this.syncLocalQueuedRemaining();
+			if (cancelled) new obsidian.Notice(rectoUiText("queue.cancelled"), 2200);
 			return cancelled;
 		}, { independent: true });
+	}
+
+	syncLocalQueuedRemaining() {
+		const operation = this.activeOperation;
+		if (!operation?.localIntentIds) return;
+		const count = (this.localTaskIntents || []).filter(item => operation.localIntentIds.has(item.id) && item.state === "waiting").length;
+		operation.queuedRemaining = count;
+		if (this.activeStatusProgress?.operation === operation) this.activeStatusProgress.setQueuedRemaining(count);
+	}
+
+	async claimLocalTaskIntentForExecution(task) {
+		if (!task.localIntentId) return true;
+		const operation = this.operationScope?.getStore();
+		let claimed = false;
+		await this.updateLocalTaskIntents(previous => {
+			this.throwIfUnloaded();
+			if (!operation?.localIntentIds?.has(task.localIntentId) || operation.stopAfterCurrent) return previous;
+			return previous.map(item => {
+				if (item.id !== task.localIntentId || item.state !== "waiting") return item;
+				claimed = true;
+				return { ...item, state: "executing" };
+			});
+		});
+		this.syncLocalQueuedRemaining();
+		return claimed;
 	}
 
 	async runBackendBatchWithTasksUnlocked(tasks, options = {}) {
@@ -17372,6 +17603,7 @@ class RectoPlugin extends obsidian.Plugin {
 				tasks.map(task => Number(task && task.fileSize) || 0)
 			);
 			modal.setWantsTranslation(wantsTranslation);
+			modal.translateOnly = translateOnly;
 			// T84：库外任务不请求摘要，进度条里也不该显示摘要那一段。
 			modal.setWantsSummary(tasks.some(task => task.requestSummary === true));
 			modal.enableCancel(operation);
@@ -17393,6 +17625,8 @@ class RectoPlugin extends obsidian.Plugin {
 				await this.withDiagnosticItem(task, async () => {
 				let backendTaskId = "";
 				try {
+					if (!await this.claimLocalTaskIntentForExecution(task)) return;
+					modal.setTask(task);
 					if (task.localInputHash && (await this.localTaskInputHash(task) !== task.localInputHash
 						|| (task.translationSidecarHash && !isRectoMarkdownTranslationTask(task)
 							&& documentContentHash(await this.readLocalPaperSidecarText(task.stem, task)) !== task.translationSidecarHash))) {
@@ -17401,7 +17635,8 @@ class RectoPlugin extends obsidian.Plugin {
 					if (task.translateOnly) {
 						const phase = await this.runBackendTranslationPhase(task, task.stem, modal, operation, id => { backendTaskId = id; });
 						if (phase.tailExemption) exemptedCount += 1;
-						results.push({ task, status: "success", stem: phase.stem });
+						if (phase.pending) { results.push({ task, status: "pending" }); modal.setProgress(results.length, tasks.length, "云端继续处理"); return; }
+						results.push({ task, status: phase.partial ? "partial" : "success", partialKind: phase.partial, stem: phase.stem });
 						modal.setProgress(results.length, tasks.length, "done");
 						return;
 					}
@@ -17422,6 +17657,7 @@ class RectoPlugin extends obsidian.Plugin {
 					// 打上本次运行的 runId：这一篇正被前台循环盯着，队列条不该把它显示成待恢复的滞留任务。
 					await this.persistPendingBackendTask(backendTaskId, task, "submitted", { ownerRunId: operation.runId });
 					const ready = await this.pollBackendTaskStatus(backendTaskId, modal);
+					if (ready.pending) { results.push({ task, status: "pending" }); modal.setProgress(results.length, tasks.length, "云端继续处理"); return; }
 					if (backendTaskUsedTailExemption(ready)) exemptedCount += 1;
 					modal.setStage("取结果", task.name);
 					const result = await this.fetchBackendTaskResult(ready.taskId, modal);
@@ -17442,6 +17678,7 @@ class RectoPlugin extends obsidian.Plugin {
 					// 绝不能把已经写好、也已经扣过费的转换成果一起判为失败——如实说明即可。
 					// T82-A-S-U：刚写完的正文若是 `ch-*.md`，说明原文就是中文——不跑第二段。
 					// 判据与右栏按钮完全一致（磁盘上有没有 `en-*.md`），两处不会漂移。
+					let translationIncomplete = false;
 					if (this.wantsTranslationForTask(task) && !this.hasForeignSourceMarkdownForTask(task, stem)) {
 						await this.captureOperationDiagnostic({ stage: "translation_phase", outcome: "skipped", code: "SAME_TARGET_LANGUAGE", taskId: backendTaskId });
 						modal.log(`${stem}：原文是中文，跳过翻译`);
@@ -17449,7 +17686,10 @@ class RectoPlugin extends obsidian.Plugin {
 						try {
 							const phase = await this.resumeBackendTranslationHandoff(ready.taskId, { ...task, stem }, modal, operation, id => { backendTaskId = id; });
 							if (phase.tailExemption) exemptedCount += 1;
+							if (phase.partial) translationIncomplete = true;
+							if (phase.pending) { results.push({ task, status: "pending", stem }); modal.setProgress(results.length, tasks.length, "云端继续处理"); return; }
 						} catch (translationError) {
+							translationIncomplete = true;
 							await this.diagnosticExit("TRANSLATION_FAILED_AFTER_CONVERSION", isCancellationError(translationError) ? "cancelled" : "failed");
 							await this.captureOperationDiagnostic({ stage: "translation_phase", outcome: isCancellationError(translationError) ? "cancelled" : "failed", code: "TRANSLATION_FAILED_AFTER_CONVERSION", error: translationError, taskId: backendTaskId });
 							if (isCancellationError(translationError, this.getActiveSignal())) throw translationError;
@@ -17467,7 +17707,7 @@ class RectoPlugin extends obsidian.Plugin {
 					}
 					// T84：翻译那一段读完 sidecar 之后才能删它，所以清理排在这里而不是写回里。
 					if (await this.cleanupExternalPaperMetadata(task, stem)) modal.log(`${stem}：已清理临时结构信息`);
-					results.push({ task, status: "success", stem });
+					results.push({ task, status: translationIncomplete ? "partial" : "success", partialKind: modal.itemPartial || "translation", retryTranslation: translationIncomplete && !modal.itemPartial, stem });
 					modal.setProgress(results.length, tasks.length, "done");
 				} catch (error) {
 					await this.captureOperationDiagnostic({ outcome: isCancellationError(error) ? "cancelled" : "failed", code: "ITEM_FAILED", error, taskId: backendTaskId });
@@ -17484,21 +17724,26 @@ class RectoPlugin extends obsidian.Plugin {
 						throw error;
 					}
 					const reason = getUserFacingErrorMessage(error, "处理未完成，请稍后重试。");
+					if (task.localIntentId) await this.updateLocalTaskIntents(previous => previous.map(item =>
+						item.id === task.localIntentId && item.state === "executing" ? { ...item, state: "blocked", failure: "execution" } : item));
 					results.push({ task, status: "failed", reason });
 					modal.log(`${task.name || task.recordId}：${reason}`);
 					modal.setProgress(results.length, tasks.length, "failed");
 				}
 				});
+				const result = results[results.length - 1];
+				if (result?.task === task) this.taskFeedback?.remember(result);
+				this.notifyTaskQueueChanged();
 			}
 
-			await this.refreshBackendCredits({ timeout: 30000 }).catch(error => {
-				if (modal) modal.log(`额度状态暂未刷新：${getUserFacingErrorMessage(error)}`);
-			});
 			await this.save();
 			await this.writePaperJsonlIndex();
 			this.clearPendingPaperJsonlRefresh();
 			const successCount = results.filter(item => item.status === "success").length;
-			const failedCount = results.length - successCount;
+			const failedCount = results.filter(item => item.status === "failed").length;
+			const pendingCount = results.filter(item => item.status === "pending").length;
+			const partialCount = results.filter(item => item.status === "partial").length;
+			if (pendingCount && !failedCount) await this.diagnosticExit("CLOUD_TASK_PENDING", "stage", { items: pendingCount });
 			if (failedCount) await this.diagnosticExit("BATCH_HAS_FAILURES", "failed", { items: failedCount });
 			// 日志文件名可能被顺延过（撞上用户的同名笔记），所以提示里报的是真正写到的那个。
 			let failureLogPath = "";
@@ -17516,16 +17761,24 @@ class RectoPlugin extends obsidian.Plugin {
 					modal.log(`⚠ 失败日志未能保存：${getUserFacingErrorMessage(logError)}`);
 				}
 			}
-			modal.setFinished(failedCount ? `完成，${failedCount} 篇失败` : "已完成");
+			for (const result of results) this.taskFeedback?.remember(result);
+			modal.setFinished(failedCount ? `完成，${failedCount} 篇失败` : partialCount ? rectoUiText("feedback.partial") : pendingCount ? "云端继续处理" : "已完成", failedCount ? "failed" : partialCount ? "partial" : "success");
 			const failedNoticeSuffix = failedCount ? (failureLogPath ? rectoUiText("task.failureLog", { path: failureLogPath }) : rectoUiText("task.logSaveFailed")) : "";
 			const stoppedSuffix = stoppedEarly ? rectoUiText("task.stoppedSuffix", { count: stoppedEarly }) : "";
 			new obsidian.Notice(
-				rectoUiText("task.batchSummary", { success: successCount, failed: failedCount, stopped: stoppedSuffix, log: failedNoticeSuffix }),
+				rectoUiText("task.batchSummary", { success: successCount, failed: failedCount, stopped: stoppedSuffix, log: failedNoticeSuffix })
+					+ (partialCount ? rectoUiText("feedback.partialSuffix", { count: partialCount }) : "")
+					+ (pendingCount ? rectoUiText("task.pendingSuffix", { count: pendingCount }) : ""),
 				failedCount ? 10000 : 6000
 			);
 			if (modal.summarySkipped) {
 				new obsidian.Notice(rectoUiText("hub.summaryExists", { count: modal.summarySkipped }), 8000);
 			}
+			// Credit refresh owns a separate context; it must not hold the next paper's
+			// cloud execution slot after all artifacts and queue receipts are saved.
+			void this.withOperationContext("credits-refresh", () => this.refreshBackendCredits({ timeout: 30000 }), { independent: true }).catch(error => {
+				if (modal) modal.log(`额度状态暂未刷新：${getUserFacingErrorMessage(error)}`);
+			});
 			// T82-A-S：如实告知豁免。不说补了多少点（不变量 13），只说做完了、额度已用完。
 			if (exemptedCount) {
 				new obsidian.Notice(
@@ -17549,7 +17802,7 @@ class RectoPlugin extends obsidian.Plugin {
 						modal.log(`⚠ 失败日志未能保存：${getUserFacingErrorMessage(logError)}`);
 					}
 				}
-				modal.setFinished(cancelled ? "已中止" : "已失败");
+				modal.setFinished(cancelled ? "已中止" : "已失败", "failed");
 			}
 			if (!cancelled) new obsidian.Notice(rectoUiText("task.failed", { error: reason, log: failureLogPath ? rectoUiText("task.failureLog", { path: failureLogPath }) : "" }), 8000);
 		} finally {
@@ -18348,6 +18601,104 @@ class RectoPlugin extends obsidian.Plugin {
 const HUB_LIST_CHUNK = 60;
 let rectoHubViewClass = null;
 
+// T88: Cuetray's rectangular paper, flutter and drag, scoped to the clicked Hub.
+// The owning window matters: Obsidian popouts must not draw or schedule on the main window.
+function playRectoBrandConfetti(host, anchor) {
+	const doc = host.ownerDocument, win = doc.defaultView;
+	const noop = () => {};
+	if (!win || !host.isConnected || !anchor.isConnected || doc.hidden) return noop;
+	const motion = win.matchMedia("(prefers-reduced-motion: reduce)");
+	if (motion.matches) return noop;
+	const bounds = host.getBoundingClientRect(), origin = anchor.getBoundingClientRect();
+	const w = host.clientWidth, h = host.clientHeight;
+	if (!w || !h || !bounds.width || !bounds.height || !origin.width) return noop;
+	const x = Math.max(0, Math.min(w, (origin.left + origin.width / 2 - bounds.left) * w / bounds.width));
+	const y = Math.max(0, Math.min(h, (origin.top + origin.height / 2 - bounds.top) * h / bounds.height));
+	const direction = x <= w / 2 ? 1 : -1;
+	const reach = Math.min(1200, direction > 0 ? w - x : x);
+	const scale = Math.max(0.65, Math.min(1, Math.sqrt(w / 1000)));
+	const colors = ["#d45240", "#efbd36", "#3eaf95", "#4a8cda", "#9970ce", "#df6b9e"];
+	const count = Math.max(20, Math.min(42, Math.round(w / 28)));
+	const pieces = Array.from({ length: count }, (_, i) => {
+		const lane = i % 3;
+		return {
+			delay: i === 0 ? 0 : (i + Math.random() * 0.7) / count * 0.55,
+			x, y, vx: direction * reach * (lane === 0 ? 1.8 + Math.random() * 0.7 : lane === 1 ? 0.06 + Math.random() * 0.3 : 0.6 + Math.random() * 0.8),
+			vy: h * (lane === 0 ? -0.12 + Math.random() * 0.22 : 0.2 + Math.random() * 0.9),
+			sway: (30 + Math.random() * 70) * scale, frequency: 3 + Math.random() * 6,
+			drag: 0.9 + Math.random() * 0.9, r: Math.random() * Math.PI * 2,
+			spin: Math.random() * 8 - 4, phase: Math.random() * Math.PI * 2,
+			width: (15 + Math.random() * 28) * scale, height: (35 + Math.random() * 45) * scale,
+			color: colors[i % colors.length],
+		};
+	});
+	const canvas = doc.createElement("canvas"), ctx = canvas.getContext("2d");
+	if (!ctx) return noop;
+	canvas.className = "recto-hub-confetti";
+	canvas.setAttribute("aria-hidden", "true");
+	const dpr = Math.min(win.devicePixelRatio || 1, 2);
+	canvas.width = Math.round(w * dpr);
+	canvas.height = Math.round(h * dpr);
+	ctx.scale(dpr, dpr);
+	host.appendChild(canvas);
+	let frame = 0, stopped = false, observer;
+	const start = win.performance.now();
+	let last = start;
+	const stop = () => {
+		if (stopped) return;
+		stopped = true;
+		win.cancelAnimationFrame(frame);
+		if (observer) observer.disconnect();
+		doc.removeEventListener("visibilitychange", stop);
+		win.removeEventListener("pagehide", stop);
+		win.removeEventListener("resize", stop);
+		motion.removeEventListener("change", stop);
+		canvas.remove();
+	};
+	doc.addEventListener("visibilitychange", stop);
+	win.addEventListener("pagehide", stop);
+	win.addEventListener("resize", stop);
+	motion.addEventListener("change", stop);
+	if (win.ResizeObserver) {
+		observer = new win.ResizeObserver(() => {
+			if (host.clientWidth !== w || host.clientHeight !== h) stop();
+		});
+		observer.observe(host);
+	}
+	const draw = now => {
+		if (stopped) return;
+		const elapsed = (now - start) / 1000, dt = Math.min((now - last) / 1000, 0.04);
+		last = now;
+		if (elapsed >= 4 || !host.isConnected || host.ownerDocument !== doc || !host.getClientRects().length) { stop(); return; }
+		ctx.clearRect(0, 0, w, h);
+		let visible = false;
+		for (const p of pieces) {
+			if (elapsed < p.delay) { visible = true; continue; }
+			const age = elapsed - p.delay, step = Math.min(dt, age);
+			p.vx *= Math.exp(-p.drag * step);
+			p.vy += h * 0.9 * step;
+			p.x += p.vx * step;
+			p.y += p.vy * step;
+			p.r += (p.spin + Math.sin(age * p.frequency + p.phase) * 3) * step;
+			if ((direction > 0 ? p.x > w + 120 : p.x < -120) || p.y > h + 100) continue;
+			visible = true;
+			ctx.save();
+			const flutter = Math.min(age * 2, 1);
+			ctx.translate(p.x + Math.sin(age * p.frequency + p.phase) * p.sway * flutter,
+				p.y + Math.sin(age * p.frequency * 0.7 + p.phase) * 22 * scale * flutter);
+			ctx.rotate(p.r);
+			ctx.scale(0.25 + 0.75 * Math.abs(Math.cos(age * p.frequency + p.phase)), 1);
+			ctx.fillStyle = p.color;
+			ctx.fillRect(-p.width / 2, -p.height / 2, p.width, p.height);
+			ctx.restore();
+		}
+		if (visible) frame = win.requestAnimationFrame(draw);
+		else stop();
+	};
+	frame = win.requestAnimationFrame(draw);
+	return stop;
+}
+
 function getRectoHubViewClass() {
 	if (!rectoHubViewClass) rectoHubViewClass = createRectoHubViewClass(obsidian);
 	return rectoHubViewClass;
@@ -18486,6 +18837,7 @@ function createRectoHubViewClass(api) {
 		}
 
 		async onClose() {
+			this.clearBrandConfetti();
 			this.closeFlagMenu();
 			this.closeContextMenu();
 			this.closeReadMenu();
@@ -18506,10 +18858,14 @@ function createRectoHubViewClass(api) {
 			this.registerDomEvent(this.navDrawerToggleEl, "mouseenter", () => this.openNavOnHover());
 			this.registerDomEvent(this.navDrawerToggleEl, "mouseleave", () => this.closeNavAfterHover());
 			this.syncNavToggle();
-			const brand = this.toolbarEl.createDiv({ cls: "recto-brand" });
+			const brand = this.toolbarEl.createEl("button", { cls: "recto-brand recto-hub-brand-button", attr: { type: "button", "aria-label": RECTO_BRAND_NAME } });
 			const mark = brand.createSpan({ cls: "recto-brand-mark" });
 			mark.innerHTML = RECTO_MARK_MARKUP;
-			brand.createSpan({ text: RECTO_BRAND_NAME });
+			brand.createSpan({ cls: "recto-brand-label", text: RECTO_BRAND_NAME });
+			this.registerDomEvent(brand, "click", () => {
+				this.clearBrandConfetti();
+				this.stopBrandConfetti = playRectoBrandConfetti(this.rootEl, brand);
+			});
 			const search = this.toolbarEl.createDiv({ cls: "recto-hub-search" });
 			setChromeIcon(search.createSpan({ cls: "recto-hub-search-icon" }), "search");
 			this.searchInput = search.createEl("input", {
@@ -18675,9 +19031,15 @@ function createRectoHubViewClass(api) {
 			return this.selectedIds.size >= 2;
 		}
 
+		clearBrandConfetti() {
+			if (this.stopBrandConfetti) this.stopBrandConfetti();
+			this.stopBrandConfetti = null;
+		}
+
 		// 只重置临时布局状态，不重画列表/详情，保留选中论文、滚动位置与 Note 编辑节点。
 		// 旧 navCollapsed 偏好已不再读取或写入，否则重开/拉宽仍会把分类栏永久隐藏。
 		resetLayout() {
+			this.clearBrandConfetti();
 			this.closeFlagMenu();
 			this.closeContextMenu();
 			this.closeReadMenu();
@@ -19582,6 +19944,11 @@ function createRectoHubViewClass(api) {
 		// 这是唯一能让用户看见此事的地方；而后端结果只保留 24 小时，过期即删且额度不退。
 		renderQueue() {
 			if (!this.queueEl) return;
+			if (this.plugin.ensureTaskFeedback?.()) {
+				this.queueEl.toggleClass("is-hidden", true);
+				this.plugin.taskFeedback.render();
+				return;
+			}
 			this.queueEl.empty();
 			const view = this.plugin.getHubQueueView();
 			this.queueEl.toggleClass("is-hidden", view.empty);
@@ -19596,11 +19963,15 @@ function createRectoHubViewClass(api) {
 			// 同一行的「再试一次 / 立即恢复」本来就是真 <button>，只有这个折叠三角键盘够不到。
 			// 旁边那段摘要文字也挂着同一个 toggle，但它只是鼠标的大命中区，不再占一个 Tab 位。
 			this.markAsButton(caret, rectoUiText(this.queueExpanded ? "hub.collapseQueue" : "hub.expandQueue"));
-			const cloudCount = view.rows.length - (view.counts.local || 0);
+			const cloudQueued = view.rows.filter(row => !row.local && !row.blocked && row.processingStage === "queued").length;
+			const cloudProcessing = view.rows.filter(row => !row.local && !row.blocked && row.kind === "pending" && row.processingStage !== "queued").length;
+			const cloudReady = view.rows.filter(row => !row.local && !row.blocked && row.kind === "ready").length;
 			const summary = [
 				view.counts.local ? rectoUiText("queue.count", { count: view.counts.local }) : "",
-				view.counts.blocked ? rectoUiText("hub.writebackFailedCount", { count: view.counts.blocked })
-					: cloudCount ? rectoUiText("hub.pendingWritebackCount", { count: cloudCount }) : "",
+				view.counts.blocked ? rectoUiText("hub.writebackFailedCount", { count: view.counts.blocked }) : "",
+				cloudQueued ? rectoUiText("hub.cloudWaitingCount", { count: cloudQueued }) : "",
+				cloudProcessing ? rectoUiText("hub.cloudProcessingCount", { count: cloudProcessing }) : "",
+				cloudReady ? rectoUiText("hub.resultReadyCount", { count: cloudReady }) : "",
 				view.oldestAgeText ? rectoUiText("hub.oldest", { age: view.oldestAgeText }) : "",
 			].filter(Boolean).join(" · ");
 			const label = head.createSpan({ cls: "recto-hub-queue-label", text: summary });
@@ -19616,7 +19987,7 @@ function createRectoHubViewClass(api) {
 				el.createSpan({ cls: "recto-hub-queue-name", text: row.name });
 				el.createSpan({
 					cls: "recto-hub-queue-status",
-					text: [row.local ? rectoUiText(`queue.${row.status}`) : row.blocked ? rectoUiText("hub.writebackFailed") : rectoUiText(`hub.queueStatus.${row.kind}`), row.ageText].filter(Boolean).join(" · "),
+					text: [row.local ? rectoUiText(`queue.${row.status}`) : row.blocked ? rectoUiText("hub.writebackFailed") : rectoUiText(`hub.queueStatus.${row.processingStage || row.kind}`), row.ageText].filter(Boolean).join(" · "),
 				});
 				if (row.local && row.status !== "executing") {
 					const cancel = el.createEl("button", { text: rectoUiText("dialog.cancel") });
@@ -19915,6 +20286,7 @@ function createRectoHubViewClass(api) {
 		}
 
 		isContextActionBusy(recordIds, action) {
+			if (["convert", "translate", "delete"].includes(action) && recordIds.some(id => this.plugin.hubTaskRequests?.has(id))) return true;
 			const entries = recordIds.map(id => this.entries.find(entry => entry.recordId === id) || { recordId: id });
 			const reimportIds = new Set(this.plugin.hubReimportRecordIds || []);
 			if (this.plugin.settings?.paperReimport?.recordId) reimportIds.add(this.plugin.settings.paperReimport.recordId);
@@ -20239,7 +20611,7 @@ function createRectoHubViewClass(api) {
 				new api.Notice(rectoUiText("hub.allConverted"), 6000);
 				return;
 			}
-			return this.withProcessButtonsDisabled(() => this.plugin.runHubBatchForRecords(pending.map(entry => entry.recordId), { requestTranslation: false }));
+			return this.plugin.runHubTaskIntake("convert", pending, ids => this.plugin.runHubBatchForRecords(ids, { requestTranslation: false }));
 		}
 		// T81-S：待译 = 未转换的 + 已转换但没译文的。已有译文的直接排除，不重复计费。
 		const target = this.plugin.settings?.documentLanguages?.translationTarget?.id;
@@ -20248,12 +20620,15 @@ function createRectoHubViewClass(api) {
 			new api.Notice(rectoUiText("hub.allTranslated"), 6000);
 			return;
 		}
-		return this.withProcessButtonsDisabled(() => this.plugin.runHubTranslateForRecords(pending.map(entry => entry.recordId)));
+		return this.plugin.runHubTaskIntake("translate", pending, ids => this.plugin.runHubTranslateForRecords(ids));
 	}
 
 		// T88-G-T：重新导入沿用所有入口，单篇直接执行、多篇一次确认。
 		async deleteSelectedRecords(entries = this.getSelectedEntries()) {
 			if (!entries.length) return;
+			if (entries.some(entry => this.plugin.hubTaskRequests?.has(entry.recordId))) {
+				new api.Notice(rectoUiText("feedback.alreadyReceived"), 2200); return;
+			}
 			return this.withProcessButtonsDisabled(async () => {
 				if (entries.length > 1) {
 					const accepted = await this.plugin.openDecision(() => ({
@@ -20275,8 +20650,7 @@ function createRectoHubViewClass(api) {
 			}, { action: "delete", recordIds: entries.map(entry => entry.recordId) });
 		}
 
-	// 转换/翻译一点出去就把整块按钮禁用，跑到完（或失败）再恢复——
-	// 否则状态栏进度在走，按钮却像没点上，用户会重复提交（T82-C）。
+	// Reimport changes local artifacts; keep its destructive-action guard separate from cloud intake.
 	withProcessButtonsDisabled(run, options = {}) {
 		if (this.processActionRunning) return Promise.resolve();
 		const reimportIds = options.action === "delete" ? options.recordIds || [] : [];
@@ -22055,6 +22429,259 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 // 批次进度的唯一写者（T81 第三轮）：状态栏显示字符进度条 + spinner，
 // 同一份快照挂到 plugin.batchProgress 供 Hub 队列条读取——单写者、两个渲染者，两处不可能不一致。
 // 取消不再挂在点击上：默认无按钮，悬停才浮出「取消未开始的 N 篇」（软取消，不打断在跑的那篇）。
+// One native status-bar entry owns the session queue. Rows are keyed by paper identity;
+// progress updates never replace focused controls or reset the popup's scroll position.
+class RectoTaskFeedback {
+	constructor(plugin) {
+		this.plugin = plugin;
+		this.rows = new Map();
+		this.recent = new Map();
+		this.busy = new Set();
+		this.open = false;
+		this.el = plugin.addStatusBarItem();
+		this.el.addClass("rc-task-status");
+		this.el.tabIndex = 0;
+		this.el.setAttribute("role", "button");
+		this.el.setAttribute("aria-haspopup", "dialog");
+		this.icon = this.el.createSpan({ cls: "rc-task-status-icon", text: "✓" });
+		this.text = this.el.createSpan({ cls: "rc-task-status-text" });
+		this.meter = this.el.createSpan({ cls: "rc-task-status-meter" });
+		this.meterFill = this.meter.createSpan({ cls: "rc-task-meter-fill" });
+		this.doc = this.el.ownerDocument;
+		this.popup = this.doc.body.createDiv({ cls: "rc-task-popup" });
+		this.popup.setAttribute("role", "dialog");
+		this.popup.setAttribute("aria-label", rectoUiText("feedback.title"));
+		this.popup.inert = true;
+		const head = this.popup.createDiv({ cls: "rc-task-head" });
+		this.title = head.createSpan({ cls: "rc-task-title" });
+		this.cancel = head.createEl("button", { cls: "rc-task-action rc-task-cancel" });
+		this.close = head.createEl("button", { cls: "rc-task-action rc-task-close", text: "×" });
+		this.list = this.popup.createDiv({ cls: "rc-task-list" });
+		this.cancel.addEventListener("click", () => this.perform("cancel-waiting", () => plugin.cancelQueuedTasksFromCommand()));
+		this.close.addEventListener("click", () => this.setOpen(false, true));
+		this.el.addEventListener("click", () => this.setOpen(!this.open));
+		this.el.addEventListener("keydown", event => {
+			if (["Enter", " ", "ArrowUp"].includes(event.key)) {
+				event.preventDefault(); this.setOpen(true); this.close.focus();
+			}
+		});
+		this.onKey = event => {
+			if (event.key === "Escape" && this.open) { event.preventDefault(); event.stopPropagation(); this.setOpen(false, true); }
+		};
+		this.onOutside = event => {
+			if (this.open && !this.popup.contains(event.target) && !this.el.contains(event.target)) this.setOpen(false);
+		};
+		this.onResize = () => { if (this.open) this.position(); };
+		this.doc.addEventListener("keydown", this.onKey);
+		this.doc.addEventListener("pointerdown", this.onOutside);
+		this.doc.defaultView.addEventListener("resize", this.onResize);
+	}
+
+	identity(task) { return String(task.recordId || task.markdownPath || task.folder || task.name); }
+	remember(result) {
+		if (result.status === "pending") return;
+		const key = this.identity(result.task);
+		this.recent.delete(key);
+		this.recent.set(key, { ...result, key, name: result.task.name || key });
+		while (this.recent.size > 20) this.recent.delete(this.recent.keys().next().value);
+		this.render();
+	}
+
+	async openResult(model) {
+		const p = this.plugin, task = model.task;
+		if (!isRectoExternalTask(task) && !isRectoMarkdownTranslationTask(task)) {
+			const entry = p.getHubEntries([task.recordId])[0];
+			if (entry) return await p.openHubPaper(entry, "auto");
+		} else {
+			const folder = isRectoMarkdownTranslationTask(task) ? null : p.app.vault.getAbstractFileByPath(p.resolveTaskPaperFolder(task, model.stem));
+			const target = task.translationPath || (isRectoMarkdownTranslationTask(task) ? resolveRectoMarkdownTranslationTarget(task.markdownPath, task.languageContract?.target).targetPath : "");
+			const file = (target && p.app.vault.getAbstractFileByPath(target)) || (folder && p.findOriginalMarkdownInPaperFolder(folder));
+			if (file) return await p.getHubOpenLeaf(file).openFile(file, { active: true });
+		}
+		new obsidian.Notice(rectoUiText("hub.fileMissing"), 5000);
+	}
+
+	models() {
+		const p = this.plugin, models = new Map();
+		for (const [key, item] of p.hubTaskRequests || []) models.set(key, { key, name: item.name, status: "preparing" });
+		for (const item of p.localTaskIntents || []) {
+			const key = this.identity(item.task);
+			models.set(key, { key, name: item.task.name || key, status: item.state, local: item });
+		}
+		const view = buildHubQueueView(p.pendingBackendTasks, Date.now(), "");
+		for (const item of view.rows) {
+			const key = String(item.recordId || item.taskId);
+			models.set(key, { key, name: item.name, status: this.recent.get(key)?.status === "partial" ? "partial" : item.blocked ? "blocked" : item.kind === "failed" ? "failed" : "pending", cloud: item });
+		}
+		const progress = p.batchProgress;
+		if (progress && !progress.finished && !progress.taskDone && (progress.recordId || !models.size)) {
+			const key = progress.recordId || "active-operation";
+			models.set(key, { ...models.get(key), key, name: progress.taskName || progress.detail || localizeBatchDisplayText(progress.label), status: "executing", progress });
+		}
+		for (const [key, item] of this.recent) if (!models.has(key)) models.set(key, item);
+		if (progress?.finished && !models.size) models.set("last-operation", { key: "last-operation", name: localizeBatchDisplayText(progress.label), status: progress.outcome || (progress.failed ? "failed" : "success"), finishedStage: progress.stage });
+		const priority = { executing: 0, preparing: 0, waiting: 1, pending: 2, blocked: 3, failed: 3, partial: 3, success: 4 };
+		return [...models.values()].sort((a, b) => (priority[a.status] ?? 4) - (priority[b.status] ?? 4));
+	}
+
+	async perform(key, run) {
+		if (this.busy.has(key) || this.plugin.isUnloading) return;
+		const focused = this.doc.activeElement;
+		this.busy.add(key); this.render();
+		try { await run(); }
+		catch (error) { new obsidian.Notice(getUserFacingErrorMessage(error), 6000); }
+		finally {
+			this.busy.delete(key);
+			if (!this.plugin.isUnloading) {
+				this.render();
+				if (this.open && this.doc.activeElement === this.doc.body && focused && focused !== this.doc.body) {
+					(focused.isConnected && !focused.disabled ? focused : this.close).focus({ preventScroll: true });
+				}
+			}
+		}
+	}
+
+	createRow(key) {
+		const el = this.list.createDiv({ cls: "rc-task-row" });
+		const icon = el.createSpan({ cls: "rc-task-row-icon" });
+		const name = el.createSpan({ cls: "rc-task-name" });
+		const status = el.createSpan({ cls: "rc-task-phase" });
+		const action = el.createEl("button", { cls: "rc-task-action" });
+		const extra = el.createEl("button", { cls: "rc-task-action" });
+		const bar = el.createDiv({ cls: "rc-task-meter" });
+		const fill = bar.createDiv({ cls: "rc-task-meter-fill" });
+		const row = { el, icon, name, status, action, extra, bar, fill };
+		action.addEventListener("click", () => { if (row.run) void this.perform(key, row.run); });
+		extra.addEventListener("click", () => { if (row.extraRun) void this.perform(key, row.extraRun); });
+		this.rows.set(key, row);
+		return row;
+	}
+
+	render() {
+		if (this.plugin.isUnloading) return;
+		const models = this.models(), p = this.plugin, live = new Set();
+		this.title.setText(rectoUiText("feedback.title"));
+		this.close.setAttribute("aria-label", rectoUiText("feedback.close"));
+		this.popup.setAttribute("aria-label", rectoUiText("feedback.title"));
+		this.cancel.setText(rectoUiText("feedback.cancelWaiting"));
+		this.cancel.disabled = this.busy.has("cancel-waiting") || !(p.localTaskIntents || []).some(item => item.state !== "executing");
+		for (const model of models) {
+			const key = model.key; live.add(key);
+			const row = this.rows.get(key) || this.createRow(key);
+			row.name.setText(model.name || key);
+			row.name.title = model.name || key;
+			const progress = model.progress;
+			let status = rectoUiText(model.status === "partial" && model.partialKind === "translation" ? "feedback.translationIncomplete" : `feedback.${model.status}`);
+			if (model.finishedStage) status = localizeBatchDisplayText(model.finishedStage);
+			if (progress) status = progress.retrying ? rectoUiText("feedback.retrying") : progress.phase
+				? rectoUiText(`progress.phase.${progress.phase}`) : localizeBatchDisplayText(progress.stage || rectoUiText("feedback.preparing"));
+			if (model.cloud && !progress && !["partial", "failed", "blocked"].includes(model.status)) status = rectoUiText(`hub.queueStatus.${model.cloud.processingStage || model.cloud.kind}`);
+			const sub = progress?.sub;
+			const measured = !!(sub && Number(sub.total) > 0 && Number.isFinite(Number(sub.done)) && !progress.retrying);
+			if (measured) status += ` ${Math.min(Number(sub.total), Math.max(0, Number(sub.done)))}/${sub.total}`;
+			row.status.setText(status);
+			row.status.title = model.cloud?.blocked ? rectoUiText("hub.writebackFailureDetail", { error: model.cloud.failure || rectoUiText("error.writeback"), hours: HUB_QUEUE_RESULT_TTL_HOURS }) : model.reason || status;
+			row.el.dataset.state = model.status;
+			row.icon.setText(model.status === "success" ? "✓" : ["failed", "blocked", "partial"].includes(model.status) ? "!" : "·");
+			row.icon.toggleClass("is-working", model.status === "executing" || model.status === "preparing");
+			row.bar.hidden = !measured;
+			if (measured) {
+				const fraction = Math.min(1, Math.max(0, Number(sub.done) / Number(sub.total)));
+				row.fill.style.transform = `scaleX(${fraction})`;
+				row.bar.setAttribute("role", "progressbar");
+				row.bar.setAttribute("aria-label", status);
+				row.bar.setAttribute("aria-valuenow", String(Math.round(fraction * 100)));
+				row.bar.setAttribute("aria-valuemin", "0"); row.bar.setAttribute("aria-valuemax", "100");
+			}
+			let label = "", extraLabel = ""; row.run = null; row.extraRun = null;
+			if (model.local && model.local.state !== "executing") {
+				label = "×"; row.run = () => p.cancelLocalTaskIntent(model.local.id);
+				if (model.local.state === "blocked" && model.local.failure !== "source") {
+					extraLabel = rectoUiText("feedback.retry");
+					row.extraRun = async () => {
+						await p.withOperationContext("retry-local-task", async () => p.updateLocalTaskIntents(previous => {
+							p.throwIfUnloaded();
+							return previous.map(item => item.id === model.local.id && item.state === "blocked" ? { ...item, state: "waiting", failure: "" } : item);
+						}), { independent: true });
+						p.scheduleLocalTaskQueue();
+					};
+				}
+			} else if (model.cloud && !progress) {
+				label = rectoUiText("feedback.recover");
+				row.run = () => model.cloud.blocked ? p.retryBlockedPendingBackendTasks() : p.recoverPendingBackendTasksFromCommand();
+				if (model.cloud.blocked) {
+					extraLabel = rectoUiText("hub.abandon"); row.extraRun = () => p.abandonPendingBackendTask(model.cloud.taskId);
+				}
+			} else if (["success", "partial"].includes(model.status) && model.task?.recordId) {
+				label = rectoUiText("feedback.open");
+				row.run = () => this.openResult(model);
+				if (model.status === "partial" && model.retryTranslation && !isRectoExternalTask(model.task)) {
+					extraLabel = rectoUiText("feedback.retry"); row.extraRun = () => {
+						const entries = p.getHubEntries([model.task.recordId]);
+						return p.runHubTaskIntake("translate", entries, ids => p.runHubTranslateForRecords(ids));
+					};
+				}
+			}
+			row.action.setText(label);
+			row.action.setAttribute("aria-label", `${label === "×" ? rectoUiText("dialog.cancel") : label} ${model.name}`);
+			row.action.hidden = !row.run;
+			row.action.disabled = this.busy.has(key) || !!(model.cloud && p.activeOperation);
+			row.extra.setText(extraLabel);
+			row.extra.hidden = !row.extraRun;
+			row.extra.disabled = row.action.disabled;
+			row.extra.setAttribute("aria-label", `${extraLabel} ${model.name}`);
+			row.extra.title = model.cloud?.blocked ? rectoUiText("hub.abandonHint") : extraLabel;
+		}
+		for (const [key, row] of this.rows) if (!live.has(key)) {
+			if (row.el.contains(this.doc.activeElement)) this.close.focus();
+			row.el.remove(); this.rows.delete(key);
+		}
+		// Reorder only when state priority changes, and restore focus if moving a live
+		// DOM node detached it. Polling the same state never moves a row.
+		const focused = this.doc.activeElement, scroll = this.list.scrollTop;
+		models.forEach((model, index) => {
+			const el = this.rows.get(model.key).el;
+			if (this.list.children[index] !== el) this.list.insertBefore(el, this.list.children[index] || null);
+		});
+		if (focused && this.list.contains(focused) && this.doc.activeElement !== focused) focused.focus({ preventScroll: true });
+		this.list.scrollTop = scroll;
+		const active = models.find(item => item.progress) || models.find(item => item.status === "executing" || item.status === "preparing");
+		const waiting = models.filter(item => item.status === "waiting").length;
+		const cloud = models.filter(item => item.cloud).length;
+		const attention = models.some(item => ["blocked", "failed", "partial"].includes(item.status));
+		this.el.hidden = !models.length && !this.open;
+		this.icon.toggleClass("is-working", !!active);
+		this.icon.setText(active ? "" : attention ? "!" : "✓");
+		const label = active ? this.rows.get(active.key).status.textContent : cloud ? rectoUiText("feedback.pending") : models.length ? rectoUiText(attention ? "feedback.blocked" : "feedback.success") : rectoUiText("feedback.empty");
+		const sub = active?.progress?.sub;
+		this.meter.hidden = !(sub && Number(sub.total) > 0 && !active.progress.retrying);
+		if (!this.meter.hidden) this.meterFill.style.transform = `scaleX(${Math.min(1, Math.max(0, Number(sub.done) / Number(sub.total)))})`;
+		this.text.setText(`${rectoUiText("feedback.title")} · ${label}${waiting ? ` · ${rectoUiText("feedback.waiting")} ${waiting}` : ""}`);
+		this.el.setAttribute("aria-expanded", String(this.open));
+		if (this.open) this.position();
+	}
+
+	position() {
+		const rect = this.el.getBoundingClientRect(), win = this.doc.defaultView;
+		this.popup.style.right = `${Math.max(8, win.innerWidth - rect.right)}px`;
+		this.popup.style.bottom = `${Math.max(8, win.innerHeight - rect.top + 6)}px`;
+	}
+	setOpen(value, focus = false) {
+		this.open = value;
+		this.popup.inert = !value;
+		this.popup.setAttribute("aria-hidden", String(!value));
+		this.popup.toggleClass("is-open", value);
+		if (focus) this.el.focus();
+		this.render();
+	}
+	destroy() {
+		this.doc.removeEventListener("keydown", this.onKey);
+		this.doc.removeEventListener("pointerdown", this.onOutside);
+		this.doc.defaultView.removeEventListener("resize", this.onResize);
+		this.popup.remove(); this.el.remove();
+	}
+}
+
 class StatusBarProgress {
 	constructor(plugin, total, label = "", sizes = []) {
 		this.plugin = plugin;
@@ -22075,12 +22702,13 @@ class StatusBarProgress {
 		this.sizes = Array.isArray(sizes) ? sizes.slice() : [];
 		this.queuedRemaining = Math.max(0, total - 1);
 		this.tick = 0;
-		this.statusBarEl = plugin.addStatusBarItem();
-		this.statusBarEl.addClass("rc-statusbar");
+		this.feedback = plugin.ensureTaskFeedback?.();
+		this.statusBarEl = this.feedback ? this.feedback.el : plugin.addStatusBarItem();
+		if (!this.feedback) this.statusBarEl.addClass("rc-statusbar");
 		this.buildStatusBar();
 		this.publish();
 		// spinner 每 120ms 走一格：长阶段里没有真进度可爬，至少让用户看出「它还活着」。
-		this.spinnerTimer = setInterval(() => {
+		if (!this.feedback) this.spinnerTimer = setInterval(() => {
 			this.tick++;
 			this.renderStatusBar();
 		}, 120);
@@ -22088,6 +22716,7 @@ class StatusBarProgress {
 	}
 
 	buildStatusBar() {
+		if (this.feedback) return;
 		this.statusBarEl.empty();
 		// 浮层是 display:none，只由 `.rc-statusbar:hover` / `:focus-within` 打开；而 display:none 的
 		// 子树不可聚焦，状态栏自己又没有 tabindex，于是 `:focus-within` 永远不会被键盘触发——
@@ -22107,6 +22736,7 @@ class StatusBarProgress {
 	}
 
 	renderStatusBar() {
+		if (this.feedback) { this.feedback.render(); return; }
 		if (!this.textEl) return;
 		const snapshot = this.lastPublished;
 		this.textEl.setText(describeBatchStatusLine(snapshot, this.tick) || "Recto");
@@ -22129,6 +22759,9 @@ class StatusBarProgress {
 
 	publish(patch = {}) {
 		this.lastPublished = {
+			recordId: this.task ? String(this.task.recordId || this.task.markdownPath || this.task.folder || this.task.name) : "",
+			taskName: this.task?.name || "",
+			retrying: !!this.retrying,
 			label: this.label || (this.operation && this.operation.label) || rectoUiText("progress.defaultLabel"),
 			stage: this.stage,
 			detail: this.detail,
@@ -22141,11 +22774,14 @@ class StatusBarProgress {
 			queuedRemaining: this.queuedRemaining,
 			finished: false,
 			cancellable: !!this.operation,
+			taskDone: !!this.taskDone,
 			...patch,
 		};
 		this.lastPublished.fraction = this.lastPublished.finished
 			? 1
 			: computeBatchProgressFraction({
+				current: this.lastPublished.current,
+				translateOnly: this.translateOnly,
 				index: this.lastPublished.index,
 				total: this.lastPublished.total,
 				sizes: this.sizes,
@@ -22171,6 +22807,16 @@ class StatusBarProgress {
 		this.wantsTranslation = !!value;
 		this.publish();
 	}
+
+	setTask(task) {
+		this.task = task;
+		this.itemPartial = "";
+		this.taskDone = false;
+		this.retrying = false;
+		this.setStage("提交", task.name);
+	}
+
+	setRetrying(value) { this.retrying = !!value; this.publish(); }
 
 	// T83-I：这一轮会不会跑摘要。只翻译的批次与关掉摘要的转换批次都是 false。
 	setWantsSummary(value) {
@@ -22223,11 +22869,11 @@ class StatusBarProgress {
 		this.publish();
 	}
 
-	// 后端公开状态 + 可选子进度。progress 只在后端内存里，缺了就只按阶段权重走。
-	setBackendPhase(status, progress) {
-		const phase = BACKEND_STATUS_PHASES[String(status || "").toLowerCase()];
+	// 后端公开状态 + 可选阶段/子进度。缺失进度清除旧快照，解析仅显示已知真实页数。
+	setBackendPhase(status, progress, processingStage) {
+		const phase = resolveBackendProcessingStage(status, processingStage) || BACKEND_STATUS_PHASES[String(status || "").toLowerCase()];
 		if (!phase) return;
-		if (phase !== this.phase) this.sub = null;
+		this.sub = null;
 		this.phase = phase;
 		this.stage = BATCH_PHASE_LABELS[phase] || this.stage;
 		if (progress && Number(progress.total) > 0 && (!progress.phase || progress.phase === phase)) {
@@ -22237,6 +22883,7 @@ class StatusBarProgress {
 	}
 
 	setProgress(cur, tot, stage) {
+		this.taskDone = !!this.task;
 		this.current = cur;
 		this.total = tot;
 		this.index = Math.min(Math.max(0, tot - 1), cur);
@@ -22262,23 +22909,25 @@ class StatusBarProgress {
 		this.spinnerTimer = null;
 	}
 
-	setFinished(text) {
+	setFinished(text, outcome = "") {
 		this.operation = null;
 		this.stage = String(text || "已完成");
 		this.detail = "";
 		this.stopSpinner();
 		this.statusBarEl.removeClass("is-cancellable");
-		this.publish({ finished: true, cancellable: false, stage: this.stage });
-		setTimeout(() => {
-			this.statusBarEl.remove();
+		this.publish({ finished: true, cancellable: false, stage: this.stage, outcome });
+		this.finishTimer = setTimeout(() => {
+			if (!this.feedback) this.statusBarEl.remove();
 			this.clearPublished();
 			if (this.plugin.activeStatusProgress === this) this.plugin.activeStatusProgress = null;
 		}, 15000);
+		this.finishTimer?.unref?.();
 	}
 
 	remove() {
 		this.stopSpinner();
-		this.statusBarEl.remove();
+		if (this.finishTimer) clearTimeout(this.finishTimer);
+		if (!this.feedback) this.statusBarEl.remove();
 		this.clearPublished();
 		if (this.plugin.activeStatusProgress === this) this.plugin.activeStatusProgress = null;
 	}
@@ -23247,6 +23896,7 @@ if (process.env.NODE_ENV === "test") {
 		rectoResourcePath,
 		rectoResourcesOverlap,
 		StatusBarProgress,
+		RectoTaskFeedback,
 		RectoDiagnosticQueue,
 		buildRectoDiagnosticEvent,
 		buildRectoDiagnosticError,
