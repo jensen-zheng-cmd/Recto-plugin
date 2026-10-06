@@ -7,6 +7,7 @@
 .rc-task-status-meter .rc-task-meter-fill { display: block; }
 .rc-task-status-meter[hidden] { display: none; }
 .rc-task-status-icon, .rc-task-row-icon { width: 14px; flex: 0 0 14px; text-align: center; color: var(--text-muted); }
+.rc-task-status-icon svg { display: block; width: 14px; height: 14px; }
 .rc-task-popup {
 	position: fixed; z-index: var(--layer-popover, 30); width: 390px; max-width: calc(100vw - 16px);
 	padding: 6px 10px; border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m, 8px);
@@ -31,6 +32,7 @@
 .rc-task-meter { position: absolute; bottom: 0; left: 21px; right: 0; height: 2px; overflow: hidden; background: var(--background-modifier-border); }
 .rc-task-meter-fill { height: 100%; width: 100%; background: var(--interactive-accent); transform-origin: left; transition: transform 180ms ease; }
 .rc-task-status .is-working, .rc-task-row .is-working { width: 12px; height: 12px; flex-basis: 12px; border: 1.5px solid var(--background-modifier-border); border-top-color: var(--text-muted); border-radius: 50%; font-size: 0; animation: rc-task-spin 1s linear infinite; }
+.rc-task-status .is-working svg { visibility: hidden; }
 @keyframes rc-task-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
 	.rc-task-popup, .rc-task-meter-fill { transition: none; }
@@ -2643,7 +2645,7 @@ label.recto-sync-preview-row {
 .recto-ui .recto-hub-brand-button:hover {
 	background: transparent;
 	box-shadow: none;
-	color: var(--rc-accent);
+	color: var(--text-normal);
 }
 
 .recto-ui .recto-hub-brand-button:focus-visible {
@@ -2652,12 +2654,40 @@ label.recto-sync-preview-row {
 }
 
 .recto-hub-confetti {
-	position: absolute;
+	position: fixed;
 	inset: 0;
 	width: 100%;
 	height: 100%;
+	overflow: hidden;
 	pointer-events: none;
-	z-index: 20;
+	z-index: 1000;
+}
+
+.recto-hub-confetti-player {
+	position: absolute;
+	pointer-events: none;
+}
+
+.recto-hub-confetti-player svg {
+	display: block;
+}
+
+.recto-hub-confetti-piece,
+.recto-hub-confetti-line {
+	position: absolute;
+	left: 0;
+	top: 0;
+	pointer-events: none;
+	transform-origin: 0 0;
+}
+
+.recto-hub-confetti-piece svg {
+	overflow: visible;
+}
+
+.recto-hub-confetti-line {
+	contain: strict;
+	transform: translateZ(0);
 }
 
 .recto-hub-search {
