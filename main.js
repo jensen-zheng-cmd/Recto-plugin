@@ -29,7 +29,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"queue.waiting": "等待执行（未提交）",
 		"feedback.received.convert": "已收到转换请求",
 		"feedback.received.translate": "已收到翻译请求",
-		"feedback.alreadyReceived": "这篇论文的请求已收到",
+		"feedback.alreadyReceived": "这篇论文已有待完成任务",
 		"feedback.unavailable": "这篇论文正在更新，请稍后再试",
 		"feedback.title": "任务",
 		"feedback.cancelWaiting": "取消未开始",
@@ -41,11 +41,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"feedback.partial": "部分完成",
 		"feedback.translationIncomplete": "翻译未完成",
 		"feedback.failed": "未完成",
-		"feedback.pending": "云端继续",
-		"feedback.retrying": "连接重试中",
+		"feedback.pending": "处理中",
+		"feedback.retrying": "等待网络恢复",
 		"feedback.recover": "恢复",
 		"feedback.check": "检查",
-		"feedback.recovering": "恢复中",
+		"feedback.recovering": "保存中",
 		"feedback.clearCompleted": "清除已完成",
 		"feedback.open": "打开",
 		"feedback.retry": "重试",
@@ -54,15 +54,20 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"feedback.partialSuffix": "，{count} 篇部分完成",
 		"queue.executing": "正在提交",
 		"queue.blocked": "已停止，请取消后重新发起",
-		"queue.sourceChanged": "{name}：源文件或输出位置已改变，已停止此项。请取消后重新确认。",
-		"queue.cancelled": "已取消本地等待项。",
-		"queue.saveFailed": "本地等待队列保存或执行未完成，请查看队列后重试。",
+		"queue.sourceChanged": "文件已变化，请取消此任务后重新发起",
+		"queue.cancelled": "已取消 1 个等待任务",
+		"queue.saveFailed": "任务未能保存，请重试",
 		"queue.count": "本地队列 {count} 项",
 		"command.cycleReaderTheme": "切换论文阅读主题",
 		"command.toggleDualPane": "对照阅读：原文/译文双栏",
 		"command.togglePdfCompare": "PDF 对照阅读：原文 PDF/译文",
 		"settings.interface": "界面",
 		"settings.uiLanguage": "界面语言",
+		"settings.interfaceAccent": "界面强调色",
+		"settings.interfaceAccentDesc": "背景跟随 Obsidian，不影响阅读主题。",
+		"settings.interfaceAccent.red": "朱红",
+		"settings.interfaceAccent.blue": "蓝色",
+		"settings.interfaceAccent.green": "青绿",
 		"settings.uiLanguageDesc": "默认跟随 Obsidian。手动选择只改变 Recto 界面，不改变论文处理语言。",
 		"settings.followObsidian": "跟随 Obsidian",
 		"settings.intro": "登录账号、指好 Zotero 文件夹，然后把论文导入论文库，就可以开始转换与翻译。",
@@ -85,14 +90,14 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.signInOrRegister": "登录 / 注册",
 		"settings.preferenceSyncFailed": "处理偏好同步未完成，请稍后重试。",
 		"settings.writeAnchors": "写入对照锚点",
-		"settings.writeAnchorsDesc": "开启后会往您的原文里写入隐藏锚点，翻译完就能双栏对照。默认关：不改您自己写的文件。",
+		"settings.writeAnchorsDesc": "向原文写入对照标记后，可使用双栏联动。默认关闭。",
 		"settings.outputLocation": "输出位置",
 		"settings.outputLocationDesc": "产物写进所选目录下的同名子文件夹，必须在库内。固定目录也是「PDF 所在目录」的回退位置。",
 		"settings.currentFolder": "当前目录：",
 		"settings.chooseFolder": "选择文件夹",
 		"settings.chooseOutputFolder": "选择库外 PDF 的输出目录（必须在库内）",
-		"settings.outputOutsideVault": "输出目录必须在当前库里，否则正文里的图片会全部失效。",
-		"settings.outputAtVaultRoot": "请选择库里的一个子文件夹，不要直接用库根目录。",
+		"settings.outputOutsideVault": "请选择当前仓库内的文件夹",
+		"settings.outputAtVaultRoot": "请选择仓库内的子文件夹",
 		"settings.keepPdf": "保留 PDF 副本与结构信息",
 		"settings.keepPdfDesc": "PDF 对照阅读需要它们；关掉时只有正文、译文与图片。",
 		"settings.translationLanguage": "译文语言",
@@ -107,9 +112,9 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.zoteroSource": "Zotero 源文件夹",
 		"settings.libraryFolder": "论文库文件夹",
 		"settings.libraryPlaceholder": "论文库",
-		"settings.libraryInvalid": "论文库文件夹无效：{error}",
-		"settings.chooseVaultFolder": "请选择 Vault 内的文件夹。",
-		"settings.libraryMoved": "论文库文件夹已改为「{folder}」。旧目录不会自动改名，里面的论文仍在原处。",
+		"settings.libraryInvalid": "论文库目录不可用，请检查设置",
+		"settings.chooseVaultFolder": "请选择当前仓库内的文件夹",
+		"settings.libraryMoved": "新论文保存到「{folder}」，已有论文仍在原处",
 		"settings.importLibrary": "导入 Zotero 论文库",
 		"settings.autoSyncOn": "已开启自动同步：新的单 PDF 条目会静默入库；多 PDF 与已删除条目只记待确认，不自动删文件。点「立即同步」可立刻强制同步。",
 		"settings.autoSyncOff": "首次点「一键导入」并完成后才会开启自动同步。导入只在本地建文件夹与复制 PDF，不转换、不扣额度。",
@@ -126,7 +131,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.open": "打开",
 		"settings.replayOnboarding": "再看一次引导",
 		"settings.zoteroDetectedDesc": "已自动检测并填入 Zotero 数据目录；云端附件未下载时，转换会显示缺失。",
-		"settings.zoteroMissingDesc": "未自动检测到 Zotero 数据目录。请手动选择 Zotero 数据目录；云端附件未下载时，转换会显示缺失。",
+		"settings.zoteroMissingDesc": "未找到 Zotero 数据目录，请手动选择",
 		"settings.zoteroFindHint": "查找方法：打开 Zotero 设置 → 高级 → 文件和文件夹 → 显示数据目录，选择该目录或其中的 storage 文件夹。",
 		"settings.zoteroDetectAgain": "重新检测",
 		"settings.zoteroEditPath": "选择或填写 Zotero 库位置",
@@ -138,8 +143,8 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.zoteroChooseDetected": "请选择 Zotero 数据目录",
 		"settings.zoteroChooseDetectedDesc": "请核对 Zotero 中“显示数据目录”的位置，再选择要连接的论文库。",
 		"settings.zoteroStorageMissing": "已找到数据目录，但附件文件夹尚不可访问。请在 Zotero 中下载 PDF 附件，并检查目录权限。",
-		"settings.zoteroInvalidSource": "请选择包含 zotero.sqlite 的 Zotero 数据目录，或其中的 storage 文件夹，并确认目录可读。",
-		"settings.zoteroSaveFailed": "目录保存失败，请重新检测或选择文件夹后重试。",
+		"settings.zoteroInvalidSource": "请选择 Zotero 数据目录或其中的 storage 文件夹",
+		"settings.zoteroSaveFailed": "目录未保存，请重试",
 		"settings.currentDataFolder": "当前数据目录：",
 		"settings.chooseZoteroFolder": "选择 Zotero 数据目录（可直接选择名为 storage 的文件夹）",
 		"settings.detected": "已检测",
@@ -263,11 +268,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.loginInBrowser": "在浏览器中登录",
 		"account.browserLoggedIn": "已在浏览器登录",
 		"account.checkLogin": "检查登录状态",
-		"account.loginSuccess": "已登录 Recto 账号",
+		"account.loginSuccess": "已登录 Recto",
 		"account.loginNotFinished": "浏览器那边还没完成登录。",
 		"account.cancel": "取消",
 		"account.copyLoginLink": "复制登录链接",
-		"account.loginLinkCopied": "登录链接已复制，可在任意浏览器打开。",
+		"account.loginLinkCopied": "登录链接已复制",
 		"account.loginLinkCopyFailed": "复制失败，请手动打开账号网页。",
 		"account.browserReturnHint": "完成网页操作后返回 Obsidian，Recto 会自动继续。",
 		"account.browserOnlyHint": "登录、注册与找回密码都在浏览器完成。",
@@ -278,7 +283,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.loginAutoCheckFailed": "自动检查登录状态失败，已停止；在浏览器登录后请点「已在浏览器登录」。",
 		"account.emailUnverified": "邮箱尚未验证。",
 		"account.sendVerification": "发送验证邮件",
-		"account.verificationRequested": "验证邮件已请求，请检查邮箱。",
+		"account.verificationRequested": "验证邮件已发送",
 		"account.inviteCode": "邀请码",
 		"account.copyInvite": "复制邀请码",
 		"account.clipboardUnavailable": "当前环境不支持复制",
@@ -354,7 +359,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"onboarding.aiFeature": "为 AI 阅读铺路",
 		"onboarding.aiFeatureDesc": "论文变成能被 AI 读懂、能检索引用的笔记，长成您自己的知识库。",
 		"onboarding.freeFeature": "免费开始",
-		"onboarding.freeFeatureDesc": "全功能免费，每月都有免费额度；需要更多用量时再按需升级套餐。",
+		"onboarding.freeFeatureDesc": "PDF 转换当前免费，翻译按页使用。",
 		"onboarding.startSetup": "开始设置",
 		"onboarding.later": "稍后再说",
 		"onboarding.signIn": "登录 Recto 账号",
@@ -372,9 +377,9 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"onboarding.ready": "材料已经就绪",
 		"onboarding.readyDesc": "打开论文库，选择一篇论文，在右侧完成转换；转换完成后从同一处打开正文或译文阅读。",
 		"onboarding.openLibrary": "打开论文库，选择一篇转换",
-		"onboarding.selectPaperHint": "在列表里选中一篇论文，右侧详情栏就有「转换」。",
+		"onboarding.selectPaperHint": "选中一篇论文，点击“转换”",
 		"onboarding.firstConverted": "第一篇已经转换",
-		"onboarding.firstConvertedDesc": "正文已经写回当前 Vault。现在可以直接打开阅读，之后也能从文件列表再次找到它。",
+		"onboarding.firstConvertedDesc": "正文已保存，可直接打开阅读。",
 		"onboarding.readSource": "打开正文阅读",
 		"onboarding.choosePdf": "选择第一篇 PDF",
 		"onboarding.zoteroNotFound": "没有检测到可用的 Zotero 数据目录。可以先选一篇本地 PDF 转换，也可以去设置页手动配置 Zotero。",
@@ -383,14 +388,14 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"onboarding.configureZotero": "配置 Zotero",
 		"onboarding.skipStep": "跳过这一步",
 		"onboarding.skipAll": "跳过引导",
-		"onboarding.stepFailed": "这一步没有完成，请稍后重试。",
-		"onboarding.saveFailed": "未能保存引导状态，请重试。",
-		"onboarding.openFailed": "引导已完成，但目标页面没有打开，请从设置页继续。",
+		"onboarding.stepFailed": "这一步未完成，请重试",
+		"onboarding.saveFailed": "引导进度未保存，请重试",
+		"onboarding.openFailed": "引导已完成，请从设置页继续",
 		"onboarding.finished": "引导已结束。需要时可在 设置 → Recto → 开始使用 里继续配置。",
 		"feedback.signIn": "打开账号登录",
 		"feedback.contact": "Contact us：",
 		"feedback.qqCopied": "QQ 号已复制",
-		"feedback.qqCopyFailed": "复制失败，请手动记录 QQ：{qq}",
+		"feedback.qqCopyFailed": "复制失败，请手动复制",
 		"feedback.type": "反馈类型",
 		"feedback.issue": "故障",
 		"feedback.feature": "建议",
@@ -464,7 +469,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.readChoice.translation": "译文",
 		"hub.readChoice.pdf": "PDF",
 		"hub.chooseReadAction": "选择阅读类型",
-		"hub.readPreferenceFailed": "阅读类型暂未保存，重启后可能恢复原设置。",
+		"hub.readPreferenceFailed": "阅读偏好未保存，请重试",
 		"hub.openTranslation": "打开译文",
 		"hub.openSource": "打开原文",
 		"hub.openSummary": "打开摘要",
@@ -487,7 +492,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.context.revealVault": "在 Obsidian 库中显示",
 		"hub.context.revealSystem": "在资源管理器中显示",
 		"hub.context.revealFinder": "在 Finder 中显示",
-		"hub.context.folderNotFocused": "文件夹已打开，请点击任务栏中的文件夹查看",
+		"hub.context.folderNotFocused": "文件夹已打开，请在任务栏查看",
 		"hub.context.mark": "标记为",
 		"hub.flag.important": "重点文献",
 		"hub.flag.reproduce": "待复现",
@@ -497,7 +502,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.flags.add": "添加标记",
 		"hub.flags.remove": "点击移除：{label}",
 		"hub.flags.present": "已添加：{label}",
-		"hub.flags.failed": "附加标记未保存，请重试",
+		"hub.flags.failed": "标记未保存，请重试",
 		"hub.context.convert": "转换为 Markdown",
 		"hub.context.translate": "翻译",
 		"hub.context.delete": "重新导入",
@@ -507,8 +512,8 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.context.filesCopied": "已复制 {count} 个文件，可粘贴到支持文件的应用",
 		"hub.context.skipped": "；{count} 篇缺少对应文件，已跳过",
 		"hub.context.unavailable": "当前环境不支持此操作",
-		"hub.context.failed": "操作未完成，请检查文件是否存在后重试",
-		"hub.context.statusFailed": "阅读状态未完整保存，请重试",
+		"hub.context.failed": "文件操作未完成，请重试",
+		"hub.context.statusFailed": "阅读状态未保存，请重试",
 		"hub.deletePaper": "重新导入：清空本篇产物、Note 与标记，从 Zotero 重新读取（旧文件移入回收站）",
 		"hub.authors": "作者",
 		"hub.collapseAuthors": "收起",
@@ -561,10 +566,10 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"progress.phase.queued": "云端排队",
 		"progress.phase.finalizing": "整理结果",
 		"progress.cloudPending": "云端继续处理",
-		"error.queueTimeout": "云端排队超过等待上限，任务已停止，请稍后再试。",
-		"error.runningTimeout": "处理超过时间上限，任务已停止，请稍后再试。",
-		"error.queryUnavailable": "持续无法查询处理状态，任务已超过等待上限并停止，请联系支持。",
-		"error.submissionUncertain": "提交结果暂时无法确认，请联系支持核实，勿重复提交。",
+		"error.queueTimeout": "排队未完成，请稍后重试",
+		"error.runningTimeout": "处理超时，请稍后重试",
+		"error.queryUnavailable": "无法确认任务状态，请联系支持",
+		"error.submissionUncertain": "提交状态待确认，请勿重复提交",
 		"hub.oldest": "最早 {age}",
 		"hub.tryAgain": "再试一次",
 		"hub.recoverNow": "立即恢复",
@@ -585,32 +590,32 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"consent.later": "暂不启用",
 		"consent.agree": "同意并继续",
 		"update.newVersion": "{brand} 有新版本 {version}",
-		"update.intro": "当前版本 {current}，最新版本 {version}。更新只要几秒，装好当场生效，不用重启 Obsidian。",
+		"update.intro": "当前版本 {current}，新版本 {version}。",
 		"update.autoDesc": "「自动更新」：以后启动时发现新版本就直接装好，不再打扰您。",
 		"update.onceDesc": "「仅本次更新」：只更新这一次，下次有新版本还会再问。",
 		"update.sourceDesc": "更新包只从 Recto 的公开发布页获取，与社区商店同源；正在处理论文时不会更新。",
 		"update.skip": "跳过此版本",
 		"update.once": "仅本次更新",
 		"update.auto": "自动更新",
-		"update.required": "{brand} 需要先更新",
-		"update.requiredDesc": "当前版本已经太旧，继续处理论文可能拿不到正确的结果。更新后即可继续。",
+		"update.required": "请先更新 Recto",
+		"update.requiredDesc": "更新后可继续处理论文。",
 		"update.now": "立即更新",
 		"external.duplicateTitle": "这个 PDF 已经转换过",
 		"external.moreDuplicates": "（另有 {count} 篇同样已转换过）",
 		"external.selectedPdf": "所选 PDF",
-		"external.duplicateIntro": "{name} 之前已经转换过{more}。再转一次会重新计费，并另建一个新目录。",
+		"external.duplicateIntro": "「{name}」已转换过{more}。再次转换将另建文件夹。",
 		"external.previousOutput": "上次的产物在：{path}",
 		"external.previousOutputUnknown": "上次的产物目录已无记录。",
 		"external.translateInstead": "如果只是想要译文，打开上次的正文用命令「翻译当前 Markdown 文件」直接翻，不必重转。",
 		"external.convertAgain": "仍然转换 {count} 篇",
 		"import.confirmTitle": "导入 Zotero 论文库",
-		"import.confirmIntro": "即将导入 {count} 篇论文。",
-		"import.objectCounts": "新建 {created} 个，更新 {updated} 个。",
+		"import.confirmIntro": "导入 {count} 篇论文",
+		"import.objectCounts": "新增 {created} 篇，更新 {updated} 篇",
 		"import.pdfCounts": "复制 {count} 篇 PDF，约 {size} MB。",
 		"import.unreadable": "{count} 篇源 PDF 暂时不可读取，将跳过。",
-		"import.localOnly": "导入只会在本地建立论文对象，不会开始转换或翻译。",
+		"import.localOnly": "仅导入本地文件，不会自动转换或翻译。",
 		"import.confirmAction": "导入 {count} 篇",
-		"markdown.replaceTitle": "这份文档已经有译文",
+		"markdown.replaceTitle": "重新翻译将替换现有译文",
 		"markdown.replaceIntro": "{path} 已经存在。再翻一次会重新计费，并覆盖这份译文。",
 		"markdown.pageEstimate": "这份文档约合 {count} 页。",
 		"markdown.sourceSafe": "原文不受影响。",
@@ -619,31 +624,31 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.quote": "本批预计消耗 {needed} 个翻译页；当前可用 {available} 页。",
 		"batch.shortfall": "本批预计消耗 {needed} 页；现有 {available} 页，还差 {shortfall} 页",
 		"batch.translateTitle": "批量翻译",
-		"batch.translateIntro": "即将翻译选中的 {count} 篇论文。",
+		"batch.translateIntro": "翻译 {count} 篇论文",
 		"batch.translateAction": "翻译 {count} 篇",
 		"batch.content": "处理内容：{content}。",
 		"batch.summaryPart": "已启用的摘要",
 		"batch.partsJoin": "{first}、{second}",
 		"batch.partsFinal": "{first}与{last}",
-		"batch.freeTranslate": "PDF 转换当前免费；转换完成后按实际页数消耗翻译页。",
-		"batch.freeConvert": "PDF 转换当前免费，不消耗翻译页。",
+		"batch.freeTranslate": "PDF 转换当前免费，翻译按页使用。",
+		"batch.freeConvert": "PDF 转换当前免费",
 		"batch.rights": "请确认选择范围无误，并确保您有权处理这些文件。",
 		"batch.convertTranslateTitle": "批量转换并翻译",
 		"batch.convertTitle": "批量转换",
-		"batch.convertIntro": "即将处理选中的 {count} 篇 PDF。",
+		"batch.convertIntro": "转换 {count} 篇论文",
 		"batch.convertAction": "{action} {count} 篇",
 		"batch.deleteTitle": "批量重新导入",
-		"batch.deleteIntro": "从 Zotero 重新导入选中的 {count} 篇论文。",
+		"batch.deleteIntro": "重新导入 {count} 篇论文",
 		"batch.deleteMore": "另有 {count} 篇",
-		"batch.deleteDesc": "原文、译文、摘要和 Note 移入回收站，阅读状态与标记重置，旧写回任务放弃。读取最新 PDF 和论文信息后回到待转换状态。不会自动转换或翻译，已处理额度不退。",
+		"batch.deleteDesc": "原文、译文、摘要和 Note 将移入回收站，阅读状态与标记重置，旧任务放弃。重新导入后需再次转换；已使用的翻译页不退回。",
 		"batch.deleteAction": "重新导入 {count} 篇",
-		"recovery.abandoned": "已放弃{paper}，这篇论文可以重新转换；本次已扣的额度不会退回。",
+		"recovery.abandoned": "已放弃此任务；已使用的翻译页不退回",
 		"recovery.paperName": "「{name}」",
 		"recovery.task": "该任务",
 		"recovery.none": "当前没有等待写回的论文。",
 		"recovery.noConsent": "尚未启用云端处理，恢复已取消。",
-		"recovery.signIn": "请先重新登录 Recto，再恢复论文结果。",
-		"recovery.active": "已有任务正在运行：{label}",
+		"recovery.signIn": "请先登录 Recto",
+		"recovery.active": "正在处理其他任务，请稍后再试",
 		"recovery.start": "正在恢复 {count} 篇论文的处理结果，请勿重复提交……",
 		"recovery.done": "已恢复并写回 {count} 篇论文。",
 		"recovery.dropped": "已清理 {count} 个不可恢复的旧任务，现在可以重新提交论文。",
@@ -651,56 +656,56 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"recovery.blocked": "有 {count} 个任务反复写回失败，已停止自动重试。{reason}请在论文库底部的队列条里选择「再试一次」或「放弃这个任务」。",
 		"recovery.lastError": " 最近错误：{error}",
 		"recovery.pending": "暂未恢复成功，任务仍已保留，不要重复提交。{detail}",
-		"recovery.failed": "结果恢复未完成：{error}",
-		"update.waitForBatch": "正在处理论文，请等这一批跑完再更新。",
-		"update.latest": "{brand} 已是最新版本。",
-		"update.checkFailed": "暂时查不到新版本，请稍后重试。",
-		"update.installing": "正在更新 {brand}……",
-		"update.restartNeeded": "{brand} {version} 已下载，重启 Obsidian 后生效。",
-		"update.installFailed": "{brand} 更新失败，请稍后重试。",
-		"batch.noActiveTask": "当前没有正在运行的任务。",
+		"recovery.failed": "结果暂未保存，请在任务面板重试",
+		"update.waitForBatch": "请等待当前任务结束后更新",
+		"update.latest": "已是最新版本",
+		"update.checkFailed": "暂时无法检查更新，请稍后重试",
+		"update.installing": "Recto 正在更新，请稍后再试",
+		"update.restartNeeded": "更新已安装，重启 Obsidian 后生效",
+		"update.installFailed": "更新未完成，请稍后重试",
+		"batch.noActiveTask": "当前没有可取消的等待任务",
 		"batch.cancelAlreadyRequested": "已经请求过取消，正在跑的这一篇会跑完。",
-		"batch.onlyCurrent": "只剩正在跑的这一篇了，它会跑完；万一卡住会自动放弃并退回额度。",
-		"batch.cancelledQueued": "已取消尚未开始的 {count} 篇；正在跑的这一篇会跑完。",
-		"filePicker.folderUnavailable": "当前运行时打不开文件夹选择框，请把路径直接粘贴到输入框里。",
+		"batch.onlyCurrent": "仅剩正在处理的任务",
+		"batch.cancelledQueued": "已取消 {count} 个等待任务",
+		"filePicker.folderUnavailable": "无法打开选择窗口，请直接填写路径",
 		"filePicker.folderTitle": "选择文件夹",
-		"filePicker.folderFailed": "文件夹选择框未能打开，请稍后重试。",
-		"filePicker.pdfUnavailable": "当前运行时打不开文件选择框，无法选择库外 PDF。",
+		"filePicker.folderFailed": "选择窗口未能打开，请重试",
+		"filePicker.pdfUnavailable": "文件选择窗口未能打开，请重试",
 		"filePicker.pdfTitle": "选择要转换的 PDF（可多选）",
-		"filePicker.pdfFailed": "文件选择框未能打开，请稍后重试。",
-		"external.outputFallback": "这些 PDF 不在库内，没有「所在目录」可用，已改为写入「{folder}」。",
+		"filePicker.pdfFailed": "文件选择窗口未能打开，请重试",
+		"external.outputFallback": "结果将保存到「{folder}」",
 		"external.chooseOutput": "选择本次转换的输出目录（必须在库内）",
-		"external.outputOutside": "输出目录必须在当前库（vault）里，否则正文里的图片会全部失效。请重新选择。",
-		"external.outputAtRoot": "请选择库里的一个子文件夹，不要直接用库根目录。",
+		"external.outputOutside": "请选择当前仓库内的文件夹",
+		"external.outputAtRoot": "请选择仓库内的子文件夹",
 		"external.noConsent": "尚未启用云端处理，库外 PDF 转换已取消。",
-		"external.signIn": "请先登录 Recto 账号",
+		"external.signIn": "请先登录 Recto",
 		"external.busy": "有任务正在进行，请等它跑完再转换库外 PDF。",
-		"external.noPdf": "没有可处理的 PDF。",
+		"external.noPdf": "没有找到可处理的 PDF",
 		"external.cancelled": "已取消。",
-		"compare.openPaper": "请先打开论文的 PDF、原文、译文或摘要",
-		"compare.wrongFile": "当前文件不是 Recto 的论文文件",
-		"compare.sourceMissing": "找不到该论文的原文或译文",
-		"compare.unavailable": "对照阅读不可用：{error}",
+		"compare.openPaper": "请先打开一篇论文",
+		"compare.wrongFile": "当前文件不支持对照阅读",
+		"compare.sourceMissing": "找不到原文或目标译文",
+		"compare.unavailable": "暂时无法开启对照",
 		"compare.switchedDual": "已切换到双栏对照，PDF 对照已关闭。",
-		"compare.dualBindFailed": "对照阅读启动失败：无法绑定视图",
-		"compare.unmapped": "对照阅读已启动：{detail}，这些段落不会联动滚动。",
+		"compare.dualBindFailed": "对照未能打开，请重试",
+		"compare.unmapped": "部分段落无法同步定位",
 		"compare.dualClosed": "对照阅读已退出：有一栏被关闭或切换到了别的文件",
-		"compare.alignmentLost": "对照阅读已退出：锚点或修订绑定不再可用",
-		"compare.markdownMissing": "找不到中文 Markdown，无法进入 PDF 对照",
-		"compare.pdfMissing": "找不到 PDF 原文件，无法进入 PDF 对照",
-		"compare.pdfUnavailable": "PDF 对照不可用：{error}",
+		"compare.alignmentLost": "对照暂不可用，请重新打开",
+		"compare.markdownMissing": "找不到当前目标语言的译文",
+		"compare.pdfMissing": "找不到 PDF 原文件",
+		"compare.pdfUnavailable": "暂时无法开启对照",
 		"compare.switchedPdf": "已切换到 PDF 对照，原文译文双栏已关闭。",
-		"compare.pdfBindFailed": "PDF 对照启动失败：无法绑定视图",
+		"compare.pdfBindFailed": "对照未能打开，请重试",
 		"compare.pdfClosed": "PDF 对照已退出：有一栏被关闭或切换到了别的文件",
-		"compare.noPage": "该段落缺少 PDF 页码，未跳转",
-		"compare.notInStructure": "该段落不在结构信息里，未跳转",
+		"compare.noPage": "这段内容暂时无法定位到 PDF",
+		"compare.notInStructure": "这段内容暂时无法定位到 PDF",
 		"compare.alignmentBindingMissing": "缺少 Recto 修订绑定，可能是旧论文",
 		"compare.alignmentDocumentMismatch": "原文与译文不属于同一篇论文",
 		"compare.alignmentRevisionMismatch": "原文与译文的来源修订不一致",
 		"compare.alignmentNoAnchors": "两侧没有可对齐的锚点",
-		"compare.translationMissing": "没有找到译文，保持单栏",
-		"compare.sourcePartnerMissing": "没有找到原文，保持单栏",
-		"compare.chineseNoTranslation": "中文论文没有译文，保持单栏",
+		"compare.translationMissing": "找不到当前目标语言的译文",
+		"compare.sourcePartnerMissing": "找不到原文",
+		"compare.chineseNoTranslation": "当前论文没有可对照的译文",
 		"compare.unmatchedSource": "原文 {count} 块无对应",
 		"compare.unmatchedTranslation": "译文 {count} 块无对应",
 		"compare.pdfBindingInvalid": "论文定位信息缺失或格式不受支持",
@@ -708,24 +713,24 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"compare.pdfDocumentMismatch": "PDF 与当前 Markdown 不属于同一篇论文",
 		"compare.pdfRevisionMismatch": "PDF 来源修订与当前 Markdown 不一致",
 		"compare.pdfNoPageInfo": "这篇论文没有可用的页码定位信息",
-		"import.runtimeUnsupported": "当前环境无法读取 Zotero 论文库。请从 Obsidian 官网重新下载安装包并安装，仅在应用内检查更新可能无效。",
-		"import.chooseSource": "请先设置 Zotero 源文件夹",
+		"import.runtimeUnsupported": "请重新安装最新版 Obsidian 后重试",
+		"import.chooseSource": "请先设置 Zotero 文件夹",
 		"import.cancelled": "已取消导入，未导入任何论文。",
-		"import.noPdf": "没有找到可读的本地 Zotero PDF，未导入任何内容",
-		"import.failed": "Zotero 导入未完成，请稍后重试。",
-		"import.dbBusy": "Zotero 数据库正在被占用。请关闭 Zotero 后重试导入或检查。",
+		"import.noPdf": "没有找到可读取的本地 PDF",
+		"import.failed": "导入未完成，请重试",
+		"import.dbBusy": "Zotero 正在使用此目录，请关闭 Zotero 后重试",
 		"import.runtimeUpgrade": "当前环境无法读取 Zotero 论文库。请从 Obsidian 官网重新下载安装包并安装，仅在应用内检查更新可能无效。",
 		"import.folderMissing": "找不到或无法读取 Zotero 论文库文件夹。请在 Recto 设置中重新选择 Zotero 数据目录。",
 		"import.autoSync": "Zotero 自动同步",
 		"import.autoAdded": "新增 {count} 篇",
 		"import.pending": "{count} 项待确认",
 		"import.autoSummary": "Zotero 自动同步：{summary}",
-		"import.noChanges": "Zotero 已检查：没有需要处理的变化",
-		"import.checkFailed": "Zotero 检查未完成，请稍后重试。",
+		"import.noChanges": "已同步，没有新变化",
+		"import.checkFailed": "同步未完成，请稍后重试",
 		"markdown.openFirst": "请先打开要翻译的 Markdown 文件",
-		"markdown.invalidSource": "这个文件不能作为翻译原文（译文文件不会再翻一次）",
-		"markdown.readFailed": "读取文档失败：{error}",
-		"markdown.alreadyChinese": "这份文档已经是中文，不需要翻译",
+		"markdown.invalidSource": "请打开原文后再翻译",
+		"markdown.readFailed": "无法读取这份文档，请重新打开后重试",
+		"markdown.alreadyChinese": "原文已是目标语言，无需翻译",
 		"markdown.empty": "这份文档没有可翻译的内容",
 		"markdown.buyPages": "{quote}。请先购买翻译页。",
 		"markdown.start": "开始翻译《{name}》，约合 {count} 页。",
@@ -733,38 +738,38 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"markdown.quoteAvailable": "；现有 {available} 页",
 		"markdown.quoteShortfall": "，还差 {shortfall} 页",
 		"markdown.anchorHint": "想要双栏对照？在设置「翻译 Markdown」里开启「写入对照锚点」后重新翻译一次。",
-		"hub.noSelection": "请先在列表里选择论文",
-		"hub.noConvertible": "选中的论文里没有可提交的未转换 PDF；已转换的论文请看右栏说明。",
+		"hub.noSelection": "请先选择要处理的论文",
+		"hub.noConvertible": "找不到可用的 PDF",
 		"hub.skippedConversion": "选中 {total} 篇，其中 {ready} 篇可提交，{skipped} 篇已转换或源 PDF 不可读取，已跳过。",
 		"hub.chineseSkipped": "{count} 篇原文就是中文，已跳过翻译（这类论文不需要译文，也不会扣额度）。",
 		"hub.status.unread": "未读",
 		"hub.status.reading": "正在读",
 		"hub.status.read": "已读",
-		"hub.linkFailed": "链接暂时无法打开，请稍后重试。",
-		"hub.allConverted": "选中的论文都已转换。",
-		"hub.allTranslated": "选中的论文都已经有译文了。",
+		"hub.linkFailed": "链接未能打开，请重试",
+		"hub.allConverted": "所选论文均已转换",
+		"hub.allTranslated": "所选论文已有目标语言译文",
 		"hub.copied": "已复制",
 		"hub.copyUnavailable": "当前环境不支持复制",
-		"hub.copyFailed": "复制失败",
-		"account.loginSuccessNotice": "已登录 {brand} 账号",
-		"account.noLoginUrl": "后端未返回可用的登录地址。",
+		"hub.copyFailed": "复制失败，请手动复制",
+		"account.loginSuccessNotice": "已登录 Recto",
+		"account.noLoginUrl": "登录页面暂不可用，请重试",
 		"account.invalidLoginUrl": "登录地址不合法。",
 		"account.browserUnavailable": "无法在此环境中打开浏览器，请手动复制登录链接。",
-		"account.signInRequired": "请先登录 Recto 账号。",
+		"account.signInRequired": "请先登录 Recto",
 		"account.choosePlan": "请先选择要购买的套餐。",
-		"account.noCheckoutUrl": "后端未返回可用的支付页地址。",
+		"account.noCheckoutUrl": "购买页面暂不可用，请重试",
 		"feedback.signInRequired": "请先登录 Recto 账号再提交反馈。",
-		"update.installedNotice": "{brand} 已更新到 {version}",
+		"update.installedNotice": "Recto 已更新至 {version}",
 		"settings.librarySynced": "论文库文件夹已同步为「{folder}」。",
-		"settings.readingStatusFailed": "阅读状态切换未完成，请稍后重试。",
-		"import.unreadablePdfs": "有 {count} 篇已导入论文的源 PDF 当前不可读取，已跳过",
+		"settings.readingStatusFailed": "阅读状态未保存，请重试",
+		"import.unreadablePdfs": "找不到可用的 PDF",
 		"import.copiedCount": "本地 PDF 新复制 {count}",
 		"import.repairedCount": "修复不完整 {count}",
 		"import.copyFailedCount": "复制失败 {count}",
 		"import.mismatchCount": "与源大小不一致未覆盖 {count}",
-		"import.interruptedSummary": "Zotero 导入已中断：论文对象已保存 {count} 篇，{copyNote}；重跑会从中断处继续",
-		"import.incompleteSummary": "Zotero 论文对象已保存，但有 {count} 项未完成（{copyNote}）；重跑导入或重启 Obsidian 会自动修复",
-		"import.completedSummary": "Zotero 导入完成：新增 {imported}，已存在 {existing}，共 {total}；{copyNote}",
+		"import.interruptedSummary": "导入未完成，已保留 {count} 篇",
+		"import.incompleteSummary": "已保存论文记录，{count} 项仍需处理",
+		"import.completedSummary": "已导入 {imported} 篇论文",
 		"import.syncedSummary": "Zotero 已同步：正常 {matched}，PDF 缺失 {missing}，本地孤立 {orphaned}，移入回收站 {trashed}",
 		"task.translationSkipped": "{stem}：正文与摘要已保存，但译文未写入（{reason}）。这篇会显示为「已转换无译文」。",
 		"task.summaryUnsupported": "当前服务暂不支持翻译时生成摘要，尚未冻结翻译额度。请更新服务后重试。",
@@ -773,27 +778,27 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"task.batchSummary": "Recto：成功 {success} 篇，失败 {failed} 篇{stopped}{log}",
 		"task.stoppedSuffix": "，已取消未开始的 {count} 篇",
 		"task.logSaveFailed": "，失败日志保存失败",
-		"pdfRepair.done": "PDF 修复完成：{fixed}/{total} 个文件已重新复制",
-		"pdfRepair.none": "没有找到需要重新复制的 PDF：还没有导入过论文，或 Zotero 源文件当前不可读。",
-		"import.collectionReadFailed": "Zotero 分类暂时无法读取，将按普通列表显示。{error}",
-		"import.metadataReadFailed": "Zotero 论文信息暂时无法读取，将按文件名选择 PDF。",
-		"import.trashFailed": "未能移入回收站，请稍后重试。",
+		"pdfRepair.done": "已修复 {fixed} 个 PDF；{failed} 个未完成",
+		"pdfRepair.none": "没有找到可修复的 PDF",
+		"import.collectionReadFailed": "分类暂不可用，已按列表显示",
+		"import.metadataReadFailed": "论文信息暂不可用，已按文件名显示",
+		"import.trashFailed": "未能移入回收站，请重试",
 		"import.trashDone": "已移入回收站 {count} 篇",
-		"import.pendingFailed": "待确认项处理未完成，请稍后重试。",
-		"import.syncPaused": "当前环境无法读取 Zotero 论文库，已暂停同步。请更新 Obsidian 后重试。",
-		"import.syncFailed": "Zotero 同步未完成，请稍后重试。",
+		"import.pendingFailed": "处理未完成，请重试",
+		"import.syncPaused": "请重新安装最新版 Obsidian 后重试",
+		"import.syncFailed": "同步未完成，请稍后重试",
 		"import.trashPartial": "部分论文未能移入回收站，记录已保留：{titles}",
-		"hub.recordMissing": "找不到对应的 Zotero 论文记录",
-		"hub.openFailed": "打不开论文库，请重试或重启 Obsidian。",
-		"hub.settingsPath": "请从 Obsidian 设置 → 第三方插件 → Recto 打开设置页。",
-		"hub.resultMissing": "找不到刚才的转换结果，请从文件列表打开输出目录。",
-		"hub.resultSaved": "正文已保存到「{folder}」，请从文件列表打开。",
-		"hub.fileMissing": "找不到要打开的文件，请关闭再打开 Hub 后重试",
-		"task.retryMissing": "该任务不在本机待恢复列表中，已阻止重试以避免结果无法写回。",
+		"hub.recordMissing": "找不到这篇论文，请刷新论文库",
+		"hub.openFailed": "论文库未能打开，请重试",
+		"hub.settingsPath": "请在 Obsidian 设置中打开 Recto",
+		"hub.resultMissing": "找不到处理结果，请检查输出文件夹",
+		"hub.resultSaved": "结果已保存到「{folder}」",
+		"hub.fileMissing": "找不到这个文件，请检查论文文件夹",
+		"task.retryMissing": "该任务已不在待处理列表中",
 		"task.retrySubmitted": "已重新提交，请等待结果写回。",
-		"task.retryFailed": "重试未完成，请稍后再试。",
+		"task.retryFailed": "重试未完成，请稍后再试",
 		"task.noConsent": "尚未启用云端处理，本次处理已取消。",
-		"task.noTasks": "没有选择需要提交到 Recto 的任务",
+		"task.noTasks": "请先选择要处理的论文",
 		"task.cloudProcessing": "论文云端处理",
 		"task.pdfPathMissing": "转换任务需要本地 PDF 路径才能上传",
 		"task.blockedDuplicate": "有 {count} 篇论文仍在恢复或已经完成，已阻止重复提交并启动恢复检查。请勿重复上传；也可在命令面板运行“Recto: 恢复未完成的云端处理”。",
@@ -802,23 +807,23 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"task.skipCompleted": "已有产物：{count} 篇。",
 		"task.skipUnavailable": "文件不可用或无法处理：{count} 篇。请检查原文、PDF 或翻译目标。",
 		"task.failed": "Recto 任务失败：{error}{log}",
-		"task.exemption": "其中 {count} 篇的额度差了一点点，已为您补足并把这一篇做完。额度现在已用完，继续处理需要先购买。",
+		"task.exemption": "{count} 篇历史任务已按豁免规则完成结算",
 		"task.failureLog": "，请查看 {path}",
-		"delete.missing": "这些论文已经不在库里了",
-		"delete.preflightFailed": "重新导入检查失败: {error}",
-		"delete.done": "重新导入完成：成功 {success}，失败 {failed}。成功的论文已回到待转换状态。",
+		"delete.missing": "找不到这篇论文，请刷新论文库",
+		"delete.preflightFailed": "重新导入未完成：{error}",
+		"delete.done": "已重新导入 {success} 篇；{failed} 篇未完成",
 		"reimport.checkFailed": "重新导入检查未通过，请刷新论文库后重试。",
 		"reimport.sourceUnavailable": "未找到可确定的 Zotero PDF，请检查附件后重试；原论文已保留。",
 		"reimport.pathOccupied": "恢复路径已被占用，已保留恢复记录和文件。",
 		"reimport.trashFailed": "旧文件未能移入回收站，已保留恢复记录，请重试。",
 		"reimport.sourceChanged": "复制期间 Zotero PDF 发生变化，原论文已保留，请重试。",
-		"reimport.taskRunning": "论文仍在后端处理中，请等待当前任务结束后重新导入。",
+		"reimport.taskRunning": "正在处理，暂时无法重新导入",
 		"reimport.noteUnsaved": "Note 尚未保存，请保存后重新导入。",
-		"reimport.recoveryPending": "上次重新导入尚未恢复，请再次点击重新导入。",
-		"reimport.recoveryFailed": "重新导入恢复未完成：{error}。请再次点击重新导入。",
-		"delete.sourceMissing": "源文件夹不存在",
-		"distribution.done": "脱敏分发包已生成: {file}",
-		"distribution.failed": "分发包生成未完成，请稍后重试。",
+		"reimport.recoveryPending": "上次重新导入未完成，请再次重新导入",
+		"reimport.recoveryFailed": "上次重新导入未完成，请再次重新导入",
+		"delete.sourceMissing": "无法读取 Zotero 文件夹，请检查目录",
+		"distribution.done": "分发包已生成：{file}",
+		"distribution.failed": "分发包生成失败，请重试",
 		"zotero.itemType.journalArticle": "期刊论文",
 		"zotero.itemType.conferencePaper": "会议论文",
 		"zotero.itemType.bookSection": "图书章节",
@@ -897,57 +902,85 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"progress.pdfGroups": "{count} 组多 PDF",
 		"progress.paperCount": "{count} 篇",
 		"progress.pendingCopy": "{count} 篇待复制",
-		"error.default": "操作未完成，请稍后重试。",
-		"error.cloudConsent": "请先同意 Recto 云端处理说明。",
-		"error.documentLanguageUnsupported": "服务暂不支持新的文档语言功能，请更新服务后重试。",
-		"error.remoteTask": "处理未完成，请稍后重试。",
-		"error.sessionExpired": "登录状态已失效，请重新登录 Recto。",
-		"error.taskExpired": "这项处理已失效，请重新提交。",
-		"error.busy": "服务繁忙，请稍后重试。",
-		"error.unavailable": "服务暂时不可用，请稍后重试。",
-		"error.invalidSubmission": "提交内容未通过检查，请返回论文库后重试。",
-		"error.cancelled": "操作已取消。",
-		"error.network": "网络连接不稳定，请稍后重试。",
-		"error.hostNetwork": "Obsidian 安装器过旧或网络组件不可用。请关闭 Obsidian，从 https://obsidian.md/download 下载最新版安装器并重新安装（无需卸载）。仅在应用内检查更新可能无法更新安装器。",
-		"error.creationUnknown": "任务创建结果未确认，已暂停自动重试。尚未上传或扣费，可手动重试。",
-		"error.insufficientCredits": "翻译页不足，请先购买。",
-		"error.taskNotReady": "结果仍在处理中，请稍后重试。",
-		"error.noTranslatableContent": "这份文档没有可翻译的文字。",
-		"error.sameTargetLanguage": "这份文档已经是目标语言。",
-		"error.languageConfirmation": "请先确认原文和目标语言，再提交翻译。",
-		"error.ocrLanguage": "当前 OCR 语言不受支持，请重新选择。",
-		"error.ocrSourceUnsupported": "暂不支持这份文档的文字识别，请先将文档转换为 Markdown。",
-		"error.ocrUnreadable": "未能可靠识别正文，请提供更清晰的 PDF 或 Markdown。",
-		"error.languageContract": "请更新 Recto 和服务后使用文档语言功能。",
-		"error.documentFormat": "请更新 Recto 后再处理此文档。",
-		"error.sourceRevision": "原文版本不一致，请重新提交当前原文。",
-		"error.pdfRequired": "请先选择 PDF 文件。",
-		"error.pdfInvalid": "请选择有效的 PDF 文件。",
-		"error.pdfTooLarge": "PDF 超过 50 MB 上限。",
-		"error.planUnavailable": "这档额度包暂不可用，请重新选择。",
-		"error.planNotPurchasable": "这档额度包无法购买，请重新选择。",
-		"error.checkoutExpired": "支付链接已失效，请从 Recto 重新打开。",
-		"error.orderNotFound": "找不到这笔订单，请重新检查账号。",
-		"error.paymentUnavailable": "支付暂时不可用，请稍后重试。",
-		"error.paymentMethodUnavailable": "此支付方式暂不可用。",
-		"error.taskStateConflict": "任务处于{status}状态，暂不能进行此操作。",
-		"error.pageLimitExceeded": "文档超过 {limit} 页上限。",
-		"error.translationPageLimitExceeded": "文档相当于 {pages} 个翻译页，超过 {limit} 页上限。",
-		"error.requestInvalid": "请求未完成，请检查输入后重试。",
-		"error.resourceUnavailable": "请求的内容暂不可用。",
-		"error.writeback": "结果写回未完成，请稍后重试。",
-		"error.folderEmpty": "论文库文件夹不能为空。",
-		"error.folderRelative": "论文库文件夹必须是 Vault 内的相对路径。",
-		"error.folderSegments": "论文库文件夹不能包含 . 或 .. 路径段。",
+		"error.default": "操作未完成，请重试",
+		"error.cloudConsent": "请先同意云端处理说明",
+		"error.documentLanguageUnsupported": "此语言功能暂不可用，请联系支持",
+		"error.remoteTask": "处理未完成，请重试",
+		"error.resultIncomplete": "文档内容未能完整转换，请联系支持后再提交",
+		"error.sessionExpired": "登录已失效，请重新登录",
+		"error.taskExpired": "任务已失效，请重新发起",
+		"error.busy": "暂时繁忙，请稍后重试",
+		"error.unavailable": "暂时无法处理，请稍后重试",
+		"error.invalidSubmission": "暂时无法处理这份文档，请检查后重试",
+		"error.cancelled": "操作已取消",
+		"error.network": "网络暂不可用，请稍后重试",
+		"error.hostNetwork": "请重新安装最新版 Obsidian 后重试",
+		"error.creationUnknown": "任务状态待确认，请勿重复提交",
+		"error.insufficientCredits": "翻译页不足，请补充后再试",
+		"error.taskNotReady": "结果尚未完成",
+		"error.noTranslatableContent": "这份文档没有可翻译的内容",
+		"error.sameTargetLanguage": "原文已是目标语言，无需翻译",
+		"error.languageConfirmation": "无法确认文档语言，请检查原文",
+		"error.ocrLanguage": "暂不支持识别这份文档的语言",
+		"error.ocrSourceUnsupported": "暂时无法识别这份文档，可尝试 Markdown 文件",
+		"error.ocrUnreadable": "正文识别不清，请使用更清晰的 PDF",
+		"error.languageContract": "请更新 Recto 后重试",
+		"error.documentFormat": "请更新 Recto 后处理这份文档",
+		"error.sourceRevision": "原文已变化，请重新发起处理",
+		"error.pdfRequired": "请先选择 PDF 文件",
+		"error.pdfInvalid": "请选择有效的 PDF 文件",
+		"error.pdfTooLarge": "PDF 不能超过 50 MB",
+		"error.planUnavailable": "这个翻译页包暂不可用，请重新选择",
+		"error.planNotPurchasable": "这个翻译页包暂时无法购买，请重新选择",
+		"error.checkoutExpired": "支付链接已失效，请重新打开购买页面",
+		"error.orderNotFound": "未找到这笔订单，请检查登录账号",
+		"error.paymentUnavailable": "暂时无法支付，请稍后重试",
+		"error.paymentMethodUnavailable": "此支付方式暂不可用",
+		"error.taskStateConflict": "当前任务状态不支持此操作",
+		"error.pageLimitExceeded": "文档超过 {limit} 页上限",
+		"error.translationPageLimitExceeded": "文档约合 {pages} 个翻译页，超过 {limit} 页上限",
+		"error.requestInvalid": "操作未完成，请检查输入",
+		"error.resourceUnavailable": "所需内容暂不可用",
+		"error.writeback": "结果暂未保存，请在任务面板重试",
+		"error.folderEmpty": "请选择论文库文件夹",
+		"error.folderRelative": "请选择当前仓库内的文件夹",
+		"error.folderSegments": "这个文件夹路径不可用，请重新选择",
 		"update.applying": "{brand} 正在应用更新……",
 		"recovery.operationRunning": "已有任务正在运行：{label}",
 		"recovery.writeUnavailable": "处理结果暂时无法写入，请稍后重试。",
 		"hub.untitledPaper": "未命名论文",
 		"hub.queueStatus.pending": "处理中",
-		"hub.queueStatus.ready": "等待写回",
+		"hub.queueStatus.ready": "等待保存",
 		"hub.queueStatus.terminal": "已失败",
 		"hub.queueStatus.abandoned": "未提交",
 		"hub.authorsEtAl": "{name} 等",
+		"notice.translationQuote": "已收到翻译请求，预计使用 {pages} 页",
+		"notice.skipped": "另有 {count} 篇未处理",
+		"notice.pending": "这些论文已有待完成任务",
+		"notice.convertDone": "转换已完成",
+		"notice.translateDone": "翻译已完成",
+		"notice.batchDone": "已完成 {count} 篇论文的{action}",
+		"notice.batchPartial": "已完成 {success} 篇，{incomplete} 篇未完成",
+		"notice.partialTranslation": "原文已保存，翻译未完成",
+		"notice.partialSummary": "译文已保存，摘要未生成",
+		"notice.summaryOnly": "摘要已保存，翻译未完成",
+		"notice.sourceChanged": "{count} 个任务因文件变化已暂停",
+		"notice.currentContinues": "当前任务将继续处理",
+		"notice.credits": "翻译页不足：预计需 {needed} 页，现有 {available} 页",
+		"notice.taskFailed": "任务未完成，请查看任务面板",
+		"notice.details": "查看结果详情",
+		"notice.settingsSaveFailed": "设置未保存，请重试",
+		"notice.syncFailed": "设置同步未完成，请稍后重试",
+		"notice.languageInvalid": "请填写明确的语言；中文请区分简体或繁体",
+		"notice.selectionDropped": "{count} 篇已不在当前筛选内",
+		"notice.copyMissing": "{count} 项未找到",
+		"notice.updating": "正在更新…",
+		"notice.syncAdded": "同步完成，新增 {count} 篇",
+		"notice.syncAttention": "同步完成，{count} 篇需要处理",
+		"feedback.skipped": "未处理",
+		"feedback.formTooShort": "请补充反馈内容",
+		"feedback.formSuccess": "反馈已收到，谢谢",
+		"feedback.formFailed": "反馈未能发送，请重试",
 	},
 	en: {
 		"command.openHub": "Open Recto paper library",
@@ -964,7 +997,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"queue.waiting": "Waiting (not submitted)",
 		"feedback.received.convert": "Conversion request received",
 		"feedback.received.translate": "Translation request received",
-		"feedback.alreadyReceived": "Request already received for this paper",
+		"feedback.alreadyReceived": "This paper already has an unfinished task.",
 		"feedback.unavailable": "This paper is being updated. Try again shortly.",
 		"feedback.title": "Tasks",
 		"feedback.cancelWaiting": "Cancel waiting",
@@ -976,11 +1009,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"feedback.partial": "Partially completed",
 		"feedback.translationIncomplete": "Translation incomplete",
 		"feedback.failed": "Incomplete",
-		"feedback.pending": "Continuing in cloud",
-		"feedback.retrying": "Reconnecting",
+		"feedback.pending": "Processing",
+		"feedback.retrying": "Waiting for network",
 		"feedback.recover": "Recover",
 		"feedback.check": "Check",
-		"feedback.recovering": "Recovering",
+		"feedback.recovering": "Saving",
 		"feedback.clearCompleted": "Clear completed",
 		"feedback.open": "Open",
 		"feedback.retry": "Retry",
@@ -989,15 +1022,20 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"feedback.partialSuffix": ", {count} partially completed",
 		"queue.executing": "Submitting",
 		"queue.blocked": "Stopped; cancel and start again",
-		"queue.sourceChanged": "{name}: the source or output location changed. This item stopped. Cancel it and confirm a new request.",
-		"queue.cancelled": "Local waiting item cancelled.",
-		"queue.saveFailed": "The local queue could not be saved or completed. Check the queue and retry.",
+		"queue.sourceChanged": "The file changed. Cancel this task, then start again.",
+		"queue.cancelled": "Cancelled 1 waiting task",
+		"queue.saveFailed": "The task could not be saved. Try again.",
 		"queue.count": "{count} in local queue",
 		"command.cycleReaderTheme": "Switch paper reading theme",
 		"command.toggleDualPane": "Compare original and translation side by side",
 		"command.togglePdfCompare": "Compare original PDF and translation",
 		"settings.interface": "Interface",
 		"settings.uiLanguage": "Interface language",
+		"settings.interfaceAccent": "Interface accent",
+		"settings.interfaceAccentDesc": "Backgrounds follow Obsidian. Reading themes stay independent.",
+		"settings.interfaceAccent.red": "Vermilion",
+		"settings.interfaceAccent.blue": "Blue",
+		"settings.interfaceAccent.green": "Teal",
 		"settings.uiLanguageDesc": "Follows Obsidian by default. A manual choice changes only the Recto interface, not paper processing languages.",
 		"settings.followObsidian": "Follow Obsidian",
 		"settings.intro": "Sign in, choose your Zotero folder, then import papers into your library to start converting and translating.",
@@ -1020,14 +1058,14 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.signInOrRegister": "Sign in / Register",
 		"settings.preferenceSyncFailed": "Could not sync processing preferences. Please try again later.",
 		"settings.writeAnchors": "Write comparison anchors",
-		"settings.writeAnchorsDesc": "Add hidden anchors to your original Markdown for side by side reading after translation. Off by default so your own files stay untouched.",
+		"settings.writeAnchorsDesc": "Adds comparison markers to the source for linked dual-pane scrolling. Off by default.",
 		"settings.outputLocation": "Output location",
 		"settings.outputLocationDesc": "Results go into a same named subfolder of the selected location, which must be inside this vault. The fixed folder is also the fallback for “PDF folder”.",
 		"settings.currentFolder": "Current folder:",
 		"settings.chooseFolder": "Choose folder",
 		"settings.chooseOutputFolder": "Choose an output folder for external PDFs (inside this vault)",
-		"settings.outputOutsideVault": "The output folder must be inside this vault, or images in the document will break.",
-		"settings.outputAtVaultRoot": "Choose a subfolder in this vault, not the vault root.",
+		"settings.outputOutsideVault": "Choose a folder inside this vault.",
+		"settings.outputAtVaultRoot": "Choose a subfolder inside this vault.",
 		"settings.keepPdf": "Keep PDF copy and structural data",
 		"settings.keepPdfDesc": "PDF comparison needs these files. When off, only the original text, translation, and images are kept.",
 		"settings.translationLanguage": "Translation language",
@@ -1042,9 +1080,9 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.zoteroSource": "Zotero source folder",
 		"settings.libraryFolder": "Paper library folder",
 		"settings.libraryPlaceholder": "Paper library",
-		"settings.libraryInvalid": "Invalid paper library folder: {error}",
+		"settings.libraryInvalid": "The library folder is unavailable. Check settings.",
 		"settings.chooseVaultFolder": "Choose a folder inside this vault.",
-		"settings.libraryMoved": "Paper library folder changed to “{folder}”. The old folder was not renamed; its papers remain in their original location.",
+		"settings.libraryMoved": "New papers will be saved in “{folder}”. Existing papers stay where they are.",
 		"settings.importLibrary": "Import Zotero library",
 		"settings.autoSyncOn": "Automatic sync is on. New entries with one PDF are imported silently; entries with multiple PDFs and deleted entries await your choice. Files are never deleted automatically. Use “Sync now” to sync immediately.",
 		"settings.autoSyncOff": "Automatic sync starts after your first successful import. Import creates folders and copies PDFs locally; it does not convert papers or use credits.",
@@ -1061,7 +1099,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.open": "Open",
 		"settings.replayOnboarding": "Replay onboarding",
 		"settings.zoteroDetectedDesc": "The Zotero data folder was detected and filled in. Conversion will report any cloud attachments that have not been downloaded.",
-		"settings.zoteroMissingDesc": "The Zotero data folder was not detected. Choose it manually. Conversion will report any cloud attachments that have not been downloaded.",
+		"settings.zoteroMissingDesc": "Zotero data folder not found. Select it manually.",
 		"settings.zoteroFindHint": "In Zotero, open Settings → Advanced → Files and Folders → Show Data Directory. Select that folder or its storage subfolder.",
 		"settings.zoteroDetectAgain": "Detect again",
 		"settings.zoteroEditPath": "Choose or enter the Zotero library location",
@@ -1073,8 +1111,8 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.zoteroChooseDetected": "Choose the Zotero data folder",
 		"settings.zoteroChooseDetectedDesc": "Compare these locations with Show Data Directory in Zotero, then choose the library to connect.",
 		"settings.zoteroStorageMissing": "The data folder was found, but its attachment folder is not accessible yet. Download PDF attachments in Zotero and check folder permissions.",
-		"settings.zoteroInvalidSource": "Choose a readable Zotero data folder containing zotero.sqlite, or its storage subfolder.",
-		"settings.zoteroSaveFailed": "Could not save the folder. Detect again or choose a folder to retry.",
+		"settings.zoteroInvalidSource": "Choose the Zotero data folder or its storage subfolder.",
+		"settings.zoteroSaveFailed": "Folder was not saved. Try again.",
 		"settings.currentDataFolder": "Current data folder:",
 		"settings.chooseZoteroFolder": "Choose the Zotero data folder (you can select the folder named storage)",
 		"settings.detected": "Detected",
@@ -1202,7 +1240,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.loginNotFinished": "Browser sign in is not finished yet.",
 		"account.cancel": "Cancel",
 		"account.copyLoginLink": "Copy sign in link",
-		"account.loginLinkCopied": "Sign in link copied. Open it in any browser.",
+		"account.loginLinkCopied": "Login link copied",
 		"account.loginLinkCopyFailed": "Could not copy the link. Open the account page manually.",
 		"account.browserReturnHint": "Return to Obsidian after finishing in your browser. Recto will continue automatically.",
 		"account.browserOnlyHint": "Sign in, registration, and password reset happen in your browser.",
@@ -1213,7 +1251,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.loginAutoCheckFailed": "Automatic sign in checking stopped after an error. After signing in, click “I signed in in the browser”.",
 		"account.emailUnverified": "Email not verified yet.",
 		"account.sendVerification": "Send verification email",
-		"account.verificationRequested": "Verification email requested. Check your inbox.",
+		"account.verificationRequested": "Verification email sent",
 		"account.inviteCode": "Invite code",
 		"account.copyInvite": "Copy invite code",
 		"account.clipboardUnavailable": "Clipboard is unavailable here",
@@ -1289,7 +1327,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"onboarding.aiFeature": "Ready for AI assisted reading",
 		"onboarding.aiFeatureDesc": "Turn papers into notes that AI can read, search, and cite as part of your own library.",
 		"onboarding.freeFeature": "Start for free",
-		"onboarding.freeFeatureDesc": "All features are free to start, with a monthly allowance. Upgrade only when you need more.",
+		"onboarding.freeFeatureDesc": "PDF conversion is currently free. Translation uses pages.",
 		"onboarding.startSetup": "Start setup",
 		"onboarding.later": "Maybe later",
 		"onboarding.signIn": "Sign in to Recto",
@@ -1307,9 +1345,9 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"onboarding.ready": "Your papers are ready",
 		"onboarding.readyDesc": "Open the paper library, select a paper, and convert it on the right. Then open the source or translation from the same place.",
 		"onboarding.openLibrary": "Open library and choose a paper",
-		"onboarding.selectPaperHint": "Select a paper in the list to find Convert in its details on the right.",
+		"onboarding.selectPaperHint": "Select a paper and click Convert.",
 		"onboarding.firstConverted": "Your first paper is converted",
-		"onboarding.firstConvertedDesc": "The source text is saved in this vault. Open it now or find it later in the file list.",
+		"onboarding.firstConvertedDesc": "The source is saved and ready to read.",
 		"onboarding.readSource": "Open source text",
 		"onboarding.choosePdf": "Choose your first PDF",
 		"onboarding.zoteroNotFound": "No usable Zotero data folder was found. Convert a local PDF first, or set up Zotero manually in settings.",
@@ -1318,14 +1356,14 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"onboarding.configureZotero": "Configure Zotero",
 		"onboarding.skipStep": "Skip this step",
 		"onboarding.skipAll": "Skip onboarding",
-		"onboarding.stepFailed": "This step did not finish. Please try again later.",
-		"onboarding.saveFailed": "Could not save onboarding status. Please try again.",
-		"onboarding.openFailed": "Onboarding finished, but the destination did not open. Continue from settings.",
+		"onboarding.stepFailed": "This step is incomplete. Try again.",
+		"onboarding.saveFailed": "Setup progress was not saved. Try again.",
+		"onboarding.openFailed": "Setup complete. Continue from settings.",
 		"onboarding.finished": "Onboarding is finished. You can continue in Settings → Recto → Get started at any time.",
 		"feedback.signIn": "Open account sign in",
 		"feedback.contact": "Contact us:",
 		"feedback.qqCopied": "QQ number copied",
-		"feedback.qqCopyFailed": "Could not copy. Write down QQ: {qq}",
+		"feedback.qqCopyFailed": "Could not copy. Copy the number manually.",
 		"feedback.type": "Feedback type",
 		"feedback.issue": "Issue",
 		"feedback.feature": "Suggestion",
@@ -1399,7 +1437,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.readChoice.translation": "Translation",
 		"hub.readChoice.pdf": "PDF",
 		"hub.chooseReadAction": "Choose reading type",
-		"hub.readPreferenceFailed": "Reading preference could not be saved and may reset after restarting.",
+		"hub.readPreferenceFailed": "Reading preference was not saved. Try again.",
 		"hub.openTranslation": "Open translation",
 		"hub.openSource": "Open original",
 		"hub.openSummary": "Open summary",
@@ -1422,7 +1460,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.context.revealVault": "Reveal in Obsidian vault",
 		"hub.context.revealSystem": "Show in system explorer",
 		"hub.context.revealFinder": "Show in Finder",
-		"hub.context.folderNotFocused": "Folder opened. Click File Explorer in the taskbar to view it",
+		"hub.context.folderNotFocused": "Folder opened. Check the taskbar.",
 		"hub.context.mark": "Mark as",
 		"hub.flag.important": "Key paper",
 		"hub.flag.reproduce": "To reproduce",
@@ -1432,7 +1470,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.flags.add": "Add mark",
 		"hub.flags.remove": "Click to remove: {label}",
 		"hub.flags.present": "Already added: {label}",
-		"hub.flags.failed": "Additional marks were not saved. Please try again",
+		"hub.flags.failed": "Marker was not saved. Try again.",
 		"hub.context.convert": "Convert to Markdown",
 		"hub.context.translate": "Translate",
 		"hub.context.delete": "Reimport",
@@ -1441,9 +1479,9 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.context.pathsCopied": "Copied {count} paper folder paths",
 		"hub.context.filesCopied": "Copied {count} files; paste into an app that accepts files",
 		"hub.context.skipped": "; skipped {count} papers with missing files",
-		"hub.context.unavailable": "This operation is unavailable in this environment",
-		"hub.context.failed": "Operation failed. Check that the files exist and try again",
-		"hub.context.statusFailed": "Reading status was not fully saved. Please try again",
+		"hub.context.unavailable": "This action is not supported here.",
+		"hub.context.failed": "File operation incomplete. Try again.",
+		"hub.context.statusFailed": "Reading status was not saved. Try again.",
 		"hub.deletePaper": "Reimport from Zotero: reset outputs, Note and flags (old files move to trash)",
 		"hub.authors": "Authors",
 		"hub.collapseAuthors": "Show less",
@@ -1496,10 +1534,10 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"progress.phase.queued": "Queued in the cloud",
 		"progress.phase.finalizing": "Preparing results",
 		"progress.cloudPending": "Continuing in the cloud",
-		"error.queueTimeout": "Cloud queue waiting limit reached. The task stopped; try again later.",
-		"error.runningTimeout": "Processing time limit reached. The task stopped; try again later.",
-		"error.queryUnavailable": "Status remained unavailable until the waiting limit. The task stopped; contact support.",
-		"error.submissionUncertain": "Submission could not be confirmed. Contact support before submitting again.",
+		"error.queueTimeout": "The queue timed out. Try again later.",
+		"error.runningTimeout": "Processing timed out. Try again later.",
+		"error.queryUnavailable": "Unable to confirm task status. Contact support.",
+		"error.submissionUncertain": "Submission status is unconfirmed. Do not submit again.",
 		"hub.oldest": "Oldest: {age}",
 		"hub.tryAgain": "Try again",
 		"hub.recoverNow": "Recover now",
@@ -1520,32 +1558,32 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"consent.later": "Not now",
 		"consent.agree": "Agree and continue",
 		"update.newVersion": "{brand} version {version} is available",
-		"update.intro": "Current version: {current}. Latest version: {version}. Installation takes a few seconds and applies immediately without restarting Obsidian.",
+		"update.intro": "Current version: {current}. New version: {version}.",
 		"update.autoDesc": "Auto update: install future versions on startup without asking again.",
 		"update.onceDesc": "Update once: install this version only and ask again next time.",
 		"update.sourceDesc": "Updates come from Recto's public release page, the same source as the community listing. Updates wait until paper processing is idle.",
 		"update.skip": "Skip this version",
 		"update.once": "Update once",
 		"update.auto": "Auto update",
-		"update.required": "Update {brand} first",
-		"update.requiredDesc": "This version is too old to process papers reliably. Update to continue.",
+		"update.required": "Update Recto to continue",
+		"update.requiredDesc": "Update to continue processing papers.",
 		"update.now": "Update now",
 		"external.duplicateTitle": "This PDF was already converted",
 		"external.moreDuplicates": " ({count} other papers were also converted)",
 		"external.selectedPdf": "Selected PDF",
-		"external.duplicateIntro": "{name} was converted before{more}. Converting it again will be charged again and create a new folder.",
+		"external.duplicateIntro": "“{name}” was converted before{more}. Converting again creates a new folder.",
 		"external.previousOutput": "Previous output: {path}",
 		"external.previousOutputUnknown": "No previous output folder is recorded.",
 		"external.translateInstead": "If you only need a translation, open the previous Markdown source and use Translate current Markdown. There is no need to convert it again.",
 		"external.convertAgain": "Convert {count} papers again",
 		"import.confirmTitle": "Import Zotero library",
-		"import.confirmIntro": "Import {count} papers now.",
-		"import.objectCounts": "Create {created} records and update {updated}.",
+		"import.confirmIntro": "Import {count} papers",
+		"import.objectCounts": "{created} new papers; {updated} existing papers",
 		"import.pdfCounts": "Copy {count} PDFs, about {size} MB.",
 		"import.unreadable": "Skip {count} source PDFs that cannot be read right now.",
-		"import.localOnly": "Import creates paper records locally. It does not start conversion or translation.",
+		"import.localOnly": "Import local files only. Conversion and translation will not start automatically.",
 		"import.confirmAction": "Import {count} papers",
-		"markdown.replaceTitle": "This document already has a translation",
+		"markdown.replaceTitle": "Retranslation replaces the existing translation",
 		"markdown.replaceIntro": "{path} already exists. Translating again will be charged again and overwrite this translation.",
 		"markdown.pageEstimate": "This document is about {count} pages.",
 		"markdown.sourceSafe": "The source document will not change.",
@@ -1554,31 +1592,31 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.quote": "Estimated use: {needed} translation pages. Available now: {available} pages.",
 		"batch.shortfall": "Estimated use: {needed} pages; {available} available; {shortfall} more needed",
 		"batch.translateTitle": "Translate selected papers",
-		"batch.translateIntro": "Translate the {count} selected papers now.",
+		"batch.translateIntro": "Translate {count} papers",
 		"batch.translateAction": "Translate {count} papers",
 		"batch.content": "Processing: {content}.",
 		"batch.summaryPart": "enabled summaries",
 		"batch.partsJoin": "{first}, {second}",
 		"batch.partsFinal": "{first} and {last}",
-		"batch.freeTranslate": "PDF conversion is currently free. Translation pages are charged after conversion according to actual length.",
-		"batch.freeConvert": "PDF conversion is currently free and uses no translation pages.",
+		"batch.freeTranslate": "PDF conversion is currently free. Translation uses pages.",
+		"batch.freeConvert": "PDF conversion is currently free.",
 		"batch.rights": "Check your selection and make sure you have permission to process these files.",
 		"batch.convertTranslateTitle": "Convert and translate selected PDFs",
 		"batch.convertTitle": "Convert selected PDFs",
-		"batch.convertIntro": "Process the {count} selected PDFs now.",
+		"batch.convertIntro": "Convert {count} papers",
 		"batch.convertAction": "{action} {count} papers",
 		"batch.deleteTitle": "Reimport selected papers",
-		"batch.deleteIntro": "Reimport {count} selected papers from Zotero.",
+		"batch.deleteIntro": "Reimport {count} papers",
 		"batch.deleteMore": "{count} more papers",
-		"batch.deleteDesc": "Source, translations, summaries and Note move to trash. Reading state and flags reset; old writebacks are discarded. Fresh PDFs and metadata are imported, ready to convert. Conversion and translation will not start automatically. Processing credits already used are not refunded.",
+		"batch.deleteDesc": "Source, translation, summary and Note files move to trash. Reading status and markers reset; old tasks are abandoned. Convert again after reimporting. Translation pages already used are not refunded.",
 		"batch.deleteAction": "Reimport {count} papers",
-		"recovery.abandoned": "Abandoned {paper}. This paper can be converted again; pages already spent will not be refunded.",
+		"recovery.abandoned": "Task abandoned. Translation pages already used are not refunded.",
 		"recovery.paperName": "{name}",
 		"recovery.task": "this task",
 		"recovery.none": "No papers are waiting for results to be written.",
 		"recovery.noConsent": "Cloud processing is not enabled. Recovery was cancelled.",
-		"recovery.signIn": "Sign in to Recto again before recovering paper results.",
-		"recovery.active": "A task is already running: {label}",
+		"recovery.signIn": "Sign in to Recto first.",
+		"recovery.active": "Another task is in progress. Try again shortly.",
 		"recovery.start": "Recovering results for {count} papers. Do not submit them again…",
 		"recovery.done": "Recovered and wrote results for {count} papers.",
 		"recovery.dropped": "Cleared {count} old tasks that could not be recovered. You can submit those papers again.",
@@ -1586,56 +1624,56 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"recovery.blocked": "Writeback failed repeatedly for {count} tasks, so automatic retries stopped. {reason}Use Try again or Abandon in the queue at the bottom of the paper library.",
 		"recovery.lastError": " Last error: {error}",
 		"recovery.pending": "Recovery has not succeeded yet. Tasks were kept; do not submit them again.{detail}",
-		"recovery.failed": "Recovery did not finish: {error}",
-		"update.waitForBatch": "Wait until the current batch finishes before updating.",
-		"update.latest": "{brand} is up to date.",
-		"update.checkFailed": "Could not check for a new version. Try again later.",
-		"update.installing": "Updating {brand}…",
-		"update.restartNeeded": "{brand} {version} was downloaded. Restart Obsidian to apply it.",
-		"update.installFailed": "Could not update {brand}. Try again later.",
-		"batch.noActiveTask": "No task is running.",
+		"recovery.failed": "Results are not saved yet. Retry in the task panel.",
+		"update.waitForBatch": "Wait for the current task to finish before updating.",
+		"update.latest": "You are up to date.",
+		"update.checkFailed": "Unable to check for updates. Try again later.",
+		"update.installing": "Recto is updating. Try again shortly.",
+		"update.restartNeeded": "Update installed. Restart Obsidian to apply it.",
+		"update.installFailed": "Update incomplete. Try again later.",
+		"batch.noActiveTask": "There are no waiting tasks to cancel.",
 		"batch.cancelAlreadyRequested": "Cancellation was already requested. The current paper will finish.",
-		"batch.onlyCurrent": "Only the current paper remains. It will finish; if it stalls, processing stops automatically and reserved pages are returned.",
-		"batch.cancelledQueued": "Cancelled {count} queued papers. The current paper will finish.",
-		"filePicker.folderUnavailable": "This runtime cannot open the folder picker. Paste the path into the input instead.",
+		"batch.onlyCurrent": "Only the current task remains.",
+		"batch.cancelledQueued": "Cancelled {count} waiting tasks",
+		"filePicker.folderUnavailable": "Cannot open the folder picker. Enter the path directly.",
 		"filePicker.folderTitle": "Select folder",
-		"filePicker.folderFailed": "Could not open the folder picker. Try again later.",
-		"filePicker.pdfUnavailable": "This runtime cannot open the file picker for external PDFs.",
+		"filePicker.folderFailed": "Could not open the folder picker. Try again.",
+		"filePicker.pdfUnavailable": "Could not open the file picker. Try again.",
 		"filePicker.pdfTitle": "Select PDFs to convert (multiple allowed)",
-		"filePicker.pdfFailed": "Could not open the file picker. Try again later.",
-		"external.outputFallback": "These PDFs are outside the vault, so their source folder cannot be used. Output will go to {folder}.",
+		"filePicker.pdfFailed": "Could not open the file picker. Try again.",
+		"external.outputFallback": "Results will be saved in “{folder}”.",
 		"external.chooseOutput": "Choose an output folder for this conversion (inside the vault)",
-		"external.outputOutside": "The output folder must be inside this vault; otherwise images in the text will break. Choose again.",
-		"external.outputAtRoot": "Choose a subfolder in the vault instead of the vault root.",
+		"external.outputOutside": "Choose a folder inside this vault.",
+		"external.outputAtRoot": "Choose a subfolder inside this vault.",
 		"external.noConsent": "Cloud processing is not enabled. External PDF conversion was cancelled.",
-		"external.signIn": "Sign in to Recto first",
+		"external.signIn": "Sign in to Recto first.",
 		"external.busy": "A task is running. Wait for it to finish before converting external PDFs.",
-		"external.noPdf": "No PDFs can be processed.",
+		"external.noPdf": "No PDFs available to process.",
 		"external.cancelled": "Cancelled.",
-		"compare.openPaper": "Open a paper PDF, source, translation, or summary first",
-		"compare.wrongFile": "This file is not a Recto paper file",
-		"compare.sourceMissing": "Could not find this paper's source or translation",
-		"compare.unavailable": "Side by side reading is unavailable: {error}",
+		"compare.openPaper": "Open a paper first.",
+		"compare.wrongFile": "This file does not support comparison.",
+		"compare.sourceMissing": "Source or target translation not found.",
+		"compare.unavailable": "Comparison is currently unavailable.",
 		"compare.switchedDual": "Switched to side by side reading; PDF comparison was closed.",
-		"compare.dualBindFailed": "Could not start side by side reading: failed to bind the views",
-		"compare.unmapped": "Side by side reading started, but {detail}; those paragraphs will not scroll in sync.",
+		"compare.dualBindFailed": "Could not open comparison. Try again.",
+		"compare.unmapped": "Some passages cannot be located in sync.",
 		"compare.dualClosed": "Side by side reading ended because a pane closed or opened another file",
-		"compare.alignmentLost": "Side by side reading ended because alignment anchors or revision bindings are unavailable",
-		"compare.markdownMissing": "Could not find the Chinese Markdown needed for PDF comparison",
-		"compare.pdfMissing": "Could not find the original PDF needed for PDF comparison",
-		"compare.pdfUnavailable": "PDF comparison is unavailable: {error}",
+		"compare.alignmentLost": "Comparison is unavailable. Reopen it to try again.",
+		"compare.markdownMissing": "The translation for the current target language was not found.",
+		"compare.pdfMissing": "The original PDF was not found.",
+		"compare.pdfUnavailable": "Comparison is currently unavailable.",
 		"compare.switchedPdf": "Switched to PDF comparison; source and translation side by side reading was closed.",
-		"compare.pdfBindFailed": "Could not start PDF comparison: failed to bind the views",
+		"compare.pdfBindFailed": "Could not open comparison. Try again.",
 		"compare.pdfClosed": "PDF comparison ended because a pane closed or opened another file",
-		"compare.noPage": "This paragraph has no PDF page number, so Recto did not jump",
-		"compare.notInStructure": "This paragraph is missing from the structure data, so Recto did not jump",
+		"compare.noPage": "This passage cannot be located in the PDF.",
+		"compare.notInStructure": "This passage cannot be located in the PDF.",
 		"compare.alignmentBindingMissing": "Recto revision binding is missing; this may be an older paper",
 		"compare.alignmentDocumentMismatch": "Source and translation belong to different papers",
 		"compare.alignmentRevisionMismatch": "Source and translation have different source revisions",
 		"compare.alignmentNoAnchors": "The two panes have no matching alignment anchors",
-		"compare.translationMissing": "Translation not found; keeping a single pane",
-		"compare.sourcePartnerMissing": "Source not found; keeping a single pane",
-		"compare.chineseNoTranslation": "This Chinese paper has no translation; keeping a single pane",
+		"compare.translationMissing": "The translation for the current target language was not found.",
+		"compare.sourcePartnerMissing": "Source document not found.",
+		"compare.chineseNoTranslation": "This paper has no translation to compare.",
 		"compare.unmatchedSource": "{count} source blocks have no match",
 		"compare.unmatchedTranslation": "{count} translated blocks have no match",
 		"compare.pdfBindingInvalid": "Paper location data is missing or unsupported",
@@ -1643,63 +1681,63 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"compare.pdfDocumentMismatch": "The PDF and current Markdown belong to different papers",
 		"compare.pdfRevisionMismatch": "The PDF source revision differs from the current Markdown",
 		"compare.pdfNoPageInfo": "This paper has no usable PDF page location data",
-		"import.runtimeUnsupported": "This environment cannot read the Zotero library. Download and run the latest installer from the Obsidian website; an in-app update may not update the required runtime.",
-		"import.chooseSource": "Choose a Zotero source folder first",
+		"import.runtimeUnsupported": "Reinstall the latest Obsidian, then try again.",
+		"import.chooseSource": "Set the Zotero folder first.",
 		"import.cancelled": "Import cancelled. No papers were imported.",
-		"import.noPdf": "No readable local Zotero PDFs were found; nothing was imported",
-		"import.failed": "Zotero import did not finish. Try again later.",
-		"import.dbBusy": "The Zotero database is in use. Close Zotero and retry import or check.",
+		"import.noPdf": "No readable local PDFs were found.",
+		"import.failed": "Import incomplete. Try again.",
+		"import.dbBusy": "This folder is in use by Zotero. Close Zotero and try again.",
 		"import.runtimeUpgrade": "This environment cannot read the Zotero library. Download and run the latest installer from the Obsidian website; an in-app update may not update the required runtime.",
 		"import.folderMissing": "Could not find or read the Zotero library folder. Choose the Zotero data directory again in Recto settings.",
 		"import.autoSync": "Zotero automatic sync",
 		"import.autoAdded": "Added {count} papers",
 		"import.pending": "{count} changes need confirmation",
 		"import.autoSummary": "Zotero automatic sync: {summary}",
-		"import.noChanges": "Zotero checked: no changes need attention",
-		"import.checkFailed": "Zotero check did not finish. Try again later.",
-		"markdown.openFirst": "Open a Markdown file to translate first",
-		"markdown.invalidSource": "This file cannot be used as a translation source. A translated file cannot be translated again.",
-		"markdown.readFailed": "Could not read the document: {error}",
-		"markdown.alreadyChinese": "This document is already in Chinese and does not need translation",
-		"markdown.empty": "This document has no translatable content",
+		"import.noChanges": "Synced. No new changes.",
+		"import.checkFailed": "Sync incomplete. Try again later.",
+		"markdown.openFirst": "Open the Markdown file you want to translate first.",
+		"markdown.invalidSource": "Open the source document to translate it.",
+		"markdown.readFailed": "Could not read this document. Reopen it and try again.",
+		"markdown.alreadyChinese": "The source is already in the target language.",
+		"markdown.empty": "This document has no content to translate.",
 		"markdown.buyPages": "{quote}. Purchase translation pages first.",
 		"markdown.start": "Starting translation of {name}, about {count} pages.",
 		"markdown.quote": "This document is {required} pages and is expected to use {required} translation pages",
 		"markdown.quoteAvailable": "; {available} pages available",
 		"markdown.quoteShortfall": "; {shortfall} more pages needed",
 		"markdown.anchorHint": "Want side by side reading? Enable alignment anchors under Translate Markdown in settings, then translate again.",
-		"hub.noSelection": "Select papers from the list first",
-		"hub.noConvertible": "None of the selected papers has an unconverted PDF ready to submit. Check the right pane for already converted papers.",
+		"hub.noSelection": "Select the papers to process first.",
+		"hub.noConvertible": "No usable PDF was found.",
 		"hub.skippedConversion": "Selected {total} papers: {ready} can be submitted; {skipped} were already converted or have unreadable source PDFs and were skipped.",
 		"hub.chineseSkipped": "Skipped translation for {count} papers already in Chinese. They need no translation and use no pages.",
 		"hub.status.unread": "Unread",
 		"hub.status.reading": "Reading",
 		"hub.status.read": "Read",
-		"hub.linkFailed": "Could not open the link. Try again later.",
+		"hub.linkFailed": "Could not open the link. Try again.",
 		"hub.allConverted": "All selected papers have been converted.",
-		"hub.allTranslated": "All selected papers already have translations.",
+		"hub.allTranslated": "The selected papers already have translations in the target language.",
 		"hub.copied": "Copied",
-		"hub.copyUnavailable": "Copying is unavailable in this environment",
-		"hub.copyFailed": "Could not copy",
-		"account.loginSuccessNotice": "Signed in to {brand}",
-		"account.noLoginUrl": "The service did not return a usable sign-in URL.",
+		"hub.copyUnavailable": "Copying is not supported here.",
+		"hub.copyFailed": "Could not copy. Copy the text manually.",
+		"account.loginSuccessNotice": "Signed in to Recto",
+		"account.noLoginUrl": "The sign-in page is unavailable. Try again.",
 		"account.invalidLoginUrl": "The sign-in URL is invalid.",
 		"account.browserUnavailable": "Could not open a browser here. Copy the sign-in link manually.",
-		"account.signInRequired": "Sign in to your Recto account first.",
+		"account.signInRequired": "Sign in to Recto first.",
 		"account.choosePlan": "Choose a package to purchase first.",
-		"account.noCheckoutUrl": "The service did not return a usable checkout URL.",
+		"account.noCheckoutUrl": "The purchase page is unavailable. Try again.",
 		"feedback.signInRequired": "Sign in to Recto before submitting feedback.",
-		"update.installedNotice": "{brand} updated to {version}",
+		"update.installedNotice": "Recto updated to {version}",
 		"settings.librarySynced": "Paper library folder updated to {folder}.",
-		"settings.readingStatusFailed": "Could not change reading status. Try again later.",
-		"import.unreadablePdfs": "Skipped {count} imported papers whose source PDFs cannot be read right now",
+		"settings.readingStatusFailed": "Reading status was not saved. Try again.",
+		"import.unreadablePdfs": "No usable PDF was found.",
 		"import.copiedCount": "New local PDFs copied: {count}",
 		"import.repairedCount": "Incomplete PDFs repaired: {count}",
 		"import.copyFailedCount": "Copies failed: {count}",
 		"import.mismatchCount": "Not overwritten because source size differed: {count}",
-		"import.interruptedSummary": "Zotero import stopped: {count} paper records were saved; {copyNote}. Run import again to continue from where it stopped.",
-		"import.incompleteSummary": "Zotero paper records were saved, but {count} items remain unfinished ({copyNote}). Run import again or restart Obsidian to repair them automatically.",
-		"import.completedSummary": "Zotero import finished: {imported} new, {existing} existing, {total} total; {copyNote}",
+		"import.interruptedSummary": "Import incomplete. {count} paper records were preserved.",
+		"import.incompleteSummary": "Paper records saved; {count} items need attention.",
+		"import.completedSummary": "Imported {imported} papers",
 		"import.syncedSummary": "Zotero sync finished: {matched} matched, {missing} PDFs missing, {orphaned} local orphans, {trashed} moved to trash",
 		"task.translationSkipped": "{stem}: the source and summary were saved, but the translation was not written ({reason}). This paper will show as Converted without translation.",
 		"task.summaryUnsupported": "This service does not yet support a summary with translation. No translation pages were held. Update the service and try again.",
@@ -1708,27 +1746,27 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"task.batchSummary": "Recto: {success} succeeded, {failed} failed{stopped}{log}",
 		"task.stoppedSuffix": "; {count} queued papers cancelled",
 		"task.logSaveFailed": "; could not save the failure log",
-		"pdfRepair.done": "PDF repair finished: recopied {fixed}/{total} files",
-		"pdfRepair.none": "No PDFs need recopying: no papers have been imported yet, or the Zotero source files cannot currently be read.",
-		"import.collectionReadFailed": "Could not read Zotero collections; showing a regular list instead. {error}",
-		"import.metadataReadFailed": "Could not read Zotero metadata; PDFs will be selected by file name.",
-		"import.trashFailed": "Could not move the papers to the trash. Try again later.",
-		"import.trashDone": "Moved {count} papers to the trash",
-		"import.pendingFailed": "Could not process the pending changes. Try again later.",
-		"import.syncPaused": "Zotero sync is paused because this environment cannot read the library. Update Obsidian and try again.",
-		"import.syncFailed": "Zotero sync did not finish. Try again later.",
+		"pdfRepair.done": "Repaired {fixed} PDFs; {failed} incomplete",
+		"pdfRepair.none": "No PDFs available to repair.",
+		"import.collectionReadFailed": "Categories are unavailable. Papers are shown as a list.",
+		"import.metadataReadFailed": "Paper information is unavailable. File names are shown instead.",
+		"import.trashFailed": "Could not move the files to trash. Try again.",
+		"import.trashDone": "Moved {count} papers to trash",
+		"import.pendingFailed": "Processing incomplete. Try again.",
+		"import.syncPaused": "Reinstall the latest Obsidian, then try again.",
+		"import.syncFailed": "Sync incomplete. Try again later.",
 		"import.trashPartial": "Some papers could not be moved to the trash. Their records were kept: {titles}",
-		"hub.recordMissing": "Could not find the matching Zotero paper record",
-		"hub.openFailed": "Could not open the paper library. Try again or restart Obsidian.",
-		"hub.settingsPath": "Open Recto from Obsidian Settings → Community plugins.",
-		"hub.resultMissing": "Could not find the conversion result. Open the output folder from the file list.",
-		"hub.resultSaved": "The source text was saved to {folder}. Open it from the file list.",
-		"hub.fileMissing": "Could not find the file. Close and reopen the Hub, then try again.",
-		"task.retryMissing": "This task is not in the local recovery list. Retrying was blocked because its result could not be written back.",
+		"hub.recordMissing": "Paper not found. Refresh the library.",
+		"hub.openFailed": "Could not open the library. Try again.",
+		"hub.settingsPath": "Open Recto in Obsidian settings.",
+		"hub.resultMissing": "Result not found. Check the output folder.",
+		"hub.resultSaved": "Results saved in “{folder}”.",
+		"hub.fileMissing": "File not found. Check the paper folder.",
+		"task.retryMissing": "This task is no longer in the pending list.",
 		"task.retrySubmitted": "Submitted again. Wait for the result to be written back.",
-		"task.retryFailed": "Retry did not finish. Try again later.",
+		"task.retryFailed": "Retry incomplete. Try again later.",
 		"task.noConsent": "Cloud processing is not enabled. This task was cancelled.",
-		"task.noTasks": "No tasks were selected for Recto",
+		"task.noTasks": "Select the papers to process first.",
 		"task.cloudProcessing": "Paper cloud processing",
 		"task.pdfPathMissing": "A conversion task needs a local PDF path for upload",
 		"task.blockedDuplicate": "{count} papers are still being recovered or already finished, so duplicate submissions were blocked and recovery started. Do not upload them again. You can also run Recto: Recover unfinished cloud processing from the command palette.",
@@ -1737,23 +1775,23 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"task.skipCompleted": "Existing outputs: {count}.",
 		"task.skipUnavailable": "Unavailable files or processing requirements not met: {count}. Check the source, PDF, or translation target.",
 		"task.failed": "Recto task failed: {error}{log}",
-		"task.exemption": "Recto covered the small page shortfall for {count} papers and finished them. Your balance is now empty; purchase more pages to continue.",
+		"task.exemption": "Settlement completed under the exemption rules for {count} earlier tasks.",
 		"task.failureLog": "; see {path}",
-		"delete.missing": "These papers are no longer in the library",
-		"delete.preflightFailed": "Reimport check failed: {error}",
-		"delete.done": "Reimport finished: {success} succeeded, {failed} failed. Reimported papers are ready to convert.",
+		"delete.missing": "Paper not found. Refresh the library.",
+		"delete.preflightFailed": "Reimport incomplete: {error}",
+		"delete.done": "Reimported {success} papers; {failed} incomplete",
 		"reimport.checkFailed": "Reimport check failed. Refresh the library and retry.",
 		"reimport.sourceUnavailable": "No unambiguous Zotero PDF was found. Check the attachment and retry; the original paper was preserved.",
 		"reimport.pathOccupied": "The recovery path is occupied. Recovery records and files were preserved.",
 		"reimport.trashFailed": "Old files could not move to trash. Recovery records were preserved; please retry.",
 		"reimport.sourceChanged": "The Zotero PDF changed during copying. The original paper was preserved; please retry.",
-		"reimport.taskRunning": "This paper is still processing on the server. Wait for it to finish before reimporting.",
+		"reimport.taskRunning": "Processing is in progress. Reimport is unavailable.",
 		"reimport.noteUnsaved": "Note has not been saved. Save it before reimporting.",
-		"reimport.recoveryPending": "The previous reimport needs recovery. Click Reimport again.",
-		"reimport.recoveryFailed": "Reimport recovery is incomplete: {error}. Click Reimport again.",
-		"delete.sourceMissing": "Source folder does not exist",
-		"distribution.done": "Sanitized distribution package created: {file}",
-		"distribution.failed": "Could not create the distribution package. Try again later.",
+		"reimport.recoveryPending": "The previous reimport did not finish. Reimport again.",
+		"reimport.recoveryFailed": "The previous reimport did not finish. Reimport again.",
+		"delete.sourceMissing": "Cannot read the Zotero folder. Check its location.",
+		"distribution.done": "Distribution package created: {file}",
+		"distribution.failed": "Could not create the distribution package. Try again.",
 		"zotero.itemType.journalArticle": "Journal article",
 		"zotero.itemType.conferencePaper": "Conference paper",
 		"zotero.itemType.bookSection": "Book chapter",
@@ -1832,57 +1870,85 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"progress.pdfGroups": "{count} groups with multiple PDFs",
 		"progress.paperCount": "{count} papers",
 		"progress.pendingCopy": "{count} papers awaiting copy",
-		"error.default": "Could not complete the operation. Try again later.",
-		"error.cloudConsent": "Accept Recto's cloud processing notice first.",
-		"error.documentLanguageUnsupported": "Document language support is unavailable. Update the service and try again.",
-		"error.remoteTask": "Processing did not finish. Try again later.",
-		"error.sessionExpired": "Your session expired. Sign in to Recto again.",
-		"error.taskExpired": "This task expired. Submit it again.",
-		"error.busy": "The service is busy. Try again later.",
-		"error.unavailable": "The service is temporarily unavailable. Try again later.",
-		"error.invalidSubmission": "The submission did not pass validation. Return to the paper library and try again.",
-		"error.cancelled": "Operation cancelled.",
-		"error.network": "The network connection is unstable. Try again later.",
-		"error.hostNetwork": "The Obsidian installer is outdated or its network component is unavailable. Close Obsidian, download the latest installer from https://obsidian.md/download and reinstall (no uninstall needed). In-app updates may not update the installer.",
-		"error.creationUnknown": "Task creation could not be confirmed. Automatic retries are paused. Nothing was uploaded or charged; you can retry manually.",
-		"error.insufficientCredits": "Not enough translation pages. Purchase more to continue.",
-		"error.taskNotReady": "The result is still processing. Try again later.",
-		"error.noTranslatableContent": "This document has no text to translate.",
-		"error.sameTargetLanguage": "This document is already in the target language.",
-		"error.languageConfirmation": "Confirm the source and target languages before translating.",
-		"error.ocrLanguage": "This OCR language is unsupported. Choose another language.",
-		"error.ocrSourceUnsupported": "This document writing system is not supported for OCR. Convert the document to Markdown first.",
-		"error.ocrUnreadable": "The document text could not be reliably extracted. Provide a clearer PDF or Markdown.",
-		"error.languageContract": "Update Recto and the service to use document languages.",
+		"error.default": "Action incomplete. Try again.",
+		"error.cloudConsent": "Agree to cloud processing first.",
+		"error.documentLanguageUnsupported": "This language feature is unavailable. Contact support.",
+		"error.remoteTask": "Processing incomplete. Try again.",
+		"error.resultIncomplete": "Document content could not be fully converted. Contact support before submitting again.",
+		"error.sessionExpired": "Your session expired. Sign in again.",
+		"error.taskExpired": "This task expired. Start again.",
+		"error.busy": "Temporarily busy. Try again later.",
+		"error.unavailable": "Processing is unavailable. Try again later.",
+		"error.invalidSubmission": "Unable to process this document. Check it and try again.",
+		"error.cancelled": "Action cancelled",
+		"error.network": "Network unavailable. Try again later.",
+		"error.hostNetwork": "Reinstall the latest Obsidian, then try again.",
+		"error.creationUnknown": "Task status is unconfirmed. Do not submit again.",
+		"error.insufficientCredits": "Not enough translation pages. Add pages to continue.",
+		"error.taskNotReady": "Results are not ready yet.",
+		"error.noTranslatableContent": "This document has no content to translate.",
+		"error.sameTargetLanguage": "The source is already in the target language.",
+		"error.languageConfirmation": "Unable to confirm the document language. Check the source.",
+		"error.ocrLanguage": "This document language is not supported for recognition.",
+		"error.ocrSourceUnsupported": "Cannot recognize this document. Try a Markdown file.",
+		"error.ocrUnreadable": "The text is unclear. Use a clearer PDF.",
+		"error.languageContract": "Update Recto and try again.",
 		"error.documentFormat": "Update Recto to process this document.",
-		"error.sourceRevision": "The source version does not match. Submit the current source again.",
-		"error.pdfRequired": "Choose a PDF to upload.",
-		"error.pdfInvalid": "Choose a valid PDF file.",
-		"error.pdfTooLarge": "The PDF exceeds the 50 MB limit.",
-		"error.planUnavailable": "This plan is unavailable. Choose another plan.",
-		"error.planNotPurchasable": "This plan cannot be purchased.",
-		"error.checkoutExpired": "This checkout link expired. Open it again from Recto.",
-		"error.orderNotFound": "This order could not be found. Check your account again.",
-		"error.paymentUnavailable": "Payment is temporarily unavailable. Try again later.",
+		"error.sourceRevision": "The source changed. Start processing again.",
+		"error.pdfRequired": "Select a PDF first.",
+		"error.pdfInvalid": "Choose a valid PDF.",
+		"error.pdfTooLarge": "PDFs must be no larger than 50 MB.",
+		"error.planUnavailable": "This translation page pack is unavailable. Choose another.",
+		"error.planNotPurchasable": "This translation page pack cannot be purchased right now. Choose another.",
+		"error.checkoutExpired": "Payment link expired. Open the purchase page again.",
+		"error.orderNotFound": "Order not found. Check which account is signed in.",
+		"error.paymentUnavailable": "Payment is unavailable. Try again later.",
 		"error.paymentMethodUnavailable": "This payment method is unavailable.",
-		"error.taskStateConflict": "This action is unavailable while the task is {status}.",
-		"error.pageLimitExceeded": "The document exceeds the {limit} page limit.",
-		"error.translationPageLimitExceeded": "The document has {pages} equivalent translation pages, above the {limit}-page limit.",
-		"error.requestInvalid": "The request could not be completed. Check your input and try again.",
-		"error.resourceUnavailable": "The requested item is unavailable.",
-		"error.writeback": "Could not write the result. Try again later.",
-		"error.folderEmpty": "The paper library folder cannot be empty.",
-		"error.folderRelative": "Use a path inside this vault for the paper library folder.",
-		"error.folderSegments": "The paper library folder path cannot contain . or .. segments.",
+		"error.taskStateConflict": "This action is unavailable for the current task state.",
+		"error.pageLimitExceeded": "Document exceeds the {limit}-page limit.",
+		"error.translationPageLimitExceeded": "Document is about {pages} translation pages, exceeding the {limit}-page limit.",
+		"error.requestInvalid": "Action incomplete. Check your input.",
+		"error.resourceUnavailable": "The required content is unavailable.",
+		"error.writeback": "Results are not saved yet. Retry in the task panel.",
+		"error.folderEmpty": "Choose a library folder.",
+		"error.folderRelative": "Choose a folder inside this vault.",
+		"error.folderSegments": "This folder path is invalid. Choose another.",
 		"update.applying": "Applying the {brand} update…",
 		"recovery.operationRunning": "Another task is running: {label}",
 		"recovery.writeUnavailable": "The result cannot be written right now. Try again later.",
 		"hub.untitledPaper": "Untitled paper",
 		"hub.queueStatus.pending": "Processing",
-		"hub.queueStatus.ready": "Waiting to write results",
+		"hub.queueStatus.ready": "Waiting to save",
 		"hub.queueStatus.terminal": "Failed",
 		"hub.queueStatus.abandoned": "Not submitted",
 		"hub.authorsEtAl": "{name} et al.",
+		"notice.translationQuote": "Translation request received. Estimated usage: {pages} pages.",
+		"notice.skipped": "{count} other papers were not processed.",
+		"notice.pending": "These papers already have unfinished tasks.",
+		"notice.convertDone": "Conversion complete",
+		"notice.translateDone": "Translation complete",
+		"notice.batchDone": "{action} complete for {count} papers",
+		"notice.batchPartial": "{success} papers completed; {incomplete} incomplete",
+		"notice.partialTranslation": "Source saved; translation incomplete",
+		"notice.partialSummary": "Translation saved; summary not generated",
+		"notice.summaryOnly": "Summary saved; translation incomplete",
+		"notice.sourceChanged": "{count} tasks paused because their files changed",
+		"notice.currentContinues": "The current task will continue.",
+		"notice.credits": "Not enough translation pages: {needed} needed, {available} available.",
+		"notice.taskFailed": "Task incomplete. See the task panel.",
+		"notice.details": "View result details",
+		"notice.settingsSaveFailed": "Settings were not saved. Try again.",
+		"notice.syncFailed": "Settings could not be synced. Try again later.",
+		"notice.languageInvalid": "Enter a specific language. For Chinese, specify Simplified or Traditional.",
+		"notice.selectionDropped": "{count} papers are no longer in this filter.",
+		"notice.copyMissing": "{count} items were not found.",
+		"notice.updating": "Updating…",
+		"notice.syncAdded": "Sync complete. {count} papers added.",
+		"notice.syncAttention": "Sync complete. {count} papers need attention.",
+		"feedback.skipped": "Not processed",
+		"feedback.formTooShort": "Please add more detail.",
+		"feedback.formSuccess": "Feedback received. Thank you.",
+		"feedback.formFailed": "Could not send feedback. Try again.",
 	},
 });
 let activeRectoUiLocale = "zh-CN";
@@ -1910,6 +1976,153 @@ function translateRectoUi(locale, key, params = {}) {
 
 function rectoUiText(key, params) {
 	return translateRectoUi(activeRectoUiLocale, key, params);
+}
+
+// Recto owns only its own notices; never patch Obsidian's global Notice class.
+const rectoNoticeHistory = new Map();
+function showRectoNotice(message, options = {}) {
+	const text = String(message || "").trim();
+	if (!text) return null;
+	const tone = options.tone || "neutral";
+	const duration = options.brief ? 2500 : ["attention", "error"].includes(tone) ? 7000 : 4000;
+	const key = options.key || `${tone}:${text}`;
+	const previous = rectoNoticeHistory.get(key);
+	if (previous && Date.now() - previous.at < (options.dedupeMs ?? 1800)) return previous.notice;
+	const notice = new obsidian.Notice(text, duration);
+	const inner = notice.noticeEl;
+	const outer = inner?.closest?.(".notice") || inner;
+	if (outer?.classList) {
+		outer.classList.add("recto-ui", "rc-notice");
+		outer.dataset.tone = tone;
+		outer.setAttribute("role", "status");
+		outer.setAttribute("aria-live", "polite");
+		outer.setAttribute("aria-atomic", "true");
+		// No HTML interpolation, focus transfer or action controls in transient feedback.
+		if (inner?.ownerDocument && inner.replaceChildren) {
+			const icon = inner.ownerDocument.createElement("span");
+			icon.className = "rc-icon rc-notice-icon"; icon.setAttribute("aria-hidden", "true");
+			setChromeIcon(icon, ({ success: "check", attention: "triangle-alert", error: "circle-alert" })[tone] || "info");
+			const body = inner.ownerDocument.createElement("span"); body.className = "rc-notice-text"; body.textContent = text;
+			inner.classList.add("rc-notice-content"); inner.replaceChildren(icon, body);
+		}
+	}
+	rectoNoticeHistory.set(key, { at: Date.now(), notice });
+	for (const [id, item] of rectoNoticeHistory) if (Date.now() - item.at > 30000) rectoNoticeHistory.delete(id);
+	return notice;
+}
+
+// Field feedback survives a local redraw, but never copies raw exception strings.
+function bindRectoInlineFeedback(owner, key, container) {
+	if (!container?.createDiv) return null;
+	const targets = owner.rectoFeedbackTargets ||= new Map();
+	const nodes = targets.get(key) || new Set(); targets.set(key, nodes);
+	let node = [...nodes].find(item => container.contains?.(item));
+	if (!node) {
+		if (key === "results" && container.createEl) {
+			const details = container.createEl("details", { cls: "rc-inline-feedback" });
+			details.createEl("summary", { text: rectoUiText("notice.details") });
+			node = details.createDiv(); node.rectoFeedbackWrapper = details;
+		} else node = container.createDiv({ cls: "rc-inline-feedback" });
+		node.setAttribute?.("role", "status"); node.setAttribute?.("aria-live", "polite");
+		nodes.add(node);
+	}
+	const message = owner.rectoInlineFeedback?.get(key) || "";
+	node.textContent = message; node.hidden = !message;
+	if (node.rectoFeedbackWrapper) node.rectoFeedbackWrapper.hidden = !message;
+	return node;
+}
+function setRectoInlineFeedback(owner, key, message) {
+	(owner.rectoInlineFeedback ||= new Map()).set(key, String(message || ""));
+	let targets = owner.rectoFeedbackTargets?.get(key);
+	if (!targets || ![...targets].some(node => node.isConnected !== false)) {
+		const container = owner.contentEl || owner.containerEl;
+		if (container) bindRectoInlineFeedback(owner, key, container);
+		targets = owner.rectoFeedbackTargets?.get(key);
+	}
+	for (const target of targets || []) {
+		if (target.isConnected === false) { targets.delete(target); continue; }
+		target.textContent = message || ""; target.hidden = !message;
+		if (target.rectoFeedbackWrapper) target.rectoFeedbackWrapper.hidden = !message;
+	}
+}
+
+function rectoTaskResultText(results, action = "convert") {
+	if (!results.length || results.some(item => ["waiting", "pending"].includes(item.status))) return "";
+	const completed = results.filter(item => item.status === "success").length;
+	if (results.length === 1) {
+		const item = results[0];
+		if (item.status === "success") return rectoUiText(action === "translate" ? "notice.translateDone" : "notice.convertDone");
+		if (item.status === "partial") return rectoUiText(item.partialKind === "summary" ? "notice.partialSummary" : item.partialKind === "summary-only" ? "notice.summaryOnly" : "notice.partialTranslation");
+		return item.reason || rectoUiText("notice.taskFailed");
+	}
+	return completed === results.length
+		? rectoUiText("notice.batchDone", { count: completed, action: documentLanguageText(action === "translate" ? "翻译" : "转换", action === "translate" ? "Translation" : "Conversion") })
+		: rectoUiText("notice.batchPartial", { success: completed, incomplete: results.length - completed });
+}
+
+// Session summaries follow the original submission through deferred network/recovery
+// callbacks. diagnosticItemId is already preserved by the task persistence contract.
+class RectoNotificationBatches {
+	constructor(plugin) { this.plugin = plugin; this.groups = new Map(); }
+	snapshot() {
+		return [...this.groups].map(([id, group]) => ({ id, action: group.action, skipped: group.skipped,
+			items: [...group.items.values()].map(item => ({
+				task: { recordId: item.task.recordId, diagnosticItemId: item.task.diagnosticItemId },
+				status: item.status, partialKind: item.partialKind || "", reason: item.reason || "",
+			})),
+		}));
+	}
+	restore(saved) {
+		const activeIds = new Set([...(this.plugin.localTaskIntents || []).map(item => this.identity(item.task)),
+			...(this.plugin.pendingBackendTasks || []).map(item => this.identity(item.task || item))]);
+		for (const group of Array.isArray(saved) ? saved : []) {
+			if (typeof group?.id !== "string" || !["convert", "translate"].includes(group.action) || !Array.isArray(group.items)) continue;
+			const items = group.items.filter(item => item?.task && typeof this.identity(item.task) === "string"
+				&& ["waiting", "pending", "success", "partial", "failed"].includes(item.status)
+				&& (!["waiting", "pending"].includes(item.status) || activeIds.has(this.identity(item.task))));
+			if (items.some(item => activeIds.has(this.identity(item.task)))) this.groups.set(group.id, { action: group.action, skipped: Math.max(0, Number(group.skipped) || 0),
+				items: new Map(items.map(item => [this.identity(item.task), item])), running: 0 });
+		}
+	}
+	identity(task) { return task.diagnosticItemId || task.recordId || task.markdownPath; }
+	register(id, tasks, skipped = 0) {
+		this.groups.set(id, { action: tasks.some(task => task.translateOnly || this.plugin.wantsTranslationForTask?.(task)) ? "translate" : "convert",
+			items: new Map(tasks.map(task => [this.identity(task), { task, status: "waiting" }])), skipped, running: 0 });
+	}
+	start(tasks) { for (const group of this.groups.values()) if (tasks.some(task => group.items.has(this.identity(task)))) group.running++; }
+	record(result) {
+		for (const group of this.groups.values()) if (group.items.has(this.identity(result.task))) group.items.set(this.identity(result.task), result);
+	}
+	endUnavailable(task, reason = rectoUiText("error.taskExpired")) {
+		this.record({ task, status: "failed", reason }); this.flush();
+	}
+	finish(tasks, results = []) {
+		for (const result of results) this.record(result);
+		for (const group of this.groups.values()) if (tasks.some(task => group.items.has(this.identity(task)))) group.running = Math.max(0, group.running - 1);
+		this.flush();
+	}
+	cancel(tasks) {
+		for (const [id, group] of this.groups) {
+			for (const task of tasks) group.items.delete(this.identity(task));
+			if (!group.items.size) this.groups.delete(id);
+		}
+	}
+	skip(tasks) {
+		for (const group of this.groups.values()) for (const task of tasks) {
+			if (group.items.delete(this.identity(task))) group.skipped++;
+		}
+	}
+	flush() {
+		for (const [id, group] of this.groups) {
+			if (group.running) continue;
+			const results = [...group.items.values()], message = rectoTaskResultText(results, group.action);
+			if (!message) continue;
+			this.groups.delete(id);
+			showRectoNotice(message + (group.skipped ? `\n${rectoUiText("notice.skipped", { count: group.skipped })}` : ""), {
+				tone: results.every(item => item.status === "success") ? "success" : results.every(item => item.status === "failed") ? "error" : "attention", key: `batch:${id}`,
+			});
+		}
+	}
 }
 function createRectoUiError(key, params) {
 	const error = new Error(rectoUiText(key, params));
@@ -2257,6 +2470,7 @@ const DEFAULT_EXTERNAL_OUTPUT_FOLDER = "Recto 转换";
 
 const DEFAULT_SETTINGS = {
 	uiLanguage: "follow",
+	interfaceAccent: "red",
 	backendBaseUrl: DEFAULT_BACKEND_BASE_URL,
 	backendUserId: "",
 	backendSessionToken: "",
@@ -3174,7 +3388,7 @@ const HUB_READING_ICON_PATHS = {
 	"folder-open": ["M2 13V6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v3", "m6 14 1.5-3h11.8a2 2 0 0 1 1.7 2.9l-2.6 5.1a2 2 0 0 1-1.8 1H4a2 2 0 0 1-1.8-2.9L4 13.5"],
 	"chevron-right": ["m9 6 6 6-6 6"],
 	"recto-source": ["M6 5V3h12v2M12 3v14M9 17h6M7 21h10"],
-	"recto-pdf": ["M5 2h9l5 5v15H5zM14 2v5h5", "M7 16v-5h1a1.25 1.25 0 0 1 0 2.5H7M11 16v-5h1c2 0 2 5 0 5zM16 16v-5h2M16 13.5h1.5"],
+	"recto-pdf": ["M5 2h9l5 5v15H5zM14 2v5h5", "M9.5 18v-8h3a2.25 2.25 0 0 1 0 4.5h-3"],
 	"recto-pdf-compare": ["M2 4h8v16H2zM4.5 10h3M4.5 14h3", "M14 4h4l4 4v12h-8zM18 4v4h4"],
 };
 const HUB_READ_ACTIONS = ["source", "translation", "pdf"];
@@ -3209,9 +3423,9 @@ const BROWSER_LOGIN_STATUS_NOTES = {
 
 const RIBBON_BUTTONS = [
 	{ key: "hub", name: "Recto 论文库", icon: RECTO_ICON_ID, action: "activateRectoHub" },
-	{ key: "dualPane", name: "对照阅读：原文/译文双栏", icon: "lucide-columns-2", action: "toggleRectoDualPane" },
-	{ key: "pdfCompare", name: "PDF 对照阅读", icon: "lucide-book-open", action: "toggleRectoPdfCompare" },
-	{ key: "externalPdf", name: "转换库外 PDF", icon: "lucide-file-plus", action: "convertExternalPdfsFromCommand" },
+	{ key: "dualPane", name: "对照阅读：原文/译文双栏", icon: "columns-2", action: "toggleRectoDualPane" },
+	{ key: "pdfCompare", name: "PDF 对照阅读", icon: "recto-pdf-compare", action: "toggleRectoPdfCompare" },
+	{ key: "externalPdf", name: "转换库外 PDF", icon: "file-plus", action: "convertExternalPdfsFromCommand" },
 ];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3589,6 +3803,7 @@ const RECTO_POSTPROCESS_PROFILE_BASIC = "basic";
 // 就不知道往哪写。**降级风险记在这里**：`sanitizePersistedPendingTask` 按白名单裁剪，
 // 用户降回不认识这两个字段的旧插件版本时它们会被裁掉（见 AGENT_WORKFLOW.md 的 Ship order）。
 const PENDING_BACKEND_TASK_FIELDS = [
+	"progressMode",
 	"ownerAccountId",
 	"diagnosticOperationId",
 	"diagnosticUserId",
@@ -5551,6 +5766,10 @@ function sanitizePersistedPendingTask(task) {
 	if (!task || typeof task !== "object") return out;
 	for (const key of PENDING_BACKEND_TASK_FIELDS) {
 		if (task[key] == null) continue;
+		if (key === "progressMode") {
+			if (["convert", "translate", "combined"].includes(task[key])) out[key] = task[key];
+			continue;
+		}
 		if (key === "ownerAccountId") {
 			const owner = normalizeRectoUuid(task[key]);
 			if (owner) out[key] = owner;
@@ -5611,6 +5830,10 @@ function normalizeBackendProcessingStage(value) {
 	return ["queued", "processing", "finalizing"].includes(value) ? value : "";
 }
 
+function normalizeTaskWorkflowStage(value) {
+	return ["processing", "summary", "translation", "finalizing"].includes(value) ? value : "";
+}
+
 function resolveBackendProcessingStage(status, stage) {
 	const value = String(status || "").toLowerCase();
 	if (["queued", "processing_submitted", "processing", "submitted"].includes(value)) {
@@ -5635,6 +5858,7 @@ function normalizePendingBackendTasks(list) {
 			recordId: String((item && item.recordId) || ""),
 			status: String((item && item.status) || ""),
 			processingStage: normalizeBackendProcessingStage(item && item.processingStage),
+			workflowStage: normalizeTaskWorkflowStage(item && item.workflowStage),
 			task: sanitizePersistedPendingTask(item && item.task),
 			createdAt: String((item && item.createdAt) || ""),
 			lastFailure: String((item && item.lastFailure) || ""),
@@ -7081,6 +7305,7 @@ const BACKEND_PUBLIC_ERROR_KEYS = Object.freeze({
 	TASK_QUEUE_TIMEOUT: "error.queueTimeout", TASK_RUNNING_TIMEOUT: "error.runningTimeout",
 	TASK_QUERY_UNAVAILABLE: "error.queryUnavailable", TASK_SUBMISSION_UNCERTAIN: "error.submissionUncertain",
 	TASK_PROCESSING_FAILED: "error.remoteTask", SESSION_EXPIRED: "error.sessionExpired",
+	TASK_RESULT_INCOMPLETE: "error.resultIncomplete",
 	RATE_LIMITED: "error.busy", SERVICE_UNAVAILABLE: "error.unavailable",
 	REQUEST_INVALID: "error.requestInvalid", RESOURCE_NOT_FOUND: "error.resourceUnavailable",
 });
@@ -7127,7 +7352,7 @@ function createBackendHttpError(status, bodyText) {
 
 function backendPublicErrorText(code, params, locale = activeRectoUiLocale) {
 	const item = normalizeBackendPublicError(code, params);
-	if (!item) return RECTO_UI_MESSAGES.en["error.default"];
+	if (!item) return translateRectoUi(locale, "error.default");
 	const safeParams = { ...item.params };
 	if (item.code === "TASK_STATE_CONFLICT") {
 		const status = item.params.status || "processing";
@@ -7149,7 +7374,7 @@ function getUserFacingErrorMessage(error, fallback = rectoUiText("error.default"
 	const message = getSanitizedErrorMessage(error).trim();
 	if (!message) return safeFallback;
 	if (/insufficient credits/i.test(message) || /账户额度不足/.test(message)) {
-		return activeRectoUiLocale === "en" ? rectoUiText("error.insufficientCredits") : BACKEND_ERROR_MESSAGE_ZH["insufficient credits."];
+		return rectoUiText("error.insufficientCredits");
 	}
 	const httpStatus = message.match(/\bBackend HTTP (\d{3})\b/i);
 	if (httpStatus) {
@@ -9525,7 +9750,7 @@ function getZoteroUserFacingErrorMessage(error, fallback = rectoUiText("import.f
 		return rectoUiText("import.dbBusy");
 	}
 	if (/不支持 node:sqlite|无法直接读取 Zotero 数据库|当前环境无法读取 Zotero 论文库/i.test(messages)) {
-		return rectoUiText("import.runtimeUpgrade");
+		return rectoUiText("import.runtimeUnsupported");
 	}
 	if (/ENOENT|ENOTDIR|EACCES|EPERM|EIO/i.test(codes)
 		|| /Zotero (?:storage|PDF)|Zotero (?:源文件夹|数据目录|论文库文件夹)|找不到 Zotero 数据库/i.test(messages)) {
@@ -11101,12 +11326,12 @@ class RectoPdfCompareSession {
 	revealClickedBlock(ordinal, clickCount) {
 		const target = resolveRectoPdfTarget(this.blockMap, ordinal);
 		if (target.status === "no-page") {
-			new obsidian.Notice(rectoUiText("compare.noPage"));
+			showRectoNotice(rectoUiText("compare.noPage"), { tone: "attention" });
 			return;
 		}
 		// 紧邻的 no-page 给提示、这一条却静默，是同类问题的两种待遇；补齐即可。
 		if (target.status === "unknown-block") {
-			new obsidian.Notice(rectoUiText("compare.notInStructure"));
+			showRectoNotice(rectoUiText("compare.notInStructure"), { tone: "attention" });
 			return;
 		}
 		if (target.status !== "ok") return;
@@ -11309,6 +11534,11 @@ class RectoPlugin extends obsidian.Plugin {
 		await this.loadPluginData();
 		this.initializeOperationDiagnostics();
 		this.refreshUiLanguage({ initial: true });
+		this.applyInterfaceAccent();
+		this.registerEvent(this.app.workspace.on("layout-change", () => this.applyInterfaceAccent()));
+		this.registerEvent(this.app.workspace.on("window-open", (...windows) => {
+			for (const item of windows) this.applyInterfaceAccent(item?.document || item?.win?.document);
+		}));
 		this.checkHostNetworkCapability();
 		this.addSettingTab(new RectoSettingTab(this.app, this));
 		if (typeof obsidian.addIcon === "function") obsidian.addIcon(RECTO_ICON_ID, RECTO_ICON_SVG);
@@ -11330,7 +11560,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// T85-C：软取消原本只有状态栏浮层里那一个按钮，而浮层只有 hover / focus-within 打得开，
 		// 键盘与读屏用户够不到，卡住时只能等自动放弃。命令与那个按钮走同一条软取消。
 		this.addLocalizedCommand("cancel-queued-tasks", "command.cancelQueued", () => {
-			void this.cancelQueuedTasksFromCommand().catch(() => { new obsidian.Notice(rectoUiText("queue.saveFailed"), 8000); });
+			void this.cancelQueuedTasksFromCommand().catch(() => { showRectoNotice(rectoUiText("queue.saveFailed"), { tone: "error" }); });
 		});
 		this.addLocalizedCommand("cycle-reader-theme", "command.cycleReaderTheme", () => { void this.cycleReaderTheme(); });
 		this.addLocalizedCommand("toggle-dual-pane", "command.toggleDualPane", () => { void this.toggleRectoDualPane(); });
@@ -11360,7 +11590,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.suspendPaperJsonlRefresh();
 			try { await this.recoverPaperReimport(); }
 			catch (error) {
-				new obsidian.Notice(rectoUiText("reimport.recoveryFailed", { error: getSanitizedErrorMessage(error) }), 12000);
+				showRectoNotice(rectoUiText("reimport.recoveryFailed", { error: getSanitizedErrorMessage(error) }), { tone: "error" });
 				return;
 			}
 			finally { await this.resumePaperJsonlRefresh({ flush: false }); }
@@ -11422,6 +11652,24 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!this.rectoUiCommands) this.rectoUiCommands = [];
 		this.rectoUiCommands.push({ command, key });
 	}
+	applyInterfaceAccent(extraDocument) {
+		// Stamp only a Recto preference; CSS consumes it exclusively inside panel roots.
+		const documents = new Set(this.interfaceAccentDocuments || []);
+		if (typeof document !== "undefined") documents.add(document);
+		if (extraDocument) documents.add(extraDocument);
+		this.app.workspace.iterateAllLeaves?.(leaf => {
+			const doc = leaf.view?.containerEl?.ownerDocument;
+			if (doc) documents.add(doc);
+		});
+		const accent = ["red", "blue", "green"].includes(this.settings.interfaceAccent) ? this.settings.interfaceAccent : "red";
+		this.interfaceAccentDocuments = new Set();
+		for (const doc of documents) {
+			if (!doc.documentElement || doc.defaultView?.closed) continue;
+			doc.documentElement.setAttribute("data-recto-interface-accent", accent);
+			this.interfaceAccentDocuments.add(doc);
+		}
+	}
+
 	refreshUiLanguage(options = {}) {
 		const hostLanguage = typeof obsidian.getLanguage === "function" ? obsidian.getLanguage() : "zh-CN";
 		const next = resolveRectoUiLocale(this.settings && this.settings.uiLanguage, hostLanguage);
@@ -11470,6 +11718,8 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 	onunload() {
+		for (const doc of this.interfaceAccentDocuments || []) doc.documentElement?.removeAttribute("data-recto-interface-accent");
+		this.interfaceAccentDocuments?.clear();
 		for (const stop of rectoBrandConfettiRuns.values()) stop();
 		for (const session of rectoBrandConfettiSessions.values()) session.dispose();
 		if (this.hubNotesStore) this.hubNotesStore.flushAll();
@@ -11505,6 +11755,7 @@ class RectoPlugin extends obsidian.Plugin {
 				backendTranslationTargetLanguage: d.settings && d.settings.backendTranslationTargetLanguage,
 			};
 			this.settings.uiLanguage = normalizeRectoUiPreference(this.settings.uiLanguage);
+			if (!["red", "blue", "green"].includes(this.settings.interfaceAccent)) this.settings.interfaceAccent = "red";
 			this.settings.backendBaseUrl = String(this.settings.backendBaseUrl || DEFAULT_BACKEND_BASE_URL).trim() || DEFAULT_BACKEND_BASE_URL;
 			// T82-B-R：全量切 API 域名，不留过渡；已保存的旧默认地址一次性改写。
 			const legacyApiBase = "https://api.paper-brain.uk";
@@ -11567,6 +11818,8 @@ class RectoPlugin extends obsidian.Plugin {
 			this.zoteroPendingOrphaned = Math.max(0, Number(d.zoteroPendingOrphaned) || 0);
 			this.pendingBackendTasks = normalizePendingBackendTasks(d.pendingBackendTasks); // 在途后端任务，用于重启恢复
 			this.localTaskIntents = normalizeLocalTaskIntents(d.localTaskIntents);
+			this.notificationBatches = new RectoNotificationBatches(this);
+			this.notificationBatches.restore(d.notificationBatches);
 			this.externalConversions = normalizeExternalConversions(d.externalConversions); // T84 库外转换去重记录
 			this.compareSessions = normalizeRectoCompareSessions(d.compareSessions); // 对照阅读关联，用于重启恢复
 		}
@@ -11627,6 +11880,7 @@ class RectoPlugin extends obsidian.Plugin {
 			zoteroPendingOrphaned: Math.max(0, Number(this.zoteroPendingOrphaned) || 0),
 			pendingBackendTasks: this.pendingBackendTasks,
 			localTaskIntents: { version: 1, items: this.localTaskIntents || [] },
+			notificationBatches: this.notificationBatches?.snapshot() || [],
 			externalConversions: normalizeExternalConversions(this.externalConversions),
 			compareSessions: this.compareSessions,
 		});
@@ -11729,10 +11983,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.safeRefreshHubViews();
 		// 「额度不退」这句不能省（见 codemap/task-queue.md）：原先只挂在按钮的 title 上，
 		// 点完就没了。措辞与那条 title 保持一致。
-		new obsidian.Notice(
-			rectoUiText("recovery.abandoned", { paper: name ? rectoUiText("recovery.paperName", { name }) : rectoUiText("recovery.task") }),
-			8000
-		);
+		showRectoNotice(rectoUiText("recovery.abandoned", { paper: name ? rectoUiText("recovery.paperName", { name }) : rectoUiText("recovery.task") }), { tone: "attention" });
 		return true;
 	}
 
@@ -11751,9 +12002,12 @@ class RectoPlugin extends obsidian.Plugin {
 	// Local artifacts are durable before this checkpoint. After a restart, only the
 	// idempotent ACK remains; never fetch or overwrite these files again.
 	async completePendingBackendTask(taskId, task, stem, partialKind = "") {
+		this.publishTaskWorkflow(task, { phase: "ack" });
 		const savedTask = { ...task, stem, localResultStatus: partialKind ? "partial" : "success", localPartialKind: partialKind };
 		await this.persistPendingBackendTask(taskId, savedTask, "ack_pending", { ownerRunId: this.operationScope?.getStore()?.runId || "" });
 		await this.acknowledgeBackendTaskResult(taskId, { signal: this.getActiveSignal() });
+		this.notificationBatches?.record({ task: savedTask, stem, status: savedTask.localResultStatus, partialKind });
+		this.notificationBatches?.flush();
 		this.taskFeedback?.remember({ task: savedTask, stem, status: savedTask.localResultStatus, partialKind });
 		await this.clearPendingBackendTask(taskId);
 	}
@@ -11787,6 +12041,8 @@ class RectoPlugin extends obsidian.Plugin {
 
 	// Only actionable errors reach the task row; transient network failures stay quiet.
 	setPendingBackendRecoveryFeedback(taskId, error) {
+		const task = this.pendingBackendTasks?.find(item => item.taskId === taskId)?.task;
+		if (task) this.publishTaskWorkflow(task, { retrying: !!error && isRetryableBackendRequestError(error) });
 		if (!taskId || !this.pendingBackendTasks?.some(entry => entry.taskId === taskId)) return;
 		if (!error) {
 			if (this.pendingBackendRecoveryFeedback?.delete(taskId)) this.notifyTaskQueueChanged();
@@ -11909,12 +12165,12 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		// 主动恢复未获云端许可时要有反馈；已完成结果不因无关前台任务而退出。
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
-			new obsidian.Notice(rectoUiText("recovery.noConsent"), 6000);
+
 			return { recovered: 0, dropped: 0, kept: count };
 		}
 		if (!this.hasBackendAccountSession()) {
 			for (const entry of this.pendingBackendTasks || []) if (id === null || entry.taskId === id) this.setPendingBackendRecoveryFeedback(entry.taskId, createRectoUiError("account.signInRequired"));
-			new obsidian.Notice(rectoUiText("recovery.signIn"), 8000);
+			if (!this.taskFeedback?.open) showRectoNotice(rectoUiText("recovery.signIn"), { tone: "attention" });
 			return { recovered: 0, dropped: 0, kept: count };
 		}
 		try {
@@ -11924,7 +12180,7 @@ class RectoPlugin extends obsidian.Plugin {
 			if (this.isUnloading || isCancellationError(error, this.getActiveSignal())) return { recovered: 0, dropped: 0, kept: count };
 			const reason = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
 			this.pendingBackendLastRecoveryError = reason;
-			if (!isRetryableBackendRequestError(error)) new obsidian.Notice(rectoUiText("recovery.failed", { error: reason }), 6000);
+			if (!isRetryableBackendRequestError(error)) setRectoInlineFeedback(this, "recovery", rectoUiText("recovery.failed", { error: reason }));
 			return { recovered: 0, dropped: 0, kept: count };
 		}
 	}
@@ -12056,7 +12312,7 @@ class RectoPlugin extends obsidian.Plugin {
 						} catch (error) {
 							this.throwIfUnloaded();
 							if (isCancellationError(error, signal)) throw error;
-							if (isBackendTaskNotFoundError(error)) { await this.clearPendingBackendTask(taskId); summary.dropped++; return; }
+							if (isBackendTaskNotFoundError(error)) { this.notificationBatches?.endUnavailable(entry.task); await this.clearPendingBackendTask(taskId); summary.dropped++; return; }
 							diagnosticRecoveryFailed = true;
 							this.setPendingBackendRecoveryFeedback(taskId, error);
 							await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
@@ -12101,7 +12357,7 @@ class RectoPlugin extends obsidian.Plugin {
 					diagnosticRecoveryFailed = true;
 					await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
 					// 404 说明后端已无此任务，可安全丢弃；其余（网络/鉴权）保留待下次。
-					if (isBackendTaskNotFoundError(error)) { await this.clearPendingBackendTask(taskId); summary.dropped++; }
+					if (isBackendTaskNotFoundError(error)) { this.notificationBatches?.endUnavailable(entry.task); await this.clearPendingBackendTask(taskId); summary.dropped++; }
 					else {
 						this.setPendingBackendRecoveryFeedback(taskId, error);
 						this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
@@ -12126,7 +12382,7 @@ class RectoPlugin extends obsidian.Plugin {
 					} catch (error) {
 						diagnosticRecoveryFailed = true;
 						await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
-						if (isBackendTaskNotFoundError(error)) { await this.clearPendingBackendTask(taskId); summary.dropped++; }
+						if (isBackendTaskNotFoundError(error)) { this.notificationBatches?.endUnavailable(entry.task); await this.clearPendingBackendTask(taskId); summary.dropped++; }
 						else {
 							this.setPendingBackendRecoveryFeedback(taskId, error);
 							this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
@@ -12141,7 +12397,7 @@ class RectoPlugin extends obsidian.Plugin {
 						diagnosticRecoveryFailed = true;
 						await this.captureOperationDiagnostic({ code: "RECOVERY_FAILED", outcome: "failed", error, taskId });
 						// The file window may close between the status query and download.
-						if (isBackendTaskNotFoundError(error)) { await this.clearPendingBackendTask(taskId); summary.dropped++; }
+						if (isBackendTaskNotFoundError(error)) { this.notificationBatches?.endUnavailable(entry.task); await this.clearPendingBackendTask(taskId); summary.dropped++; }
 						else {
 							this.setPendingBackendRecoveryFeedback(taskId, error);
 							this.pendingBackendLastRecoveryError = getUserFacingErrorMessage(error, "结果恢复未完成，请稍后重试。");
@@ -12200,6 +12456,9 @@ class RectoPlugin extends obsidian.Plugin {
 						this.finishOperation(operation);
 					}
 				} else if (kind === "terminal") {
+					this.notificationBatches?.endUnavailable(entry.task, String(remote.status).toLowerCase() === "failed"
+						? backendPublicErrorText(remote.safeErrorCode, remote.safeErrorParams)
+						: rectoUiText(String(remote.status).toLowerCase() === "canceled" ? "error.cancelled" : "error.taskExpired"));
 					// Expiry is a quiet cleanup. A real failure remains on its paper's row.
 					if (String(remote.status).toLowerCase() === "failed") {
 						const reason = backendPublicErrorText(remote.safeErrorCode, remote.safeErrorParams) || rectoUiText("error.remoteTask");
@@ -12325,7 +12584,12 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	openDecision(options) {
-		return new Promise(resolve => new RectoDecisionModal(this, options, resolve).open());
+		const requests = this.operationScope?.getStore()?.intakeRequests;
+		const waiting = [...(requests || [])].filter(([, item]) => !item.cancelled && !item.accepted);
+		for (const [recordId] of waiting) this.publishTaskWorkflow({ recordId }, { phase: "confirm" });
+		return new Promise(resolve => new RectoDecisionModal(this, options, resolve).open()).finally(() => {
+			for (const [recordId, item] of waiting) if (!item.cancelled && !item.accepted) this.publishTaskWorkflow({ recordId }, { phase: "prepare" });
+		});
 	}
 
 	async ensureCloudProcessingConsent(options = {}) {
@@ -12703,45 +12967,67 @@ class RectoPlugin extends obsidian.Plugin {
 		return this.taskFeedback;
 	}
 
-	showTaskReceipt(action, repeated = false) {
+	showTaskReceipt(action, repeated = false, suffix = "") {
 		this.taskReceiptNotice?.hide?.();
-		const notice = new obsidian.Notice(rectoUiText(repeated ? "feedback.alreadyReceived" : `feedback.received.${action}`), 2200);
-		this.taskReceiptNotice = notice;
-		// Native noticeEl is the inner message; style the enclosing toast (also works on older outer noticeEl).
-		notice.noticeEl?.closest?.(".notice")?.classList.add("rc-task-receipt");
+		this.taskReceiptNotice = showRectoNotice(rectoUiText(repeated ? "feedback.alreadyReceived" : `feedback.received.${action}`) + suffix, { tone: repeated ? "attention" : "neutral", brief: !suffix });
+	}
+
+	publishTaskWorkflow(task, patch) {
+		if (this.isUnloading || !task) return;
+		const tracker = this.taskWorkflowProgress ||= new RectoTaskProgress();
+		const state = tracker.update(task, patch);
+		this.notifyTaskQueueChanged();
+		return state;
+	}
+
+	observeBackendWorkflow(taskId, remote) {
+		const entry = this.pendingBackendTasks?.find(item => item.taskId === taskId);
+		if (!entry) return;
+		const phase = normalizeTaskWorkflowStage(remote.workflowStage)
+			|| resolveBackendProcessingStage(remote.status, remote.processingStage)
+			|| BACKEND_STATUS_PHASES[remote.status];
+		if (phase) this.publishTaskWorkflow(entry.task, {
+			leg: entry.task.translateOnly ? "translation" : "conversion",
+			phase: remote.status === "ready" ? "download" : phase,
+			sub: remote.progress?.phase === phase ? remote.progress : null, retrying: false,
+		});
 	}
 
 	async runHubTaskIntake(action, entries, run) {
 		if (!entries.length) return;
 		const requests = this.hubTaskRequests ||= new Map();
 		const available = entries.filter(entry => !requests.has(entry.recordId)
+			&& !this.hasPendingBackendTaskForRecord?.(entry.recordId)
+			&& !(this.localTaskIntents || []).some(item => item.task.recordId === entry.recordId)
 			&& !this.hubReimportRecordIds?.has(entry.recordId)
 			&& this.settings?.paperReimport?.recordId !== entry.recordId);
 		if (!available.length) {
-			if (entries.some(entry => requests.has(entry.recordId))) this.showTaskReceipt(action, true);
-			else new obsidian.Notice(rectoUiText("feedback.unavailable"), 2200);
+			if (entries.some(entry => requests.has(entry.recordId) || this.hasPendingBackendTaskForRecord?.(entry.recordId) || (this.localTaskIntents || []).some(item => item.task.recordId === entry.recordId))) this.showTaskReceipt(action, true);
+			else showRectoNotice(rectoUiText("feedback.unavailable"), { tone: "attention" });
 			return;
 		}
 		const selected = new Map();
 		for (const entry of available) {
 			const request = { name: entry.titleOriginal || entry.recordId, action, cancelled: false, accepted: false };
+			this.taskFeedback?.recent.delete(entry.recordId);
 			requests.set(entry.recordId, request); selected.set(entry.recordId, request);
+			this.publishTaskWorkflow({ recordId: entry.recordId, name: request.name, requestTranslation: action === "translate",
+				translateOnly: action === "translate" && entry.conversionStatus === "converted", requestSummary: action === "translate" && this.settings.generateSummaryOnTranslate }, { phase: "prepare", reset: true });
 		}
-		this.showTaskReceipt(action);
 		this.notifyTaskQueueChanged();
 		try {
 			await this.withOperationContext("hub-task-intake", async operation => {
 				operation.intakeOnly = true;
 				operation.intakeRequests = selected;
 				for (const request of selected.values()) request.operation = operation;
-				// Let the receipt paint before PDF inspection / hashing starts.
+				// Let the preparing row paint before PDF inspection / hashing starts.
 				await new Promise(resolve => setTimeout(resolve, 30));
 				this.throwIfUnloaded();
 				const ids = [...selected].filter(([, item]) => !item.cancelled).map(([id]) => id);
 				if (ids.length) await run(ids);
 			}, { independent: true });
 		} catch (error) {
-			if (!this.isUnloading && ![...selected.values()].every(item => item.cancelled) && !isCancellationError(error)) new obsidian.Notice(getUserFacingErrorMessage(error), 6000);
+			if (!this.isUnloading && ![...selected.values()].every(item => item.cancelled) && !isCancellationError(error)) showRectoNotice(getUserFacingErrorMessage(error), { tone: "error" });
 		} finally {
 			for (const [id, request] of selected) if (requests.get(id) === request) requests.delete(id);
 			this.notifyTaskQueueChanged();
@@ -12774,12 +13060,19 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	// 深链回跳：不带凭据，只是催一次轮询。id 对不上就什么都不做。
+	announceRectoLogin() {
+		const identity = this.settings.backendUserId || "signed-in";
+		if (this.lastAnnouncedLogin === identity) return;
+		this.lastAnnouncedLogin = identity;
+		showRectoNotice(rectoUiText("account.loginSuccess"), { tone: "success", brief: true });
+	}
+
 	async handleBrowserLoginCallback(params) {
 		if (!matchesPendingHandoff(this.pendingAuthHandoff, params)) return { status: "ignored" };
 		try {
 			const result = await this.pollBackendBrowserLogin({ timeout: 30000 });
 			if (result.status === "approved") {
-				new obsidian.Notice(rectoUiText("account.loginSuccessNotice", { brand: RECTO_BRAND_NAME }), 5000);
+				this.announceRectoLogin();
 				// 与弹窗轮询那条 approved 分支同一个理由：整条取数链路只有 refreshBackendBilling
 				// 一个入口，不在这里取一次，刚登录的用户打开账号面板看到的就是「套餐读取失败」。
 				// 这一趟失败不算登录失败——登录已经成功了，套餐面板自己还会再试并如实报状态。
@@ -12828,6 +13121,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async logoutBackendAccount(options = {}) {
+		this.lastAnnouncedLogin = "";
 		if (this.hasBackendAccountSession()) {
 			await this.backendRequest("/api/v1/auth/logout", {
 				method: "POST",
@@ -12990,7 +13284,7 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!target || target.id === "zh" || (source.id === target.id && evidence !== "fallback")) throw new Error(documentLanguageText("原文与目标语言相同，请选择其他目标语言。", "Source and target languages are the same. Choose another target."));
 		if (["zotero", "fallback"].includes(evidence)) {
 			const capabilities = this.documentLanguageCapabilities || await this.ensureDocumentLanguageCapabilities();
-			if (capabilities.automaticSourceLanguage !== 1) throw new Error(documentLanguageText("服务暂不支持自动原文语言，请更新服务后重试。", "Automatic source language is unavailable. Update the service and try again."));
+			if (capabilities.automaticSourceLanguage !== 1) throw createRectoUiError("error.documentLanguageUnsupported");
 		}
 		const translationPath = documentArtifactPath(folder, stem, target.prefix);
 		if (!info.namingVersion && !isRectoMarkdownTranslationTask(task) && /^en-/.test(sourceFile.name) && target.id === "zh-Hans"
@@ -13069,7 +13363,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const version = this.getRectoPluginUpdateState().installedNotice;
 		if (!version) return;
 		await this.saveRectoPluginUpdateState({ installedNotice: "" });
-		new obsidian.Notice(rectoUiText("update.installedNotice", { brand: RECTO_BRAND_NAME, version }), 6000);
+		showRectoNotice(rectoUiText("update.installedNotice", { brand: RECTO_BRAND_NAME, version }), { tone: "success" });
 	}
 
 	// 启动后查一次，不轮询。凭据在就顺手刷一次 /api/v1/me（同时把额度与档位也刷新了）。
@@ -13153,14 +13447,14 @@ class RectoPlugin extends obsidian.Plugin {
 			return;
 		}
 		if (decision.reason === "busy") {
-			new obsidian.Notice(rectoUiText("update.waitForBatch"), 6000);
+			showRectoNotice(rectoUiText("update.waitForBatch"), { tone: "attention" });
 			return;
 		}
 		if (decision.reason === "up-to-date") {
-			new obsidian.Notice(rectoUiText("update.latest", { brand: RECTO_BRAND_NAME }), 5000);
+			showRectoNotice(rectoUiText("update.latest", { brand: RECTO_BRAND_NAME }), { tone: "neutral" });
 			return;
 		}
-		new obsidian.Notice(rectoUiText("update.checkFailed"), 6000);
+		showRectoNotice(rectoUiText("update.checkFailed"), { tone: "error" });
 	}
 
 	/**
@@ -13178,7 +13472,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// 的自动更新分支里：默认用户没开自动更新，走的恰恰是「弹窗里点按钮」这条路，
 		// 而自重载会 abort 掉活动操作、把已冻结的额度甩在半路（不变量 21 ③）。
 		if (this.isRectoPluginUpdateBusy()) {
-			if (options.silent !== true) new obsidian.Notice(rectoUiText("update.waitForBatch"), 6000);
+			if (options.silent !== true) showRectoNotice(rectoUiText("update.waitForBatch"), { tone: "attention" });
 			return false;
 		}
 		if (this.rectoPluginUpdateRunning) return false;
@@ -13186,14 +13480,14 @@ class RectoPlugin extends obsidian.Plugin {
 		const silent = options.silent === true;
 		// 用户点了按钮就得立刻有反馈：下载三件套要几秒，没有这条常驻提示会像「没点上」。
 		// 自动更新那条路全程不出声，那才是「无感」。
-		const progress = silent ? null : new obsidian.Notice(rectoUiText("update.installing", { brand: RECTO_BRAND_NAME }), 0);
-		const clearProgress = () => { if (progress) progress.hide(); };
+		setRectoInlineFeedback(this, "update", rectoUiText("notice.updating"));
+		const clearProgress = () => setRectoInlineFeedback(this, "update", "");
 		try {
 			const files = await this.downloadRectoPluginRelease(target);
 			// Downloading yields to the UI. Recheck before replacing any file, then
 			// keep new operation entries out until installation/reload has finished.
 			if (this.isRectoPluginUpdateBusy()) {
-				if (!silent) new obsidian.Notice(rectoUiText("update.waitForBatch"), 6000);
+				if (!silent) showRectoNotice(rectoUiText("update.waitForBatch"), { tone: "attention" });
 				return false;
 			}
 			this.rectoPluginUpdateInstalling = true;
@@ -13215,7 +13509,7 @@ class RectoPlugin extends obsidian.Plugin {
 			// resolve **之前**就跑完了，所以这一刻揭正合适。新实例那次揭幕是冗余保险。
 			this.clearRectoUpdateVeil();
 			if (!reloaded) {
-				new obsidian.Notice(rectoUiText("update.restartNeeded", { brand: RECTO_BRAND_NAME, version: target }), 8000);
+				showRectoNotice(rectoUiText("update.restartNeeded", { brand: RECTO_BRAND_NAME, version: target }), { tone: "attention" });
 			}
 			return true;
 		} catch (error) {
@@ -13237,9 +13531,10 @@ class RectoPlugin extends obsidian.Plugin {
 				patch.blockedAppVersion = String(obsidian.apiVersion || "").trim();
 			}
 			await this.saveRectoPluginUpdateState(patch);
-			if (!silent) new obsidian.Notice(rectoUiText("update.installFailed", { brand: RECTO_BRAND_NAME }), 8000);
+			if (!silent) showRectoNotice(rectoUiText("update.installFailed", { brand: RECTO_BRAND_NAME }), { tone: "error" });
 			return false;
 		} finally {
+			clearProgress();
 			this.rectoPluginUpdateInstalling = false;
 			this.rectoPluginUpdateRunning = false;
 		}
@@ -13465,16 +13760,16 @@ class RectoPlugin extends obsidian.Plugin {
 	beginOperation(label, options = {}) {
 		if (this.isUnloading) return null;
 		if (this.rectoPluginUpdateInstalling) {
-			if (!options.silent) new obsidian.Notice(rectoUiText("update.installing", { brand: RECTO_BRAND_NAME }), 6000);
+			if (!options.silent) showRectoNotice(rectoUiText("update.installing", { brand: RECTO_BRAND_NAME }), { tone: "attention" });
 			return null;
 		}
 		if (this.settings?.paperReimport) {
-			if (!options.silent) new obsidian.Notice(rectoUiText("reimport.recoveryPending"), 8000);
+			if (!options.silent) showRectoNotice(rectoUiText("reimport.recoveryPending"), { tone: "attention" });
 			return null;
 		}
 		if (options.exclusive !== false && this.activeOperation
 			&& !(options.reuseCurrent && this.activeOperation === this.operationScope?.getStore())) {
-			if (!options.silent) new obsidian.Notice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), 6000);
+			if (!options.silent) showRectoNotice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), { tone: "attention" });
 			return null;
 		}
 		const current = this.operationScope?.getStore();
@@ -13523,33 +13818,26 @@ class RectoPlugin extends obsidian.Plugin {
 		let preparingCount = 0;
 		for (const [id] of this.hubTaskRequests || []) if (this.cancelPreparingTask(id)) preparingCount++;
 		return await this.withOperationContext("cancel-waiting-tasks", async () => {
-			let localCount = preparingCount;
+			const removed = [];
 			await this.updateLocalTaskIntents(previous => {
 				this.throwIfUnloaded();
-				return previous.filter(item => {
-					if (item.state === "executing") return true;
-					localCount++; return false;
-				});
+				return previous.filter(item => { if (item.state === "executing") return true; removed.push(item.task); return false; });
 			});
-			if (localCount) new obsidian.Notice(rectoUiText("batch.cancelledQueued", { count: localCount }), 6000);
-			if (!operation || operation.finished || operation.controller.signal.aborted) {
-				if (localCount) return true;
-				new obsidian.Notice(rectoUiText("batch.noActiveTask"), 5000);
-				return false;
+			this.notificationBatches?.cancel(removed);
+			const running = operation && !operation.finished && !operation.controller.signal.aborted;
+			const currentRunning = running && (!operation.localIntentIds
+				|| this.localTaskIntents.some(item => operation.localIntentIds.has(item.id) && item.state === "executing")
+				|| this.batchProgress?.recordId && !this.batchProgress.finished && !this.batchProgress.taskDone);
+			// Local queue items and queuedRemaining describe the same waiting tasks.
+			const dropped = running && !operation.stopAfterCurrent && Number(operation.queuedRemaining) > 0
+				? this.requestStopAfterCurrent(operation) : 0;
+			const count = preparingCount + removed.length + (operation?.localIntentIds ? 0 : dropped);
+			if (count) {
+				showRectoNotice(rectoUiText("batch.cancelledQueued", { count }) + (currentRunning ? "\n" + rectoUiText("notice.currentContinues") : ""), { tone: "neutral" });
+				return true;
 			}
-			if (operation.stopAfterCurrent) {
-				if (localCount) return true;
-				new obsidian.Notice(rectoUiText("batch.cancelAlreadyRequested"), 6000);
-				return false;
-			}
-			if ((Number(operation.queuedRemaining) || 0) <= 0) {
-				if (localCount) return true;
-				new obsidian.Notice(rectoUiText("batch.onlyCurrent"), 8000);
-				return false;
-			}
-			const dropped = this.requestStopAfterCurrent(operation);
-			new obsidian.Notice(rectoUiText("batch.cancelledQueued", { count: dropped }), 8000);
-			return true;
+			if (!operation?.stopAfterCurrent) showRectoNotice(rectoUiText(running ? "batch.onlyCurrent" : "batch.noActiveTask"), { tone: "neutral" });
+			return false;
 		}, { independent: true });
 	}
 
@@ -13572,7 +13860,7 @@ class RectoPlugin extends obsidian.Plugin {
 	getValidatedBaseFolderOrNotice() {
 		try { return this.getValidatedBaseFolder(); }
 		catch (e) {
-			new obsidian.Notice(rectoUiText("settings.libraryInvalid", { error: getUserFacingErrorMessage(e, rectoUiText("settings.chooseVaultFolder")) }), 8000);
+			showRectoNotice(rectoUiText("settings.libraryInvalid", { error: getUserFacingErrorMessage(e, rectoUiText("settings.chooseVaultFolder")) }), { tone: "error" });
 			return "";
 		}
 	}
@@ -13653,7 +13941,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async startRectoDualPane() {
 		const file = this.app.workspace.getActiveFile();
 		if (!file) {
-			new obsidian.Notice(rectoUiText("compare.openPaper"));
+			showRectoNotice(rectoUiText("compare.openPaper"), { tone: "attention" });
 			return;
 		}
 		// T84-S：先试「译文 frontmatter 里记着的原文路径」这条线索——用户自己的文档
@@ -13661,11 +13949,11 @@ class RectoPlugin extends obsidian.Plugin {
 		// **库内产物不写这个字段，一律落到下面的命名约定，库内行为一个字不变。**
 		const linked = this.resolveRectoLinkedDualPanePair(file);
 		if (linked?.artifact && documentContentHash(await this.app.vault.read(linked.sourceFile)) !== linked.artifact.sourceContentHash) {
-			new obsidian.Notice(documentLanguageText("原文版本已改变，旧译文保留，对照已停用。", "The source version changed. The translation is preserved; comparison is disabled.")); return;
+			showRectoNotice(documentLanguageText("原文版本已改变，旧译文保留，对照已停用。", "The source version changed. The translation is preserved; comparison is disabled."), { tone: "attention" }); return;
 		}
 		const stem = linked ? "" : resolveRectoPaperStem(file.name);
 		if (!linked && !stem) {
-			new obsidian.Notice(rectoUiText("compare.wrongFile"));
+			showRectoNotice(rectoUiText("compare.wrongFile"), { tone: "attention" });
 			return;
 		}
 		const folder = file.parent && file.parent.path && file.parent.path !== "/" ? `${file.parent.path}/` : "";
@@ -13677,13 +13965,13 @@ class RectoPlugin extends obsidian.Plugin {
 			: (migrateDocumentLanguages(this.settings).translationTarget.id === "zh-Hans" ? this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${getChineseMarkdownFileName(stem)}`)) : null);
 		const missing = this.describeRectoDualPaneMissing(sourceFile, translationFile);
 		if (missing) {
-			new obsidian.Notice(missing);
+			showRectoNotice(missing, { tone: "attention" });
 			return;
 		}
 		const map = await this.readRectoAlignmentMap(sourceFile, translationFile);
 		const blocker = describeRectoAlignmentBlocker(map);
 		if (blocker) {
-			new obsidian.Notice(rectoUiText("compare.unavailable", { error: blocker }));
+			showRectoNotice(rectoUiText("compare.unavailable", { error: blocker }), { tone: "attention" });
 			return;
 		}
 		// 两个对照会话不能同时活着：它们会在同一个 `ch-` 窗格上各挂一套 click/scroll 监听，
@@ -13691,23 +13979,29 @@ class RectoPlugin extends obsidian.Plugin {
 		// 那时把用户正在用的另一种对照关掉是白关。切换即接管，不弹确认。
 		if (this.pdfCompareSession) {
 			this.stopRectoPdfCompare();
-			new obsidian.Notice(rectoUiText("compare.switchedDual"), 5000);
+
 		}
 		// 固定布局：左原文 + 右译文。已开着的原文/译文直接复用，不重复开新界面。
 		const activeLeaf = this.findRectoOpenLeaf(file.path) || this.app.workspace.getMostRecentLeaf();
 		const { leftLeaf, rightLeaf } = await this.openRectoComparePanes(sourceFile, translationFile, activeLeaf);
 		if (!this.activateRectoDualPane(leftLeaf, rightLeaf, sourceFile, translationFile, map)) {
-			new obsidian.Notice(rectoUiText("compare.dualBindFailed"));
+			showRectoNotice(rectoUiText("compare.dualBindFailed"), { tone: "error" });
 			return;
 		}
 		// 锚点不配对时对照仍然可用，只是那些块点不动、滚不到——算出来了就必须说，
 		// 否则用户只会以为对照坏了。
 		const degraded = describeRectoAlignmentDegradation(map);
-		if (degraded) new obsidian.Notice(rectoUiText("compare.unmapped", { detail: degraded }), 8000);
+		if (degraded) {
+			this.compareFeedbackEl?.remove();
+			this.compareFeedbackEl = bindRectoInlineFeedback(this, "compare", rightLeaf.view?.containerEl);
+			setRectoInlineFeedback(this, "compare", rectoUiText("compare.unmapped"));
+		}
 	}
 
 	// clearPersisted=false 只用于插件卸载/重启：保留记忆，下次启动才好恢复关联。
 	stopRectoDualPane(clearPersisted = true) {
+		this.compareFeedbackEl?.remove(); this.compareFeedbackEl = null;
+		setRectoInlineFeedback(this, "compare", "");
 		if (this.dualPaneRebuildTimer) clearTimeout(this.dualPaneRebuildTimer);
 		this.dualPaneRebuildTimer = null;
 		for (const item of this.dualPaneEventRefs || []) item.target.offref(item.ref);
@@ -13721,7 +14015,7 @@ class RectoPlugin extends obsidian.Plugin {
 	verifyRectoDualPane() {
 		if (!this.dualPaneSession || this.dualPaneSession.isIntact()) return;
 		this.stopRectoDualPane();
-		new obsidian.Notice(rectoUiText("compare.dualClosed"));
+
 	}
 
 	scheduleRectoAlignmentRebuild(file) {
@@ -13749,7 +14043,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const map = await this.readRectoAlignmentMap(sourceFile, translationFile);
 		if (this.dualPaneSession !== session) return;
 		if (describeRectoAlignmentBlocker(map)) {
-			new obsidian.Notice(rectoUiText("compare.alignmentLost"));
+			showRectoNotice(rectoUiText("compare.alignmentLost"), { tone: "attention" });
 			this.stopRectoDualPane();
 			return;
 		}
@@ -13945,7 +14239,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async startRectoPdfCompare() {
 		const file = this.app.workspace.getActiveFile();
 		if (!file) {
-			new obsidian.Notice(rectoUiText("compare.openPaper"));
+			showRectoNotice(rectoUiText("compare.openPaper"), { tone: "attention" });
 			return;
 		}
 		const folder = file.parent && file.parent.path && file.parent.path !== "/" ? `${file.parent.path}/` : "";
@@ -13963,35 +14257,35 @@ class RectoPlugin extends obsidian.Plugin {
 		const sourceInfo = linked ? Object.values(this.folderMap || {}).find(info => info.sourcePath && info.sourcePath === linked.sourceFile.path) : null;
 		const stem = isPdf ? file.basename : sourceInfo?.stem || (linked?.sourceFile.name.startsWith("src-") ? linked.sourceFile.name.slice(4, -3) : null) || resolveRectoPaperStem(file.name);
 		if (!stem) {
-			new obsidian.Notice(rectoUiText("compare.wrongFile"));
+			showRectoNotice(rectoUiText("compare.wrongFile"), { tone: "attention" });
 			return;
 		}
 		const mdFile = linked?.translationFile || (migrateDocumentLanguages(this.settings).translationTarget.id === "zh-Hans" ? this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${getChineseMarkdownFileName(stem)}`)) : null);
 		if (!(mdFile instanceof obsidian.TFile)) {
-			new obsidian.Notice(rectoUiText("compare.markdownMissing"));
+			showRectoNotice(rectoUiText("compare.markdownMissing"), { tone: "attention" });
 			return;
 		}
 		const pdfFile = isPdf ? file : this.app.vault.getAbstractFileByPath(obsidian.normalizePath(`${folder}${stem}.pdf`));
 		if (!(pdfFile instanceof obsidian.TFile)) {
-			new obsidian.Notice(rectoUiText("compare.pdfMissing"));
+			showRectoNotice(rectoUiText("compare.pdfMissing"), { tone: "attention" });
 			return;
 		}
 		const prepared = await this.readRectoPdfCompareData(mdFile, folder);
 		if (prepared.error) {
-			new obsidian.Notice(rectoUiText("compare.pdfUnavailable", { error: prepared.error }));
+			showRectoNotice(rectoUiText("compare.pdfUnavailable", { error: prepared.error }), { tone: "attention" });
 			return;
 		}
 		// 与 startRectoDualPane 同一条规矩：两个对照会话不能同时活着（同一个 `ch-` 窗格上
 		// 叠两套 click/scroll 监听）。同样放在所有校验之后，切换即接管。
 		if (this.dualPaneSession) {
 			this.stopRectoDualPane();
-			new obsidian.Notice(rectoUiText("compare.switchedPdf"), 5000);
+
 		}
 		// 固定布局：左 PDF + 右中文 md。已开着的 PDF/译文直接复用，不重复开新界面。
 		const activeLeaf = this.findRectoOpenLeaf(file.path) || this.app.workspace.getMostRecentLeaf();
 		const { leftLeaf, rightLeaf } = await this.openRectoComparePanes(pdfFile, mdFile, activeLeaf);
 		if (!this.activateRectoPdfCompare(leftLeaf, rightLeaf, pdfFile, mdFile, prepared)) {
-			new obsidian.Notice(rectoUiText("compare.pdfBindFailed"));
+			showRectoNotice(rectoUiText("compare.pdfBindFailed"), { tone: "error" });
 			return;
 		}
 	}
@@ -14010,7 +14304,7 @@ class RectoPlugin extends obsidian.Plugin {
 	verifyRectoPdfCompare() {
 		if (!this.pdfCompareSession || this.pdfCompareSession.isIntact()) return;
 		this.stopRectoPdfCompare();
-		new obsidian.Notice(rectoUiText("compare.pdfClosed"));
+
 	}
 
 	scheduleRectoPdfCompareRebuild(file) {
@@ -14248,7 +14542,12 @@ class RectoPlugin extends obsidian.Plugin {
 		const cfg = { ...DEFAULT_SETTINGS.ribbonButtons, ...(this.settings.ribbonButtons || {}) };
 		for (const btn of RIBBON_BUTTONS) {
 			if (!cfg[btn.key]) continue;
-			const el = this.addRibbonIcon(btn.icon, rectoUiText({ hub: "hub.viewTitle", dualPane: "command.toggleDualPane", pdfCompare: "command.togglePdfCompare", externalPdf: "command.convertExternalPdf" }[btn.key]), () => this[btn.action]());
+			const customIcon = !!HUB_READING_ICON_PATHS[btn.icon];
+			const el = this.addRibbonIcon(customIcon ? "columns-2" : btn.icon, rectoUiText({ hub: "hub.viewTitle", dualPane: "command.toggleDualPane", pdfCompare: "command.togglePdfCompare", externalPdf: "command.convertExternalPdf" }[btn.key]), () => this[btn.action]());
+			if (customIcon) {
+				setChromeIcon(el, btn.icon);
+				el.querySelector("svg")?.classList.add("svg-icon");
+			}
 			this.ribbonIconEls.push(el);
 		}
 	}
@@ -14256,7 +14555,7 @@ class RectoPlugin extends obsidian.Plugin {
 	// 选文件夹只能走 Electron 的原生对话框；`webkitdirectory` 那条路会枚举整个 storage
 	// （Zotero 库动辄上万个文件），不能用。拿不到对话框时不是静默失败，而是告诉用户改用粘贴路径——
 	// T82-D 之前这个方法根本不存在，点「选择文件夹」只会抛一个没人接的 TypeError。
-	async pickDirectory(title, defaultPath) {
+	async pickDirectory(title, defaultPath = "", feedbackOwner = this, feedbackKey = "folder") {
 		let dialog = null;
 		try {
 			const electron = typeof window !== "undefined" && window.require ? window.require("electron") : null;
@@ -14265,7 +14564,7 @@ class RectoPlugin extends obsidian.Plugin {
 			dialog = null;
 		}
 		if (!dialog || typeof dialog.showOpenDialog !== "function") {
-			new obsidian.Notice(rectoUiText("filePicker.folderUnavailable"), 8000);
+			setRectoInlineFeedback(feedbackOwner, feedbackKey, rectoUiText("filePicker.folderUnavailable"));
 			return "";
 		}
 		try {
@@ -14277,7 +14576,7 @@ class RectoPlugin extends obsidian.Plugin {
 			if (!result || result.canceled) return "";
 			return (Array.isArray(result.filePaths) && result.filePaths[0]) || "";
 		} catch (error) {
-			new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("filePicker.folderFailed")), 8000);
+			setRectoInlineFeedback(feedbackOwner, feedbackKey, rectoUiText("filePicker.folderFailed"));
 			return "";
 		}
 	}
@@ -14297,7 +14596,7 @@ class RectoPlugin extends obsidian.Plugin {
 			dialog = null;
 		}
 		if (!dialog || typeof dialog.showOpenDialog !== "function") {
-			new obsidian.Notice(rectoUiText("filePicker.pdfUnavailable"), 8000);
+			showRectoNotice(rectoUiText("filePicker.pdfUnavailable"), { tone: "attention" });
 			return [];
 		}
 		try {
@@ -14318,7 +14617,7 @@ class RectoPlugin extends obsidian.Plugin {
 					return { path: item, name: nodePath.basename(item), size };
 				});
 		} catch (error) {
-			new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("filePicker.pdfFailed")), 8000);
+			showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("filePicker.pdfFailed")), { tone: "error" });
 			return [];
 		}
 	}
@@ -14340,20 +14639,22 @@ class RectoPlugin extends obsidian.Plugin {
 			sourceVaultFolder: sourceVaultFolder || "",
 		});
 		if (resolved.fellBackFrom === "source") {
-			new obsidian.Notice(rectoUiText("external.outputFallback", { folder: resolved.root }), 8000);
+			(this.operationScope.getStore().notificationOutput = rectoUiText("external.outputFallback", { folder: resolved.root }));
 		}
 		if (resolved.mode !== "ask") return resolved.root;
+		setRectoInlineFeedback(this, "folder", "");
 		const picked = await this.pickDirectory(rectoUiText("external.chooseOutput"), this.app.vault.adapter.basePath);
+		if (!picked && this.rectoInlineFeedback?.get("folder")) showRectoNotice(this.rectoInlineFeedback.get("folder"), { tone: "error" });
 		if (!picked) return "";
 		const relative = this.getVaultRelativePath(picked);
 		if (relative === null) {
-			new obsidian.Notice(rectoUiText("external.outputOutside"), 10000);
+			showRectoNotice(rectoUiText("external.outputOutside"), { tone: "attention" });
 			return "";
 		}
 		// 库根目录经 getVaultRelativePath 返回空串，而空串会让任务被当成库内任务
 		// （见 buildExternalPdfTasks 里那道失败关闭）。所以这里明确要求选一个子文件夹。
 		if (!relative) {
-			new obsidian.Notice(rectoUiText("external.outputAtRoot"), 8000);
+			showRectoNotice(rectoUiText("external.outputAtRoot"), { tone: "attention" });
 			return "";
 		}
 		return relative;
@@ -14394,10 +14695,10 @@ class RectoPlugin extends obsidian.Plugin {
 	async convertExternalPdfsFromCommandScoped(options = {}) {
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
 			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
-			new obsidian.Notice(rectoUiText("external.noConsent"), 6000);
+
 			return;
 		}
-		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return; }
+		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); showRectoNotice(rectoUiText("external.signIn"), { tone: "attention" }); return; }
 		const files = await this.pickExternalPdfFiles();
 		if (!files.length) { await this.diagnosticExit("FILE_PICKER_CANCELLED", "cancelled"); return; }
 		// 多选一定在同一个目录里（一次 showOpenDialog 选不到跨目录的文件），所以「PDF 所在目录」
@@ -14412,14 +14713,14 @@ class RectoPlugin extends obsidian.Plugin {
 			// 要译文必须由用户明确选那条命令。
 			requestTranslation: options.requestTranslation === true,
 		});
-		if (!tasks.length) { await this.diagnosticExit("NO_PDF_SELECTED", "skipped"); new obsidian.Notice(rectoUiText("external.noPdf"), 6000); return; }
+		if (!tasks.length) { await this.diagnosticExit("NO_PDF_SELECTED", "skipped"); showRectoNotice(rectoUiText("external.noPdf"), { tone: "attention" }); return; }
 		const { fresh, duplicates } = splitExternalDuplicateTasks(tasks, this.externalConversions);
 		let selected = fresh;
 		if (duplicates.length) {
 			if (await this.confirmExternalDuplicateRun(duplicates)) selected = tasks;
-			else if (!fresh.length) { await this.diagnosticExit("DUPLICATE_DECLINED", "cancelled"); new obsidian.Notice(rectoUiText("external.cancelled"), 4000); return; }
+			else if (!fresh.length) { await this.diagnosticExit("DUPLICATE_DECLINED", "cancelled");  return; }
 		}
-		if (!selected.length) { await this.diagnosticExit("NO_TASK_SELECTED", "cancelled"); new obsidian.Notice(rectoUiText("external.cancelled"), 4000); return; }
+		if (!selected.length) { await this.diagnosticExit("NO_TASK_SELECTED", "cancelled");  return; }
 		await this.runBatchWithTasks(selected);
 	}
 
@@ -14458,7 +14759,7 @@ class RectoPlugin extends obsidian.Plugin {
 		settings.sourceFolder = this.normalizeZoteroSourceFolder(storage);
 		const savePromise = (async () => this.save())().catch(() => {
 			if (settings.sourceFolder === storage) settings.sourceFolder = "";
-			new obsidian.Notice(rectoUiText("settings.zoteroSaveFailed"), 8000);
+			setRectoInlineFeedback(this, "zotero", rectoUiText("settings.zoteroSaveFailed"));
 			return false;
 		});
 		return { ...candidate, storageDir: storage, savePromise };
@@ -14566,7 +14867,7 @@ class RectoPlugin extends obsidian.Plugin {
 		let metadata;
 		try { metadata = this.readZoteroMetadata(); }
 		catch (e) {
-			new obsidian.Notice(rectoUiText("import.collectionReadFailed", { error: getUserFacingErrorMessage(e, "") }), 8000);
+			setRectoInlineFeedback(this, "scan", rectoUiText("import.collectionReadFailed", { error: getUserFacingErrorMessage(e, "") }));
 			return tasks;
 		}
 		return tasks.map(task => {
@@ -14759,7 +15060,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.settings.baseFolder = next;
 		void this.save();
 		this.refreshSettingsStatusIfOpen();
-		new obsidian.Notice(rectoUiText("settings.librarySynced", { folder: next }), 6000);
+
 	}
 
 	getReadingStateKey(info, folder) {
@@ -14893,13 +15194,13 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!container) return;
 		this.registerDomEvent(container, "click", (event) => {
 			void this.handleReadingStatusClick(event).catch((error) => {
-				new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("settings.readingStatusFailed")), 5000);
+				showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("settings.readingStatusFailed")), { tone: "error" });
 			});
 		});
 		this.registerDomEvent(container, "keydown", (event) => {
 			if (event.key !== "Enter" && event.key !== " ") return;
 			void this.handleReadingStatusClick(event).catch((error) => {
-				new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("settings.readingStatusFailed")), 5000);
+				showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("settings.readingStatusFailed")), { tone: "error" });
 			});
 		});
 	}
@@ -14928,7 +15229,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const storage = this.getZoteroStoragePath();
 		const quiet = !!options.quiet;
 		if (!fs.existsSync(storage)) {
-			if (!quiet) new obsidian.Notice(getZoteroUserFacingErrorMessage(Object.assign(new Error("Zotero storage 不存在"), { code: "ENOENT" })), 8000);
+			if (!quiet) showRectoNotice(getZoteroUserFacingErrorMessage(Object.assign(new Error("Zotero storage 不存在"), { code: "ENOENT" })), { tone: "error" });
 			return { tasks: [], ambiguousGroups: [] };
 		}
 		let metadata = { byAttachment: {} };
@@ -14939,7 +15240,7 @@ class RectoPlugin extends obsidian.Plugin {
 				if (e && e.code) wrapped.code = e.code;
 				throw wrapped;
 			}
-			if (!quiet) new obsidian.Notice(getZoteroUserFacingErrorMessage(e, rectoUiText("import.metadataReadFailed")), 8000);
+			if (!quiet) setRectoInlineFeedback(this, "scan", getZoteroUserFacingErrorMessage(e, rectoUiText("import.metadataReadFailed")));
 		}
 		const candidates = [];
 		const entries = fs.readdirSync(storage, { withFileTypes: true }).filter(entry => entry.isDirectory());
@@ -15184,7 +15485,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.app.vault.adapter.basePath
 		);
 		if (result.missing && !wanted) {
-			new obsidian.Notice(rectoUiText("import.unreadablePdfs", { count: result.missing }), 8000);
+			setRectoInlineFeedback(this, "scan", rectoUiText("import.unreadablePdfs", { count: result.missing }));
 		}
 		return result.tasks.filter(task => !this.hasConvertedOutput(task.recordId));
 	}
@@ -15228,11 +15529,11 @@ class RectoPlugin extends obsidian.Plugin {
 
 	async importZoteroLibraryScoped(options = {}) {
 		if (!this.hasNodeSqlite) {
-			new obsidian.Notice(rectoUiText("import.runtimeUnsupported"), 8000);
+			showRectoNotice(rectoUiText("import.runtimeUnsupported"), { tone: "attention" });
 			return null;
 		}
 		if (!this.settings.sourceFolder) {
-			new obsidian.Notice(rectoUiText("import.chooseSource"));
+			showRectoNotice(rectoUiText("import.chooseSource"), { tone: "attention" });
 			return null;
 		}
 		if (!this.getValidatedBaseFolderOrNotice()) return null;
@@ -15255,11 +15556,11 @@ class RectoPlugin extends obsidian.Plugin {
 			// 多 PDF 弹窗取消会连无歧义的那些条目一起放弃（取消就是取消，不半做），但必须说出来：
 			// 用户看到的只是弹窗关掉、库里一篇没多。
 			if (tasks == null) {
-				new obsidian.Notice(rectoUiText("import.cancelled"), 6000);
+
 				return null;
 			}
 			if (!tasks.length) {
-				new obsidian.Notice(rectoUiText("import.noPdf"), 7000);
+				showRectoNotice(rectoUiText("import.noPdf"), { tone: "attention" });
 				await this.markZoteroLibraryImportOptedIn();
 				return { imported: 0, existing: 0, total: 0, copyFailures: [] };
 			}
@@ -15292,7 +15593,7 @@ class RectoPlugin extends obsidian.Plugin {
 			if (isCancellationError(error, operation.controller.signal)) {
 				return null;
 			}
-			new obsidian.Notice(getZoteroUserFacingErrorMessage(error, rectoUiText("import.failed")), 10000);
+			showRectoNotice(getZoteroUserFacingErrorMessage(error, rectoUiText("import.failed")), { tone: "error" });
 			throw error;
 		} finally {
 			if (!handedOff) {
@@ -15478,6 +15779,11 @@ class RectoPlugin extends obsidian.Plugin {
 				copyFailures,
 				projectionFailures,
 			};
+			setRectoInlineFeedback(this, "results", [
+				...copyFailures.map(item => item.split(":")[0] + ": " + documentLanguageText("PDF 未能复制，请重试", "PDF could not be copied. Try again.")),
+				projectionFailures.length ? documentLanguageText("论文列表暂未更新，请再次导入", "The paper list was not updated. Import again.") : "",
+				mismatchedPdfs ? documentLanguageText(`${mismatchedPdfs} 个 PDF 与原文件不一致，已有文件已保留`, `${mismatchedPdfs} PDFs differ from their sources. Existing files were preserved.`) : "",
+			].filter(Boolean).join("\n"));
 			const copyNote = [
 				rectoUiText("import.copiedCount", { count: copiedPdfs }),
 				repairedPdfs ? rectoUiText("import.repairedCount", { count: repairedPdfs }) : "",
@@ -15487,32 +15793,23 @@ class RectoPlugin extends obsidian.Plugin {
 			if (cancelled) {
 				finalStatus = "cancelled";
 				result.status = "cancelled";
-				if (!quiet) new obsidian.Notice(
-					rectoUiText("import.interruptedSummary", { count: tasks.length, copyNote }),
-					10000
-				);
+				if (!quiet) showRectoNotice(rectoUiText("import.interruptedSummary", { count: imported + existing, copyNote }), { tone: "attention" });
 				return result;
 			}
 			if (projectionFailures.length || copyFailures.length || mismatchedPdfs) {
 				finalStatus = "incomplete";
 				result.status = "incomplete";
-				if (!quiet) new obsidian.Notice(
-					rectoUiText("import.incompleteSummary", { count: projectionFailures.length + copyFailures.length + mismatchedPdfs, copyNote }),
-					12000
-				);
+				if (!quiet) showRectoNotice(rectoUiText("import.incompleteSummary", { count: projectionFailures.length + copyFailures.length + mismatchedPdfs, copyNote }), { tone: "attention" });
 				return result;
 			}
 			finalStatus = "completed";
-			if (!quiet) new obsidian.Notice(
-				rectoUiText("import.completedSummary", { imported, existing, total: tasks.length, copyNote }),
-				7000
-			);
+			if (!quiet) showRectoNotice(rectoUiText("import.completedSummary", { imported, existing, total: tasks.length, copyNote }), { tone: "success" });
 			return result;
 		} catch (error) {
 			if (isCancellationError(error, operation && operation.controller && operation.controller.signal)) {
 				return null;
 			}
-			if (!quiet) new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("import.failed")), 10000);
+			if (!quiet) showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("import.failed")), { tone: "error" });
 			throw error;
 		} finally {
 			if (progress) {
@@ -15624,7 +15921,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// 这道门在 beginOperation 之前，走不到那边的忙碌提示；不补一句的话，用户在设置页点
 		// 「立即同步」撞上别的任务时是彻底静默的。自动轮询（force = false）照旧沉默。
 		if (this.activeOperation) {
-			if (force) new obsidian.Notice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), 6000);
+			if (force) showRectoNotice(rectoUiText("recovery.active", { label: localizeBatchDisplayText(this.activeOperation.label, "progress.defaultLabel") }), { tone: "attention" });
 			return { skipped: true, reason: "busy" };
 		}
 		if (!this.hasNodeSqlite || !this.settings.sourceFolder) {
@@ -15709,14 +16006,15 @@ class RectoPlugin extends obsidian.Plugin {
 
 			const pending = classification.pendingAmbiguous + (syncPlan.orphaned || []).length;
 			const parts = [];
+			setRectoInlineFeedback(this, "sync", [imported ? rectoUiText("notice.syncAdded", { count: imported }) : "", pending ? rectoUiText("notice.syncAttention", { count: pending }) : ""].filter(Boolean).join("\n"));
 			if (imported > 0) parts.push(rectoUiText("import.autoAdded", { count: imported }));
 			if (pending > 0) parts.push(rectoUiText("import.pending", { count: pending }));
 			if (force && degraded) {
-				new obsidian.Notice(rectoUiText("import.checkFailed"), 8000);
+				showRectoNotice(rectoUiText("import.checkFailed"), { tone: "error" });
 			} else if (force && parts.length) {
-				new obsidian.Notice(rectoUiText("import.autoSummary", { summary: parts.join(activeRectoUiLocale === "en" ? ", " : "，") }), 7000);
+				showRectoNotice(rectoUiText(pending ? "notice.syncAttention" : "notice.syncAdded", { count: pending || imported }), { tone: pending ? "attention" : "success" });
 			} else if (force) {
-				new obsidian.Notice(rectoUiText("import.noChanges"), 4000);
+				showRectoNotice(rectoUiText("import.noChanges"), { tone: "success" });
 			}
 			return {
 				imported,
@@ -15732,7 +16030,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.refreshSettingsStatusIfOpen();
 			if (force) {
 				// 自动轮询继续静默；用户主动点「立即同步」时，瞬时占用也要给出可执行的下一步。
-				new obsidian.Notice(getZoteroUserFacingErrorMessage(error, rectoUiText("import.checkFailed")), 8000);
+				showRectoNotice(getZoteroUserFacingErrorMessage(error, rectoUiText("import.checkFailed")), { tone: "error" });
 			}
 			return {
 				degraded: true,
@@ -15750,7 +16048,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 	async resolveZoteroPendingConfirmationsScoped(hostEl = null) {
 		if (!this.hasNodeSqlite) {
-			new obsidian.Notice(rectoUiText("import.runtimeUnsupported"), 8000);
+			showRectoNotice(rectoUiText("import.runtimeUnsupported"), { tone: "attention" });
 			return null;
 		}
 		if (!this.getValidatedBaseFolderOrNotice()) return null;
@@ -15773,6 +16071,7 @@ class RectoPlugin extends obsidian.Plugin {
 						progress: null,
 						hostEl,
 						skipConfirm: false,
+						quiet: true,
 						manageOperation: false,
 					});
 					imported = result && result.imported ? result.imported : 0;
@@ -15789,6 +16088,7 @@ class RectoPlugin extends obsidian.Plugin {
 					this.preflightTrashRecords(deleteRecordIds);
 					this.applyZoteroSyncPlanSilently(syncPlan);
 					let removed = 0;
+					const failedRemovals = [];
 					for (const recordId of deleteRecordIds) {
 						const info = this.folderMap[recordId];
 						try {
@@ -15797,12 +16097,11 @@ class RectoPlugin extends obsidian.Plugin {
 							this.convertedFolders = this.convertedFolders.filter(id => id !== recordId);
 							removed++;
 						} catch (error) {
-							new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("import.trashFailed")), 8000);
+							failedRemovals.push((info?.stem || recordId) + ": " + rectoUiText("import.trashFailed"));
 						}
 					}
-					if (removed) {
-						new obsidian.Notice(rectoUiText("import.trashDone", { count: removed }), 5000);
-					}
+					setRectoInlineFeedback(this, "results", failedRemovals.join("\n"));
+					setRectoInlineFeedback(this, "sync", rectoUiText("import.trashDone", { count: removed }));
 				}
 			}
 			const freshPlan = await this.getPdfScanPlan({
@@ -15825,12 +16124,13 @@ class RectoPlugin extends obsidian.Plugin {
 			await this.writePaperJsonlIndex();
 			this.safeRefreshHubViews();
 			this.refreshSettingsStatusIfOpen();
+			showRectoNotice(degraded ? rectoUiText("import.checkFailed") : imported ? rectoUiText("notice.syncAdded", { count: imported }) : rectoUiText("import.noChanges"), { tone: degraded ? "attention" : "success" });
 			return { imported, degraded };
 		} catch (error) {
 			this.persistZoteroAutoCheckState({ status: "degraded", mtimeMs: null });
 			await this.save().catch(() => {});
 			this.refreshSettingsStatusIfOpen();
-			new obsidian.Notice(getZoteroUserFacingErrorMessage(error, rectoUiText("import.pendingFailed")), 8000);
+			setRectoInlineFeedback(this, "sync", getZoteroUserFacingErrorMessage(error, rectoUiText("import.pendingFailed")));
 			return null;
 		} finally {
 			this.finishOperation(operation);
@@ -15954,7 +16254,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async cycleReadingStatusByKey(readingKey) {
 		const entries = this.getZoteroIndexEntries();
 		if (!entries.some(entry => entry.readingKey === readingKey)) {
-			new obsidian.Notice(rectoUiText("hub.recordMissing"), 5000);
+			showRectoNotice(rectoUiText("hub.recordMissing"), { tone: "attention" });
 			return null;
 		}
 		const next = getNextReadingStatus(this.getReadingStatus(readingKey));
@@ -16023,7 +16323,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.maybeOpenOnboarding();
 		} catch (error) {
 			console.error("Recto: failed to open hub", getSanitizedErrorMessage(error));
-			new obsidian.Notice(rectoUiText("hub.openFailed"), 8000);
+			showRectoNotice(rectoUiText("hub.openFailed"), { tone: "error" });
 		}
 	}
 
@@ -16057,7 +16357,7 @@ class RectoPlugin extends obsidian.Plugin {
 	openRectoSettings() {
 		const setting = this.app && this.app.setting;
 		if (!setting || typeof setting.open !== "function") {
-			new obsidian.Notice(rectoUiText("hub.settingsPath"), 6000);
+			showRectoNotice(rectoUiText("hub.settingsPath"), { tone: "attention" });
 			return;
 		}
 		setting.open();
@@ -16068,7 +16368,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const outputFolder = obsidian.normalizePath(String((record && record.outputFolder) || ""));
 		const stem = outputFolder.split("/").filter(Boolean).pop() || "";
 		if (!outputFolder || !stem) {
-			new obsidian.Notice(rectoUiText("hub.resultMissing"), 6000);
+			showRectoNotice(rectoUiText("hub.resultMissing"), { tone: "attention" });
 			return false;
 		}
 		const candidates = [
@@ -16077,7 +16377,7 @@ class RectoPlugin extends obsidian.Plugin {
 		];
 		const file = candidates.map(path => this.app.vault.getAbstractFileByPath(path)).find(Boolean);
 		if (!file) {
-			new obsidian.Notice(rectoUiText("hub.resultSaved", { folder: outputFolder }), 8000);
+			setRectoInlineFeedback(this, "output", rectoUiText("hub.resultSaved", { folder: outputFolder }));
 			return false;
 		}
 		const leaf = this.getHubOpenLeaf(file);
@@ -16246,7 +16546,7 @@ class RectoPlugin extends obsidian.Plugin {
 			electron.clipboard.writeText(result.paths.join("\n"));
 		} else await writeHubFilesToClipboard(result.paths);
 		const message = rectoUiText(role === "folder" ? "hub.context.pathsCopied" : "hub.context.filesCopied", { count: result.paths.length });
-		new obsidian.Notice(message + (result.missing ? rectoUiText("hub.context.skipped", { count: result.missing }) : ""), 4000);
+		showRectoNotice(message + (result.missing ? rectoUiText("hub.context.skipped", { count: result.missing }) : ""), { tone: "success" });
 	}
 
 	async revealHubPaperFolder(entries, system = false) {
@@ -16255,7 +16555,7 @@ class RectoPlugin extends obsidian.Plugin {
 		if (result.files.length !== 1) throw new Error("folder-missing");
 		if (system) {
 			const shell = require("electron").shell;
-			if (!await openHubSystemFolder(result.paths[0], shell)) new obsidian.Notice(rectoUiText("hub.context.folderNotFocused"), 5000);
+			if (!await openHubSystemFolder(result.paths[0], shell)) showRectoNotice(rectoUiText("hub.context.folderNotFocused"), { tone: "neutral" });
 			return;
 		}
 		const workspace = this.app.workspace;
@@ -16328,7 +16628,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const path = this.resolveHubTargetPath(entry, action);
 		const file = path ? this.app.vault.getAbstractFileByPath(path) : null;
 		if (!(file instanceof obsidian.TFile)) {
-			new obsidian.Notice(rectoUiText("hub.fileMissing"), 5000);
+			showRectoNotice(rectoUiText("hub.fileMissing"), { tone: "attention" });
 			return false;
 		}
 		const leaf = this.getHubOpenLeaf(file);
@@ -16390,7 +16690,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async syncZoteroClassificationIndexScoped() {
 		try {
 			if (!this.hasNodeSqlite) {
-				new obsidian.Notice(rectoUiText("import.syncPaused"), 8000);
+				showRectoNotice(rectoUiText("import.syncPaused"), { tone: "attention" });
 				return null;
 			}
 			if (!this.getValidatedBaseFolderOrNotice()) return null;
@@ -16454,13 +16754,13 @@ class RectoPlugin extends obsidian.Plugin {
 			this.pruneReadingStates();
 			await this.save();
 			await this.writePaperJsonlIndex();
-			if (removeFailures.length) {
-				new obsidian.Notice(rectoUiText("import.trashPartial", { titles: removeFailures.join(activeRectoUiLocale === "en" ? ", " : "、") }), 12000);
-			}
-			new obsidian.Notice(
-				rectoUiText("import.syncedSummary", { matched: plan.matched.length, missing: plan.missingPdfs.length, orphaned: plan.orphaned.length - removed, trashed: removed }),
-				9000
-			);
+			const attention = plan.missingPdfs.length + plan.orphaned.length - removed;
+			setRectoInlineFeedback(this, "results", [
+				...plan.missingPdfs.map(item => (item.stem || item.recordId) + ": " + rectoUiText("hub.noConvertible")),
+				...removeFailures.map(name => name + ": " + rectoUiText("import.trashFailed")),
+				removed ? rectoUiText("import.trashDone", { count: removed }) : "",
+			].filter(Boolean).join("\n"));
+			showRectoNotice(attention ? rectoUiText("notice.syncAttention", { count: attention }) : removed ? rectoUiText("import.trashDone", { count: removed }) : rectoUiText("import.noChanges"), { tone: attention ? "attention" : "success" });
 			this.safeRefreshHubViews();
 			return {
 				matched: plan.matched.length,
@@ -16473,7 +16773,7 @@ class RectoPlugin extends obsidian.Plugin {
 				this.finishOperation(operation);
 			}
 		} catch (e) {
-			if (!isCancellationError(e)) new obsidian.Notice(getZoteroUserFacingErrorMessage(e, rectoUiText("import.syncFailed")), 10000);
+			if (!isCancellationError(e)) showRectoNotice(getZoteroUserFacingErrorMessage(e, rectoUiText("import.syncFailed")), { tone: "error" });
 			throw e;
 		}
 	}
@@ -16682,6 +16982,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async uploadBackendTaskPdf(taskId, task) {
+		this.publishTaskWorkflow(task, { phase: "upload", leg: "conversion" });
 		if (!task || !task.path) throw new Error("Backend hosted task requires a local PDF path for upload");
 		const sourcePath = String(task.path);
 		const stat = await fs.promises.stat(sourcePath).catch(() => null);
@@ -16776,7 +17077,7 @@ class RectoPlugin extends obsidian.Plugin {
 		catch (error) {
 			if (!this.hostNetworkWarningShown) {
 				this.hostNetworkWarningShown = true;
-				new obsidian.Notice(getUserFacingErrorMessage(error), 15000);
+				showRectoNotice(getUserFacingErrorMessage(error), { tone: "error" });
 			}
 			return false;
 		}
@@ -16784,6 +17085,8 @@ class RectoPlugin extends obsidian.Plugin {
 
 	// 走 multipart 而不是 JSON body：真实 sidecar 有几 MB，后端的 JSON 体上限只有 100 KB。
 	async uploadBackendTaskSidecar(taskId, sidecarText) {
+		const entry = this.pendingBackendTasks?.find(item => item.taskId === taskId);
+		if (entry) this.publishTaskWorkflow(entry.task, { phase: "upload", leg: "translation" });
 		const data = Buffer.from(String(sidecarText), "utf8");
 		if (!data.length) throw new Error("本地 Sidecar 为空，无法提交译文任务");
 		if (data.length > RECTO_SIDECAR_MAX_BYTES) throw new Error("本地 Sidecar 超过 24 MB 上限，无法提交译文任务");
@@ -16809,19 +17112,19 @@ class RectoPlugin extends obsidian.Plugin {
 	async translateActiveMarkdownFromCommandScoped() {
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
 			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
-			new obsidian.Notice(rectoUiText("task.noConsent"), 6000);
+
 			return;
 		}
 		await this.ensureDocumentLanguageCapabilities();
 		const file = this.app.workspace.getActiveFile();
 		if (!file || !/\.md$/i.test(String(file.path || ""))) { await this.diagnosticExit("MARKDOWN_NOT_SELECTED", "skipped");
-			new obsidian.Notice(rectoUiText("markdown.openFirst"), 6000);
+			showRectoNotice(rectoUiText("markdown.openFirst"), { tone: "attention" });
 			return;
 		}
 		const translationTarget = this.operationScope?.getStore()?.translationTarget || this.settings.documentLanguages.translationTarget;
 		const target = resolveRectoMarkdownTranslationTarget(file.path, translationTarget);
 		if (!target) { await this.diagnosticExit("INVALID_TRANSLATION_SOURCE", "blocked");
-			new obsidian.Notice(rectoUiText("markdown.invalidSource"), 8000);
+			showRectoNotice(rectoUiText("markdown.invalidSource"), { tone: "attention" });
 			return;
 		}
 		let markdown = "";
@@ -16830,31 +17133,31 @@ class RectoPlugin extends obsidian.Plugin {
 		} catch (error) {
 			await this.captureOperationDiagnostic({ code: "MARKDOWN_READ_FAILED", outcome: "failed", error });
 			await this.diagnosticExit("MARKDOWN_READ_FAILED", "failed");
-			new obsidian.Notice(rectoUiText("markdown.readFailed", { error: getUserFacingErrorMessage(error) }), 8000);
+			showRectoNotice(rectoUiText("markdown.readFailed", { error: getUserFacingErrorMessage(error) }), { tone: "error" });
 			return;
 		}
 		// 中文源不提供翻译，判据与后端在冻结之前那道复判同源（不变量 11）。这里先拦一次，
 		// 免得用户等到扣费那一步才被拒。
 		if (!this.settings.documentLanguages && detectMarkdownLanguage(markdown, this.settings.translationChineseThreshold) === "zh") {
 			await this.diagnosticExit("SAME_TARGET_LANGUAGE", "blocked");
-			new obsidian.Notice(rectoUiText("markdown.alreadyChinese"), 8000);
+			showRectoNotice(rectoUiText("markdown.alreadyChinese"), { tone: "attention" });
 			return;
 		}
 		const estimate = estimateRectoMarkdownTranslationPages(markdown);
 		if (!estimate.pages) { await this.diagnosticExit("NO_TRANSLATABLE_CONTENT", "skipped");
-			new obsidian.Notice(rectoUiText("markdown.empty"), 6000);
+			showRectoNotice(rectoUiText("markdown.empty"), { tone: "attention" });
 			return;
 		}
 		await this.captureOperationDiagnostic({ code: "DOCUMENT_MEASURED", metrics: { pages: estimate.pages, characters: markdown.length } });
 		const quote = describeTranslationQuote(this.settings, estimate.pages);
 		if (quote.active && quote.shortfall > 0) {
 			await this.diagnosticExit("INSUFFICIENT_CREDITS", "blocked", { neededPages: estimate.pages, availablePages: quote.available, shortfallPages: quote.shortfall });
-			new obsidian.Notice(rectoUiText("markdown.buyPages", { quote: quote.text }), 10000);
+			showRectoNotice(rectoUiText("notice.credits", { needed: formatTranslationPages(estimate.pages), available: formatTranslationPages(quote.available) }), { tone: "attention" });
 			this.openAccountModal();
 			return;
 		}
 		if (this.app.vault.getAbstractFileByPath(target.targetPath)) {
-			if (this.settings.documentLanguages) { await this.diagnosticExit("TARGET_ALREADY_EXISTS", "skipped"); new obsidian.Notice(documentLanguageText("目标译文已存在，已保留原文件。", "The target translation already exists and was preserved.")); return; }
+			if (this.settings.documentLanguages) { await this.diagnosticExit("TARGET_ALREADY_EXISTS", "skipped"); showRectoNotice(documentLanguageText("目标译文已存在，已保留原文件。", "The target translation already exists and was preserved."), { tone: "attention" }); return; }
 			const replace = await this.openDecision(() => ({
 				title: rectoUiText("markdown.replaceTitle"),
 				intro: rectoUiText("markdown.replaceIntro", { path: target.targetPath }),
@@ -16869,10 +17172,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const writeAnchors = this.operationScope?.getStore()?.processingChoices.markdownWriteAnchors ?? (this.settings.markdownTranslationWriteAnchors === true);
 		// 单篇零确认是 T84-F 的既有决定，所以量级用 Notice 说而不是再弹一次窗——但**必须说**：
 		// 额度是按字符扣的，用户事先看不见量级就等于蒙着眼花钱。
-		new obsidian.Notice(
-			quote.active ? `${quote.text}${activeRectoUiLocale === "en" ? "." : "。"}` : rectoUiText("markdown.start", { name: file.basename, count: estimate.pages }),
-			6000,
-		);
+		this.operationScope.getStore().notificationQuote = estimate.pages;
 		await this.runBackendBatchWithTasks([{
 			namingVersion: 1,
 			name: file.name,
@@ -16888,11 +17188,7 @@ class RectoPlugin extends obsidian.Plugin {
 			// 重启恢复的那一篇也不会突然往原文里补写一批当时没答应的锚点。
 			markdownWriteAnchors: writeAnchors,
 		}]);
-		// 默认不写锚点，双栏因此会报「两侧没有可对齐的锚点」——而设置里那个开关没有任何东西
-		// 指向它。不补这一句，用户永远发现不了双栏对照的存在。
-		if (!writeAnchors && this.app.vault.getAbstractFileByPath(target.targetPath)) {
-			new obsidian.Notice(rectoUiText("markdown.anchorHint"), 12000);
-		}
+		// 对照定位与原文标记的说明保留在设置项。
 	}
 
 	/**
@@ -16979,7 +17275,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const pending = Array.isArray(this.pendingBackendTasks) ? this.pendingBackendTasks : [];
 		const existing = pending.find(entry => entry && entry.taskId === String(taskId || "").trim());
 		if (!existing) {
-			new obsidian.Notice(rectoUiText("task.retryMissing"), 8000);
+			showRectoNotice(rectoUiText("task.retryMissing"), { tone: "attention" });
 			return null;
 		}
 		const operation = this.beginOperation("重试论文结果");
@@ -16987,10 +17283,10 @@ class RectoPlugin extends obsidian.Plugin {
 		try {
 			const result = await this.retryBackendTask(existing.taskId, { signal: operation.controller.signal });
 			await this.persistPendingBackendTask(existing.taskId, existing.task, (result && result.status) || "retrying");
-			new obsidian.Notice(rectoUiText("task.retrySubmitted"), 6000);
+
 			return result;
 		} catch (error) {
-			new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("task.retryFailed")), 8000);
+			setRectoInlineFeedback(this, "recovery", getUserFacingErrorMessage(error, rectoUiText("task.retryFailed")));
 			return null;
 		} finally {
 			this.finishOperation(operation);
@@ -16998,15 +17294,18 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async rememberBackendTaskStatus(taskId, remote) {
+		this.observeBackendWorkflow(taskId, remote || {});
 		const stage = normalizeBackendProcessingStage(remote?.processingStage);
+		const workflowStage = normalizeTaskWorkflowStage(remote?.workflowStage);
 		const current = this.pendingBackendTasks?.find(item => item.taskId === taskId);
-		if (!current || !remote?.status || (current.status === remote.status && (current.processingStage || "") === stage)) return;
+		if (!current || !remote?.status || (current.status === remote.status && (current.processingStage || "") === stage && (current.workflowStage || "") === workflowStage)) return;
 		await this.save(() => {
 			const entry = this.pendingBackendTasks?.find(item => item.taskId === taskId);
 			if (!entry) return;
-			const previous = { status: entry.status, processingStage: entry.processingStage };
+			const previous = { status: entry.status, processingStage: entry.processingStage, workflowStage: entry.workflowStage };
 			entry.status = String(remote.status);
 			entry.processingStage = stage;
+			entry.workflowStage = workflowStage;
 			return () => Object.assign(entry, previous);
 		});
 		this.notifyTaskQueueChanged();
@@ -17036,6 +17335,8 @@ class RectoPlugin extends obsidian.Plugin {
 				if (isCancellationError(error, this.getActiveSignal())) throw error;
 				if (!isRetryableBackendRequestError(error)) throw error;
 				transientErrors += 1;
+				const entry = this.pendingBackendTasks?.find(item => item.taskId === taskId);
+				if (entry) this.publishTaskWorkflow(entry.task, { retrying: true });
 				modal?.setRetrying?.(true);
 				if (modal) modal.log(`状态检查暂时未完成（${transientErrors}/${maxTransientErrors}）：${getUserFacingErrorMessage(error, "网络连接不稳定，请稍后重试。")}`);
 				if (transientErrors >= maxTransientErrors) return await defer(true);
@@ -17050,7 +17351,7 @@ class RectoPlugin extends obsidian.Plugin {
 			// 后端阶段与可选子进度（解析页数 / 翻译批次）驱动进度条。progress 字段只放在后端内存里，
 			// 重启或多实例时会缺——解析缺页数时仅报阶段，不画估算百分比。
 			// modal 是可选协作者（恢复写回时传 null），方法也按可选处理。
-			if (modal && typeof modal.setBackendPhase === "function") modal.setBackendPhase(task.status, task.progress, task.processingStage);
+			if (modal && typeof modal.setBackendPhase === "function") modal.setBackendPhase(task.status, task.progress, task.processingStage, task.workflowStage);
 			if (task.status === "ready") return task;
 			if (finalStatuses.has(task.status)) {
 				if (options.returnTerminalStatus) return task;
@@ -17077,6 +17378,8 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async fetchBackendTaskResult(taskId, modal, options = {}) {
+		const entry = this.pendingBackendTasks?.find(item => item.taskId === taskId);
+		if (entry) this.publishTaskWorkflow(entry.task, { phase: "download", leg: entry.task.translateOnly ? "translation" : "conversion" });
 		const maxAttempts = 3;
 		const waitMs = Math.min(getPollIntervalMs(this.settings), 5000);
 		const signal = options.signal || this.getActiveSignal();
@@ -17413,6 +17716,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async writeBackendTranslationArtifacts(task, stem, result, modal) {
+		this.publishTaskWorkflow(task, { phase: "write", leg: "translation", retrying: false });
 		return await this.withTaskResources({ ...task, stem }, () => this.writeBackendTranslationArtifactsUnlocked(task, stem, result, modal));
 	}
 
@@ -17485,24 +17789,19 @@ class RectoPlugin extends obsidian.Plugin {
 		if (translationError && !summaryWritten) throw translationError;
 		if (summaryError && summaryError.code !== "RECTO_SUMMARY_RESULT_INVALID") throw summaryError;
 		if (summaryError && !translationWritten) throw summaryError;
-		if (translationError || status.translation === "failed") {
-			new obsidian.Notice(rectoUiText(translationError ? "hub.translationRejectedSummarySaved" : "hub.translationFailedSummarySaved", { stem }), 10000);
-		}
-		if (summaryError || status.summary === "failed") {
-			new obsidian.Notice(rectoUiText("hub.summaryFailed", { stem }), 10000);
-		}
 		const artifacts = {
 			translation: translationError || status.translation === "failed" ? "failed" : result.translationAlignment?.status === "degraded" ? "degraded" : "succeeded",
 			summary: summaryError || status.summary === "failed" ? "failed" : "succeeded",
 		};
 		const partial = Object.values(artifacts).some(value => value === "failed" || value === "degraded");
-		if (partial && modal) modal.itemPartial = artifacts.translation === "succeeded" ? "summary" : "translation";
+		if (partial && modal) modal.itemPartial = artifacts.translation === "succeeded" ? "summary" : summaryWritten && !translationWritten ? "summary-only" : "translation";
 		await this.captureOperationDiagnostic({ code: "ARTIFACT_RESULTS", outcome: partial ? "failed" : "stage", artifacts, error: translationError || summaryError });
 		if (partial) await this.diagnosticExit("PARTIAL_RESULT", "failed");
 		return stem;
 	}
 
 	async writeBackendTaskResult(task, result, modal) {
+		this.publishTaskWorkflow(task, { phase: "write", leg: "conversion", retrying: false });
 		return await this.withTaskResources(task, () => this.writeBackendTaskResultUnlocked(task, result, modal));
 	}
 
@@ -17682,12 +17981,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 		log(`✓ ${stem}（图片 ${resources.length} 个${translationWritten ? "，含译文" : ""}${translationSkippedReason ? `，译文已跳过：${translationSkippedReason}` : ""}）`);
 		// 跳过译文是用户必须知道的事：他为译文付过费，本地却只有正文与摘要。
-		if (translationSkippedReason) {
-			new obsidian.Notice(
-				rectoUiText("task.translationSkipped", { stem, reason: getUserFacingErrorMessage(translationSkippedReason) }),
-				12000
-			);
-		}
+		if (translationSkippedReason && modal) modal.itemPartial = "translation";
 		return stem;
 		} catch (error) {
 			let rollbackError = null;
@@ -17724,7 +18018,6 @@ class RectoPlugin extends obsidian.Plugin {
 			intro: rectoUiText("batch.translateIntro", { count }),
 			details: [
 				...(quote.active && quotedPages > 0 ? [rectoUiText("batch.quote", { needed: formatTranslationPages(quotedPages), available: formatTranslationPages(quote.available) })] : []),
-				rectoUiText("batch.translateReuse"),
 			],
 			actions: [
 				{ label: rectoUiText("dialog.cancel"), value: false },
@@ -17798,7 +18091,11 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async runBackendTranslationPhaseUnlocked(task, stem, modal, operation, onTaskCreated, options = {}) {
-		const setStage = (stage) => { if (modal) modal.setStage(stage, task.name || stem); };
+		if (modal) modal.workflowLeg = "translation";
+		const setStage = (stage) => {
+			if (modal) modal.setStage(stage, task.name || stem);
+			this.publishTaskWorkflow(task, { phase: stage === "取译文" ? "download" : stage === "读取文档" || stage === "读取论文内容" ? "prepare" : resolveBatchProgressStage(stage).phase, leg: "translation" });
+		};
 		const log = message => { if (modal) modal.log(message); };
 		if (!options.existing && task.requestSummary === true && !isRectoMarkdownTranslationTask(task)
 			&& this.app.vault.getAbstractFileByPath(task.namingVersion === 1 && task.sourcePath ? obsidian.normalizePath(`${nodePath.posix.dirname(task.sourcePath)}/${getSummaryFileName(stem)}`) : this.getSummaryPath(stem))) {
@@ -17927,11 +18224,18 @@ class RectoPlugin extends obsidian.Plugin {
 
 	reportSkippedBackendTasks(skipped, ready) {
 		if (!skipped.length) return;
+		this.notificationBatches?.skip(skipped.map(item => item.task));
+		const operation = this.operationScope?.getStore();
+		if (operation) {
+			operation.notificationSkipped ||= new Map();
+			for (const item of skipped) operation.notificationSkipped.set(item.task.recordId || item.task.name, item);
+		}
 		const counts = { pending: 0, completed: 0, unavailable: 0 };
-		for (const item of skipped) counts[item.reason]++;
-		const details = Object.entries(counts).filter(([, count]) => count > 0)
-			.map(([reason, count]) => rectoUiText(`task.skip${reason[0].toUpperCase()}${reason.slice(1)}`, { count })).join(" ");
-		new obsidian.Notice(rectoUiText("task.selectionSkipped", { ready, count: skipped.length, details }), 10000);
+		for (const item of skipped) {
+			counts[item.reason]++;
+			this.taskFeedback?.remember({ task: item.task, status: "skipped", reason: rectoUiText(item.reason === "pending" ? "feedback.alreadyReceived" : item.reason === "completed" ? item.task.translateOnly ? "hub.allTranslated" : "hub.allConverted" : "hub.noConvertible") });
+		}
+		if (!ready) showRectoNotice(rectoUiText(counts.pending ? "notice.pending" : counts.completed ? skipped.every(item => item.task.translateOnly) ? "hub.allTranslated" : "hub.allConverted" : "hub.noConvertible"), { tone: "attention" });
 		if (counts.pending) this.schedulePendingBackendTaskRecovery(1000);
 	}
 
@@ -17956,8 +18260,14 @@ class RectoPlugin extends obsidian.Plugin {
 	async updateLocalTaskIntents(change) {
 		await this.save(() => {
 			const previous = this.localTaskIntents || [];
+			const previousNotifications = this.notificationBatches ? new Map([...this.notificationBatches.groups].map(([id, group]) => [id, { ...group, items: new Map(group.items) }])) : null;
 			this.localTaskIntents = change(previous);
-			return () => { this.localTaskIntents = previous; };
+			return () => {
+				this.localTaskIntents = previous;
+				if (this.notificationBatches && previousNotifications) {
+					this.notificationBatches.groups = previousNotifications;
+				}
+			};
 		});
 		this.notifyTaskQueueChanged();
 	}
@@ -17971,6 +18281,8 @@ class RectoPlugin extends obsidian.Plugin {
 		for (const original of tasks) {
 			if (this.isCancelledTaskIntake(original.recordId)) continue;
 			const task = JSON.parse(JSON.stringify(sanitizePersistedPendingTask(original)));
+			task.progressMode = taskWorkflowMode({ ...task, requestTranslation: this.wantsTranslationForTask(task) });
+			this.publishTaskWorkflow(task, { phase: "prepare" });
 			if (this.isTaskResourceBusy(task) || this.hasPendingBackendTaskForRecord(task.recordId)) { skipped.push({ task, reason: "pending" }); continue; }
 			try {
 				// Freeze both the directory choice and final document paths. Allocation
@@ -18000,6 +18312,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.reportSkippedBackendTasks(skipped, items.length);
 		if (!items.length) return { queued: 0 };
 		let accepted = [];
+		const notifications = this.notificationBatches ||= new RectoNotificationBatches(this);
 		await this.updateLocalTaskIntents(previous => {
 			this.throwIfUnloaded();
 			accepted = items.filter(item => !this.isCancelledTaskIntake(item.task.recordId));
@@ -18007,10 +18320,17 @@ class RectoPlugin extends obsidian.Plugin {
 				const request = operation.intakeRequests?.get(item.task.recordId);
 				if (request) request.accepted = true;
 			}
+			if (accepted.length) notifications.register(batchId, accepted.map(item => item.task), operation.notificationSkipped?.size || 0);
 			return [...previous, ...accepted];
 		});
 		if (!accepted.length) return { queued: 0 };
-		if (!accepted.some(item => this.hubTaskRequests?.has(item.task.recordId))) new obsidian.Notice(rectoUiText("queue.added", { count: accepted.length }), 3500);
+		for (const item of accepted) this.publishTaskWorkflow(item.task, { phase: "local_waiting", mapped: true });
+		const action = accepted.some(item => item.task.translateOnly || this.wantsTranslationForTask(item.task)) ? "translate" : "convert";
+		const quote = operation.notificationQuote;
+		const location = operation.notificationOutput;
+		const suffix = (operation.notificationSkipped?.size ? "\n" + rectoUiText("notice.skipped", { count: operation.notificationSkipped.size }) : "") + (location ? "\n" + location : "");
+		if (quote != null) showRectoNotice(rectoUiText("notice.translationQuote", { pages: quote }) + suffix, { tone: "neutral" });
+		else this.showTaskReceipt(action, false, suffix);
 		// Durable intents now reserve these resources; the intake context must
 		// relinquish its temporary claims before the independent executor starts.
 		this.operationResources.release(operation);
@@ -18027,7 +18347,7 @@ class RectoPlugin extends obsidian.Plugin {
 			|| !(this.localTaskIntents || []).some(item => item.state === "waiting")) return;
 		this.localTaskQueueTimer = setTimeout(() => {
 			this.localTaskQueueTimer = null;
-			void this.drainLocalTaskQueue().catch(() => { new obsidian.Notice(rectoUiText("queue.saveFailed"), 8000); });
+			void this.drainLocalTaskQueue().catch(() => { showRectoNotice(rectoUiText("notice.taskFailed"), { tone: "error" }); });
 		}, Math.max(0, (this.localTaskNetworkRetryAt || 0) - Date.now()));
 		this.localTaskQueueTimer?.unref?.();
 	}
@@ -18050,7 +18370,7 @@ class RectoPlugin extends obsidian.Plugin {
 					try {
 						if (!this.beginOperation(rectoUiText("task.cloudProcessing"), { silent: true })) return;
 						operation.queuedRemaining = items.length;
-						const valid = [];
+						const valid = [], changed = [];
 						for (const item of items) {
 							// Cancellation may have won the serialized save before this executor.
 							if (!this.localTaskIntents.some(entry => entry.id === item.id)) continue;
@@ -18067,8 +18387,13 @@ class RectoPlugin extends obsidian.Plugin {
 								if (isCancellationError(error, this.getActiveSignal()) || this.isUnloading) throw error;
 								if (!this.localTaskIntents.some(entry => entry.id === item.id)) continue;
 								await this.updateLocalTaskIntents(previous => previous.map(entry => entry.id === item.id ? { ...entry, state: "blocked", failure: "source" } : entry));
-								new obsidian.Notice(rectoUiText("queue.sourceChanged", { name: item.task.name || item.task.recordId }), 10000);
+								changed.push(item.task);
+								this.taskFeedback?.remember({ task: item.task, status: "blocked", reason: rectoUiText("queue.sourceChanged") });
 							}
+						}
+						if (changed.length) {
+							this.notificationBatches?.cancel(changed);
+							showRectoNotice(rectoUiText("notice.sourceChanged", { count: changed.length }), { tone: "attention" });
 						}
 						if (!valid.length) return;
 						const ids = new Set(valid.map(item => item.id));
@@ -18119,16 +18444,17 @@ class RectoPlugin extends obsidian.Plugin {
 	async cancelLocalTaskIntent(id) {
 		if (this.isUnloading || this.rectoPluginUpdateInstalling) return false;
 		return await this.withOperationContext("cancel-local-intent", async () => {
-			let cancelled = false;
+			let cancelled = false, removed;
 			await this.updateLocalTaskIntents(previous => {
 				this.throwIfUnloaded();
 				return previous.filter(item => {
 					if (item.id !== id || item.state === "executing") return true;
-					cancelled = true; return false;
+					cancelled = true; removed = item.task; return false;
 				});
 			});
+			if (removed) this.notificationBatches?.cancel([removed]);
 			this.syncLocalQueuedRemaining();
-			if (cancelled) new obsidian.Notice(rectoUiText("queue.cancelled"), 2200);
+			if (cancelled) showRectoNotice(rectoUiText("queue.cancelled"), { tone: "neutral" });
 			return cancelled;
 		}, { independent: true });
 	}
@@ -18164,11 +18490,11 @@ class RectoPlugin extends obsidian.Plugin {
 		// 与「点坏了」分不开。措辞与库外 PDF 那条入口一致。
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
 			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
-			new obsidian.Notice(rectoUiText("task.noConsent"), 6000);
+
 			return;
 		}
-		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return; }
-		if (!tasks || !tasks.length) { await this.diagnosticExit("NO_TASKS", "skipped"); new obsidian.Notice(rectoUiText("task.noTasks")); return; }
+		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); showRectoNotice(rectoUiText("external.signIn"), { tone: "attention" }); return; }
+		if (!tasks || !tasks.length) { await this.diagnosticExit("NO_TASKS", "skipped"); showRectoNotice(rectoUiText("task.noTasks"), { tone: "attention" }); return; }
 		tasks = tasks.map(task => ({ ...task, recordId: task.recordId || task.folder || task.name,
 			...(!task.translateOnly && !task.postprocessProfile ? { postprocessProfile: this.operationScope?.getStore()?.processingChoices.postprocessProfile || this.getBackendPostprocessProfile() } : {}) }));
 		const selection = await this.prepareRunnableBackendTasks(tasks);
@@ -18197,6 +18523,8 @@ class RectoPlugin extends obsidian.Plugin {
 		let suspended = false;
 		let exemptedCount = 0;
 		const results = [];
+		const notificationTasks = tasks;
+		this.notificationBatches?.start(tasks);
 		try {
 			const reserved = [], conflicts = [];
 			for (const task of tasks) {
@@ -18321,21 +18649,22 @@ class RectoPlugin extends obsidian.Plugin {
 							await this.captureOperationDiagnostic({ stage: "translation_phase", outcome: isCancellationError(translationError) ? "cancelled" : "failed", code: "TRANSLATION_FAILED_AFTER_CONVERSION", error: translationError, taskId: backendTaskId });
 							if (isCancellationError(translationError, this.getActiveSignal())) throw translationError;
 							if (isRetryableBackendRequestError(translationError)) this.deferLocalTaskQueueForNetwork();
+							if (isRetryableBackendRequestError(translationError) && this.pendingBackendTasks?.some(entry =>
+								entry.taskId === backendTaskId || task.diagnosticItemId && entry.task?.diagnosticItemId === task.diagnosticItemId)) {
+								results.push({ task, status: "pending", stem });
+								modal.setProgress(results.length, tasks.length, "云端继续处理");
+								return;
+							}
 							const reason = getUserFacingErrorMessage(translationError, "翻译未完成，请稍后重试。");
 							modal.log(`${task.name || task.recordId}：${reason}`);
 							// T84：库外产物不进 Hub，所以不能叫用户去 Hub 重试——那里没有这一篇。
 							// 事后补译要等 T84-S，现在只说实话。
-							new obsidian.Notice(
-								isRectoExternalTask(task)
-									? rectoUiText("task.translationFailedExternal", { stem, reason })
-									: rectoUiText("task.translationFailedHub", { stem, reason }),
-								12000
-							);
+
 						}
 					}
 					// T84：翻译那一段读完 sidecar 之后才能删它，所以清理排在这里而不是写回里。
 					if (await this.cleanupExternalPaperMetadata(task, stem)) modal.log(`${stem}：已清理临时结构信息`);
-					results.push({ task, status: translationIncomplete ? "partial" : "success", partialKind: modal.itemPartial || "translation", retryTranslation: translationIncomplete && !modal.itemPartial, stem });
+					results.push({ task, status: translationIncomplete || modal.itemPartial ? "partial" : "success", partialKind: modal.itemPartial || "translation", retryTranslation: translationIncomplete && !modal.itemPartial, stem });
 					modal.setProgress(results.length, tasks.length, "done");
 				} catch (error) {
 					await this.captureOperationDiagnostic({ outcome: isCancellationError(error) ? "cancelled" : "failed", code: "ITEM_FAILED", error, taskId: backendTaskId });
@@ -18364,6 +18693,7 @@ class RectoPlugin extends obsidian.Plugin {
 				}
 				});
 				const result = results[results.length - 1];
+				if (result?.task === task) this.notificationBatches?.record(result);
 				if (result?.status === "success") this.localTaskNetworkBackoff = 0;
 				if (result?.task === task) this.taskFeedback?.remember(result);
 				this.notifyTaskQueueChanged();
@@ -18398,18 +18728,6 @@ class RectoPlugin extends obsidian.Plugin {
 			}
 			for (const result of results) this.taskFeedback?.remember(result);
 			modal.setFinished(failedCount ? `完成，${failedCount} 篇失败` : partialCount ? rectoUiText("feedback.partial") : pendingCount ? "云端继续处理" : waitingCount ? rectoUiText("queue.waiting") : "已完成", failedCount ? "failed" : partialCount ? "partial" : pendingCount || waitingCount ? "pending" : "success");
-			const failedNoticeSuffix = failedCount ? (failureLogPath ? rectoUiText("task.failureLog", { path: failureLogPath }) : rectoUiText("task.logSaveFailed")) : "";
-			const stoppedSuffix = stoppedEarly ? rectoUiText("task.stoppedSuffix", { count: stoppedEarly }) : "";
-			new obsidian.Notice(
-				rectoUiText("task.batchSummary", { success: successCount, failed: failedCount, stopped: stoppedSuffix, log: failedNoticeSuffix })
-					+ (partialCount ? rectoUiText("feedback.partialSuffix", { count: partialCount }) : "")
-					+ (pendingCount ? rectoUiText("task.pendingSuffix", { count: pendingCount }) : "")
-					+ (waitingCount ? ` ${rectoUiText("error.network")} ${rectoUiText("queue.waiting")}` : ""),
-				failedCount ? 10000 : 6000
-			);
-			if (modal.summarySkipped) {
-				new obsidian.Notice(rectoUiText("hub.summaryExists", { count: modal.summarySkipped }), 8000);
-			}
 			// Credit refresh owns a separate context; it must not hold the next paper's
 			// cloud execution slot after all artifacts and queue receipts are saved.
 			void this.withOperationContext("credits-refresh", () => this.refreshBackendCredits({ timeout: 30000 }), { independent: true }).catch(error => {
@@ -18417,10 +18735,7 @@ class RectoPlugin extends obsidian.Plugin {
 			});
 			// T82-A-S：如实告知豁免。不说补了多少点（不变量 13），只说做完了、额度已用完。
 			if (exemptedCount) {
-				new obsidian.Notice(
-					rectoUiText("task.exemption", { count: exemptedCount }),
-					12000
-				);
+				setRectoInlineFeedback(this, "settlement", rectoUiText("task.exemption", { count: exemptedCount }));
 			}
 		} catch (error) {
 			await this.captureOperationDiagnostic({ outcome: isCancellationError(error) ? "cancelled" : "failed", code: "BATCH_FAILED", error });
@@ -18441,9 +18756,15 @@ class RectoPlugin extends obsidian.Plugin {
 				}
 				modal.setFinished(cancelled ? "已中止" : "已失败", "failed");
 			}
-			if (!cancelled && !operation.networkDeferred) new obsidian.Notice(rectoUiText("task.failed", { error: reason, log: failureLogPath ? rectoUiText("task.failureLog", { path: failureLogPath }) : "" }), 8000);
-			else if (operation.networkDeferred && this.localTaskNetworkBackoff === 15000) new obsidian.Notice(`${rectoUiText("error.network")} ${rectoUiText("queue.waiting")}`, 8000);
+			if (!cancelled && !operation.networkDeferred) {
+				for (const task of notificationTasks) if (!results.some(result => result.task === task)) {
+					const result = { task, status: "failed", reason };
+					results.push(result); this.taskFeedback?.remember(result);
+				}
+				if (!this.notificationBatches) showRectoNotice(reason, { tone: "error" });
+			}
 		} finally {
+			this.notificationBatches?.finish(notificationTasks, results);
 			if (suspended) await this.resumePaperJsonlRefresh({ flush: true });
 			this.finishOperation(operation);
 			// 成功、失败、取消三条路都要刷 Hub：哪怕只成功了一半，那一半也该立刻可见。
@@ -18462,7 +18783,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// Capabilities are also guarded by cloud consent; the downstream batch gate is too late.
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
 			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
-			new obsidian.Notice(rectoUiText("task.noConsent"), 6000);
+
 			return;
 		}
 		await this.ensureDocumentLanguageCapabilities();
@@ -18485,10 +18806,10 @@ class RectoPlugin extends obsidian.Plugin {
 	async runHubBatchForRecordsScoped(recordIds, options = {}) {
 		const wanted = new Set((recordIds || []).map(id => String(id || "")).filter(Boolean));
 		if (!wanted.size) { await this.diagnosticExit("NO_SELECTION", "skipped");
-			new obsidian.Notice(rectoUiText("hub.noSelection"), 5000);
+			showRectoNotice(rectoUiText("hub.noSelection"), { tone: "attention" });
 			return null;
 		}
-		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return null; }
+		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); showRectoNotice(rectoUiText("external.signIn"), { tone: "attention" }); return null; }
 		if (!this.getValidatedBaseFolderOrNotice()) { await this.diagnosticExit("LIBRARY_PATH_INVALID"); return null; }
 		if (await this.blockedByUnsupportedRectoVersion()) { await this.diagnosticExit("PLUGIN_VERSION_UNSUPPORTED"); return null; }
 		const selection = this.selectRunnableBackendTasks([...wanted].map(recordId => ({ recordId })), { checkPdf: false });
@@ -18500,7 +18821,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.reportSkippedBackendTasks([...selection.skipped, ...selection.runnable.filter(task => !pickedIds.has(task.recordId))
 			.map(task => ({ task, reason: "unavailable" }))], picked.length);
 		if (!picked.length) { await this.diagnosticExit("NO_CONVERTIBLE_PDF", "skipped");
-			new obsidian.Notice(rectoUiText("hub.noConvertible"), 8000);
+			if (!selection.skipped.length && !selection.runnable.length) showRectoNotice(rectoUiText("hub.noConvertible"), { tone: "attention" });
 			return null;
 		}
 		const requestTranslation = options.requestTranslation === true;
@@ -18527,16 +18848,16 @@ class RectoPlugin extends obsidian.Plugin {
 	async runHubTranslateForRecordsScoped(recordIds) {
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
 			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
-			new obsidian.Notice(rectoUiText("task.noConsent"), 6000);
+
 			return null;
 		}
 		await this.ensureDocumentLanguageCapabilities();
 		const wanted = uniqueStrings((recordIds || []).map(id => String(id || "")));
 		if (!wanted.length) { await this.diagnosticExit("NO_SELECTION", "skipped");
-			new obsidian.Notice(rectoUiText("hub.noSelection"), 5000);
+			showRectoNotice(rectoUiText("hub.noSelection"), { tone: "attention" });
 			return null;
 		}
-		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); new obsidian.Notice(rectoUiText("external.signIn")); return null; }
+		if (!this.hasBackendAccountSession()) { await this.diagnosticExit("SESSION_REQUIRED"); showRectoNotice(rectoUiText("external.signIn"), { tone: "attention" }); return null; }
 		if (!this.getValidatedBaseFolderOrNotice()) { await this.diagnosticExit("LIBRARY_PATH_INVALID"); return null; }
 		if (await this.blockedByUnsupportedRectoVersion()) { await this.diagnosticExit("PLUGIN_VERSION_UNSUPPORTED"); return null; }
 
@@ -18597,10 +18918,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const quote = describeTranslationQuote(this.settings, quotedPages);
 		if (quote.active && quote.shortfall > 0) {
 			await this.diagnosticExit("INSUFFICIENT_CREDITS", "blocked", { neededPages: quotedPages, availablePages: quote.available, shortfallPages: quote.shortfall });
-			new obsidian.Notice(
-				rectoUiText("markdown.buyPages", { quote: tasks.length === 1 ? quote.text : rectoUiText("batch.shortfall", { needed: formatTranslationPages(quotedPages), available: formatTranslationPages(quote.available), shortfall: formatTranslationPages(quote.shortfall) }) }),
-				10000,
-			);
+			showRectoNotice(rectoUiText("notice.credits", { needed: formatTranslationPages(quotedPages), available: formatTranslationPages(quote.available) }), { tone: "attention" });
 			this.openAccountModal();
 			return null;
 		}
@@ -18611,7 +18929,6 @@ class RectoPlugin extends obsidian.Plugin {
 			details: [
 				...(needConversion.length ? [rectoUiText("batch.convertIntro", { count: needConversion.length })] : []),
 				...(quote.active && quotedPages > 0 ? [rectoUiText("batch.quote", { needed: formatTranslationPages(quotedPages), available: formatTranslationPages(quote.available) })] : []),
-				...(tasks.length ? [rectoUiText("batch.translateReuse")] : []),
 				...(describeBackendAccountView(this.settings).creditPackMode ? [rectoUiText("batch.freeTranslate")] : []),
 				...(needConversion.length ? [rectoUiText("batch.rights")] : []),
 			],
@@ -18811,7 +19128,7 @@ class RectoPlugin extends obsidian.Plugin {
 			};
 		}).filter(Boolean);
 		if (!candidates.length) {
-			new obsidian.Notice(rectoUiText("delete.missing"));
+			showRectoNotice(rectoUiText("delete.missing"), { tone: "attention" });
 			return;
 		}
 		return this.deleteSelectedPapers(candidates);
@@ -18824,7 +19141,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async deleteSelectedPapersScoped(candidates) {
 		if (!candidates || !candidates.length) return;
 		if (this.activeOperation || this.paperReimportRecoveryPromise) {
-			new obsidian.Notice(rectoUiText("reimport.taskRunning"));
+			showRectoNotice(rectoUiText("reimport.taskRunning"), { tone: "attention" });
 			return;
 		}
 		const recordIds = uniqueStrings(candidates.map(candidate => candidate.folder).filter(Boolean));
@@ -18833,7 +19150,7 @@ class RectoPlugin extends obsidian.Plugin {
 			for (const recordId of recordIds) this.preflightTrashRecords([recordId]);
 		} catch (e) {
 			const reason = getUserFacingErrorMessage(e, rectoUiText("reimport.checkFailed"));
-			new obsidian.Notice(rectoUiText("delete.preflightFailed", { error: reason }), 10000);
+			showRectoNotice(rectoUiText("delete.preflightFailed", { error: reason }), { tone: "error" });
 			return { status: "error", reason };
 		}
 		const operation = this.beginOperation(rectoUiText("hub.context.delete"));
@@ -18868,12 +19185,13 @@ class RectoPlugin extends obsidian.Plugin {
 				}
 			}
 			await this.writePaperJsonlIndex();
-			new obsidian.Notice([rectoUiText("delete.done", { success: imported, failed }), ...errors].join("\n"), failed ? 12000 : 6000);
+			setRectoInlineFeedback(this, "results", errors.join("\n"));
+			showRectoNotice(failed ? rectoUiText("delete.done", { success: imported, failed }) : documentLanguageText(`已重新导入 ${imported} 篇`, `Reimported ${imported} papers`), { tone: failed ? "attention" : "success" });
 			this.safeRefreshHubViews();
 			return { status: "completed", imported, failed };
 		} catch (error) {
 			const reason = getUserFacingErrorMessage(error, rectoUiText("reimport.checkFailed"));
-			new obsidian.Notice(rectoUiText("delete.preflightFailed", { error: reason }), 10000);
+			showRectoNotice(rectoUiText("delete.preflightFailed", { error: reason }), { tone: "error" });
 			return { status: "error", imported, failed, reason };
 		} finally {
 			await this.resumePaperJsonlRefresh({ flush: !this.settings.paperReimport });
@@ -19060,11 +19378,12 @@ class RectoPlugin extends obsidian.Plugin {
 	async repairPdfsInternal() {
 		let src;
 		try { src = this.getZoteroStoragePath(); }
-		catch (e) { new obsidian.Notice(getZoteroUserFacingErrorMessage(e)); return; }
-		if (!src || !fs.existsSync(src)) { new obsidian.Notice(rectoUiText("delete.sourceMissing")); return; }
+		catch (e) { showRectoNotice(getZoteroUserFacingErrorMessage(e), { tone: "error" }); return; }
+		if (!src || !fs.existsSync(src)) { showRectoNotice(rectoUiText("delete.sourceMissing"), { tone: "attention" }); return; }
 		const base = this.getValidatedBaseFolderOrNotice();
 		if (!base) return;
 		let fixed = 0, total = 0;
+		const failures = [];
 
 		for (const [recordId, info] of Object.entries(this.folderMap)) {
 			const zotFolder = info.zoteroAttachmentKey || String(recordId).split("::")[0];
@@ -19083,16 +19402,14 @@ class RectoPlugin extends obsidian.Plugin {
 				fixed++;
 			} catch (e) {
 				if (isCancellationError(e, this.getActiveSignal())) throw e;
-				new obsidian.Notice(`⚠ ${stem}：${getUserFacingErrorMessage(e)}`, 5000);
+				failures.push(`${stem}: ${getUserFacingErrorMessage(e)}`);
 			}
 		}
+		setRectoInlineFeedback(this, "results", failures.join("\n"));
 		// 一篇都没扫到时报「0/0 个文件已重新复制」听着像修完了，其实是没东西可修——分开说。
-		new obsidian.Notice(
-			total > 0
-				? rectoUiText("pdfRepair.done", { fixed, total })
-				: rectoUiText("pdfRepair.none"),
-			8000
-		);
+		showRectoNotice(total > 0
+				? (total === fixed ? documentLanguageText(`已修复 ${fixed} 个 PDF`, `Repaired ${fixed} PDFs`) : rectoUiText("pdfRepair.done", { fixed, failed: total - fixed }))
+				: rectoUiText("pdfRepair.none"), { tone: failures.length ? "attention" : "success" });
 	}
 
 	async copyPdfToVault(srcPath, vaultPath, options = {}) {
@@ -19152,10 +19469,10 @@ class RectoPlugin extends obsidian.Plugin {
 	createSanitizedDistributionPackage() {
 		try {
 			const zipPath = createSanitizedDistributionZip(this.getPluginDirectoryPath());
-			new obsidian.Notice(rectoUiText("distribution.done", { file: nodePath.basename(zipPath) }), 10000);
+			showRectoNotice(rectoUiText("distribution.done", { file: nodePath.basename(zipPath) }), { tone: "success" });
 			return zipPath;
 		} catch (e) {
-			new obsidian.Notice(getUserFacingErrorMessage(e, rectoUiText("distribution.failed")), 10000);
+			showRectoNotice(getUserFacingErrorMessage(e, rectoUiText("distribution.failed")), { tone: "error" });
 			throw e;
 		}
 	}
@@ -19621,6 +19938,9 @@ function createRectoHubViewClass(api) {
 			this.headEl = this.listEl.createDiv({ cls: "recto-hub-head" });
 			this.detailEl = this.bodyEl.createDiv({ cls: "recto-hub-detail" });
 			this.queueEl = this.rootEl.createDiv({ cls: "recto-hub-queue" });
+			this.feedbackEl = main.createDiv({ cls: "recto-hub-feedback" });
+			for (const key of ["selection", "queue"]) bindRectoInlineFeedback(this, key, this.feedbackEl);
+			for (const key of ["scan", "sync", "results", "compare"]) bindRectoInlineFeedback(this.plugin, key, this.rootEl);
 			// 列表本身可聚焦：行不是可聚焦元素，点行时焦点落到这个容器上，键盘导航才有主。
 			this.listEl.tabIndex = 0;
 			// 详情栏只在窄栏切过去时由 setActivePane 主动聚焦，不进 Tab 序。
@@ -19849,7 +20169,7 @@ function createRectoHubViewClass(api) {
 			if (dropped && wasBatch && !options.quiet) {
 				// 搜索框是 120ms 防抖的，连着打字会一句叠一句；替换掉上一条而不是堆起来。
 				if (this.deselectNotice && typeof this.deselectNotice.hide === "function") this.deselectNotice.hide();
-				this.deselectNotice = new api.Notice(rectoUiText("hub.selectionDropped", { count: dropped }), 6000);
+				this.deselectNotice = setRectoInlineFeedback(this, "selection", rectoUiText("notice.selectionDropped", { count: dropped }));
 			}
 			if (this.anchorRecordId && !visibleIds.has(this.anchorRecordId)) this.anchorRecordId = "";
 			if (this.selectedRecordId && !visibleIds.has(this.selectedRecordId)) this.selectedRecordId = "";
@@ -20662,7 +20982,7 @@ function createRectoHubViewClass(api) {
 					this.closeReadMenu();
 					this.renderOpenActions(entry, actions);
 					actions.querySelector(".recto-hub-read-toggle").focus();
-					void this.plugin.save().catch(() => new api.Notice(rectoUiText("hub.readPreferenceFailed")));
+					void this.plugin.save().catch(() => showRectoNotice(rectoUiText("hub.readPreferenceFailed"), { tone: "error" }));
 				});
 			}
 			menu.addEventListener("keydown", event => {
@@ -20897,7 +21217,7 @@ function createRectoHubViewClass(api) {
 				if (this.isQueueActionBusy(action, taskId)) return;
 				const pending = this.plugin.localQueueCancelIds ||= new Set();
 				pending.add(taskId); button.disabled = true;
-				return this.plugin.cancelLocalTaskIntent(taskId).catch(() => { new api.Notice(rectoUiText("queue.saveFailed"), 6000); })
+				return this.plugin.cancelLocalTaskIntent(taskId).catch(() => { setRectoInlineFeedback(this, "queue", rectoUiText("queue.saveFailed")); })
 					.finally(() => { pending.delete(taskId); this.renderQueue(); });
 			}
 			if (!["retry-blocked", "abandon", "recover"].includes(action) || this.isQueueActionBusy(action, taskId)) return;
@@ -20913,7 +21233,7 @@ function createRectoHubViewClass(api) {
 				if (action === "retry-blocked") return this.plugin.retryBlockedPendingBackendTasks(taskId);
 				if (action === "abandon") return this.plugin.abandonPendingBackendTask(taskId);
 				return this.plugin.recoverPendingBackendTasksFromCommand();
-			}).catch(() => { new api.Notice(rectoUiText("hub.context.failed"), 5000); })
+			}).catch(() => { setRectoInlineFeedback(this, "queue", rectoUiText("hub.context.failed")); })
 				.finally(() => {
 					if (abandoning) this.plugin.hubQueueAbandonIds.delete(taskId);
 					else this.queueActionRunning = false;
@@ -21085,7 +21405,7 @@ function createRectoHubViewClass(api) {
 			this.closeContextMenu();
 			if (!this.selectedIds.has(targetId)) this.setSelection([targetId], targetId, { anchor: targetId });
 			if (typeof api.Menu !== "function") {
-				new api.Notice(rectoUiText("hub.context.unavailable"), 4000);
+				showRectoNotice(rectoUiText("hub.context.unavailable"), { tone: "attention" });
 				return;
 			}
 			const menu = new api.Menu();
@@ -21200,7 +21520,7 @@ function createRectoHubViewClass(api) {
 				}
 				else await this.handleProcessAction(action, entries);
 			} catch {
-				new api.Notice(rectoUiText(action.startsWith("status:") ? "hub.context.statusFailed" : action.startsWith("flag:") ? "hub.flags.failed" : "hub.context.failed"), 5000);
+				showRectoNotice(rectoUiText(action.startsWith("status:") ? "hub.context.statusFailed" : action.startsWith("flag:") ? "hub.flags.failed" : "hub.context.failed"), { tone: "error" });
 			} finally {
 				release();
 				this.contextActionRunning = --this.contextActionCount > 0;
@@ -21452,7 +21772,7 @@ function createRectoHubViewClass(api) {
 				try {
 					this.plugin.openExternalUrl(openUrl.dataset.hubOpenUrl);
 				} catch (error) {
-					new api.Notice(getUserFacingErrorMessage(error, rectoUiText("hub.linkFailed")), 6000);
+					showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("hub.linkFailed")), { tone: "error" });
 				}
 				return;
 			}
@@ -21476,7 +21796,7 @@ function createRectoHubViewClass(api) {
 		if (action === "convert") {
 			const pending = entries.filter(entry => entry.conversionStatus !== "converted");
 			if (!pending.length) {
-				new api.Notice(rectoUiText("hub.allConverted"), 6000);
+				showRectoNotice(rectoUiText("hub.allConverted"), { tone: "attention" });
 				return;
 			}
 			return this.plugin.runHubTaskIntake("convert", pending, ids => this.plugin.runHubBatchForRecords(ids, { requestTranslation: false }));
@@ -21485,7 +21805,7 @@ function createRectoHubViewClass(api) {
 		const target = this.plugin.settings?.documentLanguages?.translationTarget?.id;
 		const pending = entries.filter(entry => target ? !entry.translations?.some(record => record.targetLanguage.id === target) : entry.conversionStatus !== "converted" || !entry.hasTranslation);
 		if (!pending.length) {
-			new api.Notice(rectoUiText("hub.allTranslated"), 6000);
+			showRectoNotice(rectoUiText("hub.allTranslated"), { tone: "attention" });
 			return;
 		}
 		return this.plugin.runHubTaskIntake("translate", pending, ids => this.plugin.runHubTranslateForRecords(ids));
@@ -21495,7 +21815,7 @@ function createRectoHubViewClass(api) {
 		async deleteSelectedRecords(entries = this.getSelectedEntries()) {
 			if (!entries.length) return;
 			if (entries.some(entry => this.plugin.hubTaskRequests?.has(entry.recordId))) {
-				new api.Notice(rectoUiText("feedback.alreadyReceived"), 2200); return;
+				showRectoNotice(rectoUiText("reimport.taskRunning"), { tone: "attention" }); return;
 			}
 			return this.withProcessButtonsDisabled(async () => {
 				if (entries.length > 1) {
@@ -21536,7 +21856,7 @@ function createRectoHubViewClass(api) {
 		sync();
 		return Promise.resolve()
 			.then(run)
-			.catch(error => { new api.Notice(getUserFacingErrorMessage(error), 5000); })
+			.catch(error => { showRectoNotice(getUserFacingErrorMessage(error), { tone: "error" }); })
 			.finally(() => {
 				for (const id of reimportIds) this.plugin.hubReimportRecordIds.delete(id);
 				this.processActionRunning = false;
@@ -21553,12 +21873,12 @@ function createRectoHubViewClass(api) {
 			try {
 				if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
 					await navigator.clipboard.writeText(value);
-					new api.Notice(rectoUiText("hub.copied"), 2000);
+					showRectoNotice(rectoUiText("hub.copied"), { tone: "success", brief: true });
 					return;
 				}
-				new api.Notice(rectoUiText("hub.copyUnavailable"), 5000);
+				showRectoNotice(rectoUiText("hub.copyUnavailable"), { tone: "attention" });
 			} catch {
-				new api.Notice(rectoUiText("hub.copyFailed"), 5000);
+				showRectoNotice(rectoUiText("hub.copyFailed"), { tone: "error" });
 			} finally { locks.delete("clipboard"); }
 		}
 
@@ -21591,7 +21911,7 @@ function createRectoHubViewClass(api) {
 					dot.setAttribute("title", rectoUiText("hub.statusToggle", { status: rectoUiText(`hub.status.${next}`) }));
 				}
 				if (!this.isBatchMode()) this.renderDetail();
-			} catch { new api.Notice(rectoUiText("hub.context.statusFailed"), 5000); }
+			} catch { showRectoNotice(rectoUiText("hub.context.statusFailed"), { tone: "error" }); }
 			finally { release(); this.pendingStatusIds.delete(recordId); sync(); }
 		}
 	};
@@ -21655,13 +21975,14 @@ class RectoDecisionModal extends obsidian.Modal {
 			input.value = this.languageInput || "";
 			input.placeholder = "en / zh-Hans / zh-Hant / ja";
 			input.maxLength = 120;
-			input.addEventListener("input", () => { this.languageInput = input.value; });
+			input.addEventListener("input", () => { this.languageInput = input.value; setRectoInlineFeedback(this, "language", ""); });
 			const confirmation = contentEl.createEl("label");
 			const check = confirmation.createEl("input", { type: "checkbox" });
 			check.checked = this.languageConfirmed === true;
-			check.addEventListener("change", () => { this.languageConfirmed = check.checked; });
+			check.addEventListener("change", () => { this.languageConfirmed = check.checked; setRectoInlineFeedback(this, "language", ""); });
 			confirmation.createSpan({ text: documentLanguageText("我确认此名称明确表示所需语言及书写形式", "I confirm this name specifies the intended language and writing form") });
 		}
+		bindRectoInlineFeedback(this, "language", contentEl);
 		const actions = contentEl.createDiv({ cls: "recto-decision-actions" });
 		let preferred = null;
 		let firstSafe = null;
@@ -21695,7 +22016,7 @@ class RectoDecisionModal extends obsidian.Modal {
 		if (value === true && this.options.languageChoice) {
 			const language = this.languageConfirmed && confirmedDocumentLanguage(this.languageInput);
 			if (!language || language.id === "zh") {
-				new obsidian.Notice(documentLanguageText("请填写并确认明确的语言，中文需区分简体或繁体。", "Enter and confirm a language, including simplified or traditional form for Chinese."));
+				setRectoInlineFeedback(this, "language", rectoUiText("notice.languageInvalid"));
 				return;
 			}
 			value = { language };
@@ -21792,6 +22113,8 @@ class RectoOnboardingModal extends obsidian.Modal {
 		this.renderStatuses(contentEl, snapshot);
 		const card = contentEl.createDiv({ cls: "recto-onboarding-card" });
 		this.renderStep(card, snapshot);
+		for (const key of ["onboarding", "library"]) bindRectoInlineFeedback(this, key, card);
+		bindRectoInlineFeedback(this.plugin, "folder", card);
 	}
 
 	// T85-R 撤掉了进度条：分母写死 3，而账号与额度共用一个步骤号——跑完一整趟浏览器登录
@@ -21880,7 +22203,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 					void this.plugin.activateRectoHub();
 					// 教学到这里就撒手了，而转换按钮在**详情栏**里——不先选中一篇，右侧
 					// 什么都不出现。这是整条链最容易掉队的一跳，值这一句话。
-					new obsidian.Notice(rectoUiText("onboarding.selectPaperHint"), 10000);
+
 				}),
 			}]);
 			return;
@@ -21937,7 +22260,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 		try {
 			next = validateVaultRelativeFolder(raw);
 		} catch (error) {
-			new obsidian.Notice(rectoUiText("settings.libraryInvalid", { error: getUserFacingErrorMessage(error, rectoUiText("settings.chooseVaultFolder")) }), 6000);
+			setRectoInlineFeedback(this, "library", rectoUiText("settings.libraryInvalid", { error: getUserFacingErrorMessage(error, rectoUiText("settings.chooseVaultFolder")) }));
 			input.value = previous;
 			input.toggleClass("is-rejected", true);
 			return;
@@ -22060,12 +22383,13 @@ class RectoOnboardingModal extends obsidian.Modal {
 
 	async runAction(action) {
 		if (this.busy || this.finishing || typeof action !== "function") return;
+		setRectoInlineFeedback(this, "onboarding", "");
 		this.busy = true;
 		this.render();
 		try {
 			await action();
 		} catch (error) {
-			new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("onboarding.stepFailed")), 8000);
+			setRectoInlineFeedback(this, "onboarding", getUserFacingErrorMessage(error, rectoUiText("onboarding.stepFailed")));
 		} finally {
 			this.busy = false;
 			if (!this.closed && !this.finishing) this.render();
@@ -22092,7 +22416,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 			await this.plugin.updateOnboardingState({ completed: true });
 		} catch (error) {
 			this.finishing = false;
-			new obsidian.Notice(rectoUiText("onboarding.saveFailed"), 6000);
+			setRectoInlineFeedback(this, "onboarding", rectoUiText("onboarding.saveFailed"));
 			console.warn("Recto: failed to complete onboarding", getSanitizedErrorMessage(error));
 			return;
 		}
@@ -22102,7 +22426,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 			try {
 				await action();
 			} catch (error) {
-				new obsidian.Notice(rectoUiText("onboarding.openFailed"), 8000);
+				showRectoNotice(rectoUiText("onboarding.openFailed"), { tone: "error" });
 				console.warn("Recto: onboarding handoff failed", getSanitizedErrorMessage(error));
 			}
 		}
@@ -22122,7 +22446,7 @@ class RectoOnboardingModal extends obsidian.Modal {
 		}
 		this.completed = true;
 		this.close();
-		new obsidian.Notice(rectoUiText("onboarding.finished"), 8000);
+
 	}
 
 	onClose() {
@@ -22226,9 +22550,9 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 				throw new Error("clipboard unavailable");
 			}
 			await navigator.clipboard.writeText(RECTO_SUPPORT_QQ);
-			new obsidian.Notice(rectoUiText("feedback.qqCopied"), 2500);
+			showRectoNotice(rectoUiText("feedback.qqCopied"), { tone: "success", brief: true });
 		} catch {
-			new obsidian.Notice(rectoUiText("feedback.qqCopyFailed", { qq: RECTO_SUPPORT_QQ }), 6000);
+			showRectoNotice(rectoUiText("feedback.qqCopyFailed", { qq: RECTO_SUPPORT_QQ }), { tone: "error" });
 		}
 	}
 
@@ -22280,7 +22604,7 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 			if (this.submitting) return;
 			const text = String(message.value || "").trim();
 			if (text.length < 5) {
-				status.setText(rectoUiText("feedback.tooShort"));
+				status.setText(rectoUiText("feedback.formTooShort"));
 				status.removeClass("is-success");
 				status.addClass("is-error");
 				return;
@@ -22295,11 +22619,11 @@ class RectoHelpFeedbackModal extends obsidian.Modal {
 				await this.plugin.submitFeedback({ category: this.category, message: text });
 				if (this.closed || this.viewVersion !== version) return;
 				message.value = "";
-				status.setText(rectoUiText("feedback.received"));
+				status.setText(rectoUiText("feedback.formSuccess"));
 				status.addClass("is-success");
 			} catch (error) {
 				if (this.closed || this.viewVersion !== version) return;
-				status.setText(getUserFacingErrorMessage(error, rectoUiText("feedback.submitFailed")));
+				status.setText(getUserFacingErrorMessage(error, rectoUiText("feedback.formFailed")));
 				status.addClass("is-error");
 			} finally {
 				this.submitting = false;
@@ -22466,13 +22790,13 @@ class RectoAccountModal extends obsidian.Modal {
 				this.plugin.settings.backendLastError = "";
 				await this.plugin.save();
 			}
-			if (successMessage && done) new obsidian.Notice(successMessage, 5000);
+			if (successMessage && done && successMessage === rectoUiText("account.verificationRequested")) showRectoNotice(successMessage, { tone: "success" });
 			this.notifyChanged();
 			return done;
 		} catch (error) {
 			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, rectoUiText("account.operationPending", { label }));
 			await this.plugin.save();
-			new obsidian.Notice(rectoUiText("account.operationFailed", { label, error: this.plugin.settings.backendLastError }), 8000);
+			if (this.closed) showRectoNotice(this.plugin.settings.backendLastError, { tone: "error" });
 			return false;
 		} finally {
 			this.busy = false;
@@ -22525,8 +22849,8 @@ class RectoAccountModal extends obsidian.Modal {
 		try {
 			if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) throw new Error("clipboard-unavailable");
 			await navigator.clipboard.writeText(text);
-			new obsidian.Notice(successMessage, 5000);
-		} catch { new obsidian.Notice(failureMessage, 8000); }
+			showRectoNotice(successMessage, { tone: "success" });
+		} catch { showRectoNotice(failureMessage, { tone: "attention" }); }
 		finally { this.clipboardActionRunning = false; locks.delete("clipboard"); }
 	}
 
@@ -22595,7 +22919,7 @@ class RectoAccountModal extends obsidian.Modal {
 					const result = await this.plugin.pollBackendBrowserLogin({ timeout: 30000 });
 					if (result.status === "approved") {
 						this.loginNote = "";
-						new obsidian.Notice(rectoUiText("account.loginSuccess"), 5000);
+						this.plugin.announceRectoLogin();
 						// 与自动轮询 / 深链两条 approved 同一条规矩：登录成功后必须取一次套餐。
 						// runAction 收尾只 render()，不走 refreshAccountQuietly；不在这里取，
 						// 套餐仍是 []，界面会永远停在「正在读取套餐…」，若打开时已经因过期
@@ -22689,7 +23013,7 @@ class RectoAccountModal extends obsidian.Modal {
 			if (result.status === "approved") {
 				this.stopBrowserLoginPolling();
 				this.loginNote = "";
-				new obsidian.Notice(rectoUiText("account.loginSuccess"), 5000);
+				this.plugin.announceRectoLogin();
 				// 登录成功后必须取一次套餐与额度：整条取数链路只有 refreshBackendBilling 一个入口，
 				// 而它原来只在「打开面板时已登录」那一种情形下跑过。先开面板再去浏览器登录的新用户
 				// 走的正是这条路，回来时套餐一次都没取过，界面却说「套餐读取失败」。
@@ -23073,6 +23397,7 @@ class ZoteroSyncPreviewModal extends obsidian.Modal {
 		contentEl.empty();
 		contentEl.addClass("recto-ui");
 		contentEl.addClass("recto-sync-preview-content");
+		for (const key of ["scan", "sync"]) bindRectoInlineFeedback(this.plugin, key, contentEl);
 		contentEl.createEl("p", {
 			text: rectoUiText("sync.summary", { matched: this.plan.matched.length, missing: this.plan.missingPdfs.length, orphaned: this.plan.orphaned.length }),
 		});
@@ -23194,6 +23519,7 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 		contentEl.empty();
 		contentEl.addClass("recto-ui");
 		contentEl.addClass("recto-multi-pdf-content");
+		bindRectoInlineFeedback(this.plugin, "scan", contentEl);
 		contentEl.createEl("p", {
 			text: rectoUiText("pdfChoice.intro"),
 			cls: "setting-item-description",
@@ -23299,6 +23625,143 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 // 取消不再挂在点击上：默认无按钮，悬停才浮出「取消未开始的 N 篇」（软取消，不打断在跑的那篇）。
 // One native status-bar entry owns the session queue. Rows are keyed by paper identity;
 // progress updates never replace focused controls or reset the popup's scroll position.
+// Display-only workflow. Business receipts, locks and billing keep their original owners.
+// Weights are time estimates, never a clock-driven claim of work completed. Three complete,
+// uninterrupted local observations enable a rolling median for subsequent similar tasks.
+function taskWorkflowIdentity(task = {}) {
+	return String(task.recordId || task.markdownPath || task.folder || task.name || "");
+}
+
+function taskWorkflowMode(task = {}) {
+	return ["convert", "translate", "combined"].includes(task.progressMode) ? task.progressMode
+		: task.translateOnly ? "translate" : task.requestTranslation ? "combined" : "convert";
+}
+
+function taskWorkflowPlan(task = {}) {
+	const mode = taskWorkflowMode(task), both = mode === "combined", translate = mode !== "convert";
+	const phases = [["prepare", 2]];
+	if (mode !== "translate") phases.push(["submit", 1], ["upload", 2], ["processing", both ? 27 : 75],
+		["finalizing", both ? 3 : 10], [both ? "source_download" : "download", 2], [both ? "source_write" : "write", 3]);
+	if (translate) {
+		phases.push(["translation_prepare", 1], ["translation_submit", 1], ["translation_upload", 2]);
+		if (task.requestSummary) phases.push(["summary", both ? 10 : 15]);
+		phases.push(["translation", (both ? 53 : 73) - (task.requestSummary ? (both ? 10 : 15) : 0)],
+			["translation_finalizing", 2], ["download", 1], ["write", 3]);
+	}
+	phases.push(["ack", 1]);
+	const total = phases.reduce((sum, [, value]) => sum + value, 0);
+	return phases.map(([phase, weight]) => ({ phase, weight: weight / total }));
+}
+
+function taskWorkflowPhase(phase, leg, mode) {
+	if (leg === "translation") {
+		if (["prepare", "submit", "upload", "queued", "finalizing"].includes(phase)) return `translation_${phase}`;
+		if (phase === "processing") return "translation";
+	} else if (mode === "combined" && ["download", "write"].includes(phase)) return `source_${phase}`;
+	return phase;
+}
+
+function taskWorkflowFraction(plan, phase, sub) {
+	const key = phase === "queued" ? "processing" : phase === "translation_queued"
+		? (plan.some(item => item.phase === "summary") ? "summary" : "translation") : phase;
+	const index = plan.findIndex(item => item.phase === key);
+	if (index < 0) return 0;
+	const measured = sub && Number.isFinite(Number(sub.done)) && Number(sub.total) > 0;
+	const inner = measured ? Math.max(0, Math.min(1, Number(sub.done) / Number(sub.total))) : 0;
+	return Math.min(0.99, plan.slice(0, index).reduce((sum, item) => sum + item.weight, 0) + plan[index].weight * inner);
+}
+
+class RectoTaskProgress {
+	constructor() { this.items = new Map(); this.timings = new Map(); }
+	get(task) { return this.items.get(typeof task === "string" ? task : taskWorkflowIdentity(task)); }
+	update(task, patch = {}, now = Date.now()) {
+		const key = taskWorkflowIdentity(task);
+		if (!key) return null;
+		let state = this.items.get(key);
+		const mode = taskWorkflowMode(task);
+		if (!state || patch.reset || (state.phase === "prepare" && (state.mode !== mode || state.summary !== !!task.requestSummary))) {
+			const plan = taskWorkflowPlan(task);
+			const pages = Number(task.translationQuotePages || task.estimatedPages) || 0;
+			const profile = `${mode}:${!!task.requestSummary}:${pages ? pages <= 10 ? "short" : pages <= 30 ? "medium" : "long" : "unknown"}`;
+			const samples = this.timings.get(profile) || [];
+			if (samples.length >= 3) {
+				const totals = samples.map(sample => Object.values(sample).reduce((sum, value) => sum + value, 0)).sort((a, b) => a - b);
+				const medianTotal = totals[Math.floor(totals.length / 2)];
+				const estimates = plan.map(item => {
+					const values = samples.map(sample => sample[item.phase]).filter(value => value > 0).sort((a, b) => a - b);
+					// Polling can miss short stages. Keep their prior share instead of
+					// requiring every millisecond-long transition to be observed.
+					return values.length >= 3 ? values[Math.floor(values.length / 2)] : item.weight * medianTotal;
+				});
+				if (estimates.every(value => value > 0)) {
+					const total = estimates.reduce((sum, value) => sum + value, 0);
+					plan.forEach((item, index) => { item.weight = estimates[index] / total; });
+				}
+			}
+			state = { key, mode, summary: !!task.requestSummary, plan, profile, phase: "prepare", fraction: 0,
+				leg: mode === "translate" ? "translation" : "conversion", sub: null, retrying: false,
+				at: now, durations: {}, learnable: patch.phase === "prepare", done: false };
+			this.items.set(key, state);
+		}
+		if (!state.done && !state.retrying && !["queued", "translation_queued", "local_waiting", "confirm"].includes(state.phase)) {
+			state.durations[state.phase] = (state.durations[state.phase] || 0) + Math.max(0, now - state.at);
+		}
+		state.at = now;
+		if (state.done && patch.phase && !patch.done) { state.done = false; state.learnable = false; }
+		if (patch.leg) state.leg = patch.leg;
+		if (patch.phase) state.phase = patch.mapped ? patch.phase : taskWorkflowPhase(patch.phase, state.leg, state.mode);
+		if (Object.prototype.hasOwnProperty.call(patch, "sub")) state.sub = patch.sub;
+		else if (patch.phase) state.sub = null;
+		if (Object.prototype.hasOwnProperty.call(patch, "retrying")) state.retrying = !!patch.retrying;
+		if (patch.retrying || patch.phase === "confirm") state.learnable = false;
+		state.fraction = Math.max(state.fraction, taskWorkflowFraction(state.plan, state.phase, state.sub));
+		if (patch.done && !state.done) {
+			state.done = true;
+			if (patch.success) {
+				state.fraction = 1;
+				const observedWork = (state.mode === "translate" || state.durations.processing > 0)
+					&& (state.mode === "convert" || state.durations.translation > 0);
+				if (state.learnable && observedWork) {
+					const samples = this.timings.get(state.profile) || [];
+					this.timings.set(state.profile, [...samples, state.durations].slice(-12));
+				}
+			}
+		}
+		return state;
+	}
+}
+
+function taskWorkflowLabel(state) {
+	if (state.retrying) return rectoUiText("feedback.retrying");
+	const phase = state.phase;
+	if (phase === "confirm") return rectoUiText("progress.waitConfirm");
+	if (phase === "local_waiting") return rectoUiText("feedback.waiting");
+	if (["prepare", "translation_prepare"].includes(phase)) return rectoUiText("feedback.preparing");
+	if (phase === "ack") return rectoUiText("progress.phase.write");
+	if (["download", "source_download"].includes(phase)) return rectoUiText("progress.fetchResult");
+	if (phase === "source_write") return rectoUiText("progress.phase.write");
+	return rectoUiText(`progress.phase.${phase.replace(/^translation_/, "")}`);
+}
+
+function renderTaskWorkflowMeter(bar, fill, state, visible, label) {
+	bar.hidden = !visible;
+	if (!visible) return;
+	const measured = !!(state?.sub && Number(state.sub.total) > 0 && Number.isFinite(Number(state.sub.done)));
+	const waiting = !state || ["queued", "translation_queued", "local_waiting", "confirm"].includes(state.phase);
+	const moving = !!state && !state.done && !state.retrying && !waiting && !measured;
+	const fraction = state?.fraction || 0;
+	bar.toggleClass("is-indeterminate", moving);
+	bar.toggleClass("is-paused", !!state?.retrying);
+	bar.style.setProperty("--rc-task-progress", `${fraction * 100}%`);
+	fill.style.transform = `scaleX(${fraction})`;
+	bar.setAttribute("role", "progressbar");
+	bar.setAttribute("aria-label", label);
+	bar.setAttribute("aria-valuetext", label);
+	bar.setAttribute("aria-valuemin", "0"); bar.setAttribute("aria-valuemax", "100");
+	if (moving || waiting || state?.retrying) bar.removeAttribute("aria-valuenow");
+	else bar.setAttribute("aria-valuenow", String(Math.round(fraction * 100)));
+}
+
 class RectoTaskFeedback {
 	constructor(plugin) {
 		this.plugin = plugin;
@@ -23307,7 +23770,7 @@ class RectoTaskFeedback {
 		this.busy = new Set();
 		this.open = false;
 		this.el = plugin.addStatusBarItem();
-		this.el.addClass("rc-task-status");
+		this.el.addClass("recto-ui", "rc-task-status");
 		this.el.tabIndex = 0;
 		this.el.setAttribute("role", "button");
 		this.el.setAttribute("aria-haspopup", "dialog");
@@ -23316,7 +23779,7 @@ class RectoTaskFeedback {
 		this.meter = this.el.createSpan({ cls: "rc-task-status-meter" });
 		this.meterFill = this.meter.createSpan({ cls: "rc-task-meter-fill" });
 		this.doc = this.el.ownerDocument;
-		this.popup = this.doc.body.createDiv({ cls: "rc-task-popup" });
+		this.popup = this.doc.body.createDiv({ cls: "recto-ui rc-task-popup" });
 		this.popup.setAttribute("role", "dialog");
 		this.popup.setAttribute("aria-label", rectoUiText("feedback.title"));
 		this.popup.inert = true;
@@ -23326,10 +23789,13 @@ class RectoTaskFeedback {
 		this.cancel = head.createEl("button", { cls: "rc-task-action rc-task-cancel" });
 		this.close = head.createEl("button", { cls: "rc-task-action rc-task-close", text: "×" });
 		this.list = this.popup.createDiv({ cls: "rc-task-list" });
+		bindRectoInlineFeedback(this, "cancel-waiting", this.popup);
+		for (const key of ["recovery", "settlement", "output"]) bindRectoInlineFeedback(plugin, key, this.popup);
 		this.cancel.addEventListener("click", () => this.perform("cancel-waiting", () => plugin.cancelQueuedTasksFromCommand()));
 		this.clear.addEventListener("click", () => {
-			for (const [key, item] of this.recent) if (item.status === "success") this.recent.delete(key);
+			for (const [key, item] of this.recent) if (["success", "skipped"].includes(item.status)) this.recent.delete(key);
 			if (plugin.batchProgress?.finished) this.dismissedProgress = plugin.batchProgress;
+			if (!this.models().length) { this.setOpen(false, true); return; }
 			this.render();
 		});
 		this.close.addEventListener("click", () => this.setOpen(false, true));
@@ -23353,11 +23819,17 @@ class RectoTaskFeedback {
 
 	identity(task) { return String(task.recordId || task.markdownPath || task.folder || task.name); }
 	remember(result) {
+		this.plugin.notificationBatches?.record(result);
+		queueMicrotask(() => this.plugin.notificationBatches?.flush());
 		if (result.status === "pending" || result.status === "waiting") return;
 		const key = this.identity(result.task);
+		(this.plugin.taskWorkflowProgress ||= new RectoTaskProgress()).update(result.task, { done: true, success: result.status === "success" });
 		this.recent.delete(key);
 		this.recent.set(key, { ...result, key, name: result.task.name || key });
-		while (this.recent.size > 20) this.recent.delete(this.recent.keys().next().value);
+		while ([...this.recent.values()].filter(item => item.status === "success").length > 20) {
+			const oldest = [...this.recent].find(([, item]) => item.status === "success");
+			this.recent.delete(oldest[0]);
+		}
 		if (result.status === "success") {
 			this.successBadgeUntil = Date.now() + 15000;
 			if (this.successTimer) clearTimeout(this.successTimer);
@@ -23378,21 +23850,23 @@ class RectoTaskFeedback {
 			const file = (target && p.app.vault.getAbstractFileByPath(target)) || (folder && p.findOriginalMarkdownInPaperFolder(folder));
 			if (file) return await p.getHubOpenLeaf(file).openFile(file, { active: true });
 		}
-		new obsidian.Notice(rectoUiText("hub.fileMissing"), 5000);
+		showRectoNotice(rectoUiText("hub.fileMissing"), { tone: "attention" });
 	}
 
 	models() {
 		const p = this.plugin, models = new Map();
+		const tracker = p.taskWorkflowProgress ||= new RectoTaskProgress();
 		for (const [key, item] of p.hubTaskRequests || []) if (!item.cancelled && !item.accepted) models.set(key, { key, name: item.name, status: "preparing", preparing: item });
 		for (const item of p.localTaskIntents || []) {
 			const key = this.identity(item.task);
-			models.set(key, { key, name: item.task.name || key, status: item.state, local: item });
+			models.set(key, { key, name: item.task.name || key, status: item.state, local: item, reason: this.recent.get(key)?.reason });
 		}
 		const view = buildHubQueueView(p.pendingBackendTasks, Date.now(), "");
 		for (const item of view.rows) {
 			const key = String(item.recordId || item.taskId);
 			const recoveryFeedback = p.pendingBackendRecoveryFeedback?.get(item.taskId);
-			models.set(key, { key, name: item.name, status: recoveryFeedback ? "blocked" : this.recent.get(key)?.status === "partial" ? "partial" : item.blocked ? "blocked" : item.kind === "failed" ? "failed" : "pending", cloud: item, recoveryFeedback, reason: recoveryFeedback?.reason });
+			const receipt = p.pendingBackendTasks.find(entry => entry.taskId === item.taskId);
+			models.set(key, { key, name: item.name, task: receipt.task, receipt, status: recoveryFeedback ? "blocked" : this.recent.get(key)?.status === "partial" ? "partial" : item.blocked ? "blocked" : ["failed", "terminal"].includes(item.kind) ? "failed" : "pending", cloud: item, recoveryFeedback, reason: recoveryFeedback?.reason });
 		}
 		const progress = p.batchProgress;
 		if (progress && !progress.finished && !progress.taskDone && (progress.recordId || !models.size)) {
@@ -23401,16 +23875,35 @@ class RectoTaskFeedback {
 		}
 		for (const [key, item] of this.recent) if (!models.has(key)) models.set(key, item);
 		if (progress?.finished && progress.outcome !== "pending" && progress !== this.dismissedProgress && !models.size) models.set("last-operation", { key: "last-operation", name: localizeBatchDisplayText(progress.label), status: progress.outcome || (progress.failed ? "failed" : "success"), finishedStage: progress.stage });
-		const priority = { executing: 0, preparing: 0, waiting: 1, pending: 2, blocked: 3, failed: 3, partial: 3, success: 4 };
-		return [...models.values()].sort((a, b) => (priority[a.status] ?? 4) - (priority[b.status] ?? 4));
+		for (const model of models.values()) {
+			if (model.key === "active-operation") continue;
+			const task = model.task || model.local?.task || model.progress?.task || { recordId: model.key,
+				translateOnly: model.progress?.phase === "translation", requestTranslation: model.preparing?.action === "translate" };
+			let state = tracker.get(model.key);
+			if (!state && (model.cloud || model.progress || model.preparing || model.status === "executing")) {
+				let phase = model.progress?.phase || model.receipt?.workflowStage || model.cloud?.processingStage || BACKEND_STATUS_PHASES[model.cloud?.status] || "prepare";
+				if (model.cloud?.status === "ready") phase = "download";
+				if (model.cloud?.status === "translation_handoff") phase = "translation_prepare";
+				if (model.cloud?.status === "ack_pending") phase = "ack";
+				state = tracker.update(task, { phase, sub: model.progress?.sub || null, retrying: model.progress?.retrying || false });
+			}
+			model.workflow = state;
+			if (["executing", "pending"].includes(model.status)) model.status = state && ["queued", "translation_queued"].includes(state.phase) ? "waiting" : "executing";
+		}
+		// Prune abandoned/replaced display state; recent results already have a bounded lifetime.
+		for (const key of tracker.items.keys()) if (!models.has(key)) tracker.items.delete(key);
+		const priority = { executing: 0, preparing: 1, waiting: 2, pending: 2, blocked: 3, failed: 3, partial: 3, success: 4 };
+		return [...models.values()].sort((a, b) => (priority[a.status] ?? 4) - (priority[b.status] ?? 4)
+			|| (a.status === "waiting" && b.status === "waiting" ? Number(!!b.cloud) - Number(!!a.cloud) : 0));
 	}
 
 	async perform(key, run) {
 		if (this.busy.has(key) || this.plugin.isUnloading) return;
 		const focused = this.doc.activeElement;
+		setRectoInlineFeedback(this, key, "");
 		this.busy.add(key); this.render();
 		try { await run(); }
-		catch (error) { new obsidian.Notice(getUserFacingErrorMessage(error), 6000); }
+		catch (error) { setRectoInlineFeedback(this, key, getUserFacingErrorMessage(error)); }
 		finally {
 			this.busy.delete(key);
 			if (!this.plugin.isUnloading) {
@@ -23432,7 +23925,10 @@ class RectoTaskFeedback {
 		const dismiss = el.createEl("button", { cls: "rc-task-action" });
 		const bar = el.createDiv({ cls: "rc-task-meter" });
 		const fill = bar.createDiv({ cls: "rc-task-meter-fill" });
-		const row = { el, icon, name, status, action, extra, dismiss, bar, fill };
+		const details = el.createEl("details", { cls: "rc-task-details" });
+		const summary = details.createEl("summary", { text: rectoUiText("notice.details") });
+		const reason = details.createEl("p");
+		const row = { el, icon, name, status, action, extra, dismiss, bar, fill, details, summary, reason };
 		action.addEventListener("click", () => { if (row.run) void this.perform(key, row.run); });
 		extra.addEventListener("click", () => { if (row.extraRun) void this.perform(key, row.extraRun); });
 		dismiss.addEventListener("click", () => { if (row.dismissRun) void this.perform(key, row.dismissRun); });
@@ -23450,7 +23946,7 @@ class RectoTaskFeedback {
 		this.cancel.hidden = !models.some(item => item.preparing || item.local && item.local.state !== "executing");
 		this.cancel.disabled = this.busy.has("cancel-waiting") || !!p.rectoPluginUpdateInstalling;
 		this.clear.setText(rectoUiText("feedback.clearCompleted"));
-		this.clear.hidden = ![...this.recent.values()].some(item => item.status === "success");
+		this.clear.hidden = ![...this.recent.values()].some(item => ["success", "skipped"].includes(item.status));
 		for (const model of models) {
 			const key = model.key; live.add(key);
 			const row = this.rows.get(key) || this.createRow(key);
@@ -23459,29 +23955,34 @@ class RectoTaskFeedback {
 			const progress = model.progress;
 			let status = rectoUiText(model.status === "partial" && model.partialKind === "translation" ? "feedback.translationIncomplete" : `feedback.${model.status}`);
 			if (model.finishedStage) status = localizeBatchDisplayText(model.finishedStage);
+			if (model.local?.state === "waiting" && p.localTaskNetworkRetryAt > Date.now()) status = rectoUiText("feedback.retrying");
 			if (progress) status = progress.retrying ? rectoUiText("feedback.retrying") : progress.phase
 				? rectoUiText(`progress.phase.${progress.phase}`) : localizeBatchDisplayText(progress.stage || rectoUiText("feedback.preparing"));
 			if (model.cloud && !progress && !["partial", "failed", "blocked"].includes(model.status)) status = rectoUiText(`hub.queueStatus.${model.cloud.processingStage || model.cloud.kind}`);
 			if (model.recoveryFeedback && !progress) status = model.recoveryFeedback.signIn ? rectoUiText("account.signInRequired") : localizeStoredUiError(model.reason);
 			const cloudBusy = !!(model.cloud && p.isPendingBackendTaskActionBusy(model.cloud.taskId));
 			if (model.cloud && !progress && (this.busy.has(key) || p.isPendingBackendTaskRecovering(model.cloud.taskId))) status = rectoUiText("feedback.recovering");
-			const sub = progress?.sub;
-			const measured = !!(sub && Number(sub.total) > 0 && Number.isFinite(Number(sub.done)) && !progress.retrying);
+			const workflow = model.workflow;
+			if (workflow && !["success", "failed", "blocked", "partial", "skipped"].includes(model.status)) status = taskWorkflowLabel(workflow);
+			if (model.status === "waiting" && model.local) status = rectoUiText(p.localTaskNetworkRetryAt > Date.now() ? "feedback.retrying" : "feedback.waiting");
+			const sub = workflow?.sub || progress?.sub;
+			const measured = !!(sub && Number(sub.total) > 0 && Number.isFinite(Number(sub.done)) && !workflow?.retrying && ["executing", "preparing"].includes(model.status));
 			if (measured) status += ` ${Math.min(Number(sub.total), Math.max(0, Number(sub.done)))}/${sub.total}`;
 			row.status.setText(status);
+			row.status.hidden = model.status === "success";
 			row.status.title = model.recoveryFeedback ? localizeStoredUiError(model.reason) : model.cloud?.blocked ? rectoUiText("hub.writebackFailureDetail", { error: model.cloud.failure || rectoUiText("error.writeback"), hours: HUB_QUEUE_RESULT_TTL_HOURS }) : model.reason || status;
+			const detail = this.rectoInlineFeedback?.get(key) || model.reason || model.recoveryFeedback?.reason
+				|| (model.local?.failure === "source" ? rectoUiText("queue.sourceChanged") : model.local?.state === "blocked" ? rectoUiText("notice.taskFailed") : "")
+				|| (model.cloud?.blocked ? localizeStoredUiError(model.cloud.failure || rectoUiText("error.writeback")) : "")
+				|| (model.status === "partial" ? rectoTaskResultText([model]) : "");
+			row.summary.setText(rectoUiText("notice.details"));
+			row.reason.setText(detail);
+			row.details.hidden = !detail;
 			row.el.dataset.state = model.status;
 			row.icon.setText(model.status === "success" ? "✓" : ["failed", "blocked", "partial"].includes(model.status) ? "!" : "·");
-			row.icon.toggleClass("is-working", model.status === "executing" || model.status === "preparing");
-			row.bar.hidden = !measured;
-			if (measured) {
-				const fraction = Math.min(1, Math.max(0, Number(sub.done) / Number(sub.total)));
-				row.fill.style.transform = `scaleX(${fraction})`;
-				row.bar.setAttribute("role", "progressbar");
-				row.bar.setAttribute("aria-label", status);
-				row.bar.setAttribute("aria-valuenow", String(Math.round(fraction * 100)));
-				row.bar.setAttribute("aria-valuemin", "0"); row.bar.setAttribute("aria-valuemax", "100");
-			}
+			row.icon.toggleClass("is-working", !workflow?.retrying && ["executing", "preparing"].includes(model.status));
+			const barState = ["failed", "blocked", "partial"].includes(model.status) && workflow ? { ...workflow, retrying: true } : workflow;
+			renderTaskWorkflowMeter(row.bar, row.fill, barState, !!workflow && !["waiting", "skipped", "success"].includes(model.status), status);
 			let label = "", extraLabel = ""; row.run = null; row.extraRun = null; row.dismissRun = null;
 			if (model.preparing) {
 				label = "×"; row.run = () => p.cancelPreparingTask(key);
@@ -23521,7 +24022,7 @@ class RectoTaskFeedback {
 					};
 				}
 			}
-			if (!model.cloud && !model.local && !model.preparing && ["failed", "partial"].includes(model.status)) {
+			if (!model.cloud && !model.local && !model.preparing && ["failed", "partial", "skipped"].includes(model.status)) {
 				const dismissResult = () => { this.recent.delete(key); this.dismissedProgress = p.batchProgress; this.render(); };
 				if (row.extraRun) row.dismissRun = dismissResult;
 				else { extraLabel = "×"; row.extraRun = dismissResult; }
@@ -23553,19 +24054,24 @@ class RectoTaskFeedback {
 		});
 		if (focused && this.list.contains(focused) && this.doc.activeElement !== focused) focused.focus({ preventScroll: true });
 		this.list.scrollTop = scroll;
-		const active = models.find(item => item.progress) || models.find(item => item.status === "executing" || item.status === "preparing");
+		const active = models.find(item => item.status === "executing" || item.status === "preparing");
 		const waiting = models.filter(item => item.status === "waiting").length;
 		const cloud = models.filter(item => item.cloud).length;
 		const attention = models.some(item => ["blocked", "failed", "partial"].includes(item.status));
-		this.el.hidden = !models.length && !this.open;
+		const unfinished = models.some(item => !["success", "skipped"].includes(item.status));
+		this.el.hidden = !this.open && !unfinished && Date.now() >= (this.successBadgeUntil || 0);
 		this.icon.toggleClass("is-working", !!active);
 		const recentSuccess = models.some(item => item.status === "success") && Date.now() < (this.successBadgeUntil || 0);
 		setChromeIcon(this.icon, active ? "loader-circle" : attention ? "triangle-alert" : cloud ? "cloud" : waiting ? "clock" : recentSuccess ? "check" : "list");
 		const label = active ? this.rows.get(active.key).status.textContent : attention ? rectoUiText("feedback.blocked") : cloud ? rectoUiText("feedback.pending") : recentSuccess ? rectoUiText("feedback.success") : "";
-		const sub = active?.progress?.sub;
-		this.meter.hidden = !(sub && Number(sub.total) > 0 && !active.progress.retrying);
-		if (!this.meter.hidden) this.meterFill.style.transform = `scaleX(${Math.min(1, Math.max(0, Number(sub.done) / Number(sub.total)))})`;
 		this.text.setText(`${rectoUiText("feedback.title")}${label ? ` · ${label}` : ""}${waiting ? ` · ${rectoUiText("feedback.waiting")} ${waiting}` : ""}`);
+		const selected = active || models.find(item => ["failed", "blocked", "partial"].includes(item.status)) || models.find(item => item.status === "waiting") || models.find(item => item.status === "success");
+		const labelText = selected ? `${selected.name} · ${this.rows.get(selected.key).status.textContent}` : rectoUiText("feedback.title");
+		const meterState = selected?.workflow ? { ...selected.workflow,
+			retrying: selected.workflow.retrying || ["failed", "blocked", "partial"].includes(selected.status) } : null;
+		renderTaskWorkflowMeter(this.meter, this.meterFill, meterState, !!selected && !["success", "skipped"].includes(selected.status), labelText);
+		this.el.title = labelText;
+		this.el.setAttribute("aria-label", `${rectoUiText("feedback.title")} · ${labelText}`);
 		this.el.setAttribute("aria-expanded", String(this.open));
 		if (this.open) this.position();
 	}
@@ -23670,6 +24176,7 @@ class StatusBarProgress {
 
 	publish(patch = {}) {
 		this.lastPublished = {
+			task: this.task,
 			recordId: this.task ? String(this.task.recordId || this.task.markdownPath || this.task.folder || this.task.name) : "",
 			taskName: this.task?.name || "",
 			retrying: !!this.retrying,
@@ -23703,6 +24210,10 @@ class StatusBarProgress {
 			});
 		if (this.operation) this.operation.progress = this.lastPublished;
 		if (this.plugin.activeStatusProgress === this) this.plugin.batchProgress = this.lastPublished;
+		if (this.task && !this.taskDone && !this.lastPublished.finished) {
+			this.plugin.publishTaskWorkflow?.(this.task, { phase: this.stage === "取结果" || this.stage === "取译文" ? "download" : this.phase,
+				leg: this.workflowLeg || (this.task.translateOnly ? "translation" : "conversion"), sub: this.sub, retrying: !!this.retrying });
+		}
 		this.renderStatusBar();
 		if (typeof this.plugin.notifyTaskQueueChanged === "function") this.plugin.notifyTaskQueueChanged();
 	}
@@ -23721,6 +24232,7 @@ class StatusBarProgress {
 
 	setTask(task) {
 		this.task = task;
+		this.workflowLeg = task.translateOnly ? "translation" : "conversion";
 		this.itemPartial = "";
 		this.taskDone = false;
 		this.retrying = false;
@@ -23781,8 +24293,8 @@ class StatusBarProgress {
 	}
 
 	// 后端公开状态 + 可选阶段/子进度。缺失进度清除旧快照，解析仅显示已知真实页数。
-	setBackendPhase(status, progress, processingStage) {
-		const phase = resolveBackendProcessingStage(status, processingStage) || BACKEND_STATUS_PHASES[String(status || "").toLowerCase()];
+	setBackendPhase(status, progress, processingStage, workflowStage) {
+		const phase = normalizeTaskWorkflowStage(workflowStage) || resolveBackendProcessingStage(status, processingStage) || BACKEND_STATUS_PHASES[String(status || "").toLowerCase()];
 		if (!phase) return;
 		this.sub = null;
 		this.phase = phase;
@@ -23934,6 +24446,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		c.empty();
 		c.addClass("recto-ui");
 		c.addClass("recto-settings");
+		this.plugin.applyInterfaceAccent?.(c.ownerDocument);
 		const s = this.plugin.settings;
 		const autoDetectedZoteroSource = this.autoFillDetectedZoteroSourceIfNeeded(s);
 
@@ -24131,13 +24644,21 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	}
 
 	async persistBackendPreferenceChange(mutator) {
+		setRectoInlineFeedback(this, "preferences", "");
+		const previousSettings = { ...this.plugin.settings };
 		const previousTarget = migrateDocumentLanguages(this.plugin.settings).translationTarget.id;
 		if (typeof mutator === "function") mutator();
+		const changedSettings = Object.entries(this.plugin.settings).filter(([key, value]) => value !== previousSettings[key]);
 		if (previousTarget !== migrateDocumentLanguages(this.plugin.settings).translationTarget.id) {
 			if (this.plugin.dualPaneSession) this.plugin.stopRectoDualPane();
 			if (this.plugin.pdfCompareSession) this.plugin.stopRectoPdfCompare();
 		}
-		await this.plugin.save();
+		try { await this.plugin.save(); }
+		catch {
+			for (const [key, value] of changedSettings) if (this.plugin.settings[key] === value) this.plugin.settings[key] = previousSettings[key];
+			setRectoInlineFeedback(this, "preferences", rectoUiText("notice.settingsSaveFailed"));
+			return false;
+		}
 		this.plugin.safeRefreshHubViews?.();
 		if (!this.plugin.hasBackendAccountSession || !this.plugin.hasBackendAccountSession()) return;
 		try {
@@ -24145,7 +24666,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		} catch (error) {
 			this.plugin.settings.backendLastError = getUserFacingErrorMessage(error, rectoUiText("settings.preferenceSyncFailed"));
 			await this.plugin.save();
-			new obsidian.Notice(this.plugin.settings.backendLastError, 8000);
+			setRectoInlineFeedback(this, "preferences", rectoUiText("notice.syncFailed"));
 		}
 	}
 
@@ -24163,6 +24684,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		if (folderSetting.settingEl && folderSetting.settingEl.addClass) {
 			folderSetting.settingEl.addClass("recto-settings-output");
 		}
+		bindRectoInlineFeedback(this, "output", folderSetting.descEl);
 		const pathLine = folderSetting.descEl.createDiv({ cls: "recto-settings-path-line" });
 		pathLine.createSpan({ text: rectoUiText("settings.currentFolder") });
 		const folderValueEl = pathLine.createEl("code", {
@@ -24172,15 +24694,16 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		const pick = pathLine.createEl("button", { text: rectoUiText("settings.chooseFolder"), cls: "recto-settings-quiet" });
 		if (pick.setAttr) pick.setAttr("type", "button");
 		pick.addEventListener("click", async () => {
-			const picked = await this.plugin.pickDirectory(rectoUiText("settings.chooseOutputFolder"), this.plugin.app.vault.adapter.basePath);
+			setRectoInlineFeedback(this, "output", "");
+			const picked = await this.plugin.pickDirectory(rectoUiText("settings.chooseOutputFolder"), this.plugin.app.vault.adapter.basePath, this, "output");
 			if (!picked) return;
 			const relative = this.plugin.getVaultRelativePath(picked);
 			if (relative === null) {
-				new obsidian.Notice(rectoUiText("settings.outputOutsideVault"), 10000);
+				setRectoInlineFeedback(this, "output", rectoUiText("settings.outputOutsideVault"));
 				return;
 			}
 			if (!relative) {
-				new obsidian.Notice(rectoUiText("settings.outputAtVaultRoot"), 8000);
+				setRectoInlineFeedback(this, "output", rectoUiText("settings.outputAtVaultRoot"));
 				return;
 			}
 			s.externalOutputFolder = sanitizeExternalOutputFolder(relative);
@@ -24203,7 +24726,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	// T82-D 删掉的那两个手动同步按钮是内部调试遗留，普通用户按不出任何额外结果。
 	renderBackendPreferences(container, s, name = documentLanguageText("输出语言", "Output language")) {
 		const current = migrateDocumentLanguages(s);
-		new obsidian.Setting(container).setName(name)
+		const preferenceSetting = new obsidian.Setting(container).setName(name)
 			.setDesc(documentLanguageText("新译文和摘要使用此语言，已有文件保持不变。", "New translations and summaries use this language. Existing files are preserved."))
 			.addDropdown(d => {
 				const common = [["zh-Hans", "简体中文"], ["zh-Hant", "繁體中文"], ["en", "English"], ["ja", "日本語"], ["ko", "한국어"], ["fr", "Français"], ["de", "Deutsch"], ["es", "Español"], ["ar", "العربية"], ["hi", "हिन्दी"], ["ru", "Русский"]];
@@ -24219,10 +24742,11 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 							target = choice && choice.language;
 						}
 						if (target) await this.persistBackendPreferenceChange(() => { s.documentLanguages = { ...s.documentLanguages, unifiedOutput: true, translationTarget: target, summaryLanguage: target.id, ocrLanguage: "auto" }; });
-					} catch (error) { new obsidian.Notice(getUserFacingErrorMessage(error)); }
+					} catch (error) { setRectoInlineFeedback(this, "preferences", getUserFacingErrorMessage(error)); }
 					this.display();
 				});
 			});
+		bindRectoInlineFeedback(this, "preferences", preferenceSetting.descEl);
 	}
 
 	renderQuickStart(container, s, autoDetectedZoteroSource = null) {
@@ -24243,13 +24767,13 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				t.inputEl.addEventListener("blur", async () => {
 					const raw = t.inputEl.value;
 					const previous = s.baseFolder;
+					setRectoInlineFeedback(this, "library", "");
 					if (raw.trim() === previous) return;
 					let next = "";
 					try {
 						next = validateVaultRelativeFolder(raw);
 					} catch (error) {
-						new obsidian.Notice(rectoUiText("settings.libraryInvalid", { error: getUserFacingErrorMessage(error, rectoUiText("settings.chooseVaultFolder")) }), 6000);
-						t.setValue(previous);
+						setRectoInlineFeedback(this, "library", getUserFacingErrorMessage(error, rectoUiText("settings.chooseVaultFolder")));
 						t.inputEl.toggleClass("is-rejected", true);
 						return;
 					}
@@ -24262,10 +24786,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					// 但必须如实说一句，否则用户只会以为论文没了。
 					const old = previous && this.plugin.app.vault.getAbstractFileByPath(previous);
 					if (old && old.children && old.children.length) {
-						new obsidian.Notice(
-							rectoUiText("settings.libraryMoved", { folder: next }),
-							12000
-						);
+						setRectoInlineFeedback(this, "library-location", rectoUiText("settings.libraryMoved", { folder: next }));
 					}
 					s.baseFolder = next;
 					t.setValue(next);
@@ -24280,6 +24801,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				return t;
 			});
 		this.refreshBaseFolderRow();
+		bindRectoInlineFeedback(this, "library", this.baseFolderSetting.descEl);
+		bindRectoInlineFeedback(this, "library-location", this.baseFolderSetting.descEl);
 
 		// 转换与翻译的入口只有一个：论文库（Hub）的详情栏。设置页只负责把论文导进来，
 		// 再把人送到那里去——两处各有一套选择弹窗，是 T82-D 之前最大的重复。
@@ -24330,6 +24853,10 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, name) {
 		const row = new obsidian.Setting(container).setName(name);
 		row.settingEl.addClass("recto-zotero-setting");
+		bindRectoInlineFeedback(this, "zotero", row.descEl);
+		bindRectoInlineFeedback(this.plugin, "zotero", row.descEl);
+		bindRectoInlineFeedback(this.plugin, "results", row.descEl);
+		bindRectoInlineFeedback(this.plugin, "sync", row.descEl);
 		this.zoteroSourceDescription = row.descEl.createDiv({ cls: "recto-zotero-source-description" });
 		this.zoteroSourceWarning = row.descEl.createDiv({ cls: "recto-zotero-source-warning" });
 		const editor = row.descEl.createDiv({ cls: "recto-zotero-source-editor" });
@@ -24352,6 +24879,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		const commit = async value => {
 			if (saving) return;
 			saving = true;
+			setRectoInlineFeedback(this, "zotero", "");
 			save.disabled = browse.disabled = input.disabled = true;
 			try {
 				const updated = await this.updateSourceFolder(value, s);
@@ -24360,9 +24888,9 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					this.refreshZoteroSourceDescription();
 					this.refreshAllSetupStatus();
 					closeEditor();
-				} else input.value = s.sourceFolder || "";
+				} // Preserve invalid text so it can be corrected.
 			} catch (error) {
-				new obsidian.Notice(getUserFacingErrorMessage(error, rectoUiText("settings.zoteroSaveFailed")), 8000);
+				setRectoInlineFeedback(this, "zotero", getUserFacingErrorMessage(error, rectoUiText("settings.zoteroSaveFailed")));
 			} finally {
 				saving = false;
 				save.disabled = browse.disabled = input.disabled = false;
@@ -24378,7 +24906,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			if (browse.disabled) return;
 			browse.disabled = true;
 			try {
-				const folder = await this.plugin.pickDirectory(rectoUiText("settings.chooseZoteroFolder"), s.sourceFolder || this.plugin.app.vault.adapter.basePath);
+				const folder = await this.plugin.pickDirectory(rectoUiText("settings.chooseZoteroFolder"), s.sourceFolder || this.plugin.app.vault.adapter.basePath, this, "zotero");
 				if (folder) await commit(folder);
 			} finally { browse.disabled = false; }
 		});
@@ -24466,7 +24994,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			: storage;
 		const savePromise = (async () => this.plugin.save())().catch(() => {
 			if (settings.sourceFolder === storage) settings.sourceFolder = "";
-			new obsidian.Notice(rectoUiText("settings.zoteroSaveFailed"), 8000);
+			setRectoInlineFeedback(this, "zotero", rectoUiText("settings.zoteroSaveFailed"));
 			return false;
 		});
 		return { ...candidate, storageDir: storage, savePromise };
@@ -24477,7 +25005,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			const candidates = this.plugin.getZoteroDefaultPathCandidates();
 			let candidate = selectZoteroSourceCandidate(candidates);
 			if (!candidates.length) {
-				new obsidian.Notice(`${rectoUiText("settings.zoteroMissingDesc")} ${rectoUiText("settings.zoteroFindHint")}`, 10000);
+				setRectoInlineFeedback(this, "zotero", rectoUiText("settings.zoteroMissingDesc"));
 				return false;
 			}
 			if (!candidate) {
@@ -24499,7 +25027,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			}
 			return saved;
 		} catch {
-			new obsidian.Notice(rectoUiText("settings.zoteroSaveFailed"), 8000);
+			setRectoInlineFeedback(this, "zotero", rectoUiText("settings.zoteroSaveFailed"));
 			return false;
 		}
 	}
@@ -24509,7 +25037,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		const normalized = this.plugin.normalizeZoteroSourceFolder(next);
 		const storage = this.getReadableZoteroStoragePath(normalized);
 		if (String(next || "").trim() && (!normalized || !storage)) {
-			new obsidian.Notice(rectoUiText("settings.zoteroInvalidSource"), 8000);
+			setRectoInlineFeedback(this, "zotero", rectoUiText("settings.zoteroInvalidSource"));
 			return false;
 		}
 		if (normalized === prev || (normalized && normalized === this.plugin.normalizeZoteroSourceFolder(prev))) return true;
@@ -24556,7 +25084,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			};
 		}); }
 		catch {
-			new obsidian.Notice(rectoUiText("settings.zoteroSaveFailed"), 8000);
+			setRectoInlineFeedback(this, "zotero", rectoUiText("settings.zoteroSaveFailed"));
 			return false;
 		}
 		if (recordsCleared) await this.plugin.writePaperJsonlIndex();
@@ -24712,6 +25240,27 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				dropdown.onChange(value => { void this.plugin.setUiLanguagePreference(value); });
 			});
 		if (languageRow.settingEl && languageRow.settingEl.addClass) languageRow.settingEl.addClass("recto-settings-language");
+		new obsidian.Setting(container)
+			.setName(rectoUiText("settings.interfaceAccent"))
+			.setDesc(rectoUiText("settings.interfaceAccentDesc"))
+			.addDropdown(dropdown => {
+				for (const key of ["red", "blue", "green"]) dropdown.addOption(key, rectoUiText(`settings.interfaceAccent.${key}`));
+				dropdown.setValue(s.interfaceAccent || "red");
+				dropdown.onChange(async value => {
+					const previous = s.interfaceAccent;
+					dropdown.setDisabled(true);
+					s.interfaceAccent = value;
+					try { await this.plugin.save(); }
+					catch (error) {
+						s.interfaceAccent = previous;
+						dropdown.setValue(previous || "red");
+						showRectoNotice(rectoUiText("queue.saveFailed"), { tone: "error" });
+						return;
+					}
+					finally { dropdown.setDisabled(false); }
+					this.plugin.applyInterfaceAccent(container.ownerDocument);
+				});
+			});
 
 		// T83-N-R：后处理只有这一个入口。它默认开着，绝大多数人不必看见；关掉是排错与效果对比用的，
 		// 所以放高级设置而不是「处理偏好」——但改了之后必须在上传确认弹窗里如实告知当前档位。
@@ -24764,6 +25313,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		// 关只能来这里——只有开、没有关是缺陷，不是精简。检查更新挂在同一行，
 		// 通知栏同一版本只提示一次，随手关掉的人得有条回头路。
 		container.createEl("h4", { text: rectoUiText("settings.updates") });
+		bindRectoInlineFeedback(this.plugin, "update", container);
 		new obsidian.Setting(container).setName(rectoUiText("settings.autoUpdate"))
 			.setDesc(rectoUiText("settings.autoUpdateDesc"))
 			.addToggle(t => t.setValue(normalizeRectoPluginUpdateState(s.pluginUpdate).autoUpdate)
@@ -24802,12 +25352,18 @@ function sleep(ms, signal) {
 }
 if (process.env.NODE_ENV === "test") {
 	RectoPlugin.__test = {
+		showRectoNotice, rectoNoticeHistory, bindRectoInlineFeedback, setRectoInlineFeedback, rectoTaskResultText, RectoNotificationBatches,
 		RectoOperationResources,
 		normalizeLocalTaskIntents,
 		rectoResourcePath,
 		rectoResourcesOverlap,
 		StatusBarProgress,
 		RectoTaskFeedback,
+		RectoTaskProgress,
+		taskWorkflowPlan,
+		taskWorkflowFraction,
+		taskWorkflowMode,
+		renderTaskWorkflowMeter,
 		RectoDiagnosticQueue,
 		buildRectoDiagnosticEvent,
 		buildRectoDiagnosticError,
