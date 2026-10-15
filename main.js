@@ -8630,10 +8630,9 @@ function positionHubFlagPopover(menu, anchor) {
 	menu.style.top = `${Math.max(gap, rect.bottom + height + gap <= win.innerHeight ? rect.bottom + gap : rect.top - height - gap)}px`;
 }
 
-// Both split-button menus use their full button group as the alignment/width anchor.
+// Content sizes both menus; the button group only anchors their right edge.
 function positionHubActionMenu(menu, anchor) {
 	const rect = anchor.getBoundingClientRect(), win = anchor.ownerDocument.defaultView, gap = 4;
-	menu.style.width = `${Math.min(rect.width, win.innerWidth - gap * 2)}px`;
 	menu.style.left = `${Math.max(gap, Math.min(rect.right - menu.offsetWidth, win.innerWidth - menu.offsetWidth - gap))}px`;
 	menu.style.top = `${Math.max(gap, rect.bottom + menu.offsetHeight + gap <= win.innerHeight ? rect.bottom + gap : rect.top - menu.offsetHeight - gap)}px`;
 }
