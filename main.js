@@ -80,7 +80,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.externalFiles": "Zotero 之外的文件",
 		"settings.externalFilesDesc": "转换不在论文库里的 PDF，或翻译任意 Markdown。",
 		"settings.advanced": "高级设置",
-		"settings.advancedDesc": "界面语言、PDF 转换优化、本地笔记、对照阅读与插件更新",
+		"settings.advancedDesc": "界面语言、PDF 转换优化、对照阅读与插件更新",
 		"settings.feedback": "问题反馈",
 		"settings.pendingZotero": "当前有 {count} 项需要您选择：多 PDF 条目或 Zotero 里已删除的论文。自动同步不会删文件。",
 		"settings.account": "Recto 账号",
@@ -188,8 +188,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.conversion": "转换",
 		"settings.pdfCleanup": "PDF 转换后处理",
 		"settings.pdfCleanupDesc": "开启后会进一步清理页眉页脚与伪标题、粘合跨页断句，并修正常见的上下标和词内空格问题。关掉后仅保留基础处理，适合排错与效果对比。",
-		"settings.autoNote": "自动创建笔记框架",
-		"settings.autoNoteDesc": "论文处理完成后创建“note-论文名.md”；已有文件不会覆盖。",
 		"settings.reading": "阅读",
 		"settings.dualPaneHighlight": "点击段落时在另一栏标出对应段落",
 		"settings.dualPaneHighlightDesc": "原文与译文双栏对照时，对侧为阅读视图才显示高亮。关掉后仍会联动定位和同步滚动。",
@@ -420,7 +418,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.folderMissing": "论文库文件夹「{folder}」不在了，但本地仍有 {count} 篇论文的记录。多半是它被改名或移动过——请把下面的路径改成它现在的位置。",
 		"hub.folderEmpty": "论文库文件夹「{folder}」里没有任何论文，但本地仍有 {count} 篇的记录。多半是路径指错了——请把下面的路径改成论文实际所在的文件夹。",
 		"hub.viewTitle": "Recto 论文库",
-		"hub.searchPlaceholder": "搜索标题、作者、期刊、分类、Note…",
+		"hub.searchPlaceholder": "搜索标题、作者、期刊、分类、速记…",
 		"hub.settings": "Recto 设置",
 		"hub.readingStatus": "阅读状态",
 		"hub.readingStatusIn": "阅读状态 · {collection}",
@@ -466,9 +464,24 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.collection": "分类",
 		"hub.status": "状态",
 		"hub.notePlaceholder": "记录阅读要点",
-		"hub.noteConflict": "Note 已在别处修改，本次输入已保留。",
-		"hub.noteReadFailed": "Note 暂时无法读取。",
-		"hub.noteSaveFailed": "Note 尚未保存，本次输入已保留。",
+		"hub.quickNote": "速记",
+		"hub.paperNote.createBlank": "创建空白笔记",
+		"hub.paperNote.createOutline": "创建大纲笔记",
+		"hub.paperNote.open": "打开笔记",
+		"hub.paperNote.choose": "选择笔记样式",
+		"hub.paperNote.blank": "空白笔记",
+		"hub.paperNote.outline": "章节大纲",
+		"hub.paperNote.preferenceFailed": "笔记样式未能保存，请重试。",
+		"hub.paperNote.loading": "正在读取章节…",
+		"hub.paperNote.convertFirst": "转换论文后可用",
+		"hub.paperNote.noHeadings": "未识别到章节标题",
+		"hub.paperNote.failed": "笔记未能打开，请重试。",
+		"hub.paperNote.readFailed": "正文暂时无法读取，请重试。",
+		"hub.paperNote.source": "{language}原文",
+		"hub.paperNote.translation": "{language}译文",
+		"hub.noteConflict": "速记已在别处修改，本次输入已保留。",
+		"hub.noteReadFailed": "速记暂时无法读取。",
+		"hub.noteSaveFailed": "速记尚未保存，本次输入已保留。",
 		"hub.saveMyNote": "保存我的版本",
 		"hub.retry": "重试",
 		"hub.noOpenFile": "这篇还没有可打开的文件",
@@ -525,7 +538,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.context.unavailable": "当前环境不支持此操作",
 		"hub.context.failed": "文件操作未完成，请重试",
 		"hub.context.statusFailed": "阅读状态未保存，请重试",
-		"hub.deletePaper": "重新导入：清空本篇产物、Note 与标记，从 Zotero 重新读取（旧文件移入回收站）",
+		"hub.deletePaper": "重新导入：保留笔记与速记，重置论文产物与标记，从 Zotero 重新读取",
 		"hub.authors": "作者",
 		"hub.collapseAuthors": "收起",
 		"hub.moreAuthors": "更多 {count}",
@@ -558,7 +571,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.escapeHint": "按 Esc 收回",
 		"hub.batchSummary": "未转换 {unconverted} · 已转换无译文 {withoutTranslation} · 完整/旧版译文 {translated} · 部分未翻译 {partial}",
 		"hub.deleteSelected": "重新导入（{count} 篇）",
-		"hub.deleteSelectedHint": "清空选中论文的产物、Note 与标记，从 Zotero 重新读取；执行前确认一次",
+		"hub.deleteSelectedHint": "保留笔记与速记，重置选中论文的产物与标记，从 Zotero 重新读取；执行前确认一次",
 		"hub.morePapers": "另有 {count} 篇",
 		"hub.collapseQueue": "折叠任务列表",
 		"hub.expandQueue": "展开任务列表",
@@ -651,7 +664,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.deleteTitle": "批量重新导入",
 		"batch.deleteIntro": "重新导入 {count} 篇论文",
 		"batch.deleteMore": "另有 {count} 篇",
-		"batch.deleteDesc": "原文、译文、摘要和 Note 将移入回收站，阅读状态与标记重置，旧任务放弃。重新导入后需再次转换；已使用的翻译页不退回。",
+		"batch.deleteDesc": "笔记和速记保留。原文、译文与摘要移入回收站，阅读状态与标记重置，旧任务放弃。重新导入后需再次转换；已使用的翻译页不退回。",
 		"batch.deleteAction": "重新导入 {count} 篇",
 		"recovery.abandoned": "已放弃此任务；已使用的翻译页不退回",
 		"recovery.paperName": "「{name}」",
@@ -831,7 +844,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"reimport.taskRunning": "正在处理，暂时无法重新导入",
 		"operation.contextLost": "操作状态异常，请重新加载 Recto 后重试",
 		"operation.resourceBusy": "相关论文正在处理，请稍后重试",
-		"reimport.noteUnsaved": "Note 尚未保存，请保存后重新导入。",
+		"reimport.noteUnsaved": "速记尚未保存，请保存后重新导入。",
 		"reimport.recoveryPending": "上次重新导入未完成，请再次重新导入",
 		"reimport.recoveryFailed": "上次重新导入未完成，请再次重新导入",
 		"delete.sourceMissing": "无法读取 Zotero 文件夹，请检查目录",
@@ -1061,7 +1074,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.externalFiles": "Files outside Zotero",
 		"settings.externalFilesDesc": "Convert PDFs outside the paper library or translate any Markdown file.",
 		"settings.advanced": "Advanced settings",
-		"settings.advancedDesc": "Interface language, PDF cleanup, local notes, comparison reading, and plugin updates",
+		"settings.advancedDesc": "Interface language, PDF cleanup, comparison reading, and plugin updates",
 		"settings.feedback": "Send feedback",
 		"settings.pendingZotero": "{count} Zotero changes need your choice: entries with multiple PDFs or papers deleted from Zotero. Automatic sync will not delete files.",
 		"settings.account": "Recto account",
@@ -1169,8 +1182,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.conversion": "Conversion",
 		"settings.pdfCleanup": "PDF postprocessing",
 		"settings.pdfCleanupDesc": "Further remove headers, footers, and false headings; join sentences across pages; and fix common superscript, subscript, and word spacing issues. Turn off to use basic processing for troubleshooting or comparison.",
-		"settings.autoNote": "Create note outline automatically",
-		"settings.autoNoteDesc": "Create “note-paper-name.md” after processing a paper; existing files are never overwritten.",
 		"settings.reading": "Reading",
 		"settings.dualPaneHighlight": "Highlight matching paragraphs in the other pane",
 		"settings.dualPaneHighlightDesc": "In side by side reading, the opposite pane highlights a match only in Reading view. Turning this off keeps linked positioning and scroll sync.",
@@ -1447,6 +1458,21 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.collection": "Collection",
 		"hub.status": "Status",
 		"hub.notePlaceholder": "Record reading notes",
+		"hub.quickNote": "Quick note",
+		"hub.paperNote.createBlank": "Create blank note",
+		"hub.paperNote.createOutline": "Create outline note",
+		"hub.paperNote.open": "Open note",
+		"hub.paperNote.choose": "Choose note style",
+		"hub.paperNote.blank": "Blank note",
+		"hub.paperNote.outline": "Section outline",
+		"hub.paperNote.preferenceFailed": "Could not save the note style. Please retry.",
+		"hub.paperNote.loading": "Reading headings…",
+		"hub.paperNote.convertFirst": "Convert the paper first",
+		"hub.paperNote.noHeadings": "No section headings found",
+		"hub.paperNote.failed": "Could not open the note. Please retry.",
+		"hub.paperNote.readFailed": "Could not read the paper. Please retry.",
+		"hub.paperNote.source": "Source{language}",
+		"hub.paperNote.translation": "Translation{language}",
 		"hub.noteConflict": "This note changed elsewhere. Your edits have been kept.",
 		"hub.noteReadFailed": "Could not read this note right now.",
 		"hub.noteSaveFailed": "This note was not saved. Your edits have been kept.",
@@ -1506,7 +1532,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.context.unavailable": "This action is not supported here.",
 		"hub.context.failed": "File operation incomplete. Try again.",
 		"hub.context.statusFailed": "Reading status was not saved. Try again.",
-		"hub.deletePaper": "Reimport from Zotero: reset outputs, Note and flags (old files move to trash)",
+		"hub.deletePaper": "Reimport from Zotero: keep notes and quick notes; reset outputs and flags",
 		"hub.authors": "Authors",
 		"hub.collapseAuthors": "Show less",
 		"hub.moreAuthors": "{count} more",
@@ -1539,7 +1565,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.escapeHint": "Press Esc to close",
 		"hub.batchSummary": "Not converted {unconverted} · Converted without translation {withoutTranslation} · Complete/legacy translation {translated} · Partly untranslated {partial}",
 		"hub.deleteSelected": "Reimport ({count} papers)",
-		"hub.deleteSelectedHint": "Reset outputs, Note and flags and read fresh data from Zotero; confirmation comes first",
+		"hub.deleteSelectedHint": "Keep notes and quick notes; reset outputs and flags and read fresh data from Zotero; confirmation comes first",
 		"hub.morePapers": "Another {count} papers",
 		"hub.collapseQueue": "Collapse task list",
 		"hub.expandQueue": "Expand task list",
@@ -1632,7 +1658,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.deleteTitle": "Reimport selected papers",
 		"batch.deleteIntro": "Reimport {count} papers",
 		"batch.deleteMore": "{count} more papers",
-		"batch.deleteDesc": "Source, translation, summary and Note files move to trash. Reading status and markers reset; old tasks are abandoned. Convert again after reimporting. Translation pages already used are not refunded.",
+		"batch.deleteDesc": "Notes and quick notes are kept. Source, translation and summary files move to trash. Reading status and markers reset; old tasks are abandoned. Convert again after reimporting. Translation pages already used are not refunded.",
 		"batch.deleteAction": "Reimport {count} papers",
 		"recovery.abandoned": "Task abandoned. Translation pages already used are not refunded.",
 		"recovery.paperName": "{name}",
@@ -2562,7 +2588,6 @@ const DEFAULT_SETTINGS = {
 	generateSummaryOnTranslate: false,
 	summaryDepth: "standard",
 	translationChineseThreshold: 0.35,
-	autoCreateNoteOutline: false,
 	readerTheme: "warm",
 	// T86-D-B：默认只作用于论文库。装上插件是为了读论文，不该把全库笔记的字体栏宽一起改掉。
 	// 只影响新安装——老用户的值早就存在 data.json 里。
@@ -2575,6 +2600,7 @@ const DEFAULT_SETTINGS = {
 	// T83-O：Hub 上次看到哪（分类 / 筛选 / 排序），下次打开照旧。纯 UI 状态，见 normalizeHubViewState。
 	hubViewState: { ...HUB_VIEW_STATE_DEFAULT },
 	hubReadAction: "translation",
+	paperNoteStyle: "blank",
 	onboarding: { ...DEFAULT_ONBOARDING_STATE },
 	// 侧边栏默认只放论文库这一个入口（T82-D）。对照阅读与 PDF 对照都是在论文里才用得上的动作，
 	// 在 Hub 和命令面板里都够得着；默认全塞进侧边栏只会让新装的插件占掉四格图标。
@@ -8604,6 +8630,14 @@ function positionHubFlagPopover(menu, anchor) {
 	menu.style.top = `${Math.max(gap, rect.bottom + height + gap <= win.innerHeight ? rect.bottom + gap : rect.top - height - gap)}px`;
 }
 
+// Both split-button menus use their full button group as the alignment/width anchor.
+function positionHubActionMenu(menu, anchor) {
+	const rect = anchor.getBoundingClientRect(), win = anchor.ownerDocument.defaultView, gap = 4;
+	menu.style.width = `${Math.min(rect.width, win.innerWidth - gap * 2)}px`;
+	menu.style.left = `${Math.max(gap, Math.min(rect.right - menu.offsetWidth, win.innerWidth - menu.offsetWidth - gap))}px`;
+	menu.style.top = `${Math.max(gap, rect.bottom + menu.offsetHeight + gap <= win.innerHeight ? rect.bottom + gap : rect.top - menu.offsetHeight - gap)}px`;
+}
+
 function hubEntryMatchesQuery(entry, query) {
 	const text = String(query || "").trim().toLowerCase();
 	if (!text) return true;
@@ -10473,13 +10507,15 @@ function splitExternalDuplicateTasks(tasks, records) {
 
 function extractMarkdownHeadingOutline(mdContent) {
 	const headings = [];
-	let inFence = false;
-	for (const line of String(mdContent || "").split(/\r?\n/)) {
-		if (/^\s{0,3}(```|~~~)/.test(line)) {
-			inFence = !inFence;
+	let fence = null;
+	for (const raw of stripYamlFrontmatterPrefix(String(mdContent || "")).split(/\r?\n/)) {
+		const marker = raw.match(/^\s{0,3}(`{3,}|~{3,})(.*)$/);
+		if (marker && (!fence || (marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()))) {
+			fence = fence ? null : marker[1];
 			continue;
 		}
-		if (inFence) continue;
+		if (fence) continue;
+		const line = raw.replace(/[ \t]+\^rc-[a-zA-Z0-9-]+[ \t]*$/, "");
 		const heading = line.match(/^\s{0,3}(#{1,6})(?!#)[ \t]*(.*?)\s*$/);
 		if (heading && heading[2].trim()) headings.push(line.trim());
 	}
@@ -11955,6 +11991,11 @@ class RectoPlugin extends obsidian.Plugin {
 		let migrated = false;
 		if (d) {
 			this.settings = { ...DEFAULT_SETTINGS, ...d.settings };
+			this.settings.paperNoteStyle = this.getPaperNoteStyle();
+			if (Object.prototype.hasOwnProperty.call(this.settings, "autoCreateNoteOutline")) {
+				delete this.settings.autoCreateNoteOutline;
+				migrated = true;
+			}
 			if (!this.settings.documentLanguages && !this.settings.documentLanguageLegacy) this.settings.documentLanguageLegacy = {
 				backendOutputLanguage: d.settings && d.settings.backendOutputLanguage,
 				backendTranslationTargetLanguage: d.settings && d.settings.backendTranslationTargetLanguage,
@@ -14320,7 +14361,10 @@ class RectoPlugin extends obsidian.Plugin {
 		} else if (rightLeaf) {
 			leftLeaf = this.splitRectoLeaf(rightLeaf, true);
 		} else {
-			leftLeaf = activeLeaf || this.app.workspace.getLeaf(false);
+			// A comparison may start while an unrelated note is active. Never replace it.
+			const activePath = activeLeaf?.view?.file?.path;
+			leftLeaf = activePath === leftFile.path || activePath === rightFile.path
+				? activeLeaf : this.app.workspace.getLeaf("tab");
 			rightLeaf = this.splitRectoLeaf(leftLeaf, false);
 		}
 		await this.ensureRectoLeafFile(leftLeaf, leftFile);
@@ -15249,6 +15293,24 @@ class RectoPlugin extends obsidian.Plugin {
 
 	registerPaperJsonlWatchers() {
 		const vault = this.app.vault;
+		const refreshNotes = file => {
+			if (String(file?.name || "").startsWith(NOTE_FILE_PREFIX)) this.refreshHubViews({ paperNotes: true });
+		};
+		this.registerEvent(vault.on("create", refreshNotes));
+		this.registerEvent(vault.on("delete", refreshNotes));
+		this.registerEvent(vault.on("rename", (file, oldPath) => {
+			if (String(oldPath || "").split("/").pop().startsWith(NOTE_FILE_PREFIX)) this.refreshHubViews({ paperNotes: true });
+			else refreshNotes(file);
+		}));
+		const refreshOutline = (file, oldPath) => {
+			if (this.getPaperNoteStyle() !== "outline") return;
+			for (const view of this.getOpenHubViews()) {
+				const entry = view.getSelectedEntry?.();
+				const paths = [entry?.sourcePath, entry?.translationPath].filter(Boolean);
+				if (paths.includes(file?.path) || (oldPath && paths.includes(oldPath))) view.refreshPaperNoteActions({ invalidateOutline: true });
+			}
+		};
+		for (const event of ["create", "modify", "delete", "rename"]) this.registerEvent(vault.on(event, refreshOutline));
 		this.registerEvent(vault.on("create", file => this.schedulePaperJsonlRefresh(file && file.path)));
 		this.registerEvent(vault.on("modify", file => this.schedulePaperJsonlRefresh(file && file.path)));
 		this.registerEvent(vault.on("delete", file => this.schedulePaperJsonlRefresh(file && file.path)));
@@ -16673,7 +16735,8 @@ class RectoPlugin extends obsidian.Plugin {
 	// 否则用户在 Hub 里点了转换，界面上什么都不会变（T81 第二轮）。
 	refreshHubViews(options = {}) {
 		for (const view of this.getOpenHubViews()) {
-			if (options.paperFlags && typeof view.refreshPaperFlags === "function") view.refreshPaperFlags(options.paperFlags);
+			if (options.paperNotes && typeof view.refreshPaperNoteActions === "function") view.refreshPaperNoteActions();
+			else if (options.paperFlags && typeof view.refreshPaperFlags === "function") view.refreshPaperFlags(options.paperFlags);
 			else if (typeof view.reload === "function") view.reload();
 		}
 	}
@@ -16688,6 +16751,7 @@ class RectoPlugin extends obsidian.Plugin {
 	getHubNotesStore() {
 		if (!this.hubNotesStore) {
 			this.hubNotesStore = new RectoHubNotesStore(recordId => {
+				if (this.settings?.paperReimport?.recordId === recordId) throw new Error("Paper notes are being moved");
 				const path = this.getHubNotesPath(recordId);
 				let text;
 				try { text = fs.readFileSync(path, "utf8"); }
@@ -16877,7 +16941,12 @@ class RectoPlugin extends obsidian.Plugin {
 	async openHubPaper(entry, action) {
 		if (!entry) return false;
 		if (action === "pdf-compare" || action === "dual-pane") {
-			if (!await this.openHubPaper(entry, "translation")) return false;
+			// Comparison owns its split layout. Reuse only this paper's translation, never another file.
+			const translation = this.app.vault.getAbstractFileByPath(entry.translationPath);
+			if (!(translation instanceof obsidian.TFile)) return false;
+			const leaf = this.findRectoOpenLeaf(translation.path) || this.getHubOpenLeaf(translation);
+			await leaf.openFile(translation, { active: true });
+			if (typeof this.app.workspace.revealLeaf === "function") this.app.workspace.revealLeaf(leaf);
 			if (action === "pdf-compare") await this.startRectoPdfCompare();
 			else await this.startRectoDualPane();
 			return true;
@@ -16896,11 +16965,7 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	getHubOpenLeaf(file) {
-		const workspace = this.app.workspace;
-		const type = String(file.extension || "").toLowerCase() === "pdf" ? "pdf" : "markdown";
-		const leaves = typeof workspace.getLeavesOfType === "function" ? workspace.getLeavesOfType(type) : [];
-		const reusable = (leaves || []).find(leaf => leaf && leaf.view);
-		return reusable || workspace.getLeaf("tab");
+		return this.app.workspace.getLeaf("tab");
 	}
 
 	preflightTrashRecords(recordIds) {
@@ -17111,30 +17176,96 @@ class RectoPlugin extends obsidian.Plugin {
 		return await fs.promises.readFile(absPath, "utf8");
 	}
 
-	async createNoteFramework(outputFolder, stem, sourceText, translatedText, log, operation = this.operationScope?.getStore()) {
-		if (!this.settings.autoCreateNoteOutline) return { status: "disabled" };
-		const notePath = nodePath.join(outputFolder, getNoteFileName(stem));
+	getPaperNotePath(recordId) {
+		const info = this.folderMap?.[recordId];
+		if (!info?.stem) throw new Error(rectoUiText("hub.fileMissing"));
+		return documentArtifactPath(this.getPaperSubFolder(info.stem), info.stem, "note");
+	}
+
+	getPaperNoteStyle() {
+		return this.settings.paperNoteStyle === "outline" ? "outline" : "blank";
+	}
+
+	async setPaperNoteStyle(style) {
+		const next = style === "outline" ? "outline" : "blank";
+		this.paperNoteStyleSaving = (this.paperNoteStyleSaving || 0) + 1;
+		const pending = this.save(() => {
+			const previous = this.settings.paperNoteStyle;
+			this.settings.paperNoteStyle = next;
+			this.refreshHubViews({ paperNotes: true });
+			return () => { this.settings.paperNoteStyle = previous; };
+		});
+		this.paperNoteStyleSavePromise = pending;
 		try {
-			if (this.outputPathExists(notePath)) {
-				if (log) log(`  ↷ 笔记框架已存在，跳过: ${notePath}`);
-				return { status: "skipped", reason: "exists", path: notePath };
-			}
-			let outlineSource = typeof translatedText === "string" ? translatedText : null;
-			if (outlineSource === null) {
-				const translationPath = nodePath.join(outputFolder, getChineseMarkdownFileName(stem));
-				outlineSource = await this.readOutputTextIfExists(translationPath);
-			}
-			const content = extractMarkdownHeadingOutline(
-				outlineSource === null ? sourceText : outlineSource
-			);
-			await this.writeOutputText(notePath, content, operation);
-			if (log) log(`  ✓ 笔记框架已创建: ${notePath}`);
-			return { status: "created", path: notePath };
-		} catch (e) {
-			const reason = getSanitizedErrorMessage(e);
-			if (log) log(`  ⚠ 笔记框架创建失败: ${reason}`);
-			return { status: "error", reason, path: notePath };
+			await pending;
+		} finally {
+			this.paperNoteStyleSaving--;
+			if (this.paperNoteStyleSavePromise === pending) this.paperNoteStyleSavePromise = null;
+			this.refreshHubViews({ paperNotes: true });
 		}
+	}
+
+	async readPaperNoteOutline(recordId) {
+		const entry = this.getHubEntries([recordId])[0];
+		const path = entry?.translationPath || entry?.sourcePath;
+		const file = path && this.app.vault.getAbstractFileByPath(path);
+		if (!(file instanceof obsidian.TFile)) return { content: "", description: rectoUiText("hub.paperNote.convertFirst") };
+		const markdown = await this.app.vault.read(file);
+		const content = extractMarkdownHeadingOutline(markdown);
+		if (!content) return { content: "", description: rectoUiText("hub.paperNote.noHeadings") };
+		const translated = !!entry.translationPath;
+		const sourceRecord = this.settings.documentArtifacts?.[entry.sourcePath];
+		const language = normalizeDocumentLanguage(translated
+			? migrateDocumentLanguages(this.settings).translationTarget
+			: sourceRecord?.sourceLanguage || this.folderMap[recordId]?.sourceLanguage
+				|| parseSimpleFrontmatter(markdown)["recto-source-language"])
+			|| (!translated ? detectDocumentSourceLanguage(markdown).language : null);
+		let name = language?.name || "";
+		if (language && !language.id.startsWith("custom-")) {
+			name = new Intl.DisplayNames([activeRectoUiLocale === "en" ? "en" : "zh-CN"], { type: "language" }).of(language.id);
+		}
+		return { content, description: rectoUiText(translated ? "hub.paperNote.translation" : "hub.paperNote.source",
+			{ language: name ? (activeRectoUiLocale === "en" ? ` · ${name}` : name) : "" }) };
+	}
+
+	async openPaperNote(recordId, style = this.getPaperNoteStyle()) {
+		// One creation/open per in-flight click sequence, shared across Hub views.
+		this.paperNotePromises ||= new Map();
+		if (this.paperNotePromises.has(recordId)) return this.paperNotePromises.get(recordId);
+		const work = (async () => {
+			const vault = this.app.vault;
+			let path = this.getPaperNotePath(recordId);
+			let file = vault.getAbstractFileByPath(path);
+			let created = false;
+			if (!file) {
+				await this.withTaskResources({ recordId }, async operation => {
+					if (this.settings.paperReimport?.recordId === recordId) throw new Error(rectoUiText("reimport.taskRunning"));
+					path = this.getPaperNotePath(recordId);
+					file = vault.getAbstractFileByPath(path);
+					if (file) return;
+					const outline = style === "outline" ? await this.readPaperNoteOutline(recordId) : null;
+					if (outline && !outline.content) throw new Error(outline.description);
+					this.throwIfUnloaded(operation);
+					await this.ensureFolder(this.getPaperSubFolder(this.folderMap[recordId].stem));
+					this.throwIfUnloaded(operation);
+					// Recheck after I/O; create never modifies an existing note, including an empty one.
+					file = vault.getAbstractFileByPath(path);
+					if (!file) {
+						try { file = await vault.create(path, outline?.content || ""); created = true; }
+						catch (error) { file = vault.getAbstractFileByPath(path); if (!(file instanceof obsidian.TFile)) throw error; }
+					}
+				}, { independent: true });
+			}
+			if (!(file instanceof obsidian.TFile)) throw new Error(rectoUiText("hub.fileMissing"));
+			const leaf = this.getHubOpenLeaf(file);
+			await leaf.openFile(file, { active: true, ...(created ? { state: { mode: "source" } } : {}) });
+			if (typeof this.app.workspace.revealLeaf === "function") this.app.workspace.revealLeaf(leaf);
+			if (created) leaf.view?.editor?.focus();
+			return { file, created };
+		})();
+		this.paperNotePromises.set(recordId, work);
+		try { return await work; }
+		finally { this.paperNotePromises.delete(recordId); this.refreshHubViews({ paperNotes: true }); }
 	}
 
 	hasConvertedOutput(recordId) {
@@ -18210,17 +18341,6 @@ class RectoPlugin extends obsidian.Plugin {
 				translationWritten = true;
 				log(`  保存译文: ${translationPath}`);
 			}
-		}
-
-		const adapterBasePath = this.app.vault.adapter && this.app.vault.adapter.basePath;
-		if (adapterBasePath) {
-			await this.createNoteFramework(
-				nodePath.join(adapterBasePath, ...subFolder.split("/")),
-				stem,
-				mdText,
-				translationText,
-				log, operation
-			);
 		}
 
 		let pdfDest = "";
@@ -19534,10 +19654,16 @@ class RectoPlugin extends obsidian.Plugin {
 			const newPath = this.getPaperSubFolder(journal.newStem);
 			// staging 消失表示新目录已就位；恢复到 staging 后此步骤也可重复执行。
 			if (!await vault.adapter.exists(`${root}/new`)) await this.moveReimportPath(newPath, `${root}/new`);
+			if (journal.preserveNotes && await vault.adapter.exists(`${root}/old`)) {
+				await this.moveReimportNotes(`${root}/new`, `${root}/old`, journal.newStem, journal.oldStem);
+			}
 			await this.moveReimportPath(`${root}/old`, this.getPaperSubFolder(journal.oldStem));
 			const base = this.getValidatedBaseFolder();
 			await this.moveReimportPath(`${root}/legacy`, getLegacyPaperFolderVaultPath(base, journal.oldStem));
 			await this.moveReimportPath(`${root}/summary`, getLegacySummaryVaultPath(base, journal.oldStem));
+		}
+		if (committed && journal.preserveNotes && await vault.adapter.exists(`${root}/old`)) {
+			await this.moveReimportNotes(`${root}/old`, this.getPaperSubFolder(journal.newStem), journal.oldStem, journal.newStem);
 		}
 		if (await vault.adapter.exists(root)) {
 			const folder = vault.getAbstractFileByPath(root);
@@ -19549,6 +19675,19 @@ class RectoPlugin extends obsidian.Plugin {
 		delete this.settings.paperReimport;
 		try { await this.save(); }
 		catch (error) { this.settings.paperReimport = journal; throw error; }
+		// A draft typed during the move stays in the store; retry only after its path is stable.
+		if (journal.preserveNotes) this.hubNotesStore?.flush(journal.recordId);
+	}
+
+	async moveReimportNotes(fromFolder, toFolder, fromStem, toStem) {
+		const pairs = [[getNoteFileName(fromStem), getNoteFileName(toStem)],
+			[`recto/${HUB_NOTES_FILE}`, `recto/${HUB_NOTES_FILE}`]];
+		for (const [from, to] of pairs) {
+			if (!await this.app.vault.adapter.exists(`${fromFolder}/${from}`)) continue;
+			const destination = `${toFolder}/${to}`;
+			await this.ensureFolder(destination.slice(0, destination.lastIndexOf("/")));
+			await this.moveReimportPath(`${fromFolder}/${from}`, destination);
+		}
 	}
 
 	async reimportPaperRecord(recordId, source) {
@@ -19573,7 +19712,7 @@ class RectoPlugin extends obsidian.Plugin {
 		delete otherRecords[recordId];
 		const stem = this.allocateUniquePaperStem(stripHubTitleMarkup(source.zoteroTitle) || nodePath.basename(source.name, ".pdf"), recordId, otherRecords,
 			{ canReclaimFolder: candidate => candidate === old.stem });
-		const journal = { id: crypto.randomBytes(12).toString("hex"), recordId, oldStem: old.stem, newStem: stem, newDocumentId: createRectoDocumentId() };
+		const journal = { id: crypto.randomBytes(12).toString("hex"), recordId, oldStem: old.stem, newStem: stem, newDocumentId: createRectoDocumentId(), preserveNotes: true };
 		const root = this.getPaperSubFolder(`recto-reimport-${journal.id}`);
 		const vault = this.app.vault;
 		const paperPath = this.getPaperSubFolder(old.stem);
@@ -19592,6 +19731,7 @@ class RectoPlugin extends obsidian.Plugin {
 			await this.moveReimportPath(getLegacyPaperFolderVaultPath(this.getValidatedBaseFolder(), old.stem), `${root}/legacy`);
 			await this.moveReimportPath(getLegacySummaryVaultPath(this.getValidatedBaseFolder(), old.stem), `${root}/summary`);
 			await this.moveReimportPath(`${root}/new`, newPath);
+			await this.moveReimportNotes(`${root}/old`, newPath, old.stem, stem);
 			let snapshot;
 			await this.save(() => {
 				snapshot = { folderMap: this.folderMap, convertedFolders: this.convertedFolders, pendingBackendTasks: this.pendingBackendTasks,
@@ -19634,7 +19774,6 @@ class RectoPlugin extends obsidian.Plugin {
 					this.pendingBackendTasks = rollbackPendingBackendTaskChanges(this.pendingBackendTasks, snapshot.pendingBackendTasks, applied.pendingBackendTasks, taskIds);
 				};
 			});
-			if (this.hubNotesStore) this.hubNotesStore.forget(recordId);
 			if (snapshot.compareSessions?.dualPane && !this.compareSessions.dualPane) this.stopRectoDualPane(false);
 			if (snapshot.compareSessions?.pdfCompare && !this.compareSessions.pdfCompare) this.stopRectoPdfCompare(false);
 			this.alignmentSectionCache = null;
@@ -21119,9 +21258,9 @@ function createRectoHubViewClass(api) {
 			const store = this.plugin.getHubNotesStore();
 			const value = store.get(entry.recordId);
 			const section = this.detailEl.createEl("section", { cls: "recto-hub-note" });
-			section.createDiv({ cls: "recto-hub-note-heading" }).createSpan({ text: "Note" });
+			section.createDiv({ cls: "recto-hub-note-heading" }).createSpan({ text: rectoUiText("hub.quickNote") });
 			const input = section.createDiv({ cls: "recto-hub-note-input", text: value.notes,
-				attr: { contenteditable: "plaintext-only", role: "textbox", "aria-label": "Note", "aria-multiline": "true", "data-placeholder": rectoUiText("hub.notePlaceholder") } });
+				attr: { contenteditable: "plaintext-only", role: "textbox", "aria-label": rectoUiText("hub.quickNote"), "aria-multiline": "true", "data-placeholder": rectoUiText("hub.notePlaceholder") } });
 			input.spellcheck = false;
 			const status = section.createDiv({ cls: "recto-hub-note-status", attr: { "aria-live": "polite" } });
 			const editor = { recordId: entry.recordId, input, status, editing: false, composing: false, base: value.notes };
@@ -21199,11 +21338,6 @@ function createRectoHubViewClass(api) {
 			const hasAnything = entry.translationPath || entry.sourcePath || entry.summaryPath || entry.pdfPath;
 			if (!hasAnything) {
 				this.detailEl.createDiv({ cls: "recto-hub-empty", text: rectoUiText("hub.noOpenFile") });
-				// 一个文件都没有的论文对象更该删得掉，所以空态也要留着垃圾桶。
-				// 图标样式挂在 .recto-hub-detail-actions 的后代选择器上，容器不能省。
-				const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
-				this.renderDeleteIcon(actions.createDiv({ cls: "recto-hub-detail-icons" }));
-				return;
 			}
 			const actions = existing || this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
 			actions.empty();
@@ -21229,6 +21363,7 @@ function createRectoHubViewClass(api) {
 					if (!this.readMenuCleanup) this.openReadMenu(entry, state, actions, split, toggle);
 				});
 			}
+			this.renderPaperNoteActions(entry, actions.createDiv({ cls: "recto-hub-paper-note-actions" }));
 			const icons = actions.createDiv({ cls: "recto-hub-detail-icons" });
 			const addIcon = (action, iconName, title, enabled) => {
 				if (!enabled) return;
@@ -21253,60 +21388,195 @@ function createRectoHubViewClass(api) {
 			this.renderDeleteIcon(icons);
 		}
 
+		getPaperNoteOutlinePreview(entry) {
+			const key = JSON.stringify([entry.recordId, entry.sourcePath, entry.translationPath, this.plugin.settings.baseFolder,
+				this.plugin.settings.documentLanguages?.translationTarget, this.plugin.settings.backendTranslationTargetLanguage, activeRectoUiLocale]);
+			if (this.paperNoteOutlinePreview?.key !== key) this.paperNoteOutlinePreview = { key, result: null, promise: null };
+			return this.paperNoteOutlinePreview;
+		}
+
+		readPaperNoteOutlinePreview(entry) {
+			const preview = this.getPaperNoteOutlinePreview(entry);
+			if (!preview.promise) preview.promise = this.plugin.readPaperNoteOutline(entry.recordId).then(result => {
+				preview.result = result; return result;
+			}, () => {
+				preview.failed = true;
+				preview.result = { content: "", description: rectoUiText("hub.paperNote.readFailed") };
+				return preview.result;
+			});
+			return preview.promise;
+		}
+
+		renderPaperNoteActions(entry, container) {
+			// Keep controls alive while changing style; text updates must not rebuild or fade the button.
+			if (typeof this.plugin.getPaperNotePath !== "function") return;
+			let path;
+			try { path = this.plugin.getPaperNotePath(entry.recordId); } catch { container.empty(); return; }
+			const exists = !!this.plugin.app.vault.getAbstractFileByPath(path);
+			const busy = !!(this.plugin.paperNotePromises?.has(entry.recordId) || this.plugin.settings.paperReimport?.recordId === entry.recordId);
+			const style = this.plugin.getPaperNoteStyle();
+			let controls = container.rectoNoteControls;
+			if (!controls || controls.recordId !== entry.recordId || controls.path !== path || !container.contains(controls.split)) {
+				container.empty();
+				const split = container.createDiv({ cls: "recto-hub-note-split" });
+				const primary = split.createEl("button", { cls: "recto-hub-note-primary" });
+				const icon = primary.createSpan({ cls: "rc-icon" }), text = primary.createSpan();
+				primary.addEventListener("click", () => { void this.runPaperNoteAction(entry); });
+				controls = container.rectoNoteControls = { recordId: entry.recordId, path, split, primary, icon, text, revision: 0 };
+			}
+			const { split, primary } = controls, revision = ++controls.revision;
+			split.toggleClass("has-note", exists);
+			const label = rectoUiText(exists ? "hub.paperNote.open" : style === "outline" ? "hub.paperNote.createOutline" : "hub.paperNote.createBlank");
+			if (controls.text.textContent !== label) controls.text.setText(label);
+			primary.setAttribute("aria-label", label);
+			if (controls.exists !== exists) {
+				setChromeIcon(controls.icon, exists ? "square-pen" : "plus"); controls.exists = exists;
+			}
+			const setAvailability = result => {
+				if (!split.isConnected || controls.revision !== revision) return;
+				const unavailable = !exists && style === "outline" && !result?.content;
+				const disabled = busy || unavailable;
+				if (primary.disabled !== disabled) primary.disabled = disabled;
+				primary.title = unavailable ? result?.description || rectoUiText("hub.paperNote.loading") : label;
+			};
+			if (exists) {
+				controls.toggle?.remove(); controls.toggle = null; setAvailability(null); return;
+			}
+			if (!controls.toggle) {
+				const toggle = controls.toggle = split.createEl("button", { cls: "recto-hub-note-toggle",
+					attr: { title: rectoUiText("hub.paperNote.choose"), "aria-label": rectoUiText("hub.paperNote.choose"), "aria-haspopup": "menu", "aria-expanded": "false" } });
+				setChromeIcon(toggle.createSpan({ cls: "rc-icon" }), "chevron-down");
+				toggle.addEventListener("click", () => {
+					if (this.readMenuCleanup) this.closeReadMenu();
+					else void this.openPaperNoteMenu(entry, toggle);
+				});
+				toggle.addEventListener("keydown", event => {
+					if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+					event.preventDefault(); event.stopPropagation(); void this.openPaperNoteMenu(entry, toggle);
+				});
+			}
+			if (controls.toggle.disabled !== busy) controls.toggle.disabled = busy;
+			const preview = this.getPaperNoteOutlinePreview(entry);
+			setAvailability(preview.result);
+			if (style === "outline" && !busy && !preview.result) void this.readPaperNoteOutlinePreview(entry).then(setAvailability);
+		}
+
+		refreshPaperNoteActions(options = {}) {
+			if (options.invalidateOutline) this.paperNoteOutlinePreview = null;
+			const container = this.detailEl?.querySelector(".recto-hub-paper-note-actions");
+			const entry = this.getSelectedEntry();
+			if (!container || !entry) return;
+			this.closeReadMenu();
+			this.renderPaperNoteActions(entry, container);
+		}
+
+		async runPaperNoteAction(entry, style) {
+			this.closeReadMenu();
+			try {
+				// A click during preference persistence waits without visually disabling the button.
+				if (this.plugin.paperNoteStyleSavePromise) await this.plugin.paperNoteStyleSavePromise;
+				const opening = this.plugin.openPaperNote(entry.recordId, style);
+				this.refreshPaperNoteActions();
+				await opening;
+			} catch (error) {
+				showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("hub.paperNote.failed")), { tone: "error" });
+			} finally { this.refreshPaperNoteActions(); }
+		}
+
+		async openPaperNoteMenu(entry, toggle) {
+			const preference = this.plugin.getPaperNoteStyle();
+			if (this.getPaperNoteOutlinePreview(entry).failed) this.paperNoteOutlinePreview = null;
+			const preview = this.getPaperNoteOutlinePreview(entry);
+			const picker = this.openActionMenu(toggle, rectoUiText("hub.paperNote.choose"), [
+				{ id: "blank", icon: "file", label: rectoUiText("hub.paperNote.blank"), selected: preference === "blank" },
+				{ id: "outline", icon: "list-tree", label: rectoUiText("hub.paperNote.outline"), selected: preference === "outline",
+					disabled: !preview.result?.content, description: preview.result?.description || rectoUiText("hub.paperNote.loading") },
+			], async style => {
+				try { await this.plugin.setPaperNoteStyle(style); }
+				catch { showRectoNotice(rectoUiText("hub.paperNote.preferenceFailed"), { tone: "error" }); }
+				if (this.getSelectedEntry()?.recordId === entry.recordId && toggle.ownerDocument.activeElement === toggle.ownerDocument.body) {
+					this.detailEl.querySelector(".recto-hub-note-toggle")?.focus();
+				}
+			}, "recto-hub-paper-note-menu");
+			try {
+				const result = await this.readPaperNoteOutlinePreview(entry);
+				picker.update("outline", { disabled: !result.content, description: result.description });
+			} catch { picker.update("outline", { disabled: true, description: rectoUiText("hub.paperNote.readFailed") }); }
+		}
+
 		closeReadMenu(focus = false) {
 			if (this.readMenuCleanup) this.readMenuCleanup(focus);
 		}
 
-		openReadMenu(entry, state, actions, split, toggle) {
-			this.closeFlagMenu();
-			this.closeReadMenu();
-			const menu = split.createDiv({ cls: "recto-hub-read-menu", attr: { role: "menu", "aria-label": rectoUiText("hub.chooseReadAction") } });
-			const doc = toggle.ownerDocument;
-			toggle.setAttribute("aria-expanded", "true");
-			const enabled = [];
-			for (const action of HUB_READ_ACTIONS) {
-				const selected = action === state.primary;
-				const item = menu.createEl("button", { cls: selected ? "is-selected" : "", attr: { role: "menuitemradio", "aria-checked": String(selected), tabindex: "-1" } });
-				item.disabled = !state.available.includes(action);
-				item.setAttribute("aria-disabled", String(item.disabled));
-				setChromeIcon(item.createSpan({ cls: "rc-icon" }), HUB_READ_ICONS[action]);
-				item.createSpan({ text: rectoUiText(`hub.readChoice.${action}`) });
-				if (selected) setChromeIcon(item.createSpan({ cls: "rc-icon recto-hub-read-check" }), "check");
-				if (!item.disabled) enabled.push(item);
+		// One selection-only menu for reading and note style; execution stays on the primary button.
+		openActionMenu(toggle, label, choices, onSelect, extraClass = "") {
+			this.closeFlagMenu(); this.closeReadMenu();
+			const doc = toggle.ownerDocument, anchor = toggle.parentElement;
+			const host = doc.body.createDiv({ cls: "recto-ui recto-hub-action-menu-host" });
+			const menu = host.createDiv({ cls: `recto-hub-read-menu ${extraClass}`.trim(), attr: { role: "menu", "aria-label": label } });
+			const entries = new Map();
+			const position = () => positionHubActionMenu(menu, anchor);
+			for (const choice of choices) {
+				const item = menu.createEl("button", { cls: choice.selected ? "is-selected" : "",
+					attr: { role: "menuitemradio", "aria-checked": String(!!choice.selected), tabindex: "-1" } });
+				setChromeIcon(item.createSpan({ cls: "rc-icon" }), choice.icon);
+				const copy = item.createSpan({ cls: "recto-hub-menu-copy" });
+				copy.createSpan({ text: choice.label });
+				const mark = item.createSpan({ cls: "rc-icon recto-hub-read-check" });
+				if (choice.selected) setChromeIcon(mark, "check");
+				item.disabled = !!choice.disabled; item.setAttribute("aria-disabled", String(item.disabled));
+				item.title = item.disabled ? choice.description || "" : "";
+				entries.set(choice.id, { item });
 				item.addEventListener("click", event => {
 					event.stopPropagation();
 					if (item.disabled) return;
-					this.plugin.settings.hubReadAction = action;
 					this.closeReadMenu();
-					this.renderOpenActions(entry, actions);
-					actions.querySelector(".recto-hub-read-toggle").focus();
-					void this.plugin.save().catch(() => showRectoNotice(rectoUiText("hub.readPreferenceFailed"), { tone: "error" }));
+					void onSelect(choice.id);
 				});
 			}
+			toggle.setAttribute("aria-expanded", "true");
+			const outside = event => { if (!host.contains(event.target) && !toggle.contains(event.target)) this.closeReadMenu(); };
+			const scroll = event => { if (!host.contains(event.target)) this.closeReadMenu(); };
+			doc.addEventListener("pointerdown", outside, true); doc.addEventListener("focusin", outside);
+			doc.addEventListener("scroll", scroll, true);
+			this.readMenuCleanup = focus => {
+				doc.removeEventListener("pointerdown", outside, true); doc.removeEventListener("focusin", outside);
+				doc.removeEventListener("scroll", scroll, true); host.remove();
+				toggle.setAttribute("aria-expanded", "false"); this.readMenuCleanup = null;
+				if (focus && toggle.isConnected) toggle.focus();
+			};
 			menu.addEventListener("keydown", event => {
 				event.stopPropagation();
 				if (event.key === "Escape") { event.preventDefault(); this.closeReadMenu(true); return; }
 				if (event.key === "Tab") { this.closeReadMenu(true); return; }
 				if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
 				event.preventDefault();
-				const index = enabled.indexOf(doc.activeElement);
-				const next = event.key === "Home" ? 0 : event.key === "End" ? enabled.length - 1
-					: (index + (event.key === "ArrowDown" ? 1 : -1) + enabled.length) % enabled.length;
-				enabled[next]?.focus();
+				const items = Array.from(menu.querySelectorAll("button:not(:disabled)"));
+				const index = items.indexOf(doc.activeElement);
+				items[event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
 			});
-			const outside = event => { if (!split.contains(event.target)) this.closeReadMenu(); };
-			doc.addEventListener("pointerdown", outside, true);
-			doc.addEventListener("focusin", outside);
-			this.readMenuCleanup = focus => {
-				doc.removeEventListener("pointerdown", outside, true);
-				doc.removeEventListener("focusin", outside);
-				menu.remove();
-				toggle.setAttribute("aria-expanded", "false");
-				this.readMenuCleanup = null;
-				if (focus && toggle.isConnected) toggle.focus();
+			position();
+			(menu.querySelector('button[aria-checked="true"]:not(:disabled)') || menu.querySelector("button:not(:disabled)"))?.focus();
+			return {
+				update: (id, result) => {
+					if (!menu.isConnected) return;
+					const entry = entries.get(id); if (!entry) return;
+					entry.item.disabled = !!result.disabled; entry.item.setAttribute("aria-disabled", String(entry.item.disabled));
+					entry.item.title = entry.item.disabled ? result.description || "" : ""; position();
+				},
 			};
-			(enabled.find(item => item.getAttribute("aria-checked") === "true") || enabled[0])?.focus();
-			menu.scrollIntoView({ block: "nearest" });
+		}
+
+		openReadMenu(entry, state, actions, split, toggle) {
+			this.openActionMenu(toggle, rectoUiText("hub.chooseReadAction"), HUB_READ_ACTIONS.map(action => ({
+				id: action, icon: HUB_READ_ICONS[action], label: rectoUiText(`hub.readChoice.${action}`),
+				selected: action === state.primary, disabled: !state.available.includes(action),
+			})), action => {
+				this.plugin.settings.hubReadAction = action;
+				this.renderOpenActions(entry, actions);
+				actions.querySelector(".recto-hub-read-toggle").focus();
+				void this.plugin.save().catch(() => showRectoNotice(rectoUiText("hub.readPreferenceFailed"), { tone: "error" }));
+			});
 		}
 
 		// T83-O：单篇的删除排在图标行最右，与阅读动作隔开语义——它是危险动作，
@@ -25601,10 +25871,6 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			.setDesc(rectoUiText("settings.pdfCleanupDesc"))
 			.addToggle(t => t.setValue(s.enhancedPostprocess !== false)
 				.onChange(async value => { s.enhancedPostprocess = value; await this.plugin.save(); }));
-		new obsidian.Setting(container).setName(rectoUiText("settings.autoNote"))
-			.setDesc(rectoUiText("settings.autoNoteDesc"))
-			.addToggle(t => t.setValue(!!s.autoCreateNoteOutline)
-				.onChange(async value => { s.autoCreateNoteOutline = value; await this.plugin.save(); }));
 
 		container.createEl("h4", { text: rectoUiText("progress.translate") });
 		// 定点显示详略，避免重画设置页使开关失焦或高级设置重新折叠。
