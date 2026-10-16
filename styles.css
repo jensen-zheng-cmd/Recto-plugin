@@ -203,6 +203,51 @@
 	padding-top: var(--rc-gap-2);
 }
 
+/* Batch confirmation: a compact title, explanation and action group. */
+.modal.recto-decision-modal.recto-batch-confirm-modal {
+	width: var(--rc-confirm-width);
+	max-width: calc(100% - var(--rc-gap-4) * 2);
+	padding: calc(var(--rc-gap-4) + var(--rc-gap-2));
+	border-radius: var(--rc-radius-l);
+}
+
+.recto-batch-confirm-modal .modal-header {
+	margin: 0 0 var(--rc-gap-2);
+	padding: 0;
+}
+
+.recto-batch-confirm-modal .modal-title {
+	margin: 0;
+	padding-inline-end: var(--rc-gap-4);
+	font-family: var(--rc-font-heading);
+	font-size: var(--font-ui-large);
+	line-height: 1.35;
+}
+
+.recto-batch-confirm-modal .recto-decision-content {
+	margin: 0;
+	padding: 0;
+	gap: 0;
+}
+
+.recto-batch-confirm-modal .recto-decision-intro {
+	font-size: var(--font-ui-medium);
+}
+
+.recto-batch-confirm-modal .recto-decision-actions {
+	margin-top: calc(var(--rc-gap-4) + var(--rc-gap-2));
+	padding-top: 0;
+	gap: var(--rc-gap-3);
+}
+
+.recto-batch-confirm-modal .recto-decision-actions button {
+	min-width: calc(var(--rc-gap-4) * 5);
+	min-height: calc(var(--rc-gap-4) * 2 + var(--rc-gap-1));
+	height: auto;
+	padding: var(--rc-gap-2) var(--rc-gap-4);
+	border-radius: var(--rc-radius-m);
+}
+
 /* T85：只在首次安装出现的短引导。状态来自设置页同一份灯，不复制配置或处理界面。 */
 .modal.recto-onboarding-modal {
 	width: min(600px, calc(100vw - var(--rc-gap-4) * 2));
@@ -2179,6 +2224,7 @@ label.recto-sync-preview-row {
 	--rc-notice-warning: #f1ca79;
 	--rc-notice-error: #ff9c95;
 	--rc-gap-1: 4px;
+	--rc-confirm-width: 420px;
 	--rc-gap-2: 8px;
 	--rc-gap-3: 12px;
 	--rc-gap-4: 16px;

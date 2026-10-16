@@ -648,6 +648,14 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.quote": "本批预计消耗 {needed} 个翻译页；当前可用 {available} 页。",
 		"batch.shortfall": "本批预计消耗 {needed} 页；现有 {available} 页，还差 {shortfall} 页",
 		"batch.translateTitle": "批量翻译",
+		"batch.confirmTranslate": "翻译 {count} 篇论文？",
+		"batch.confirmConvert": "转换 {count} 篇论文？",
+		"batch.convertFirst": "未转换的论文将先转换。",
+		"batch.convertDescription": "将所选 PDF 转换为正文，完成后可在论文库中阅读。",
+		"batch.translateDescription": "将生成所选论文的译文，原文保留。",
+		"batch.convertTranslateDescription": "将先转换未处理的论文，再生成译文。",
+		"batch.startTranslate": "开始翻译",
+		"batch.startConvert": "开始转换",
 		"batch.translateIntro": "翻译 {count} 篇论文",
 		"batch.translateAction": "翻译 {count} 篇",
 		"batch.content": "处理内容：{content}。",
@@ -1642,6 +1650,14 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.quote": "Estimated use: {needed} translation pages. Available now: {available} pages.",
 		"batch.shortfall": "Estimated use: {needed} pages; {available} available; {shortfall} more needed",
 		"batch.translateTitle": "Translate selected papers",
+		"batch.confirmTranslate": "Translate {count} papers?",
+		"batch.confirmConvert": "Convert {count} papers?",
+		"batch.convertFirst": "Papers that need conversion will be converted first.",
+		"batch.convertDescription": "Convert the selected PDFs into text you can read in your paper library.",
+		"batch.translateDescription": "Create translations of the selected papers and keep the originals.",
+		"batch.convertTranslateDescription": "Convert papers that need it, then create their translations.",
+		"batch.startTranslate": "Start translation",
+		"batch.startConvert": "Start conversion",
 		"batch.translateIntro": "Translate {count} papers",
 		"batch.translateAction": "Translate {count} papers",
 		"batch.content": "Processing: {content}.",
@@ -12830,7 +12846,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 	openDecision(options) {
 		const requests = this.operationScope?.getStore()?.intakeRequests;
-		const waiting = [...(requests || [])].filter(([, item]) => !item.cancelled && !item.accepted);
+		const waiting = [...(requests || [])].filter(([, item]) => !item.awaitingConfirmation && !item.cancelled && !item.accepted);
 		for (const [recordId] of waiting) this.publishTaskWorkflow({ recordId }, { phase: "confirm" });
 		return new Promise(resolve => new RectoDecisionModal(this, options, resolve).open()).finally(() => {
 			for (const [recordId, item] of waiting) if (!item.cancelled && !item.accepted) this.publishTaskWorkflow({ recordId }, { phase: "prepare" });
@@ -13242,6 +13258,18 @@ class RectoPlugin extends obsidian.Plugin {
 		});
 	}
 
+	confirmHubTaskBatch(action, count, needsConversion = false) {
+		return this.openDecision(() => ({
+			variant: "batch-confirm",
+			title: rectoUiText(action === "translate" ? "batch.confirmTranslate" : "batch.confirmConvert", { count }),
+			intro: rectoUiText(action !== "translate" ? "batch.convertDescription" : needsConversion ? "batch.convertTranslateDescription" : "batch.translateDescription"),
+			actions: [
+				{ label: rectoUiText("dialog.cancel"), value: false },
+				{ label: rectoUiText(action === "translate" ? "batch.startTranslate" : "batch.startConvert"), value: true, cta: true },
+			],
+		}));
+	}
+
 	async runHubTaskIntake(action, entries, run) {
 		if (!entries.length) return;
 		const requests = this.hubTaskRequests ||= new Map();
@@ -13251,29 +13279,39 @@ class RectoPlugin extends obsidian.Plugin {
 			&& !this.hubReimportRecordIds?.has(entry.recordId)
 			&& this.settings?.paperReimport?.recordId !== entry.recordId);
 		if (!available.length) {
+			if (entries.some(entry => requests.get(entry.recordId)?.awaitingConfirmation)) return;
 			if (entries.some(entry => requests.has(entry.recordId) || this.hasPendingBackendTaskForRecord?.(entry.recordId) || (this.localTaskIntents || []).some(item => item.task.recordId === entry.recordId))) this.showTaskReceipt(action, true);
 			else showRectoNotice(rectoUiText("feedback.unavailable"), { tone: "attention" });
 			return;
 		}
 		const selected = new Map();
 		for (const entry of available) {
-			const request = { name: entry.titleOriginal || entry.recordId, action, cancelled: false, accepted: false };
-			this.taskFeedback?.recent.delete(entry.recordId);
+			const request = { name: entry.titleOriginal || entry.recordId, action, cancelled: false, accepted: false, awaitingConfirmation: available.length > 1 };
 			requests.set(entry.recordId, request); selected.set(entry.recordId, request);
-			this.publishTaskWorkflow({ recordId: entry.recordId, name: request.name, requestTranslation: action === "translate",
-				translateOnly: action === "translate" && entry.conversionStatus === "converted", requestSummary: action === "translate" && this.settings.generateSummaryOnTranslate }, { phase: "prepare", reset: true });
 		}
-		this.notifyTaskQueueChanged();
 		try {
 			await this.withOperationContext("hub-task-intake", async operation => {
 				operation.intakeOnly = true;
 				operation.intakeRequests = selected;
 				for (const request of selected.values()) request.operation = operation;
+				// Reserve the selection immediately, but keep unconfirmed requests out of task feedback.
+				if (available.length > 1 && !(await this.confirmHubTaskBatch(action, available.length,
+					available.some(entry => entry.conversionStatus !== "converted")))) return;
+				this.throwIfUnloaded(operation);
+				for (const entry of available) {
+					const request = selected.get(entry.recordId);
+					if (request.cancelled) continue;
+					request.awaitingConfirmation = false;
+					this.taskFeedback?.recent.delete(entry.recordId);
+					this.publishTaskWorkflow({ recordId: entry.recordId, name: request.name, requestTranslation: action === "translate",
+						translateOnly: action === "translate" && entry.conversionStatus === "converted", requestSummary: action === "translate" && operation.processingChoices.requestSummary }, { phase: "prepare", reset: true });
+				}
+				this.notifyTaskQueueChanged();
 				// Let the preparing row paint before PDF inspection / hashing starts.
 				await new Promise(resolve => setTimeout(resolve, 30));
 				this.throwIfUnloaded(operation);
 				const ids = [...selected].filter(([, item]) => !item.cancelled).map(([id]) => id);
-				if (ids.length) await run(ids, operation);
+				if (ids.length) await run(ids, operation, { batchConfirmed: true });
 			}, { independent: true });
 		} catch (error) {
 			if (!this.isUnloading && ![...selected.values()].every(item => item.cancelled) && !isCancellationError(error)) showRectoNotice(getUserFacingErrorMessage(error), { tone: "error" });
@@ -19251,10 +19289,10 @@ class RectoPlugin extends obsidian.Plugin {
 	 */
 	async runHubTranslateForRecords(recordIds, options = {}) {
 		return await this.withOperationContext("runHubTranslateForRecords", op => { op.intakeOnly = true;
-			return this.runHubTranslateForRecordsScoped(recordIds, op); }, { operation: options.operation });
+			return this.runHubTranslateForRecordsScoped(recordIds, op, options); }, { operation: options.operation });
 	}
 
-	async runHubTranslateForRecordsScoped(recordIds, operation = this.operationScope?.getStore()) {
+	async runHubTranslateForRecordsScoped(recordIds, operation = this.operationScope?.getStore(), options = {}) {
 		if (!(await this.ensureCloudProcessingConsent({ interactive: true }))) {
 			await this.diagnosticExit("CLOUD_CONSENT_DECLINED", "cancelled");
 
@@ -19333,20 +19371,9 @@ class RectoPlugin extends obsidian.Plugin {
 			return null;
 		}
 		const count = tasks.length + needConversion.length;
-		if (count > 1 && !(await this.openDecision(() => ({
-			title: needConversion.length ? rectoUiText("batch.convertTranslateTitle") : rectoUiText("batch.translateTitle"),
-			intro: rectoUiText("batch.translateIntro", { count }),
-			details: [
-				...(needConversion.length ? [rectoUiText("batch.convertIntro", { count: needConversion.length })] : []),
-				...(quote.active && quotedPages > 0 ? [rectoUiText("batch.quote", { needed: formatTranslationPages(quotedPages), available: formatTranslationPages(quote.available) })] : []),
-				...(describeBackendAccountView(this.settings).creditPackMode ? [rectoUiText("batch.freeTranslate")] : []),
-				...(needConversion.length ? [rectoUiText("batch.rights")] : []),
-			],
-			actions: [
-				{ label: rectoUiText("dialog.cancel"), value: false },
-				{ label: rectoUiText("batch.translateAction", { count }), value: true, cta: true },
-			],
-		})))) { await this.diagnosticExit("USER_CANCELLED", "cancelled"); return null; }
+		if (!options.batchConfirmed && count > 1 && !(await this.confirmHubTaskBatch("translate", count, needConversion.length > 0))) {
+			await this.diagnosticExit("USER_CANCELLED", "cancelled"); return null;
+		}
 		this.throwIfUnloaded(operation);
 		if (needConversion.length) await this.runHubBatchForRecords(needConversion, {
 			requestTranslation: true, ...summaryOptions, ...batchOptions,
@@ -22366,7 +22393,7 @@ function createRectoHubViewClass(api) {
 				showRectoNotice(rectoUiText("hub.allConverted"), { tone: "attention" });
 				return;
 			}
-			return this.plugin.runHubTaskIntake("convert", pending, (ids, operation) => this.plugin.runHubBatchForRecords(ids, { requestTranslation: false, operation }));
+			return this.plugin.runHubTaskIntake("convert", pending, (ids, operation, options) => this.plugin.runHubBatchForRecords(ids, { ...options, requestTranslation: false, operation }));
 		}
 		// T81-S：待译 = 未转换的 + 已转换但没译文的。已有译文的直接排除，不重复计费。
 		const target = this.plugin.settings?.documentLanguages?.translationTarget?.id;
@@ -22375,7 +22402,7 @@ function createRectoHubViewClass(api) {
 			showRectoNotice(rectoUiText("hub.allTranslated"), { tone: "attention" });
 			return;
 		}
-		return this.plugin.runHubTaskIntake("translate", pending, (ids, operation) => this.plugin.runHubTranslateForRecords(ids, { operation }));
+		return this.plugin.runHubTaskIntake("translate", pending, (ids, operation, options) => this.plugin.runHubTranslateForRecords(ids, { ...options, operation }));
 	}
 
 		// T88-G-T：重新导入沿用所有入口，单篇直接执行、多篇一次确认。
@@ -22522,6 +22549,7 @@ class RectoDecisionModal extends obsidian.Modal {
 		if (this.modalEl && this.modalEl.addClass) {
 			this.modalEl.addClass("recto-decision-modal");
 			this.modalEl.addClass("recto-ui");
+			if (this.options.variant === "batch-confirm") this.modalEl.addClass("recto-batch-confirm-modal");
 		}
 		if (typeof this.setTitle === "function") this.setTitle(String(this.options.title || rectoUiText("dialog.confirm")));
 		const { contentEl } = this;
@@ -24423,7 +24451,7 @@ class RectoTaskFeedback {
 	models() {
 		const p = this.plugin, models = new Map();
 		const tracker = p.taskWorkflowProgress ||= new RectoTaskProgress();
-		for (const [key, item] of p.hubTaskRequests || []) if (!item.cancelled && !item.accepted) models.set(key, { key, name: item.name, status: "preparing", preparing: item });
+		for (const [key, item] of p.hubTaskRequests || []) if (!item.awaitingConfirmation && !item.cancelled && !item.accepted) models.set(key, { key, name: item.name, status: "preparing", preparing: item });
 		for (const item of p.localTaskIntents || []) {
 			const key = this.identity(item.task);
 			models.set(key, { key, name: item.task.name || key, status: item.state, local: item, reason: this.recent.get(key)?.reason });
@@ -24585,7 +24613,7 @@ class RectoTaskFeedback {
 				if (model.status === "partial" && model.retryTranslation && !isRectoExternalTask(model.task)) {
 					extraLabel = rectoUiText("feedback.retry"); row.extraRun = () => {
 						const entries = p.getHubEntries([model.task.recordId]);
-						return p.runHubTaskIntake("translate", entries, (ids, operation) => p.runHubTranslateForRecords(ids, { operation }));
+						return p.runHubTaskIntake("translate", entries, (ids, operation, options) => p.runHubTranslateForRecords(ids, { ...options, operation }));
 					};
 				}
 			}
