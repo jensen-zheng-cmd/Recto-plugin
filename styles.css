@@ -2972,7 +2972,9 @@ label.recto-sync-preview-row {
    12% ≈ 108px，与原来的 116 相当）。 */
 .recto-hub-head,
 .recto-hub-row {
-	--rc-cols: 12px minmax(0, 1fr) clamp(56px, 12%, 116px) clamp(72px, 16%, 148px) 40px;
+	/* YYYY-MM plus the sort indicator; scale with the same font used by both header and cells. */
+	--rc-date-width: calc(var(--font-ui-smaller) * 4.8);
+	--rc-cols: 12px minmax(0, 1fr) clamp(56px, 12%, 116px) clamp(72px, 16%, 148px) var(--rc-date-width);
 	display: grid;
 	grid-template-columns: var(--rc-cols);
 	gap: var(--rc-gap-2);
@@ -3024,10 +3026,6 @@ label.recto-sync-preview-row {
 .recto-hub-head-cell:focus-visible {
 	outline: 2px solid var(--rc-accent);
 	outline-offset: -2px;
-}
-
-.recto-hub-head-cell.recto-hub-col-year {
-	justify-content: flex-end;
 }
 
 .recto-hub-sort-arrow {
@@ -3215,9 +3213,10 @@ label.recto-sync-preview-row {
 
 .recto-hub-col-year {
 	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
 	color: var(--text-faint);
 	font-variant-numeric: tabular-nums;
-	text-align: right;
+	text-align: left;
 }
 
 .recto-hub-row:hover {
@@ -3977,7 +3976,7 @@ label.recto-sync-preview-row {
 
 /* 单栏栈的门槛压到 520（T86-A 第五轮，原来是 700）。取舍是用户拍的：**「少看一点标题文字」比
    「少看一栏」后果小**——后者会多出一步操作。下限由能不能画得出三列决定：520 时详情 240、
-   列表 280，标题拿到 280 − 12(点) − 40(年份) − 16(gap) − 24(padding) = 188px，还读得出来。
+   列表 280，13px 日期字号下标题约有 280 − 12(点) − 62.4(年月) − 16(gap) − 24(padding) = 165.6px。
    注意工具栏与 chips 那几条**不在这里**：它们住在中间栏里，挤不挤该由中间栏的宽度说了算。 */
 @container recto-hub (max-width: 520px) {
 	/* 单栏栈：列表与详情各占满宽，靠根上的 is-pane-detail 左右滑。
@@ -4029,15 +4028,13 @@ label.recto-sync-preview-row {
 	}
 }
 
-/* 列密度看的是**中间栏自己**，不是 Hub 总宽。阈值直接从列宽算，而不是把旧的 900/620 照搬过来
-   （照搬会算错：两侧栏改弹性之后同一个 Hub 宽度下中间栏更宽了）：
-   五列固定开销 = 12 + 116 + 148 + 40 + 4×8(gap) + 2×12(padding) = 372，标题要留 ≥200 → 摘期刊 ≤600；
-   四列固定开销 = 12 + 116 + 40 + 3×8 + 24 = 216，同样留 200 → 摘作者 ≤420。
-   顺序仍是「先期刊、再作者」，标题与年份任何宽度下都保留。 */
+/* 列密度看中间栏自己，不看 Hub 总宽。保留 ≤600 摘期刊、≤420 摘作者；侧列 clamp 随容器收缩。
+   T93-D-G 年月列按字号变宽（13px 时约 62.4px），列头与数据行共用，仍给标题剩余空间。
+   顺序仍是「先期刊、再作者」，标题与年月任何宽度下都保留。 */
 @container recto-hub-list (max-width: 600px) {
 	.recto-hub-head,
 	.recto-hub-row {
-		--rc-cols: 12px minmax(0, 1fr) clamp(56px, 12%, 116px) 40px;
+		--rc-cols: 12px minmax(0, 1fr) clamp(56px, 12%, 116px) var(--rc-date-width);
 	}
 
 	.recto-hub-col-venue {
@@ -4048,7 +4045,7 @@ label.recto-sync-preview-row {
 @container recto-hub-list (max-width: 420px) {
 	.recto-hub-head,
 	.recto-hub-row {
-		--rc-cols: 12px minmax(0, 1fr) 40px;
+		--rc-cols: 12px minmax(0, 1fr) var(--rc-date-width);
 	}
 
 	.recto-hub-col-author {

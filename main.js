@@ -554,7 +554,8 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.sort.title": "标题",
 		"hub.sort.author": "作者",
 		"hub.sort.venue": "期刊",
-		"hub.sort.year": "年份",
+		"hub.sort.year": "年月",
+		"hub.publicationDateHint": "Zotero 记录的发表日期；月份未知时只显示年份",
 		"hub.sort.recent": "最近",
 		"hub.sortBy": "按{label}排序",
 		"hub.showOriginalTitle": "当前显示中文标题，点击切换为英文标题",
@@ -941,6 +942,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"error.documentLanguageUnsupported": "此语言功能暂不可用，请联系支持",
 		"error.remoteTask": "处理未完成，请重试",
 		"error.resultIncomplete": "文档内容未能完整转换，请联系支持后再提交",
+		"error.resultTooLarge": "返回结果包超过传输限制",
 		"error.sessionExpired": "登录已失效，请重新登录",
 		"error.taskExpired": "任务已失效，请重新发起",
 		"error.busy": "暂时繁忙，请稍后重试",
@@ -1556,7 +1558,8 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.sort.title": "Title",
 		"hub.sort.author": "Author",
 		"hub.sort.venue": "Journal",
-		"hub.sort.year": "Year",
+		"hub.sort.year": "Date",
+		"hub.publicationDateHint": "Publication date recorded in Zotero; year only when the month is unknown",
 		"hub.sort.recent": "Recent",
 		"hub.sortBy": "Sort by {label}",
 		"hub.showOriginalTitle": "Showing Chinese titles; click to show English titles",
@@ -1943,6 +1946,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"error.documentLanguageUnsupported": "This language feature is unavailable. Contact support.",
 		"error.remoteTask": "Processing incomplete. Try again.",
 		"error.resultIncomplete": "Document content could not be fully converted. Contact support before submitting again.",
+		"error.resultTooLarge": "The result package exceeds the transfer limit.",
 		"error.sessionExpired": "Your session expired. Sign in again.",
 		"error.taskExpired": "This task expired. Start again.",
 		"error.busy": "Temporarily busy. Try again later.",
@@ -7793,6 +7797,48 @@ function extractYearFromDateText(value) {
 	return match ? match[0] : "";
 }
 
+// Zotero SQLite dates may start with YYYY-MM-DD (00 = unknown), followed by the original text.
+// See zotero/utilities date.js: isMultipart / multipartToSQL. Do not use Date.parse: it guesses
+// missing components and locale-dependent numeric dates, and timezone conversion can change the month.
+function formatPublicationYearMonth(value) {
+	const text = String(value ?? "").trim();
+	const multipart = text.match(/^(\d{4})-(0\d|1[0-2])-(0\d|[12]\d|3[01]) /);
+	const numeric = multipart || text.match(/^(\d{4})[-/.](\d{1,2})(?:[-/.]\d{1,2})?(?:T\d{2}:\d{2}[^\s]*)?$/)
+		|| text.match(/^(\d{4})\s*年\s*(\d{1,2})\s*月(?:\s*\d{1,2}\s*日)?$/);
+	if (numeric) {
+		if (numeric[1] === "0000") return "";
+		const month = Number(numeric[2]);
+		return month >= 1 && month <= 12 ? `${numeric[1]}-${String(month).padStart(2, "0")}` : numeric[1];
+	}
+	const years = [...text.matchAll(/(?:^|[^\d])(\d{4})(?!\d)/g)].map(match => match[1]);
+	if (years.length !== 1 || years[0] === "0000") return "";
+	const year = years[0];
+	const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+	const named = text.match(/^(?:(\d{1,2})(?:st|nd|rd|th)?[\s.-]+)?(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\.?(?:[\s.-]+(\d{1,2})(?:st|nd|rd|th)?)?[,\s.-]+(\d{4})$/i)
+		|| text.match(/^(\d{4})[\s.-]+(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\.?(?:[\s.-]+\d{1,2})?$/i);
+	if (named) return `${year}-${String(monthNames.indexOf(named[2].slice(0, 3).toLowerCase()) + 1).padStart(2, "0")}`;
+	const monthYear = text.match(/^(\d{1,2})[/.\-](\d{4})$/);
+	if (monthYear && Number(monthYear[1]) >= 1 && Number(monthYear[1]) <= 12) {
+		return `${year}-${monthYear[1].padStart(2, "0")}`;
+	}
+	const yearLast = text.match(/^(\d{1,2})([/.\-])(\d{1,2})\2\d{4}$/);
+	if (yearLast) {
+		const a = Number(yearLast[1]), b = Number(yearLast[3]);
+		const month = a > 12 && a <= 31 ? b : b > 12 && b <= 31 || a === b ? a : 0;
+		if (month >= 1 && month <= 12) return `${year}-${String(month).padStart(2, "0")}`;
+	}
+	// Seasons, ranges and ambiguous numeric dates retain only a known year; never invent a month.
+	return year;
+}
+
+function getZoteroPublicationDate(metadata, legacyYear) {
+	const date = getZoteroMetadataField(metadata, "date");
+	if (date) return formatPublicationYearMonth(date);
+	// Older imports kept just the Zotero year. Summary frontmatter is not a bibliographic source.
+	const year = String(legacyYear ?? "").trim();
+	return /^\d{4}$/.test(year) && year !== "0000" ? year : "";
+}
+
 function uniqueStrings(values) {
 	return Array.from(new Set((values || []).map(v => String(v || "").trim()).filter(Boolean)));
 }
@@ -8123,7 +8169,7 @@ const HUB_SORT_KEYS = ["status", "title", "author", "venue", "year"];
 // 要么持久化的「最近」被判非法、回落成按标题。
 const HUB_VIEW_SORT_KEYS = ["recent"];
 const HUB_ALL_SORT_KEYS = [...HUB_SORT_KEYS, ...HUB_VIEW_SORT_KEYS];
-const HUB_SORT_LABELS = { status: "阅读状态", title: "标题", author: "作者", venue: "期刊", year: "年份", recent: "最近" };
+const HUB_SORT_LABELS = { status: "阅读状态", title: "标题", author: "作者", venue: "期刊", year: "年月", recent: "最近" };
 // 年份点一下先看最新，其余列点一下先看正序。「最近」同理——它就是为了看最新才存在的。
 const HUB_SORT_DEFAULT_DESC = { year: true, recent: true };
 const HUB_STATUS_SORT_ORDER = { reading: 0, unread: 1, read: 2 };
@@ -8405,6 +8451,7 @@ function normalizeHubEntry(raw) {
 	const hasTranslation = !!entry.translationPath;
 	const translationQuality = normalizeHubTranslationQuality(entry.translationQuality, hasTranslation);
 	const activity = resolveHubEntryActivity(entry);
+	const publicationDate = getZoteroPublicationDate(entry.zoteroMetadata, entry.year);
 	return {
 		recordId: String(entry.recordId || entry.folder || stem),
 		stem,
@@ -8413,7 +8460,8 @@ function normalizeHubEntry(raw) {
 		titleOriginal: titleOriginal || stem,
 		titleTranslated,
 		authors: uniqueStrings(Array.isArray(entry.authors) ? entry.authors : [entry.authors]),
-		year: cleanDisplayText(entry.year),
+		year: publicationDate.slice(0, 4),
+		publicationDate,
 		venue: cleanDisplayText(entry.venue),
 		category: cleanDisplayText(entry.category),
 		collections: collections.length ? collections : [UNFILED_COLLECTION],
@@ -8657,7 +8705,7 @@ function hubEntryMatchesQuery(entry, query) {
 	const text = String(query || "").trim().toLowerCase();
 	if (!text) return true;
 	const haystack = [
-		entry.title, entry.titleOriginal, entry.venue, entry.category, entry.year, entry.stem, entry.notes,
+		entry.title, entry.titleOriginal, entry.venue, entry.category, entry.publicationDate, entry.year, entry.stem, entry.notes,
 		...(entry.authors || []), ...(entry.collections || []),
 	].join(" ").toLowerCase();
 	return text.split(/\s+/).every(term => haystack.includes(term));
@@ -8764,14 +8812,15 @@ function sortHubEntries(entries, sortKey, descending = false) {
 		return list.sort((a, b) => compareHubOptionalText(a.venue, b.venue, descending) || byTitle(a, b));
 	}
 	return list.sort((a, b) => {
-		const yearA = Number.parseInt(a.year, 10);
-		const yearB = Number.parseInt(b.year, 10);
-		const validA = Number.isFinite(yearA);
-		const validB = Number.isFinite(yearB);
-		if (!validA && !validB) return byTitle(a, b);
-		if (!validA) return 1;
-		if (!validB) return -1;
-		return (yearA - yearB) * flip || byTitle(a, b);
+		const dateA = formatPublicationYearMonth(a.publicationDate || a.year);
+		const dateB = formatPublicationYearMonth(b.publicationDate || b.year);
+		if (!dateA && !dateB) return byTitle(a, b);
+		if (!dateA) return 1;
+		if (!dateB) return -1;
+		const yearDiff = Number(dateA.slice(0, 4)) - Number(dateB.slice(0, 4));
+		if (yearDiff) return yearDiff * flip;
+		// In the same year, unknown months follow known ones in either direction.
+		return compareHubOptionalText(dateA.slice(5, 7), dateB.slice(5, 7), descending) || byTitle(a, b);
 	});
 }
 
@@ -9336,7 +9385,7 @@ function buildPaperJsonlEntries(options) {
 			: [];
 		// T83-I：作者/年份/期刊原本只从摘要 frontmatter 取。没有摘要的论文（关掉摘要转出来的）
 		// 那份 frontmatter 根本不存在，必须回落到论文对象里的 Zotero 原型，否则同一篇论文
-		// 会因为「有没有摘要」而丢掉书目信息。有摘要时 fm 优先，行为与原来一致。
+		// 会因为「有没有摘要」而丢掉书目信息。日期始终取 Zotero，不从摘要猜测。
 		const zoteroMetadata = normalizeZoteroItemMetadata(info.zoteroMetadata);
 		const fmAuthors = uniqueStrings(Array.isArray(fm.authors) ? fm.authors : [fm.authors]);
 		const authors = fmAuthors.length
@@ -9344,7 +9393,7 @@ function buildPaperJsonlEntries(options) {
 			: (getZoteroMetadataAuthors(zoteroMetadata).length
 				? getZoteroMetadataAuthors(zoteroMetadata)
 				: uniqueStrings(info.authors));
-		const year = normalizeJsonlYear(fm.year) ?? normalizeJsonlYear(info.year);
+		const year = normalizeJsonlYear(getZoteroPublicationDate(zoteroMetadata, info.year).slice(0, 4));
 		const venue = cleanDisplayText(fm.venue)
 			|| getZoteroMetadataVenue(zoteroMetadata)
 			|| cleanDisplayText(info.venue)
@@ -9398,7 +9447,7 @@ function buildPaperJsonlEntries(options) {
 			title_zh: titleZh,
 			title_original: originalTitle || null,
 			authors: authors.length ? authors : uniqueStrings(info.authors),
-			year: normalizeJsonlYear(info.year),
+			year: normalizeJsonlYear(getZoteroPublicationDate(metadata, info.year).slice(0, 4)),
 			venue: getZoteroMetadataVenue(metadata) || cleanDisplayText(info.venue) || null,
 			category: null,
 			collections: normalizeZoteroCollectionFields(info).zoteroCollectionPaths,
@@ -12224,7 +12273,8 @@ class RectoPlugin extends obsidian.Plugin {
 		const repeated = entry.lastFailure === clean;
 		entry.lastFailure = clean;
 		entry.failureCount = repeated ? (Number(entry.failureCount) || 0) + 1 : 1;
-		entry.blocked = entry.failureCount >= PENDING_BACKEND_DETERMINISTIC_FAILURES;
+		entry.blocked = reason?.rectoUiKey === "error.resultTooLarge"
+			|| entry.failureCount >= PENDING_BACKEND_DETERMINISTIC_FAILURES;
 		await this.save();
 		this.notifyTaskQueueChanged();
 		return entry;
@@ -14354,13 +14404,15 @@ class RectoPlugin extends obsidian.Plugin {
 		return map;
 	}
 
-	// ── 对照阅读共用：复用已打开的叶子、缺哪侧补哪侧、固定左右 ──────────
+	// 普通阅读与对照共用；后台延迟加载的标签通过公开 view state 识别文件。
 	findRectoOpenLeaf(path) {
-		let found = null;
-		this.app.workspace.iterateAllLeaves(leaf => {
-			if (found) return;
-			const leafFile = leaf.view && leaf.view.file;
-			if (leafFile && leafFile.path === path) found = leaf;
+		if (!path) return null;
+		const workspace = this.app.workspace;
+		const matches = leaf => !!leaf && (leaf.view?.file?.path
+			|| (leaf.isDeferred ? leaf.getViewState?.()?.state?.file : "")) === path;
+		let found = matches(workspace.activeLeaf) ? workspace.activeLeaf : null;
+		workspace.iterateAllLeaves?.(leaf => {
+			if (!found && matches(leaf)) found = leaf;
 		});
 		return found;
 	}
@@ -14678,9 +14730,18 @@ class RectoPlugin extends obsidian.Plugin {
 	// 故按 .internal-embed[src] 占位容器定位；标准 ![](...) 直出的 <img> 也一并覆盖。
 	async resizeRectoImages(el, ctx) {
 		if (!el || !ctx || typeof ctx.sourcePath !== "string" || typeof el.querySelectorAll !== "function") return;
-		if (this.isUnloading || this.imageResizeSections?.has(el)) return;
+		if (this.isUnloading) return;
 		const embeds = Array.from(el.querySelectorAll(".internal-embed[src]"));
 		const looseImgs = Array.from(el.querySelectorAll("img")).filter(img => !(img.closest && img.closest(".internal-embed[src]")));
+		const nodes = [...embeds, ...looseImgs];
+		const previous = this.imageResizeSections?.get(el);
+		if (previous) {
+			// Reading rerenders can reuse the section while replacing its image nodes.
+			// Reuse only an unchanged binding; dispose our sizes before checking manual ones.
+			if (previous.sourcePath === ctx.sourcePath && previous.targets?.length === nodes.length
+				&& previous.targets.every((target, index) => target.node === nodes[index] && target.src === nodes[index].getAttribute("src"))) return;
+			previous();
+		}
 		if (!embeds.length && !looseImgs.length) return;
 		// 在第一次自动设宽之前记录手工尺寸；不得把本插件后来写入的 width 误判成用户尺寸。
 		const targets = [...embeds, ...looseImgs].filter(target => !hasRectoManualImageSize(target)
@@ -14719,6 +14780,8 @@ class RectoPlugin extends obsidian.Plugin {
 		};
 		this.imageResizeSections ||= new WeakMap();
 		this.imageResizeCleanups ||= new Set();
+		dispose.sourcePath = ctx.sourcePath;
+		dispose.targets = nodes.map(node => ({ node, src: node.getAttribute("src") }));
 		this.imageResizeSections.set(el, dispose);
 		this.imageResizeCleanups.add(dispose);
 		const child = typeof ctx.addChild === "function" && typeof obsidian.MarkdownRenderChild === "function"
@@ -16582,7 +16645,7 @@ class RectoPlugin extends obsidian.Plugin {
 				// 它连中文原文的论文也会另造一个短名，导致 Hub 一点「译」标题就变（T81 第三轮修）。
 				// 后端 prompt 已不再索取该字段，这里对存量摘要也一并停止读取。
 				title: info.zoteroTitle || info.stem,
-				year: fm.year || info.year || "",
+				year: getZoteroPublicationDate(zoteroMetadata, info.year).slice(0, 4),
 				venue: getZoteroMetadataVenue(zoteroMetadata) || fm.venue || "",
 				authors: zoteroAuthors.length ? zoteroAuthors : (fm.authors || []),
 				zoteroMetadata,
@@ -16736,11 +16799,7 @@ class RectoPlugin extends obsidian.Plugin {
 			setRectoInlineFeedback(this, "output", rectoUiText("hub.resultSaved", { folder: outputFolder }));
 			return false;
 		}
-		const leaf = this.getHubOpenLeaf(file);
-		if (!leaf) return false;
-		await leaf.openFile(file, { active: true });
-		if (typeof this.app.workspace.revealLeaf === "function") this.app.workspace.revealLeaf(leaf);
-		return true;
+		return !!await this.openRectoFile(file);
 	}
 
 	// 后端任务恢复会在插件加载与卸载路径上跑，那时 workspace 可能还没就绪；取不到就当没开着 Hub。
@@ -16981,9 +17040,7 @@ class RectoPlugin extends obsidian.Plugin {
 			// Comparison owns its split layout. Reuse only this paper's translation, never another file.
 			const translation = this.app.vault.getAbstractFileByPath(entry.translationPath);
 			if (!(translation instanceof obsidian.TFile)) return false;
-			const leaf = this.findRectoOpenLeaf(translation.path) || this.getHubOpenLeaf(translation);
-			await leaf.openFile(translation, { active: true });
-			if (typeof this.app.workspace.revealLeaf === "function") this.app.workspace.revealLeaf(leaf);
+			if (!await this.openRectoFile(translation)) return false;
 			if (action === "pdf-compare") await this.startRectoPdfCompare();
 			else await this.startRectoDualPane();
 			return true;
@@ -16994,15 +17051,31 @@ class RectoPlugin extends obsidian.Plugin {
 			showRectoNotice(rectoUiText("hub.fileMissing"), { tone: "attention" });
 			return false;
 		}
-		const leaf = this.getHubOpenLeaf(file);
-		if (!leaf) return false;
-		await leaf.openFile(file, { active: true });
-		if (typeof this.app.workspace.revealLeaf === "function") this.app.workspace.revealLeaf(leaf);
-		return true;
+		return !!await this.openRectoFile(file);
 	}
 
-	getHubOpenLeaf(file) {
-		return this.app.workspace.getLeaf("tab");
+	async openRectoFile(file, openState = {}) {
+		if (!file?.path) return null;
+		// Merge repeated clicks before openFile has finished assigning the file to its new leaf.
+		this.rectoFileOpenPromises ||= new Map();
+		const path = file.path;
+		if (this.rectoFileOpenPromises.has(path)) return this.rectoFileOpenPromises.get(path);
+		const work = (async () => {
+			const workspace = this.app.workspace;
+			const existing = this.findRectoOpenLeaf(path);
+			const leaf = existing || workspace.getLeaf("tab");
+			if (!leaf) return null;
+			// Existing editors/PDFs keep their mode, cursor, scroll and page. revealLeaf also
+			// loads deferred views; reopening the file here would reset that state.
+			if (!existing) await leaf.openFile(file, { ...openState, active: true });
+			if (typeof workspace.revealLeaf === "function") await workspace.revealLeaf(leaf);
+			// revealLeaf selects the tab but does not set workspace.activeLeaf (Obsidian 1.14.4).
+			workspace.setActiveLeaf?.(leaf, { focus: true });
+			return leaf;
+		})();
+		this.rectoFileOpenPromises.set(path, work);
+		try { return await work; }
+		finally { this.rectoFileOpenPromises.delete(path); }
 	}
 
 	preflightTrashRecords(recordIds) {
@@ -17294,9 +17367,7 @@ class RectoPlugin extends obsidian.Plugin {
 				}, { independent: true });
 			}
 			if (!(file instanceof obsidian.TFile)) throw new Error(rectoUiText("hub.fileMissing"));
-			const leaf = this.getHubOpenLeaf(file);
-			await leaf.openFile(file, { active: true, ...(created ? { state: { mode: "source" } } : {}) });
-			if (typeof this.app.workspace.revealLeaf === "function") this.app.workspace.revealLeaf(leaf);
+			const leaf = await this.openRectoFile(file, created ? { state: { mode: "source" } } : {});
 			if (created) leaf.view?.editor?.focus();
 			return { file, created };
 		})();
@@ -17809,13 +17880,23 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	async requestBackendTaskResult(taskId, options = {}, operation = this.operationScope?.getStore()) {
-		return await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(taskId)}/result`, {
-			timeout: options.timeout || 30000,
-			maxBytes: 20 * 1024 * 1024,
-			headers: { "Accept-Encoding": "gzip" },
-			decompressResponse: true,
-			signal: options.signal,
-		}, operation);
+		try {
+			return await this.backendRequest(`/api/v1/tasks/${encodeURIComponent(taskId)}/result`, {
+				timeout: options.timeout || 30000,
+				maxBytes: 128 * 1024 * 1024,
+				headers: { "Accept-Encoding": "gzip" },
+				decompressResponse: true,
+				signal: options.signal,
+			}, operation);
+		} catch (error) {
+			if (error?.code === "RESPONSE_TOO_LARGE") {
+				error.rectoUiKey = "error.resultTooLarge";
+				// The same payload cannot shrink on retry. Stop every automatic path,
+				// including after restart, while keeping the original receipt for recovery.
+				await this.recordPendingBackendTaskFailure(taskId, error, operation);
+			}
+			throw error;
+		}
 	}
 
 	async fetchBackendTaskResult(taskId, modal, options = {}, operation = this.operationScope?.getStore()) {
@@ -20825,7 +20906,8 @@ function createRectoHubViewClass(api) {
 				cell.dataset.hubSort = key;
 				cell.setAttribute("role", "button");
 				cell.setAttribute("tabindex", "0");
-				cell.setAttribute("title", rectoUiText("hub.sortBy", { label: rectoUiText(`hub.sort.${key}`) }));
+				cell.setAttribute("title", key === "year" ? rectoUiText("hub.publicationDateHint")
+					: rectoUiText("hub.sortBy", { label: rectoUiText(`hub.sort.${key}`) }));
 				if (key !== "status") cell.createSpan({ text: rectoUiText(`hub.sort.${key}`) });
 				if (key === "title") {
 					// 中/英切换：只有当前列表中有任何已译条目时才显示
@@ -21143,7 +21225,7 @@ function createRectoHubViewClass(api) {
 			this.renderMatchedText(row.createSpan({ cls: "recto-hub-col-venue" }), entry.venue);
 			// 年份也进 hubEntryMatchesQuery 的 haystack：搜「2023」时这一行是被它筛进来的，
 			// 却是全行唯一不打底纹的一格，看起来就像「凭空混进来一条」。
-			this.renderMatchedText(row.createSpan({ cls: "recto-hub-col-year" }), entry.year);
+			this.renderMatchedText(row.createSpan({ cls: "recto-hub-col-year", attr: { title: rectoUiText("hub.publicationDateHint") } }), entry.publicationDate);
 		}
 
 		// 搜索命中打底纹：筛进来了却看不出命中在哪，用户还得自己找一遍。
@@ -21247,7 +21329,7 @@ function createRectoHubViewClass(api) {
 				kv.createSpan({ text: value });
 			};
 			this.renderAuthorRow(kv, entry);
-			addRow(rectoUiText("hub.source"), [entry.venue, entry.year].filter(Boolean).join(" · "));
+			addRow(rectoUiText("hub.source"), [entry.venue, entry.publicationDate].filter(Boolean).join(" · "));
 			for (const kind of ["doi", "url"]) {
 				const identifier = describeHubIdentifier(kind, kind === "doi" ? entry.doi : entry.url);
 				if (!identifier) continue;
@@ -24443,7 +24525,7 @@ class RectoTaskFeedback {
 			const folder = isRectoMarkdownTranslationTask(task) ? null : p.app.vault.getAbstractFileByPath(p.resolveTaskPaperFolder(task, model.stem));
 			const target = task.translationPath || (isRectoMarkdownTranslationTask(task) ? resolveRectoMarkdownTranslationTarget(task.markdownPath, task.languageContract?.target).targetPath : "");
 			const file = (target && p.app.vault.getAbstractFileByPath(target)) || (folder && p.findOriginalMarkdownInPaperFolder(folder));
-			if (file) return await p.getHubOpenLeaf(file).openFile(file, { active: true });
+			if (file) return await p.openRectoFile(file);
 		}
 		showRectoNotice(rectoUiText("hub.fileMissing"), { tone: "attention" });
 	}
@@ -26184,6 +26266,8 @@ if (process.env.NODE_ENV === "test") {
 		findRectoAnchorRanges,
 		buildPaperJsonlZoteroObject,
 		normalizeZoteroItemMetadata,
+		formatPublicationYearMonth,
+		getZoteroPublicationDate,
 		readZoteroMetadataFromDatabase,
 		requestZoteroLocalApi,
 		readZoteroLocalApiMetadata,
