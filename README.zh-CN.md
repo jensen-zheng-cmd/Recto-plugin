@@ -20,6 +20,8 @@ Recto 旨在衔接这一工作流：将论文导入 Obsidian，转换为 Markdow
 
 从文献组织到阅读，论文库可以在 Obsidian 中继续使用。这里的迁入采用只读导入，不修改 Zotero 数据库，也不移除原文件；范围是已导入 PDF 对应的书目记录、元数据与分类，并非对所有 Zotero 条目类型、笔记和批注的完整备份。附件须已下载至本地，遇到多个 PDF 等歧义情况时由您确认选择。
 
+首次导入论文时，可一并读取其 Zotero 速记。可选的 [Zotero 速记配套插件](https://github.com/jensen-zheng-cmd/Recto-plugin/releases/download/1.1.27/recto-quick-note-0.1.1.xpi) 适用于 Zotero 10.0.x，在“信息”栏作者下方直接显示、编辑速记。请先写好 Zotero 速记，再导入 Recto；后续同步会保留 Recto 已有速记、手写修改或空白，不补读后来添加的内容。Recto 内仍可编辑速记。
+
 ![一键导入 Zotero](assets/zotero-import.gif)
 
 ![发起转换与翻译](assets/convert-translate.gif)

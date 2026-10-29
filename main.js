@@ -8349,12 +8349,55 @@ function describeHubActivity(entry, nowMs) {
 
 const HUB_NOTES_FILE = "hub-notes-v1.json";
 
+// Shared on-disk contract with the Zotero information row and the local batch skill.
+function parseZoteroQuickNoteExtra(extra) {
+	const text = String(extra || "").replace(/\r\n?/g, "\n");
+	const start = "[Recto Quick Note v1]", end = "[/Recto Quick Note]";
+	const present = text.includes(start) || text.includes(end);
+	if (!present) return { present: false, valid: true, extra: text };
+	const begins = text.split(start).length - 1, ends = text.split(end).length - 1;
+	const from = text.indexOf(start), to = text.indexOf(end);
+	if (begins !== 1 || ends !== 1 || to < from) return { present: true, valid: false, extra: "" };
+	return { present: true, valid: true,
+		notes: text.slice(from + start.length, to).replace(/^\n|\n$/g, ""),
+		extra: (text.slice(0, from) + text.slice(to + end.length)).trim() };
+}
+
+function getZoteroQuickNoteSource(extra, parentKey, legacyNotes) {
+	const parsed = parseZoteroQuickNoteExtra(extra);
+	if (parsed.present) return parsed.valid ? { noteKey: `extra:${parentKey}`, notes: parsed.notes } : null;
+	return selectZoteroQuickNote(legacyNotes);
+}
+
 function parseHubNotesFile(text, recordId) {
 	if (text === null) return { notes: "" };
 	const data = JSON.parse(text);
 	if (!data || data.schema !== "recto-hub-notes" || data.version !== 1
 		|| data.recordId !== recordId || typeof data.notes !== "string") throw new Error("Invalid Hub notes document");
 	return data;
+}
+
+// Only a deliberately named child note is shared with Recto; ordinary Zotero notes stay out.
+function parseZoteroQuickNote(item) {
+	const data = item && (item.data || item);
+	if (!data || data.deleted || data.itemType !== "note" || typeof data.note !== "string") return null;
+	const entities = { amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " ", ndash: "\u2013", mdash: "\u2014" };
+	const lines = data.note.replace(/<!--[^]*?-->/g, "").replace(/<(script|style)\b[^>]*>[^]*?<\/\1\s*>/gi, "")
+		.replace(/<br\b[^>]*>|<\/(?:p|div|h[1-6]|li|blockquote|pre)\s*>/gi, "\n").replace(/<[^>]*>/g, "")
+		.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (raw, code) => {
+			if (code[0] !== "#") return entities[code.toLowerCase()] ?? raw;
+			const value = parseInt(code.slice(code[1].toLowerCase() === "x" ? 2 : 1), code[1].toLowerCase() === "x" ? 16 : 10);
+			return value >= 0 && value <= 0x10ffff ? String.fromCodePoint(value) : raw;
+		}).replace(/\r\n?/g, "\n").split("\n").map(line => line.replace(/[\t ]+$/g, ""));
+	while (lines.length && !lines[0].trim()) lines.shift();
+	if (!["recto 速记", "recto quick note"].includes(String(lines.shift() || "").trim().toLowerCase())) return null;
+	return { noteKey: String(item.key || data.key || ""), notes: lines.join("\n").replace(/^\n+|\n+$/g, "") };
+}
+
+function selectZoteroQuickNote(items) {
+	const matches = (items || []).map(parseZoteroQuickNote).filter(Boolean);
+	// A duplicated name has no obvious authority; leave the local quick note alone.
+	return matches.length === 1 ? matches[0] : null;
 }
 
 // Record-bound drafts survive view changes and failed saves. Unknown disk fields are preserved,
@@ -8395,6 +8438,29 @@ class RectoHubNotesStore {
 	cancelTimer(recordId) {
 		const state = this.records.get(recordId);
 		if (state) { clearTimeout(state.timer); state.timer = null; }
+	}
+
+	initializeFromZotero(recordId, source) {
+		this.get(recordId, true);
+		const state = this.records.get(recordId);
+		if (state.error === "read") return "error";
+		if (state.draft !== null) return "draft";
+		const disk = state.saved;
+		if (disk.zoteroQuickNote || disk.notes !== "") return "preserved";
+		const notes = source && typeof source.notes === "string" ? source.notes : "";
+		const next = { ...disk, notes, zoteroQuickNote: { initialized: true, noteKey: source?.noteKey || "", contentHash: documentContentHash(notes) } };
+		try {
+			this.write(recordId, next);
+			state.saved = next;
+			state.status = "saved";
+			state.error = "";
+		} catch {
+			state.status = "error";
+			state.error = "write";
+			return "error";
+		}
+		this.changed(recordId);
+		return "imported";
 	}
 	flush(recordId, force = false) {
 		const state = this.records.get(recordId);
@@ -9558,7 +9624,7 @@ FROM itemAttachments ia
 WHERE LOWER(ia.path) LIKE 'storage:%.pdf' AND ia.parentItemID IS NOT NULL`;
 
 // 只读读取 Zotero 数据库。所有查询都限定在“有 storage 附件的父条目”上，
-// 笔记、批注、附件全文索引和内部同步状态一律不进入结果。
+// 仅名为“Recto 速记”的子笔记进入独立的本地速记通道；普通笔记、批注与全文索引不进入结果。
 // Local API reads stay on loopback and never follow file/http redirects or send account tokens.
 // Contract: https://www.zotero.org/support/dev/web_api/v3/local_api
 function zoteroLocalError(code) {
@@ -9601,8 +9667,15 @@ function requestZoteroLocalApi(endpoint, options = {}) {
 
 function buildZoteroLocalApiMetadata(libraries) {
 	const byAttachment = Object.create(null);
+	const quickNotesByAttachment = Object.create(null);
 	for (const library of libraries) {
 		const items = new Map(library.items.map(item => [item.key, item.data]));
+		const quickNotesByParent = new Map();
+		for (const note of library.quickNotes || library.items.filter(item => item.data?.itemType === "note")) {
+			if (!note.data?.parentItem || note.data.deleted) continue;
+			const notes = quickNotesByParent.get(note.data.parentItem) || [];
+			notes.push(note); quickNotesByParent.set(note.data.parentItem, notes);
+		}
 		const collections = new Map(library.collections.map(item => [item.key, item.data]));
 		const collectionPath = (key, seen = new Set()) => {
 			const data = collections.get(key);
@@ -9621,6 +9694,7 @@ function buildZoteroLocalApiMetadata(libraries) {
 			if (byAttachment[key]) throw zoteroLocalError("ZOTERO_API_INVALID");
 			const fields = Object.fromEntries(Object.entries(parent).filter(([name, value]) => typeof value === "string"
 				&& !["key", "itemType", "parentItem", "dateAdded", "dateModified", "note"].includes(name)));
+			if ("extra" in fields) fields.extra = parseZoteroQuickNoteExtra(fields.extra).extra;
 			const metadata = attachment.parentItem ? normalizeZoteroItemMetadata({
 				itemType: parent.itemType, fields, creators: (parent.creators || []).map(c => ({
 					creatorType: c.creatorType, firstName: c.firstName || "", lastName: c.lastName || c.name || "",
@@ -9637,9 +9711,11 @@ function buildZoteroLocalApiMetadata(libraries) {
 			};
 			Object.assign(item, normalizeZoteroCollectionFields(item));
 			byAttachment[key] = item;
+			const quickNote = getZoteroQuickNoteSource(parent.extra, attachment.parentItem, quickNotesByParent.get(attachment.parentItem));
+			if (quickNote) quickNotesByAttachment[key] = quickNote;
 		}
 	}
-	return { byAttachment };
+	return { byAttachment, quickNotesByAttachment };
 }
 
 async function readZoteroLocalApiMetadata(storage, options = {}) {
@@ -9658,11 +9734,11 @@ async function readZoteroLocalApiMetadata(storage, options = {}) {
 	if (String(probe.headers["zotero-api-version"]) !== "3") throw zoteroLocalError("ZOTERO_API_UNAVAILABLE");
 	const get = async endpoint => checkResponse(await request(endpoint, { ...options, serverId }));
 	const versions = new Map();
-	const readList = async (endpoint, library = "") => {
+	const readList = async (endpoint, library = "", extraQuery = "") => {
 		const result = [], seen = new Set();
 		let total = null;
 		for (let start = 0; start < 100000; start += 100) {
-			const filter = endpoint.endsWith("/items") ? "&itemType=-note&itemType=-annotation" : "";
+			const filter = extraQuery || (endpoint.endsWith("/items") ? "&itemType=-note&itemType=-annotation" : "");
 			const response = await get(`${endpoint}?format=json&limit=100&start=${start}${filter}`);
 			if (library) {
 				const version = response.headers["last-modified-version"];
@@ -9701,9 +9777,12 @@ async function readZoteroLocalApiMetadata(storage, options = {}) {
 	const expectedStorage = fs.realpathSync(storage);
 	for (const prefix of prefixes) {
 		const collections = await readList(`${prefix}/collections`, prefix);
-		// Exclude note bodies and annotations. Parents and attachments retain their original fields.
+		// Ordinary notes and annotations remain excluded. The named opt-in channel is read separately.
 		const items = await readList(`${prefix}/items`, prefix);
-		libraries.push({ items, collections });
+		// Zotero note headings are note text, not bibliographic title fields.
+		const quickNotes = (await readList(`${prefix}/items`, prefix, "&itemType=note&q=Recto&qmode=everything"))
+			.filter(item => item.data.itemType === "note" && parseZoteroQuickNote(item));
+		libraries.push({ items, collections, quickNotes });
 		if (!verifiedSource) {
 			const proof = items.find(item => item.data.itemType === "attachment" && !item.data.deleted
 				&& ["imported_file", "imported_url"].includes(item.data.linkMode));
@@ -9850,6 +9929,20 @@ WHERE it.itemID IN (${ZOTERO_STORAGE_PARENTS_SQL})`)) {
 		});
 	}
 
+	const quickNotesByParent = new Map();
+	for (const row of readRows(`
+SELECT n.parentItemID AS parentItemID, n.note AS note, noteItem.key AS noteKey
+FROM itemNotes n
+JOIN items noteItem ON noteItem.itemID = n.itemID
+${hasDeletedItems ? "LEFT JOIN deletedItems deletedNote ON deletedNote.itemID = n.itemID" : ""}
+WHERE n.parentItemID IN (${ZOTERO_STORAGE_PARENTS_SQL})
+AND LOWER(n.title) IN ('recto 速记', 'recto quick note')
+${hasDeletedItems ? "AND deletedNote.itemID IS NULL" : ""}`)) {
+		const parent = Number(row.parentItemID), notes = quickNotesByParent.get(parent) || [];
+		notes.push({ key: row.noteKey, data: { itemType: "note", note: row.note } });
+		quickNotesByParent.set(parent, notes);
+	}
+	const quickNotesByAttachment = Object.create(null);
 	const byAttachment = {};
 	for (const row of rows) {
 		const key = String(row.attachmentKey || "").trim();
@@ -9857,9 +9950,10 @@ WHERE it.itemID IN (${ZOTERO_STORAGE_PARENTS_SQL})`)) {
 		if (!byAttachment[key]) {
 			// 独立附件（没有父条目）没有书目元数据，只保留既有的文件级字段，不伪造条目类型。
 			const parentItemID = row.linkedParentItemID == null ? null : Number(row.parentItemID);
+			const originalFields = fieldsByItem.get(parentItemID) || {};
 			const metadata = parentItemID == null ? null : normalizeZoteroItemMetadata({
 				itemType: String(row.itemType || "").trim(),
-				fields: fieldsByItem.get(parentItemID) || {},
+				fields: { ...originalFields, ...(originalFields.extra ? { extra: parseZoteroQuickNoteExtra(originalFields.extra).extra } : {}) },
 				creators: creatorsByItem.get(parentItemID) || [],
 				tags: tagsByItem.get(parentItemID) || [],
 			});
@@ -9877,6 +9971,8 @@ WHERE it.itemID IN (${ZOTERO_STORAGE_PARENTS_SQL})`)) {
 				zoteroCollectionPathParts: [],
 				zoteroMetadata: metadata,
 			};
+			const quickNote = parentItemID == null ? null : getZoteroQuickNoteSource(originalFields.extra, row.itemKey, quickNotesByParent.get(parentItemID));
+			if (quickNote) quickNotesByAttachment[key] = quickNote;
 		}
 		if (row.collectionID != null) {
 			const parts = collectionPath(row.collectionID);
@@ -9891,7 +9987,7 @@ WHERE it.itemID IN (${ZOTERO_STORAGE_PARENTS_SQL})`)) {
 	for (const item of Object.values(byAttachment)) {
 		Object.assign(item, normalizeZoteroCollectionFields(item));
 	}
-	return { byAttachment };
+	return { byAttachment, quickNotesByAttachment };
 }
 
 function shortStableId(value, length = 8) {
@@ -15765,7 +15861,7 @@ class RectoPlugin extends obsidian.Plugin {
 			} else candidate.requiresIdentityConfirmation = true;
 		}
 		const dedupedCandidates = await dedupeZoteroPdfCandidates(candidates, options.signal || this.getActiveSignal(), this.folderMap || {});
-		return buildZoteroPdfSelectionPlan(dedupedCandidates);
+		return { ...buildZoteroPdfSelectionPlan(dedupedCandidates), quickNotesByAttachment: metadata.quickNotesByAttachment || {} };
 	}
 
 	async chooseZoteroPdfTasks(plan) {
@@ -15970,6 +16066,7 @@ class RectoPlugin extends obsidian.Plugin {
 			handedOff = true;
 			const result = await this.commitZoteroImportTasks(tasks, {
 				operation,
+				quickNotesByAttachment: plan.quickNotesByAttachment,
 				progress,
 				hostEl: options.hostEl || null,
 				skipConfirm: false,
@@ -16078,6 +16175,7 @@ class RectoPlugin extends obsidian.Plugin {
 					zoteroSyncState: "active",
 					zoteroImportedAt: current && current.zoteroImportedAt || importedAt,
 					zoteroPdfImportPending: true,
+					...(!current ? { zoteroQuickNoteImportPending: true } : {}),
 				};
 				delete next.orphanedAt;
 				delete next.orphanDeletePrompted;
@@ -16144,6 +16242,7 @@ class RectoPlugin extends obsidian.Plugin {
 						localPdfImportedAt: current.localPdfImportedAt || importedAt,
 						zoteroPdfImportPending: !!asset.incomplete,
 					};
+					this.initializeZoteroQuickNotes({ quickNotesByAttachment: options.quickNotesByAttachment }, [task.recordId]);
 				} catch (error) {
 					if (isCancellationError(error, signal)) {
 						if (this.isUnloading) throw error;  // 卸载中不再写盘，交给重启后的恢复
@@ -16304,6 +16403,28 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
+	initializeZoteroQuickNotes(metadata, recordIds = []) {
+		const sources = metadata?.quickNotesByAttachment || {};
+		const counts = { imported: 0, unchanged: 0, preserved: 0 };
+		for (const recordId of recordIds) {
+			const info = this.folderMap?.[recordId];
+			if (!info?.stem || info.zoteroQuickNoteImportPending !== true || info.zoteroPdfImportPending || !info.localPdfPath
+				|| info.zoteroSyncState === "orphaned" || this.settings?.paperReimport?.recordId === recordId) continue;
+			const source = sources[info.zoteroAttachmentKey || String(recordId).split("::")[0]];
+			const result = this.getHubNotesStore().initializeFromZotero(recordId, source);
+			if (result === "error") {
+				// Keep the existing import recovery queue responsible for this unfinished initialization.
+				info.zoteroPdfImportPending = true;
+				throw new Error("Could not save Zotero quick note");
+			}
+			delete info.zoteroQuickNoteImportPending;
+			if (result === "imported") counts.imported++;
+			else if (result === "unchanged") counts.unchanged++;
+			else counts.preserved++;
+		}
+		return counts;
+	}
+
 	// T82-D-S：启动延迟 / 打开 Hub / 设置页「立即同步」共用。自动路径静默降级，不弹错。
 	// T83-A：未点过「一键导入」不开静默导入；路径探测与冷却判定仍可走，但这里直接跳过整轮。
 	async maybeRunZoteroAutoCheck(options = {}) {
@@ -16385,6 +16506,7 @@ class RectoPlugin extends obsidian.Plugin {
 			if (importTasks.length) {
 				importResult = await this.commitZoteroImportTasks(importTasks, {
 					operation,
+					quickNotesByAttachment: metadata.quickNotesByAttachment,
 					progress: null,
 					skipConfirm: true,
 					quiet: true,
@@ -16480,6 +16602,7 @@ class RectoPlugin extends obsidian.Plugin {
 				} else if (chosen.length) {
 					const result = await this.commitZoteroImportTasks(chosen, {
 						operation,
+						quickNotesByAttachment: plan.quickNotesByAttachment,
 						progress: null,
 						hostEl,
 						skipConfirm: false,
@@ -26269,6 +26392,10 @@ if (process.env.NODE_ENV === "test") {
 		formatPublicationYearMonth,
 		getZoteroPublicationDate,
 		readZoteroMetadataFromDatabase,
+		parseZoteroQuickNote,
+		parseZoteroQuickNoteExtra,
+		getZoteroQuickNoteSource,
+		selectZoteroQuickNote,
 		requestZoteroLocalApi,
 		readZoteroLocalApiMetadata,
 		buildZoteroLocalApiMetadata,

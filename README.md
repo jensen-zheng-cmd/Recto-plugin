@@ -20,6 +20,8 @@ Import bibliographic metadata and locally available PDF attachments together, pr
 
 This brings the paper library's organization and reading workflow into Obsidian. Import reads Zotero without modifying its database or removing its files. It covers bibliographic records associated with imported PDFs, their metadata, and collections; it is not a full backup of every Zotero item type, note, or annotation. Attachments must be available locally. Ambiguous PDF choices are presented for confirmation.
 
+Recto can also copy a paper's Zotero quick note on its first import. The optional [Recto Quick Note companion](https://github.com/jensen-zheng-cmd/Recto-plugin/releases/download/1.1.27/recto-quick-note-0.1.1.xpi) for Zotero 10.0.x adds an editable quick note below the authors in Zotero's Info pane. Write the note before importing the paper into Recto. Later syncs preserve the existing Recto quick note, including local edits or an empty value; notes added in Zotero afterward are not fetched. You can still edit the quick note in Recto.
+
 ![Import from Zotero](assets/zotero-import.gif)
 
 ![Convert and translate papers](assets/convert-translate.gif)
