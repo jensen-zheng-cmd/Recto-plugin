@@ -2522,10 +2522,10 @@ const DEFAULT_ONBOARDING_STATE = {
 };
 
 // T83-O / T88-H：Hub 关掉再打开要回到上次那批论文，记分类、范围、两个筛选维度、
-// 排序列与升降序。范围默认包含子分类；搜索词不记（避免重开误以为论文丢了），
-// 选中行、分类树折叠、标题中/英也不记。归一在 normalizeHubViewState：任何一项脏了就退回默认，
+// 排序列与升降序；T97 加入各层分类树折叠。范围默认包含子分类；搜索词不记（避免重开误以为论文丢了），
+// 选中行、标题中/英也不记。归一在 normalizeHubViewState：任何一项脏了就退回默认，
 // 不让一份坏状态卡住整个视图。
-const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", includeSubcollections: true, status: "all", conversion: "all", sort: "title", descending: false };
+const HUB_VIEW_STATE_DEFAULT = { collectionPath: "", includeSubcollections: true, status: "all", conversion: "all", sort: "title", descending: false, collapsedPaths: [] };
 
 const DEFAULT_BACKEND_BASE_URL = "https://api.rectoai.uk";
 
@@ -3133,6 +3133,28 @@ function findRectoAnchorRanges(markdown, syntaxSkips = []) {
 	}
 	flushInlineCode();
 	return ranges.filter(range => ![...inlineCode, ...syntaxSkips].some(code => range.from < code.to && range.to > code.from));
+}
+
+// Reading mode only consumes the final block ID in a paragraph. After a line join,
+// earlier private markers can become ordinary text; hide those without rewriting Markdown.
+function hideRectoAnchorsInElement(el, markers) {
+	if (!el?.textContent?.includes("^rc-") || !el.ownerDocument?.createTreeWalker) return;
+	const walker = el.ownerDocument.createTreeWalker(el, 4 /* NodeFilter.SHOW_TEXT */);
+	const targets = [];
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		if (!node.nodeValue?.includes("^rc-")) continue;
+		if (node.parentElement?.closest("pre, code, .math, mjx-container, a, textarea, script, style, svg, .metadata-container")) continue;
+		targets.push(node);
+	}
+	for (const node of targets) {
+		const ranges = findRectoAnchorRanges(node.nodeValue).filter(range => markers.has(range.marker));
+		for (const range of ranges.reverse()) {
+			const from = range.to - range.marker.length;
+			node.nodeValue = node.nodeValue.slice(0, from) + node.nodeValue.slice(range.to);
+		}
+		// A standalone marker before the following paragraph must not leave a blank line.
+		if (ranges.length && !node.nodeValue.trim() && node.nextSibling?.nodeName === "BR") node.nextSibling.remove();
+	}
 }
 
 function buildRectoAnchorRepairs(previousMarkdown, nextMarkdown, changedRanges, anchors = findRectoAnchorRanges(previousMarkdown)) {
@@ -8184,6 +8206,9 @@ function normalizeHubViewState(raw) {
 		conversion: HUB_CONVERSION_FILTERS.includes(value.conversion) ? value.conversion : HUB_VIEW_STATE_DEFAULT.conversion,
 		sort,
 		descending: typeof value.descending === "boolean" ? value.descending : !!HUB_SORT_DEFAULT_DESC[sort],
+		collapsedPaths: Array.isArray(value.collapsedPaths)
+			? [...new Set(value.collapsedPaths.filter(path => typeof path === "string" && path.trim()))].sort()
+			: [],
 	};
 }
 
@@ -14812,6 +14837,8 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		const cache = this.alignmentSectionCache;
 		if (!cache.hasAnchors) return;
+		const markers = new Set(findRectoAnchorRanges(cache.lines.slice(info.lineStart, info.lineEnd + 1).join("\n")).map(range => range.marker));
+		hideRectoAnchorsInElement(el, markers);
 		for (let index = Math.min(info.lineEnd, cache.lines.length - 1); index >= info.lineStart; index--) {
 			const match = cache.lines[index].match(RECTO_ALIGNMENT_ANCHOR_PATTERN);
 			if (!match) continue;
@@ -20551,10 +20578,12 @@ function createRectoHubViewClass(api) {
 			this.entries = [];
 			this.visible = [];
 			this.tree = [];
-			this.collapsedPaths = new Set();
-			// 分类 / 筛选 / 排序从上次的持久化状态起步（T83-O）；query 每次都是空的，不记搜索词。
-			this.filters = { query: "", ...normalizeHubViewState(plugin.settings && plugin.settings.hubViewState) };
-			this.persistedViewState = JSON.stringify(normalizeHubViewState(this.filters));
+			// 分类 / 筛选 / 排序 / 折叠从上次的持久化状态起步；query 每次都是空的，不记搜索词。
+			const viewState = normalizeHubViewState(plugin.settings && plugin.settings.hubViewState);
+			const { collapsedPaths, ...filters } = viewState;
+			this.collapsedPaths = new Set(collapsedPaths);
+			this.filters = { query: "", ...filters };
+			this.persistedViewState = JSON.stringify(viewState);
 			// selectedRecordId 是「当前行」（右栏单篇详情看它）；selectedIds 是多选集合。
 			// 两者分开：多选时仍有一个当前行，键盘上下键才有落脚点。
 			this.selectedRecordId = "";
@@ -20854,10 +20883,10 @@ function createRectoHubViewClass(api) {
 			this.renderPaneJump();
 		}
 
-		// applyFilters 是所有筛选/排序变化的汇合点，持久化就挂在这儿。只有值真的变了才落盘——
+		// applyFilters 与分类树开合共用持久化。只有值真的变了才落盘——
 		// reload 每次写回、每次批次收尾都会走到这里，无脑 save 等于给 data.json 加一串空写。
 		persistViewState() {
-			const next = JSON.stringify(normalizeHubViewState(this.filters));
+			const next = JSON.stringify(normalizeHubViewState({ ...this.filters, collapsedPaths: [...this.collapsedPaths] }));
 			if (next === this.persistedViewState) return;
 			this.persistedViewState = next;
 			this.plugin.settings.hubViewState = JSON.parse(next);
@@ -22475,6 +22504,7 @@ function createRectoHubViewClass(api) {
 				const children = toggle.closest(".recto-hub-nav-branch").querySelector(".recto-hub-nav-children");
 				children.toggleClass("is-collapsed", !expanded);
 				children.inert = !expanded;
+				this.persistViewState();
 				return;
 			}
 			const row = event.target && event.target.closest ? event.target.closest(".recto-hub-nav-row") : null;
