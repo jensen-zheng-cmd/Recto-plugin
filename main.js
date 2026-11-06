@@ -722,6 +722,8 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"compare.switchedDual": "已切换到双栏对照，PDF 对照已关闭。",
 		"compare.dualBindFailed": "对照未能打开，请重试",
 		"compare.unmapped": "部分段落无法同步定位",
+		"compare.sourceEdited": "原文已编辑，当前译文仍对应编辑前的版本。",
+		"compare.independentReading": "没有可用的共同锚点，两栏可独立阅读。",
 		"compare.dualClosed": "对照阅读已退出：有一栏被关闭或切换到了别的文件",
 		"compare.alignmentLost": "对照暂不可用，请重新打开",
 		"compare.markdownMissing": "找不到当前目标语言的译文",
@@ -1726,6 +1728,8 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"compare.switchedDual": "Switched to side by side reading; PDF comparison was closed.",
 		"compare.dualBindFailed": "Could not open comparison. Try again.",
 		"compare.unmapped": "Some passages cannot be located in sync.",
+		"compare.sourceEdited": "The source has been edited. The translation still reflects the earlier version.",
+		"compare.independentReading": "No matching anchors are available. You can read each pane independently.",
 		"compare.dualClosed": "Side by side reading ended because a pane closed or opened another file",
 		"compare.alignmentLost": "Comparison is unavailable. Reopen it to try again.",
 		"compare.markdownMissing": "The translation for the current target language was not found.",
@@ -4051,6 +4055,10 @@ function documentContentHash(markdown) {
 	return crypto.createHash("sha256").update(String(markdown)).digest("hex");
 }
 
+function isRectoGeneratedSource(file, markdown) {
+	return /^src-.+\.md$/i.test(file.name) && parseSimpleFrontmatter(markdown)["recto-artifact-role"] === "source";
+}
+
 function withDocumentArtifactMetadata(markdown, fields) {
 	let text = String(markdown).replace(/\r\n/g, "\n");
 	if (!text.startsWith("---\n")) text = `---\n---\n\n${text}`;
@@ -4168,24 +4176,30 @@ const RECTO_ALIGNMENT_BLOCKING_ISSUES = new Set([
 	"source-binding-missing", "translation-binding-missing", "document-mismatch", "revision-mismatch",
 ]);
 
-function scanRectoAlignmentBlocks(markdown) {
-	const lines = String(markdown || "").split(/\r?\n/);
+function scanRectoAlignmentBlocks(markdown, verifyMarkers = false) {
+	const text = String(markdown || "");
+	const lines = text.split("\n");
+	const markerEnds = verifyMarkers ? new Set(findRectoAnchorRanges(text).map(range => range.to)) : null;
 	let cursor = 0;
-	if (lines[0] === "---") {
-		const end = lines.indexOf("---", 1);
+	if (lines[0]?.replace(/\r$/, "") === "---") {
+		const end = lines.findIndex((line, index) => index > 0 && line.replace(/\r$/, "") === "---");
 		if (end > 0) cursor = end + 1;
 	}
 	const blocks = [];
+	let lineOffset = 0;
 	let blockStart = -1;
-	for (let line = cursor; line < lines.length; line++) {
+	for (let line = 0; line < lines.length; line++) {
 		const text = lines[line];
+		const lineStart = lineOffset;
+		lineOffset += text.length + 1;
+		if (line < cursor) continue;
 		if (!text.trim()) {
 			blockStart = -1;
 			continue;
 		}
 		if (blockStart < 0) blockStart = line;
 		const match = text.match(RECTO_ALIGNMENT_ANCHOR_PATTERN);
-		if (!match) continue;
+		if (!match || (markerEnds && !markerEnds.has(lineStart + text.trimEnd().length))) continue;
 		blocks.push({
 			ordinal: Number(match[1]),
 			ordinalText: match[1],
@@ -4198,23 +4212,46 @@ function scanRectoAlignmentBlocks(markdown) {
 	return blocks;
 }
 
-function buildRectoAlignmentIndex(markdown) {
+function buildRectoAlignmentIndex(markdown, verifyMarkers) {
 	const binding = parseRectoFrontmatter(markdown);
-	const blocks = scanRectoAlignmentBlocks(markdown);
+	const blocks = scanRectoAlignmentBlocks(markdown, verifyMarkers);
 	const byOrdinal = new Map();
 	const duplicates = [];
+	const seenMarkers = new Set();
 	for (const block of blocks) {
-		const existing = byOrdinal.get(block.ordinal);
-		// 一对多派生（^rc-000012-d02）对齐到首块；无后缀的重复锚点才是异常。
-		if (!existing) byOrdinal.set(block.ordinal, block);
-		else if (block.derivation === 0 && existing.derivation === 0) duplicates.push(block.ordinalText);
+		// 一对多派生（^rc-000012-d02）对齐到首块；完全相同的标记才算重复。
+		if (!byOrdinal.has(block.ordinal)) byOrdinal.set(block.ordinal, block);
+		const marker = `${block.ordinal}:${block.derivation}`;
+		if (seenMarkers.has(marker)) duplicates.push(block.ordinalText);
+		seenMarkers.add(marker);
 	}
 	return { binding, blocks, byOrdinal, duplicates };
 }
 
-function createRectoAlignmentMap(sourceMarkdown, translationMarkdown) {
-	const source = buildRectoAlignmentIndex(sourceMarkdown);
-	const translation = buildRectoAlignmentIndex(translationMarkdown);
+// 两侧顺序变了时保留最多的一组同序锚点，避免向下滚动却把对侧往上拉。
+function selectRectoOrderedPairs(pairs) {
+	const ends = [];
+	const previous = [];
+	for (let index = 0; index < pairs.length; index++) {
+		const line = pairs[index].translation.anchorLine;
+		let low = 0;
+		let high = ends.length;
+		while (low < high) {
+			const middle = (low + high) >>> 1;
+			if (pairs[ends[middle]].translation.anchorLine < line) low = middle + 1;
+			else high = middle;
+		}
+		previous[index] = low > 0 ? ends[low - 1] : -1;
+		ends[low] = index;
+	}
+	const ordered = [];
+	for (let index = ends.at(-1) ?? -1; index >= 0; index = previous[index]) ordered.push(pairs[index]);
+	return ordered.reverse();
+}
+
+function createRectoAlignmentMap(sourceMarkdown, translationMarkdown, sourceEdited = false) {
+	const source = buildRectoAlignmentIndex(sourceMarkdown, sourceEdited);
+	const translation = buildRectoAlignmentIndex(translationMarkdown, sourceEdited);
 	const issues = [];
 	const sourceBound = Boolean(source.binding && source.binding.documentId && source.binding.sourceRevisionId);
 	const translationBound = Boolean(translation.binding && translation.binding.documentId && translation.binding.sourceRevisionId);
@@ -4224,13 +4261,16 @@ function createRectoAlignmentMap(sourceMarkdown, translationMarkdown) {
 		if (source.binding.documentId !== translation.binding.documentId) issues.push("document-mismatch");
 		else if (source.binding.sourceRevisionId !== translation.binding.sourceRevisionId) issues.push("revision-mismatch");
 	}
-	const pairs = [];
-	let unmatchedSource = 0;
+	let pairs = [];
+	const ambiguous = new Set([...source.duplicates, ...translation.duplicates]);
 	for (const block of source.byOrdinal.values()) {
 		const partner = translation.byOrdinal.get(block.ordinal);
-		if (!partner) unmatchedSource++;
-		else pairs.push({ ordinal: block.ordinal, ordinalText: block.ordinalText, source: block, translation: partner });
+		if (partner && (!sourceEdited || !ambiguous.has(block.ordinalText))) {
+			pairs.push({ ordinal: block.ordinal, ordinalText: block.ordinalText, source: block, translation: partner });
+		}
 	}
+	if (sourceEdited) pairs = selectRectoOrderedPairs(pairs);
+	const unmatchedSource = source.byOrdinal.size - pairs.length;
 	const unmatchedTranslation = translation.byOrdinal.size - pairs.length;
 	for (const value of source.duplicates) issues.push(`duplicate-source-anchor:${value}`);
 	for (const value of translation.duplicates) issues.push(`duplicate-translation-anchor:${value}`);
@@ -4242,7 +4282,9 @@ function createRectoAlignmentMap(sourceMarkdown, translationMarkdown) {
 	assignRectoAlignmentSpans(bySourceLine, "source");
 	assignRectoAlignmentSpans(byTranslationLine, "translation");
 	return {
-		status: blocked || !pairs.length ? "unavailable" : (issues.length ? "degraded" : "ready"),
+		status: blocked || (!pairs.length && !sourceEdited) ? "unavailable" : (issues.length || sourceEdited ? "degraded" : "ready"),
+		sourceEdited,
+		syncOrdinals: sourceEdited ? new Set(pairs.map(pair => pair.ordinal)) : null,
 		issues,
 		stats: {
 			pairs: pairs.length,
@@ -10856,7 +10898,7 @@ function describeRectoAlignmentBlocker(map) {
 	if (issues.includes("source-binding-missing") || issues.includes("translation-binding-missing")) return rectoUiText("compare.alignmentBindingMissing");
 	if (issues.includes("document-mismatch")) return rectoUiText("compare.alignmentDocumentMismatch");
 	if (issues.includes("revision-mismatch")) return rectoUiText("compare.alignmentRevisionMismatch");
-	if (!map || !map.stats || !map.stats.pairs) return rectoUiText("compare.alignmentNoAnchors");
+	if (!map || !map.stats || (!map.stats.pairs && !map.sourceEdited)) return rectoUiText("compare.alignmentNoAnchors");
 	return "";
 }
 
@@ -11277,6 +11319,7 @@ class RectoDualPaneSession {
 		const followPos = this.blockPositions(followSide);
 		const knots = [];
 		for (const [ordinal, driver] of driverPos) {
+			if (this.map?.syncOrdinals && !this.map.syncOrdinals.has(ordinal)) continue;
 			const follow = followPos.get(ordinal);
 			if (follow !== undefined) knots.push({ driver, follow });
 		}
@@ -11365,6 +11408,8 @@ class RectoDualPaneSession {
 		const cursor = view.editor && typeof view.editor.getCursor === "function" ? view.editor.getCursor() : null;
 		if (!cursor) return null;
 		const pair = lookupRectoAlignmentPair(this.map, side, cursor.line);
+		if (pair && this.map.sourceEdited
+			&& (cursor.line < pair[side].startLine || cursor.line > pair[side].anchorLine)) return null;
 		return pair ? pair.ordinal : null;
 	}
 
@@ -14407,13 +14452,8 @@ class RectoPlugin extends obsidian.Plugin {
 			showRectoNotice(rectoUiText("compare.openPaper"), { tone: "attention" });
 			return;
 		}
-		// T84-S：先试「译文 frontmatter 里记着的原文路径」这条线索——用户自己的文档
-		// （`我的剪藏.md`）剥不出 `en-`/`ch-` 前缀，既有的命名约定永远配不上它。
-		// **库内产物不写这个字段，一律落到下面的命名约定，库内行为一个字不变。**
+		// 优先认已登记的产物或译文回指，旧 en-/ch- 配对沿用文件名。
 		const linked = this.resolveRectoLinkedDualPanePair(file);
-		if (linked?.artifact && documentContentHash(await this.app.vault.read(linked.sourceFile)) !== linked.artifact.sourceContentHash) {
-			showRectoNotice(documentLanguageText("原文版本已改变，旧译文保留，对照已停用。", "The source version changed. The translation is preserved; comparison is disabled."), { tone: "attention" }); return;
-		}
 		const stem = linked ? "" : resolveRectoPaperStem(file.name);
 		if (!linked && !stem) {
 			showRectoNotice(rectoUiText("compare.wrongFile"), { tone: "attention" });
@@ -14451,14 +14491,23 @@ class RectoPlugin extends obsidian.Plugin {
 			showRectoNotice(rectoUiText("compare.dualBindFailed"), { tone: "error" });
 			return;
 		}
-		// 锚点不配对时对照仍然可用，只是那些块点不动、滚不到——算出来了就必须说，
-		// 否则用户只会以为对照坏了。
-		const degraded = describeRectoAlignmentDegradation(map);
-		if (degraded) {
-			this.compareFeedbackEl?.remove();
-			this.compareFeedbackEl = bindRectoInlineFeedback(this, "compare", rightLeaf.view?.containerEl);
-			setRectoInlineFeedback(this, "compare", rectoUiText("compare.unmapped"));
+	}
+
+	updateRectoDualPaneFeedback(session) {
+		const { map } = session;
+		const messages = [];
+		if (map.sourceEdited) messages.push(rectoUiText("compare.sourceEdited"));
+		if (!map.stats.pairs && map.sourceEdited) messages.push(rectoUiText("compare.independentReading"));
+		else if (describeRectoAlignmentDegradation(map)) messages.push(rectoUiText("compare.unmapped"));
+		if (messages.length && !this.compareFeedbackEl) {
+			const view = session.getView("translation");
+			this.compareFeedbackEl = bindRectoInlineFeedback(this, "compare", view?.containerEl);
+			const node = this.compareFeedbackEl;
+			if (node && view.contentEl?.parentElement === view.containerEl) {
+				view.containerEl.insertBefore(node, view.contentEl);
+			}
 		}
+		setRectoInlineFeedback(this, "compare", messages.join("\n"));
 	}
 
 	// clearPersisted=false 只用于插件卸载/重启：保留记忆，下次启动才好恢复关联。
@@ -14485,6 +14534,7 @@ class RectoPlugin extends obsidian.Plugin {
 		const session = this.dualPaneSession;
 		if (!session || !file || !file.path) return;
 		if (file.path !== session.panes.source.path && file.path !== session.panes.translation.path) return;
+		session.rebuildRevision = (session.rebuildRevision || 0) + 1;
 		if (this.dualPaneRebuildTimer) clearTimeout(this.dualPaneRebuildTimer);
 		this.dualPaneRebuildTimer = setTimeout(() => {
 			this.dualPaneRebuildTimer = null;
@@ -14497,6 +14547,7 @@ class RectoPlugin extends obsidian.Plugin {
 	async rebuildRectoAlignmentMap() {
 		const session = this.dualPaneSession;
 		if (!session) return;
+		const revision = session.rebuildRevision;
 		const sourceFile = this.app.vault.getAbstractFileByPath(session.panes.source.path);
 		const translationFile = this.app.vault.getAbstractFileByPath(session.panes.translation.path);
 		if (!(sourceFile instanceof obsidian.TFile) || !(translationFile instanceof obsidian.TFile)) {
@@ -14504,13 +14555,14 @@ class RectoPlugin extends obsidian.Plugin {
 			return;
 		}
 		const map = await this.readRectoAlignmentMap(sourceFile, translationFile);
-		if (this.dualPaneSession !== session) return;
+		if (this.dualPaneSession !== session || session.rebuildRevision !== revision) return;
 		if (describeRectoAlignmentBlocker(map)) {
 			showRectoNotice(rectoUiText("compare.alignmentLost"), { tone: "attention" });
 			this.stopRectoDualPane();
 			return;
 		}
 		session.map = map;
+		this.updateRectoDualPaneFeedback(session);
 	}
 
 	async readRectoAlignmentMap(sourceFile, translationFile) {
@@ -14518,10 +14570,20 @@ class RectoPlugin extends obsidian.Plugin {
 			this.app.vault.cachedRead(sourceFile),
 			this.app.vault.cachedRead(translationFile),
 		]);
-		const map = createRectoAlignmentMap(sourceMarkdown, translationMarkdown);
 		const metadata = parseSimpleFrontmatter(translationMarkdown);
-		if (Number(metadata["recto-naming-version"]) === 1 && (metadata["recto-source-path"] !== sourceFile.path
-			|| metadata["recto-source-hash"] !== documentContentHash(sourceMarkdown))) map.issues.push("revision-mismatch");
+		const versioned = Number(metadata["recto-naming-version"]) === 1;
+		const artifact = !versioned && Object.values(this.settings?.documentArtifacts?.[sourceFile.path]?.translations || {})
+			.find(record => record.path === translationFile.path);
+		const expectedHash = versioned ? metadata["recto-source-hash"] : artifact?.sourceContentHash;
+		const wrongPath = versioned && metadata["recto-source-path"] !== sourceFile.path;
+		const hashMismatch = (versioned || artifact) && expectedHash !== documentContentHash(sourceMarkdown);
+		const sourceEdited = Boolean(versioned && !wrongPath && hashMismatch && /^[a-f0-9]{64}$/.test(expectedHash)
+			&& isRectoGeneratedSource(sourceFile, sourceMarkdown));
+		const map = createRectoAlignmentMap(sourceMarkdown, translationMarkdown, sourceEdited);
+		if (wrongPath || (hashMismatch && !sourceEdited)) {
+			map.issues.push("revision-mismatch");
+			map.status = "unavailable";
+		}
 		return map;
 	}
 
@@ -14610,6 +14672,7 @@ class RectoPlugin extends obsidian.Plugin {
 			return false;
 		}
 		this.dualPaneSession = session;
+		this.updateRectoDualPaneFeedback(session);
 		this.dualPaneEventRefs = [
 			{ target: this.app.workspace, ref: this.app.workspace.on("layout-change", () => this.verifyRectoDualPane()) },
 			{ target: this.app.workspace, ref: this.app.workspace.on("file-open", () => this.verifyRectoDualPane()) },
@@ -14804,8 +14867,18 @@ class RectoPlugin extends obsidian.Plugin {
 		const metadata = parseSimpleFrontmatter(markdown);
 		if (Number(metadata["recto-naming-version"]) === 1) {
 			const sourcePath = metadata["recto-source-path"];
-			const source = this.app.vault.getAbstractFileByPath(sourcePath);
-			if (!source || documentContentHash(await this.app.vault.read(source)) !== metadata["recto-source-hash"]) return { error: documentLanguageText("原文版本已改变，对照已停用。", "The source version changed; comparison is disabled.") };
+			const source = typeof sourcePath === "string" && this.app.vault.getAbstractFileByPath(sourcePath);
+			const sourceMarkdown = source instanceof obsidian.TFile ? await this.app.vault.read(source) : null;
+			const expectedHash = metadata["recto-source-hash"];
+			const sourceBinding = parseRectoFrontmatter(sourceMarkdown);
+			// PDF 坐标来自当前译文的生成修订。SRC 编辑不会移动 PDF 上的块。
+			const boundSource = sourceMarkdown !== null && isRectoGeneratedSource(source, sourceMarkdown)
+				&& sourceBinding?.documentId && sourceBinding?.sourceRevisionId
+				&& sourceBinding.documentId === binding?.documentId && sourceBinding.sourceRevisionId === binding?.sourceRevisionId;
+			if (sourceMarkdown === null || (documentContentHash(sourceMarkdown) !== expectedHash
+				&& (!boundSource || !/^[a-f0-9]{64}$/.test(expectedHash)))) {
+				return { error: describeRectoPdfBindingIssue("revision-mismatch") };
+			}
 		}
 		let sidecar;
 		try {
@@ -14836,15 +14909,12 @@ class RectoPlugin extends obsidian.Plugin {
 			};
 		}
 		const cache = this.alignmentSectionCache;
-		if (!cache.hasAnchors) return;
-		const markers = new Set(findRectoAnchorRanges(cache.lines.slice(info.lineStart, info.lineEnd + 1).join("\n")).map(range => range.marker));
-		hideRectoAnchorsInElement(el, markers);
-		for (let index = Math.min(info.lineEnd, cache.lines.length - 1); index >= info.lineStart; index--) {
-			const match = cache.lines[index].match(RECTO_ALIGNMENT_ANCHOR_PATTERN);
-			if (!match) continue;
-			el.setAttribute(RECTO_ALIGNED_BLOCK_ATTRIBUTE, match[1]);
-			return;
-		}
+		const section = cache.hasAnchors ? cache.lines.slice(info.lineStart, info.lineEnd + 1).join("\n") : "";
+		const ranges = section ? findRectoAnchorRanges(section) : [];
+		if (ranges.length) hideRectoAnchorsInElement(el, new Set(ranges.map(range => range.marker)));
+		const terminal = ranges.reverse().find(range => !section.slice(range.to, range.lineEnd).trim());
+		if (terminal) el.setAttribute(RECTO_ALIGNED_BLOCK_ATTRIBUTE, terminal.ordinalText);
+		else el.removeAttribute?.(RECTO_ALIGNED_BLOCK_ATTRIBUTE);
 	}
 
 	// T66：把来自 PDF 的截图按它在原文里占页面多宽定 md 显示宽度（只缩不放、设最小宽），
