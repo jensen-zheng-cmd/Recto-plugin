@@ -7,7 +7,66 @@ const https = require("https");
 const http = require("http");
 const crypto = require("crypto");
 const zlib = require("zlib");
-const { AsyncLocalStorage } = require("async_hooks");
+// Node async_hooks must stay off in Obsidian's renderer: enabling them after startup
+// (plugin enable or self-update reload) crashes the whole renderer on the next print
+// or pop-out window, e.g. Export to PDF. V8 promise hooks carry the same context across
+// await/then without that side effect. The state lives on globalThis so plugin reloads
+// share one hook instead of stacking another per load.
+const rectoAsyncContext = (() => {
+	const globalKey = Symbol.for("recto.asyncContext.v1");
+	if (globalThis[globalKey]) return globalThis[globalKey];
+	let promiseHooks = null;
+	try { promiseHooks = require("v8").promiseHooks || null; } catch {}
+	const frameKey = Symbol("rectoAsyncContextFrame");
+	const originalOpen = Symbol("rectoAsyncContextOriginalOpen");
+	const state = { current: undefined, stack: [], installed: false };
+	state.install = () => {
+		if (state.installed || !promiseHooks) return;
+		state.installed = true;
+		promiseHooks.createHook({
+			init(promise) { if (state.current !== undefined) promise[frameKey] = state.current; },
+			before(promise) { state.stack.push(state.current); state.current = promise[frameKey]; },
+			// A hook installed mid-job sees this job's after without its before.
+			after() { state.current = state.stack.length ? state.stack.pop() : undefined; },
+		});
+	};
+	// Opening a same-renderer window (print, pop-out) silently drops this context's
+	// promise hooks. Registering and removing a no-op hook makes Node reapply the set.
+	state.refresh = () => { if (state.installed) promiseHooks.onInit(() => {})(); };
+	state.ensureTracking = frame => { if (Promise.resolve()[frameKey] !== frame) state.refresh(); };
+	state.watchWindow = win => {
+		const open = win?.open;
+		if (typeof open !== "function" || open[originalOpen]) return false;
+		const watched = function(...args) { try { return open.apply(this, args); } finally { state.refresh(); } };
+		watched[originalOpen] = open;
+		win.open = watched;
+		return true;
+	};
+	state.unwatchWindow = win => {
+		// Leave wrappers installed by others in place; ours then stays harmless underneath.
+		if (win?.open?.[originalOpen] && Object.prototype.hasOwnProperty.call(win, "open")) win.open = win.open[originalOpen];
+	};
+	globalThis[globalKey] = state;
+	return state;
+})();
+
+function createRectoContextScope() {
+	const key = Symbol("rectoContextScope");
+	return {
+		getStore() { return rectoAsyncContext.current?.get(key); },
+		run(store, work, ...args) {
+			rectoAsyncContext.install();
+			const previous = rectoAsyncContext.current;
+			const frame = new Map(previous);
+			frame.set(key, store);
+			rectoAsyncContext.current = frame;
+			try {
+				rectoAsyncContext.ensureTracking(frame);
+				return work(...args);
+			} finally { rectoAsyncContext.current = previous; }
+		},
+	};
+}
 
 const RECTO_UI_LANGUAGES = Object.freeze(["zh-CN", "en"]);
 const RECTO_UI_LANGUAGE_NAMES = Object.freeze({
@@ -11955,6 +12014,9 @@ class RectoPlugin extends obsidian.Plugin {
 		this.isUnloading = false;
 		this.activeOperation = null;
 		this.initializeOperationCoordination();
+		this.asyncContextWindows = new Set();
+		this.watchAsyncContextWindow(typeof window === "undefined" ? null : window);
+		for (const item of this.app?.workspace?.floatingSplit?.children || []) this.watchAsyncContextWindow(item?.win);
 		this.stemReservations = new Map();
 		this.hasNodeSqlite = this.canUseNodeSqlite();
 		this.settings = { ...DEFAULT_SETTINGS };
@@ -12008,7 +12070,10 @@ class RectoPlugin extends obsidian.Plugin {
 		this.applyInterfaceAccent();
 		this.registerEvent(this.app.workspace.on("layout-change", () => this.applyInterfaceAccent()));
 		this.registerEvent(this.app.workspace.on("window-open", (...windows) => {
-			for (const item of windows) this.applyInterfaceAccent(item?.document || item?.win?.document);
+			for (const item of windows) {
+				this.applyInterfaceAccent(item?.document || item?.win?.document);
+				this.watchAsyncContextWindow(item?.win || item);
+			}
 		}));
 		this.checkHostNetworkCapability();
 		this.addSettingTab(new RectoSettingTab(this.app, this));
@@ -12215,6 +12280,13 @@ class RectoPlugin extends obsidian.Plugin {
 		if (this.pendingBackendRecoveryController) this.pendingBackendRecoveryController.abort();
 		for (const operation of this.operations?.values() || []) operation.controller.abort();
 		if (this.activeOperation) this.activeOperation.controller.abort();
+		for (const win of this.asyncContextWindows || []) rectoAsyncContext.unwatchWindow(win);
+		this.asyncContextWindows?.clear();
+	}
+	watchAsyncContextWindow(win) {
+		if (!win?.document || this.asyncContextWindows?.has(win)) return;
+		rectoAsyncContext.watchWindow(win);
+		this.asyncContextWindows?.add(win);
 	}
 	async loadPluginData() {
 		const d = await this.loadData();
@@ -13102,7 +13174,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 	initializeOperationDiagnostics(options = {}) {
 		if (this.diagnosticScope) return;
-		this.diagnosticScope = new AsyncLocalStorage();
+		this.diagnosticScope = createRectoContextScope();
 		const base = this.app?.vault?.adapter?.getBasePath?.();
 		const dir = this.manifest?.dir || `${this.app?.vault?.configDir || ".obsidian"}/plugins/${this.manifest?.id || "recto"}`;
 		const sourceFile = base ? nodePath.join(base, dir, "main.js") : (typeof __filename === "string" ? __filename : null);
@@ -14139,7 +14211,7 @@ class RectoPlugin extends obsidian.Plugin {
 
 	initializeOperationCoordination() {
 		if (this.operationScope) return;
-		this.operationScope = new AsyncLocalStorage();
+		this.operationScope = createRectoContextScope();
 		if (!this.operations) this.operations = new Map();
 		if (!this.operationResources) this.operationResources = new RectoOperationResources();
 		// Only invocation descendants inherit this context. UI/account requests made
@@ -26282,6 +26354,7 @@ function sleep(ms, signal) {
 }
 if (process.env.NODE_ENV === "test") {
 	RectoPlugin.__test = {
+		createRectoContextScope,
 		showRectoNotice, rectoNoticeHistory, bindRectoInlineFeedback, setRectoInlineFeedback, rectoTaskResultText, RectoNotificationBatches,
 		RectoOperationResources,
 		normalizeLocalTaskIntents,
