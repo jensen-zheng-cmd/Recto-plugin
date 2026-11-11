@@ -395,6 +395,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"plan.packEstimate.20": "约 20 篇普通论文",
 		"plan.packEstimate.50": "约 50 篇普通论文",
 		"plan.recommended": "推荐",
+		"plan.taxAtCheckout": "税费在结账时计算",
 		"plan.pages": "{count} 页",
 		"plan.perYear": "/年",
 		"plan.perMonth": "/月",
@@ -1401,6 +1402,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"plan.packEstimate.20": "About 20 typical papers",
 		"plan.packEstimate.50": "About 50 typical papers",
 		"plan.recommended": "Recommended",
+		"plan.taxAtCheckout": "Tax calculated at checkout",
 		"plan.pages": "{count} pages",
 		"plan.perYear": "/year",
 		"plan.perMonth": "/month",
@@ -6150,8 +6152,25 @@ function normalizeBackendPlansCache(value) {
 			priceCents: Number.isFinite(Number(item.priceCents)) ? Number(item.priceCents) : 0,
 			currency: String(item.currency || "CNY").trim(),
 			paymentProviders,
+			suggestedPayment: normalizeBackendSuggestedPayment(item.suggestedPayment),
 		};
 	}).filter(Boolean);
+}
+
+// 后端按访问地区给的建议显示价（T94-W）：卡片显示它，购买时把同一付款方式带给付款页，
+// 两处价格才对得上。老后端不给这个字段，就退回套餐本身的人民币价、付款方式由网页自己判断。
+function normalizeBackendSuggestedPayment(value) {
+	if (!value || typeof value !== "object") return null;
+	const provider = String(value.provider || "").trim().toLowerCase();
+	const priceCents = Number(value.priceCents);
+	if (provider !== "wechat" && provider !== "paddle") return null;
+	if (!Number.isInteger(priceCents) || priceCents <= 0) return null;
+	return {
+		provider,
+		priceCents,
+		currency: String(value.currency || "CNY").trim().toUpperCase(),
+		taxIncluded: value.taxIncluded !== false,
+	};
 }
 
 function getBackendSelectedPlan(settings) {
@@ -6179,7 +6198,8 @@ function formatBackendPlanPrice(plan) {
 	// 去掉尾随的零：定价是 9.9 就写 ¥9.9，写成 ¥9.90 在卡片上只是噪音。
 	const amount = String(Number((priceCents / 100).toFixed(2)));
 	const currency = String((plan && plan.currency) || "CNY").toUpperCase();
-	return currency === "CNY" ? `¥${amount}` : `${amount} ${currency}`;
+	if (currency === "CNY") return `¥${amount}`;
+	return currency === "USD" ? `US$${amount}` : `${amount} ${currency}`;
 }
 
 function resolveBackendBillingMode(value, plans = []) {
@@ -6305,6 +6325,7 @@ function buildBackendCreditPackCatalog(plans) {
 		const pages = plan.translationPages !== null
 			? plan.translationPages
 			: projectTranslationPagesFromCredits(plan.quotaAmount, 1000);
+		const quote = plan.suggestedPayment;
 		return {
 			kind: "credit-pack",
 			code: plan.code,
@@ -6312,7 +6333,9 @@ function buildBackendCreditPackCatalog(plans) {
 			badge: preset.badge ? rectoUiText("plan.recommended") : "",
 			featured: !!preset.featured,
 			papersText: rectoUiText(`plan.packEstimate.${{ translation_20: 1, translation_400: 20, translation_1000: 50 }[code]}`),
-			price: formatBackendPlanPrice(plan),
+			price: formatBackendPlanPrice(quote || plan),
+			taxNote: quote && !quote.taxIncluded ? rectoUiText("plan.taxAtCheckout") : "",
+			paymentProvider: quote ? quote.provider : "",
 			priceCents: Number(plan.priceCents) || 0,
 			translationPages: pages,
 		};
@@ -13765,7 +13788,11 @@ class RectoPlugin extends obsidian.Plugin {
 		if (!cleanPlanCode) throw createRectoUiError("account.choosePlan");
 		const payload = await this.backendRequest("/api/v1/checkout/handoff/start", {
 			method: "POST",
-			body: { planCode: cleanPlanCode, uiLocale: this.uiLocale },
+			body: {
+				planCode: cleanPlanCode,
+				uiLocale: this.uiLocale,
+				...(options.paymentProvider ? { paymentProvider: options.paymentProvider } : {}),
+			},
 			timeout: options.timeout || 30000,
 			signal: options.signal,
 		});
@@ -24278,7 +24305,7 @@ class RectoAccountModal extends obsidian.Modal {
 	startPlanCheckout(card, action) {
 		return this.runAction(action.label, async () => {
 			this.plugin.settings.backendSelectedPlanCode = card.code;
-			const url = await this.plugin.startBackendCheckout(card.code, { timeout: 30000 });
+			const url = await this.plugin.startBackendCheckout(card.code, { timeout: 30000, paymentProvider: card.paymentProvider || "" });
 			this.plugin.openExternalUrl(url);
 			this.checkoutSnapshot = snapshotCheckoutBilling(this.plugin.settings);
 			this.checkoutStarted = true;
@@ -24296,6 +24323,7 @@ class RectoAccountModal extends obsidian.Modal {
 		if (card.badge) cell.createDiv({ cls: "recto-account-plan-badge", text: card.badge });
 		cell.createDiv({ cls: "recto-account-pack-pages", text: card.label });
 		cell.createSpan({ cls: "recto-account-pack-price", text: card.price });
+		if (card.taxNote) cell.createSpan({ cls: "recto-account-pack-tax", text: card.taxNote });
 		cell.createSpan({ cls: "recto-account-pack-papers", text: card.papersText });
 		const pending = this.pendingLabel === action.label;
 		const cta = cell.createEl("button", {
