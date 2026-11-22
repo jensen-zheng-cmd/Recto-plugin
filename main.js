@@ -170,6 +170,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.detailed": "详细",
 		"settings.zoteroSource": "Zotero 源文件夹",
 		"settings.libraryFolder": "论文库文件夹",
+		"settings.libraryFolderReveal": "在文件浏览器中定位这个文件夹",
+		"settings.removedZotero": "已删除的 Zotero 论文",
+		"settings.removedZoteroDesc": "这 {count} 篇在 Recto 里删除过，Zotero 同步不再导入：{titles}",
+		"settings.removedZoteroRestore": "恢复同步",
+		"settings.removedZoteroRestored": "已恢复，下次同步会重新导入这 {count} 篇",
 		"settings.libraryPlaceholder": "论文库",
 		"settings.libraryInvalid": "论文库目录不可用，请检查设置",
 		"settings.chooseVaultFolder": "请选择当前仓库内的文件夹",
@@ -244,6 +249,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.ribbonDualPane": "双栏对照",
 		"settings.ribbonPdfCompare": "PDF 对照",
 		"settings.ribbonExternalPdf": "库外 PDF",
+		"settings.ribbonAddPapers": "添加论文",
 		"settings.conversion": "转换",
 		"settings.pdfCleanup": "PDF 转换后处理",
 		"settings.pdfCleanupDesc": "开启后会进一步清理页眉页脚与伪标题、粘合跨页断句，并修正常见的上下标和词内空格问题。关掉后仅保留基础处理，适合排错与效果对比。",
@@ -286,9 +292,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.signedOut": "尚未登录 Recto 账号",
 		"account.pagesUnknown": "翻译页尚未读取",
 		"account.pagesAvailable": "可用 {count} 页",
-		"account.creditsUnknown": "额度尚未读取",
-		"account.creditsRemaining": "剩余额度 {percent}",
-		"account.creditsProcessing": "，另有 {percent}% 处理中",
 		"account.actionFailed": "账号操作未完成，请稍后重试。",
 		"account.signIn": "登录",
 		"account.signInHint": "尚未登录 Recto 账号，点击打开账号面板",
@@ -299,11 +302,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.pagesLabel": "翻译页 —",
 		"account.pagesCount": "{count} 页",
 		"account.pagesHint": "可用 {count} 页；PDF 转换当前免费；{suffix}",
-		"account.creditsEmpty": "额度 0%",
-		"account.creditsEmptyHint": "额度已用完，需要购买后才能继续转换；{suffix}",
-		"account.creditsLabel": "额度 —",
-		"account.creditsLabelValue": "额度 {percent}{held}",
-		"account.heldSuffix": "（{percent}% 处理中）",
 		"account.statusSignedIn": "Recto 账号已登录",
 		"account.statusSignedOut": "Recto 账号未登录",
 		"account.statusZoteroSetup": "Zotero 待配置",
@@ -317,20 +315,15 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.statusPagesUnknown": "翻译页未知",
 		"account.statusPagesLow": "翻译页不足",
 		"account.statusPagesAvailable": "可用 {count} 个翻译页",
-		"account.statusCreditsLow": "额度不足",
-		"account.statusCreditsAvailable": "额度可用",
-		"account.statusCreditsPapers": "额度可用 · 约 {count} 篇",
 		"account.modalTitle": "Recto 账号与额度",
 		"account.refreshFailed": "账号信息暂时无法刷新，请稍后重试。",
 		"account.operationPending": "{label}未完成，请稍后重试。",
 		"account.operationFailed": "{label}失败：{error}",
-		"account.browserWaitingTitle": "浏览器登录 · 等待中",
 		"account.browserAccountTitle": "Recto 账号",
-		"account.browserReturn": "浏览器登录后，自动回到这里。",
+		"account.browserReturn": "在浏览器中完成登录",
 		"account.browserIntro": "把登录交给浏览器。",
-		"account.browserWaitingDesc": "Recto 正在安全等待浏览器完成认证。这个面板可以保持打开，也可以稍后再回来。",
-		"account.browserDesc": "使用系统浏览器完成登录、注册或找回密码；密码管理器可以正常工作，密码不会进入 Obsidian 插件。",
-		"account.browserWaiting": "正在等待浏览器完成登录",
+		"account.browserDesc": "登录、注册与找回密码都在浏览器完成，密码不会进入 Obsidian 插件。",
+		"account.browserWaiting": "等待中，登录完成后会自动回到这里。",
 		"account.sessionExpiredDesc": "上次登录的会话已过期，重新登录即可继续使用。",
 		"account.reopenLogin": "重新打开登录页",
 		"account.loginInBrowser": "在浏览器中登录",
@@ -342,8 +335,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.copyLoginLink": "复制登录链接",
 		"account.loginLinkCopied": "登录链接已复制",
 		"account.loginLinkCopyFailed": "复制失败，请手动打开账号网页。",
-		"account.browserReturnHint": "完成网页操作后返回 Obsidian，Recto 会自动继续。",
-		"account.browserOnlyHint": "登录、注册与找回密码都在浏览器完成。",
 		"account.loginTimeout": "登录页已超时，请重新点「在浏览器中登录」。",
 		"account.loginConsumed": "这次登录已经被接管过了，若仍未登录请重新发起。",
 		"account.loginIdle": "还没有发起浏览器登录。",
@@ -352,74 +343,36 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.emailUnverified": "邮箱尚未验证。",
 		"account.sendVerification": "发送验证邮件",
 		"account.verificationRequested": "验证邮件已发送",
-		"account.inviteCode": "邀请码",
 		"account.copyInvite": "复制邀请码",
 		"account.clipboardUnavailable": "当前环境不支持复制",
 		"account.inviteCopied": "邀请码已复制",
 		"account.invitePagesHint": "好友注册并验证邮箱后，双方各得 60 个翻译页。",
-		"account.inviteTrialHint": "好友注册时填写，双方各得 7 天 Pro 试用。",
+		"account.inviteOffer": "免费领 60 页",
+		"account.inviteRefer": "邀请好友",
 		"account.signOut": "退出登录",
 		"account.signedOutNotice": "已退出 Recto 账号",
 		"account.availablePagesLabel": "可用翻译页",
 		"account.packHelp": "一次购买，长期有效，可叠加。翻译按实际页数消耗；约几篇按普通论文估算；PDF 转换当前免费。",
 		"account.pagesReadFailed": "翻译页读取失败，重新打开面板会再试一次。",
 		"account.pagesDepleted": "翻译页已用完，购买后可继续翻译；PDF 转换当前免费。",
-		"account.remainingCreditsLabel": "剩余额度",
-		"account.heldProcessing": "另有 {percent}% 正在处理中",
-		"account.creditsReadFailed": "额度读取失败，重新打开面板会再试一次。",
-		"account.creditsDepleted": "额度已用完，购买后才能继续转换与翻译。",
 		"account.plansReadFailed": "套餐读取失败，重新打开面板会再试一次。",
 		"account.plansLoading": "正在读取套餐…",
 		"account.plansUnavailable": "套餐信息暂时无法显示，请联系我们。",
-		"account.paymentWaiting": "正在等待浏览器完成付款，额度会自动更新。",
 		"account.paymentTimeout": "还没等到付款结果。关掉这个面板再打开一次也会刷新；插件不会查询订单本身。",
-		"account.packEstimateHint": "按每篇约 20 页估算。实际消耗始终以翻译页数为准；PDF 转换当前免费。",
-		"account.planEstimateHint": "按平均页数折算的估计值。转换按论文页数计费，翻译按字符量另计，实际篇数会随论文长短浮动。",
 		"account.paymentOpened": "支付页已在浏览器打开，请在浏览器里完成付款。",
 		"account.buy": "购买",
 		"account.buyPending": "购买…",
-		"account.billingCycle": "计费周期",
-		"account.monthly": "月付",
-		"account.yearly": "年付",
-		"account.saveMonths": "省 {count} 个月",
-		"plan.basicKicker": "先试试",
 		"plan.free": "免费",
-		"plan.proKicker": "持续读论文",
-		"plan.maxKicker": "重度使用",
-		"plan.basicFeatureConvert": "PDF 转换与结构还原",
-		"plan.basicFeatureCompare": "原文译文双栏对照",
-		"plan.basicFeatureZotero": "Zotero 库导入与索引",
-		"plan.proFeature": "Basic 的全部能力",
-		"plan.maxFeature": "Pro 的全部能力",
 		"plan.packEstimate.1": "约 1 篇普通论文",
 		"plan.packEstimate.20": "约 20 篇普通论文",
 		"plan.packEstimate.50": "约 50 篇普通论文",
 		"plan.recommended": "推荐",
 		"plan.taxAtCheckout": "税费在结账时计算",
+		"plan.perPage": "{price} / 页",
+		"plan.save": "省 {percent}%",
+		"account.topUp": "购买翻译页",
 		"plan.pages": "{count} 页",
-		"plan.perYear": "/年",
-		"plan.perMonth": "/月",
-		"plan.papersPerCycle": "每期约 {count} 篇",
-		"plan.creditsPending": "额度待定",
-		"plan.quotaMultiple": "额度约为 Basic 的 {count} 倍",
-		"plan.membershipExpired": "{plan} 会员已到期，权益已回到 Basic。",
-		"plan.trial": "试用",
-		"plan.membership": "会员",
-		"plan.membershipActive": "{plan} {kind}生效中",
-		"plan.membershipExpires": "{plan} {kind}有效期至 {date}{soon}",
-		"plan.expiresSoon": "，还有 {days} 天。到期不会自动续费",
 		"plan.buy": "购买 {plan}",
-		"plan.fallback": "到期后回到此档",
-		"plan.freeActive": "免费使用中",
-		"plan.current": "当前套餐",
-		"plan.renew": "续期 {plan}",
-		"plan.trialActive": "试用中",
-		"plan.upgrade": "升级到 {plan}",
-		"plan.switchAfterExpiry": "到期后可切换",
-		"plan.downgradeHint": "当前是 {plan} {cycle}会员。现在换成 {next} 会按新档的每天额度折算剩余时长，您会少掉一部分已买的天数，所以请等当前会员到期后再选。",
-		"plan.switchYearly": "换成年付",
-		"plan.switchMonthly": "换成月付",
-		"plan.switch": "切换到 {plan}",
 		"onboarding.title": "欢迎使用 Recto",
 		"onboarding.zoteroFeature": "从 Zotero 精准转换",
 		"onboarding.zoteroFeatureDesc": "论文转成 Markdown，库外的其他 PDF 同样可以转。",
@@ -485,14 +438,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.countScope": "以下计数只统计「{collection}」内的论文",
 		"hub.recent": "最近",
 		"hub.recentHint": "独立视图：打开过、转换过或改过阅读状态的论文，按时间从新到旧排。进入时会清掉分类与转换筛选；点任何分类即退出。导入不算，没有记录的不在其中。",
-		"hub.allPapers": "全部论文",
 		"hub.reading": "正在读",
 		"hub.read": "已读",
 		"hub.unread": "未读",
-		"hub.zoteroCollections": "Zotero 分类",
-		"hub.includeSubcollections": "包含子分类论文",
-		"hub.currentCollectionOnly": "仅显示当前分类论文",
-		"hub.collectionScopeHint": "{current}；点击切换为{next}",
+		"hub.myLibrary": "我的文库",
+		"hub.includeSubcollections": "显示子分类中的论文",
 		"hub.filters": "筛选",
 		"hub.clearFilter": "清除这个筛选条件：{label}",
 		"hub.clearAll": "全部清除",
@@ -567,8 +517,85 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.openUnconvertedPdf": "打开 PDF（未转换）",
 		"hub.dualPane": "原文/译文双栏对照",
 		"hub.pdfCompare": "PDF 对照阅读",
-		"hub.copyCitation": "复制引用",
+		"hub.copyCitation": "复制参考文献（{style}）；右键选择其他格式",
 		"hub.context.copyPaths": "复制论文路径",
+		"hub.context.copyLink": "复制链接",
+		"hub.context.copyCitation": "复制正文引用",
+		"hub.context.copyBibliography": "复制参考文献",
+		"hub.cite.gb7714": "GB/T 7714",
+		"hub.cite.apa": "APA 7",
+		"hub.cite.ieee": "IEEE",
+		"hub.cite.mla": "MLA 9",
+		"hub.cite.bibtex": "BibTeX",
+		"hub.cite.ris": "RIS",
+		"hub.cite.csl-json": "CSL-JSON",
+		"hub.citeCheck": "引用信息",
+		"hub.citeCheck.missing": "缺{fields}",
+		"hub.citeCheck.fill": "从 Crossref 补全",
+		"hub.citeCheck.fillHint": "按 DOI 或题名在 Crossref 查这篇论文，只补空缺字段，不改已有信息，也不写回 Zotero",
+		"hub.citeCheck.filling": "正在查询…",
+		"hub.citeCheck.filled": "已从 Crossref 补全引用信息",
+		"hub.citeCheck.partial": "已从 Crossref 补充，仍缺{fields}",
+		"hub.citeCheck.nothing": "Crossref 上也没有更多信息，仍缺{fields}",
+		"hub.citeCheck.notFound": "Crossref 没有找到这篇论文",
+		"hub.citeCheck.network": "暂时连不上 Crossref，请稍后再试",
+		"hub.citeCheck.failed": "补全失败，请稍后再试",
+		"hub.citeCheck.batchStart": "正在从 Crossref 查询 {count} 篇论文的引用信息…",
+		"hub.citeCheck.batchDone": "引用信息补全完成：{summary}",
+		"hub.citeCheck.batch.filled": "{count} 篇已补齐",
+		"hub.citeCheck.batch.partial": "{count} 篇补了一部分",
+		"hub.citeCheck.batch.nothing": "{count} 篇 Crossref 上也没有更多信息",
+		"hub.citeCheck.batch.not_found": "{count} 篇没找到",
+		"hub.citeCheck.batch.network": "{count} 篇暂时连不上 Crossref",
+		"hub.context.fillCitation": "补全引用信息",
+		"hub.citeField.author": "作者",
+		"hub.citeField.year": "年份",
+		"hub.citeField.journal": "期刊名",
+		"hub.citeField.proceedings": "会议名",
+		"hub.citeField.book": "书名",
+		"hub.citeField.volume": "卷",
+		"hub.citeField.pages": "页码",
+		"hub.citeField.publisher": "出版社",
+		"hub.citeField.place": "出版地",
+		"hub.citeField.school": "学校",
+		"hub.citeField.institution": "机构",
+		"hub.context.referenceCopied": "已复制：{text}",
+		"hub.context.rename": "重命名…",
+		"settings.paperNaming": "论文命名",
+		"settings.paperNamingPreset": "命名方式",
+		"settings.paperNamingPresetDesc": "新入库论文的文件夹与文件名，Canvas、文件列表和链接里显示的就是它。例：{example}",
+		"settings.paperNaming.title": "题名",
+		"settings.paperNaming.author-year": "作者 年份",
+		"settings.paperNaming.author-year-title": "作者 年份 - 题名",
+		"settings.paperNaming.citekey": "Zotero 引用键",
+		"settings.paperNaming.custom": "自定义模板",
+		"settings.paperNamingTemplate": "自定义模板",
+		"settings.paperNamingTemplateDesc": "可用变量：{author}（Harvard 写法的作者）、{year}、{title}、{shortTitle}、{citekey}。",
+		"settings.paperNamingApply": "应用到已有论文",
+		"settings.paperNamingApplyDesc": "按当前命名方式重命名已入库的论文。先预览再执行；译文对照、笔记以及指向它们的链接（含 Canvas）一起更新。",
+		"settings.paperNamingApplyButton": "预览改名…",
+		"settings.citationStyle": "参考文献格式",
+		"settings.citationStyleDesc": "Hub 详情栏引用按钮与右键「复制参考文献」默认用这个格式。示例：{example}",
+		"settings.citationStyle.auto": "跟随界面语言（中文 GB/T 7714，其他 APA 7）",
+		"rename.title": "重命名论文",
+		"rename.intro": "{count} 篇论文的名字会改变。文件夹、PDF、原文、译文与笔记一起改名，指向它们的链接（含 Canvas）同步更新。",
+		"rename.introSingle": "修改这篇论文的文件夹与文件名，指向它的链接（含 Canvas）同步更新。",
+		"rename.none": "所选论文都已符合当前命名方式。",
+		"rename.skipped": "另有 {count} 篇暂不能改，排在列表最后。",
+		"rename.newName": "新名称",
+		"rename.start": "改名",
+		"rename.startCount": "改名 {count} 篇",
+		"rename.stop": "停止",
+		"rename.done": "完成",
+		"rename.progress": "正在改名 {done} / {total}…",
+		"rename.result": "已改名 {renamed} 篇",
+		"rename.resultFailed": "，{count} 篇未改（{error}）",
+		"rename.missing": "找不到这篇论文。",
+		"rename.blocker.busy": "正在处理中",
+		"rename.blocker.legacy": "旧版目录结构，不支持改名",
+		"rename.blocker.occupied": "名称已被占用",
+		"rename.blocker.missing": "找不到这篇论文",
+		"rename.recoveryFailed": "上次改名未完成，已保留恢复记录，重启 Obsidian 后会再试：{error}",
 		"hub.context.copyFiles": "复制文件",
 		"hub.context.source": "原文 Markdown",
 		"hub.context.translation": "译文 Markdown",
@@ -589,16 +616,51 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.flags.failed": "标记未保存，请重试",
 		"hub.context.convert": "转换为 Markdown",
 		"hub.context.translate": "翻译",
-		"hub.context.delete": "重新导入",
+		"hub.context.delete": "删除…",
 		"hub.context.count": "{label}（{count}）",
 		"hub.context.available": "{label}（{count}/{total}）",
 		"hub.context.pathsCopied": "已复制 {count} 个论文文件夹路径",
 		"hub.context.filesCopied": "已复制 {count} 个文件，可粘贴到支持文件的应用",
 		"hub.context.skipped": "；{count} 篇缺少对应文件，已跳过",
 		"hub.context.unavailable": "当前环境不支持此操作",
+		"hub.context.moveTo": "移动到分类…",
+		"hub.context.addTo": "添加到分类…",
+		"hub.context.removeFrom": "从「{name}」移除",
+		"hub.context.resetCollections": "恢复 Zotero 分类",
+		"collections.pickerPlaceholder": "搜索分类",
+		"collections.pickerMove": "移动到分类：搜索或输入新分类名称",
+		"collections.pickerAdd": "添加到分类：搜索或输入新分类名称",
+		"collections.pickerParent": "移动到：选择上级分类",
+		"collections.pickerSelect": "选择",
+		"collections.pickerCancel": "取消",
+		"collections.actionMove": "移动",
+		"collections.actionAdd": "添加",
+		"collections.createNamed": "新建分类「{name}」",
+		"collections.topLevel": "顶层",
+		"collections.newRoot": "新建分类",
+		"collections.newChild": "新建子分类",
+		"collections.rename": "重命名",
+		"collections.moveTo": "移动到…",
+		"collections.delete": "删除",
+		"collections.namePlaceholder": "分类名称",
+		"collections.nameEmpty": "分类名称不能为空",
+		"collections.nameInvalid": "分类名称不能含「 / 」，也不能是「未分类条目」",
+		"collections.exists": "已有同名分类",
+		"collections.intoSelf": "不能移到自身或其子分类下",
+		"collections.notEmpty": "分类中还有论文，不能删除",
+		"collections.moved": "已将 {count} 篇移到「{name}」",
+		"collections.added": "已将 {count} 篇添加到「{name}」",
+		"collections.removed": "已将 {count} 篇移出「{name}」",
+		"collections.unfiledDone": "已将 {count} 篇移出所有分类",
+		"collections.reset": "已恢复 {count} 篇的 Zotero 分类",
+		"collections.unchanged": "分类没有变化",
+		"collections.undo": "撤销",
+		"collections.undone": "已撤销",
+		"collections.failed": "分类未保存，请重试",
+		"collections.dragCount": "{count} 篇论文",
 		"hub.context.failed": "文件操作未完成，请重试",
 		"hub.context.statusFailed": "阅读状态未保存，请重试",
-		"hub.deletePaper": "重新导入：保留笔记与速记，重置论文产物与标记，从 Zotero 重新读取",
+		"hub.deletePaper": "删除论文…（也可以只清空转换结果）",
 		"hub.authors": "作者",
 		"hub.collapseAuthors": "收起",
 		"hub.moreAuthors": "更多 {count}",
@@ -607,7 +669,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.unconvertedTitle": "{title}（未转换）",
 		"hub.selectionDropped": "已选的 {count} 篇不在当前筛选内，已退出选择。",
 		"hub.navToggle": "分类与阅读状态",
-		"hub.openBatchPane": "打开批量面板：转换、翻译、重新导入选中",
+		"hub.openBatchPane": "打开批量面板：转换、翻译、删除选中",
 		"hub.batchPaneJump": "已选 {count} 篇 · 处理",
 		"hub.backToList": "返回列表",
 		"hub.sort.status": "阅读状态",
@@ -631,8 +693,10 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.selectedCount": "已选 {count} 篇",
 		"hub.escapeHint": "按 Esc 收回",
 		"hub.batchSummary": "未转换 {unconverted} · 已转换无译文 {withoutTranslation} · 完整/旧版译文 {translated} · 部分未翻译 {partial}",
-		"hub.deleteSelected": "重新导入（{count} 篇）",
-		"hub.deleteSelectedHint": "保留笔记与速记，重置选中论文的产物与标记，从 Zotero 重新读取；执行前确认一次",
+		"hub.deleteSelected": "删除…（{count} 篇）",
+		"hub.deleteSelectedHint": "删除选中论文，或只清空它们的转换结果；执行前确认一次",
+		"hub.deleteTitle": "删除论文",
+		"hub.deleteAction": "删除论文",
 		"hub.morePapers": "另有 {count} 篇",
 		"hub.collapseQueue": "折叠任务列表",
 		"hub.expandQueue": "展开任务列表",
@@ -730,11 +794,13 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.convertTitle": "批量转换",
 		"batch.convertIntro": "转换 {count} 篇论文",
 		"batch.convertAction": "{action} {count} 篇",
-		"batch.deleteTitle": "批量重新导入",
-		"batch.deleteIntro": "重新导入 {count} 篇论文",
+		"batch.deleteTitle": "删除 {count} 篇论文",
+		"batch.deleteIntro": "选中了 {count} 篇论文：",
 		"batch.deleteMore": "另有 {count} 篇",
-		"batch.deleteDesc": "笔记和速记保留。原文、译文与摘要移入回收站，阅读状态与标记重置，旧任务放弃。重新导入后需再次转换；已使用的翻译页不退回。",
-		"batch.deleteAction": "重新导入 {count} 篇",
+		"batch.deleteDesc": "论文文件夹（含笔记）会移入回收站。",
+		"batch.deleteDescZotero": "论文文件夹（含笔记）会移入回收站，Zotero 论文不再同步回来。",
+		"batch.resetAction": "只清空转换结果",
+		"batch.deleteAction": "删除 {count} 篇",
 		"recovery.abandoned": "已放弃此任务；已使用的翻译页不退回",
 		"recovery.paperName": "「{name}」",
 		"recovery.task": "该任务",
@@ -843,9 +909,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.linkFailed": "链接未能打开，请重试",
 		"hub.allConverted": "所选论文均已转换",
 		"hub.allTranslated": "所选论文已有目标语言译文",
-		"hub.copied": "已复制",
-		"hub.copyUnavailable": "当前环境不支持复制",
-		"hub.copyFailed": "复制失败，请手动复制",
 		"account.loginSuccessNotice": "已登录 Recto",
 		"account.noLoginUrl": "登录页面暂不可用，请重试",
 		"account.invalidLoginUrl": "登录地址不合法。",
@@ -905,19 +968,25 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"task.exemption": "{count} 篇历史任务已按豁免规则完成结算",
 		"task.failureLog": "，请查看 {path}",
 		"delete.missing": "找不到这篇论文，请刷新论文库",
-		"delete.preflightFailed": "重新导入未完成：{error}",
-		"delete.done": "已重新导入 {success} 篇；{failed} 篇未完成",
-		"reimport.checkFailed": "重新导入检查未通过，请刷新论文库后重试。",
+		"delete.preflightFailed": "清空转换结果未完成：{error}",
+		"delete.done": "已清空 {success} 篇的转换结果；{failed} 篇未完成",
+		"reset.done": "已清空 {count} 篇的转换结果，可以重新转换",
+		"remove.done": "已删除 {count} 篇，已移入回收站",
+		"remove.partial": "已删除 {success} 篇；{failed} 篇未删除",
+		"remove.failed": "删除失败",
+		"remove.failedWithReason": "删除未完成：{error}",
+		"remove.sharedFolder": "这篇与另一篇论文共用文件夹，请把它们一起删除",
+		"reimport.checkFailed": "检查未通过，请刷新论文库后重试。",
 		"reimport.sourceUnavailable": "未找到可确定的 Zotero PDF，请检查附件后重试；原论文已保留。",
 		"reimport.pathOccupied": "恢复路径已被占用，已保留恢复记录和文件。",
 		"reimport.trashFailed": "旧文件未能移入回收站，已保留恢复记录，请重试。",
 		"reimport.sourceChanged": "复制期间 Zotero PDF 发生变化，原论文已保留，请重试。",
-		"reimport.taskRunning": "正在处理，暂时无法重新导入",
+		"reimport.taskRunning": "正在处理，请稍后再操作",
 		"operation.contextLost": "操作状态异常，请重新加载 Recto 后重试",
 		"operation.resourceBusy": "相关论文正在处理，请稍后重试",
-		"reimport.noteUnsaved": "速记尚未保存，请保存后重新导入。",
-		"reimport.recoveryPending": "上次重新导入未完成，请再次重新导入",
-		"reimport.recoveryFailed": "上次重新导入未完成，请再次重新导入",
+		"reimport.noteUnsaved": "速记尚未保存，请保存后再操作。",
+		"reimport.recoveryPending": "上次清空转换结果未完成，请再操作一次",
+		"reimport.recoveryFailed": "上次清空转换结果未完成，请再操作一次",
 		"delete.sourceMissing": "无法读取 Zotero 文件夹，请检查目录",
 		"distribution.done": "分发包已生成：{file}",
 		"distribution.failed": "分发包生成失败，请重试",
@@ -1079,6 +1148,147 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"feedback.formTooShort": "请补充反馈内容",
 		"feedback.formSuccess": "反馈已收到，谢谢",
 		"feedback.formFailed": "反馈未能发送，请重试",
+		"command.addPapers": "添加论文",
+		"paperIntake.noFileYet": "取件已开始 5 分钟，PDF 中转文件夹仍未收到文件。若浏览器标签页上的 Recto 图标显示「!」，请在该页登录或完成验证后刷新；否则请确认链接在已安装 Recto 浏览器扩展的浏览器中打开，且中转文件夹为该浏览器下载位置中的 Recto 文件夹（{folder}）。",
+		"paperIntake.noFileYetAuto": "取件已开始 5 分钟，Recto 仍未收到 PDF。若浏览器标签页上的 Recto 图标显示「!」，请在该页登录或完成验证后刷新；否则请确认已安装 Recto 浏览器扩展。浏览器的下载位置在别处时，扩展会打开一页请你交给 Obsidian，也可在 设置 → 添加论文 → PDF 中转文件夹 中选择。",
+		"paperIntake.rejectedFile": "PDF 中转文件夹里有一份未通过核验的文件：{file}",
+		"paperIntake.useRejected": "仍然加入",
+		"paperIntake.discardRejected": "丢弃",
+		"paperIntake.inboxCleaned": "已把 {count} 个用不上的文件移到回收站",
+		"paperIntake.trashUnavailable": "无法使用系统回收站，中转文件夹里的文件未清理",
+		"hub.abstract": "摘要",
+		"hub.expandAbstract": "展开",
+		"settings.paperIntakeBrowser": "取件浏览器",
+		"settings.paperIntakeBrowserDesc": "选择已安装扩展并已登录的浏览器。",
+		"settings.paperIntakeBrowser.default": "系统默认浏览器",
+		"settings.paperIntakeBrowser.edge": "Microsoft Edge",
+		"settings.paperIntakeBrowser.custom": "指定程序",
+		"settings.paperIntakeBrowserPath": "浏览器程序路径",
+		"settings.paperIntakeBrowserPathInvalid": "找不到这个程序，请填写浏览器可执行文件的完整路径",
+		"paperIntake.destinationZoteroHint": "要同时加入 Zotero，请先在设置里选好 Zotero 数据目录",
+		"paperIntake.zoteroNotRunning": "Zotero 未运行。请打开 Zotero 后重试，或取消勾选「同时加入 Zotero」。",
+		"paperIntake.zoteroAuthorize": "请切到 Zotero，在弹出的授权框里允许 Recto 写入；选「始终允许」以后就不用再点。",
+		"paperIntake.zoteroUnsupported": "当前 Zotero 不支持本地写入，需要 Zotero 10 或更高版本。",
+		"paperIntake.zoteroDenied": "Zotero 没有允许 Recto 写入。",
+		"paperIntake.reason.zotero_write_failed": "写入 Zotero 没有完成",
+		"paperIntake.action.zotero_write_failed": "确认 Zotero 正在运行后重试",
+		"command.processIntakeRequests": "处理 Agent 的入库请求",
+		"paperIntake.agentProcessed": "已处理 Agent 的入库请求：加入 {added} 篇，待补 {waiting} 篇",
+		"settings.paperIntakeAgent": "AI 助手入库",
+		"settings.paperIntakeAgentDesc": "允许 AI 助手为你检索、核对并添加论文。首次使用时，复制设置引导发给 AI 助手即可。",
+		"paperIntake.open": "添加论文",
+		"hub.add": "添加",
+		"hub.pendingBanner": "{count} 篇论文待补 PDF",
+		"hub.pendingView": "查看",
+		"paperIntake.back": "返回论文列表",
+		"paperIntake.operation": "添加论文",
+		"paperIntake.quickAddLabel": "输入 DOI、arXiv 编号、题名或论文链接，添加到「{target}」：",
+		"paperIntake.quickAddPlaceholder": "回车添加，可一次粘贴多行",
+		"paperIntake.alsoZotero": "同时加入 Zotero",
+		"paperIntake.add": "加入",
+		"paperIntake.unfiled": "未分类",
+		"paperIntake.failed": "添加论文失败，请重试",
+		"paperIntake.state.queued": "等待",
+		"paperIntake.state.resolving": "查找全文…",
+		"paperIntake.state.ready": "已找到全文",
+		"paperIntake.state.duplicate": "已在库中",
+		"paperIntake.state.failed": "失败",
+		"paperIntake.state.waiting": "待补 PDF",
+		"paperIntake.state.added": "已加入论文库",
+		"paperIntake.state.removed": "已移出待补",
+		"paperIntake.pendingTitle": "待补 PDF · {count} 篇",
+		"paperIntake.browserFetch": "在浏览器中取件",
+		"paperIntake.browserFetchHint": "在取件浏览器中逐篇打开待补论文；Recto 浏览器扩展以你的登录将 PDF 存入中转文件夹，随后自动加入",
+		"paperIntake.browserNothing": "待补论文都没有可打开的链接",
+		"paperIntake.inboxAutoSet": "已识别 PDF 中转文件夹：{folder}",
+		"paperIntake.inboxSwitched": "浏览器的下载位置变了，PDF 中转文件夹已改为：{folder}",
+		"paperIntake.browserStarted": "正在浏览器中逐篇打开 {count} 篇（还剩 {rest} 篇，可稍后再点）；遇到登录或验证的页面会留给你处理",
+		"paperIntake.openLinkHint": "在浏览器中打开；装了 Recto 扩展会自动下载这一篇",
+		"settings.paperIntakeExtension": "浏览器扩展",
+		"settings.paperIntakeExtensionDesc": "安装 Recto 浏览器扩展后，付费论文可借助浏览器中已有的登录（学校、单位或个人订阅）下载。",
+		"settings.paperIntakeExtensionOpen": "打开扩展文件夹",
+		"paperIntake.checkInbox": "检查中转文件夹",
+		"paperIntake.retryAll": "全部重试",
+		"paperIntake.more": "更多",
+		"paperIntake.cleanInbox": "清理中转文件夹",
+		"paperIntake.editPlaceholder": "填入 DOI 或题名",
+		"paperIntake.editOpen": "填写 DOI 或题名",
+		"paperIntake.editClose": "收起输入框",
+		"paperIntake.retryEdited": "重试",
+		"paperIntake.retry": "重新查找",
+		"paperIntake.remove": "移出待补",
+		"paperIntake.openLink": "在浏览器打开",
+		"paperIntake.attach": "选择已下载的 PDF",
+		"paperIntake.incomplete": "部分数据源查询失败，结论可能不完整，可稍后重试",
+		"paperIntake.inboxAdded": "已从中转文件夹加入 {count} 篇论文",
+		"paperIntake.inboxNone": "中转文件夹中暂无可配对的 PDF",
+		"paperIntake.notPdf": "选中的文件不是有效的 PDF",
+		"paperIntake.mismatchTitle": "这份 PDF 可能不是这篇论文",
+		"paperIntake.mismatchIntro": "「{file}」里没找到《{title}》的题名或作者（扫描件也会这样）。确认是同一篇再加入。",
+		"paperIntake.useAnyway": "仍然加入",
+		"paperIntake.reason.identity_mismatch": "下载到的 PDF 与这篇论文对不上",
+		"paperIntake.reason.bot_check": "网站拦截了自动下载",
+		"paperIntake.fetchingInBrowser": "正在浏览器中取件",
+		"paperIntake.fetchingInBrowserHint": "浏览器存好 PDF 后会自动加入。若标签页上的 Recto 图标显示「!」，请在该页登录或完成验证后刷新。",
+		"paperIntake.reason.access_required": "需要机构权限或购买",
+		"paperIntake.reason.title_unresolved": "未找到该题名",
+		"paperIntake.reason.link_unresolved": "无法从链接读取论文信息",
+		"paperIntake.reason.no_oa_version": "没有合法公开的版本",
+		"paperIntake.reason.not_pdf": "链接只给了网页，没有 PDF",
+		"paperIntake.reason.unreadable": "PDF 无法读取",
+		"paperIntake.reason.rate_limited": "查询太频繁，被暂时限制",
+		"paperIntake.reason.link_dead": "全文链接已失效",
+		"paperIntake.reason.server_error": "对方服务器出错",
+		"paperIntake.reason.network": "网络连接失败",
+		"paperIntake.reason.no_candidates": "各数据源都没给出全文链接",
+		"paperIntake.reason.pdf_unidentified": "没能从 PDF 认出是哪篇论文",
+		"paperIntake.action.pdf_unidentified": "填入 DOI 或题名重试，或按文件直接加入",
+		"paperIntake.addAsFile": "按文件加入",
+		"paperIntake.addAsFileHint": "用 PDF 里的题名或文件名直接加入，书目信息以后再补",
+		"paperIntake.pickPdf": "选择 PDF…",
+		"paperIntake.state.file_resolving": "识别中…",
+		"paperIntake.state.file_ready": "已识别",
+		"paperIntake.dropHint": "松开以加入「{target}」",
+		"paperIntake.dropHintMany": "松开以加入「{target}」 · {count} 个文件",
+		"paperIntake.dropProgress": "正在识别 {done}/{total}",
+		"paperIntake.dropAdded": "已加入 {count} 篇到「{target}」",
+		"paperIntake.dropDuplicates": "{count} 篇已在库中",
+		"paperIntake.dropWaiting": "{count} 篇待补",
+		"paperIntake.dropNotPdf": "{count} 个不是 PDF",
+		"paperIntake.dropJoin": "，",
+		"paperIntake.dropNothing": "没有加入新论文",
+		"paperIntake.action.identity_mismatch": "请在浏览器确认后手动选文件",
+		"paperIntake.action.bot_check": "在浏览器打开下载",
+		"paperIntake.action.access_required": "连校园网或 VPN 后在浏览器下载",
+		"paperIntake.action.title_unresolved": "核对题名，或改用 DOI",
+		"paperIntake.action.link_unresolved": "点「在浏览器中取件」由扩展从页面读出是哪篇并下载；读不出时点右侧编辑按钮填写 DOI 或题名",
+		"paperIntake.action.no_oa_version": "用机构权限在浏览器下载",
+		"paperIntake.action.not_pdf": "在浏览器打开页面找 PDF",
+		"paperIntake.action.unreadable": "在浏览器重新下载",
+		"paperIntake.action.rate_limited": "稍后重试",
+		"paperIntake.action.link_dead": "在浏览器从 DOI 页面找全文",
+		"paperIntake.action.server_error": "稍后重试",
+		"paperIntake.action.network": "检查网络后重试",
+		"paperIntake.action.no_candidates": "在浏览器从 DOI 页面找全文",
+		"settings.paperIntake": "添加论文",
+		"settings.paperIntakeInbox": "PDF 中转文件夹",
+		"settings.paperIntakeInboxDesc": "即浏览器下载位置中的 Recto 文件夹：扩展将 PDF 暂存于此，Recto 加入论文库后自动删除。通常无需设置：取件时自动识别；下载位置不在「下载」或「桌面」时，扩展会把实际位置交给 Recto。",
+		"settings.paperIntakeInboxHint": "手动设置：在浏览器打开 {edge}（Chrome 为 {chrome}）查看下载位置，再点「选择文件夹」选中它，不必自己新建 Recto 文件夹。",
+		"settings.paperIntakeInboxReset": "恢复自动",
+		"settings.paperIntakeInboxTitle": "选择浏览器的下载位置",
+		"settings.paperIntakeCopyLink": "复制 {link}",
+		"settings.paperIntakeLinkCopied": "已复制 {link}，请粘贴到浏览器地址栏打开。",
+		"settings.paperIntakeExtensionPathCopied": "已打开扩展文件夹，路径已复制，可在「加载解压缩的扩展」中直接粘贴。",
+		"settings.paperIntakeInboxAuto": "自动识别",
+		"settings.paperIntakeAgentGuideCopy": "复制设置引导",
+		"settings.paperIntakeAgentGuideCopied": "已复制。粘贴给 AI 助手，它将安装 skill、说明用法并演示一次。",
+		"settings.paperIntakeAgentGuideUnavailable": "请先在「开始使用」中设置论文库文件夹。",
+		"settings.paperIntakeCompanionFailed": "无法写出配套文件：{path}",
+		"settings.paperIntakeExtensionGuide": "安装说明",
+		"settings.paperIntakeExtensionStep1": "点击右侧文件夹图标，打开扩展文件夹（路径同时复制到剪贴板）。",
+		"settings.paperIntakeExtensionStep2": "在 Edge 中打开 {edge}（Chrome 为 {chrome}），开启「开发人员模式」。",
+		"settings.paperIntakeExtensionStep3": "点击「加载解压缩的扩展」，选择该文件夹（可直接粘贴路径）。",
+		"paperIntake.agentGuide": "请为 Obsidian 插件 Recto 配置「AI 助手入库」，按以下步骤进行：\n\n1. 安装 skill：将文件夹 {skill} 复制到你的 skills 目录（Codex 为 ~/.codex/skills/，Claude Code 为 ~/.claude/skills/，其他工具按其约定）。如不支持 skill，请记住该路径，每次添加论文前阅读其中的 SKILL.md。\n2. 说明用法：阅读 SKILL.md 后，用三四句话向我说明：今后如何请你添加论文，论文存放在哪里，无法获取全文时如何处理。\n3. 演示一次：征得我同意后，将示例论文 {example} 加入分类「Recto 示例」，并报告结果。\n4. 询问我是否需要「浏览器取件」（借助浏览器中已有的登录下载付费论文）。如需要，按 {extension} 中的 README.md 指导我安装浏览器扩展。\n\n交接文件夹：{intake}",
 	},
 	en: {
 		"command.openHub": "Open Recto paper library",
@@ -1177,6 +1387,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.detailed": "Detailed",
 		"settings.zoteroSource": "Zotero source folder",
 		"settings.libraryFolder": "Paper library folder",
+		"settings.libraryFolderReveal": "Show this folder in the file explorer",
+		"settings.removedZotero": "Deleted Zotero papers",
+		"settings.removedZoteroDesc": "These {count} papers were deleted in Recto and are skipped by Zotero sync: {titles}",
+		"settings.removedZoteroRestore": "Restore syncing",
+		"settings.removedZoteroRestored": "Restored. The next sync will import these {count} papers again.",
 		"settings.libraryPlaceholder": "Paper library",
 		"settings.libraryInvalid": "The library folder is unavailable. Check settings.",
 		"settings.chooseVaultFolder": "Choose a folder inside this vault.",
@@ -1251,6 +1466,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.ribbonDualPane": "Side by side",
 		"settings.ribbonPdfCompare": "PDF comparison",
 		"settings.ribbonExternalPdf": "External PDF",
+		"settings.ribbonAddPapers": "Add papers",
 		"settings.conversion": "Conversion",
 		"settings.pdfCleanup": "PDF postprocessing",
 		"settings.pdfCleanupDesc": "Further remove headers, footers, and false headings; join sentences across pages; and fix common superscript, subscript, and word spacing issues. Turn off to use basic processing for troubleshooting or comparison.",
@@ -1293,9 +1509,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.signedOut": "Not signed in to Recto",
 		"account.pagesUnknown": "Translation pages not loaded yet",
 		"account.pagesAvailable": "{count} pages available",
-		"account.creditsUnknown": "Credits not loaded yet",
-		"account.creditsRemaining": "Remaining credits {percent}",
-		"account.creditsProcessing": ", with another {percent}% processing",
 		"account.actionFailed": "Could not complete the account action. Please try again later.",
 		"account.signIn": "Sign in",
 		"account.signInHint": "Not signed in to Recto; click to open the account panel",
@@ -1306,11 +1519,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.pagesLabel": "Pages —",
 		"account.pagesCount": "{count} pages",
 		"account.pagesHint": "{count} pages available; PDF conversion is currently free; {suffix}",
-		"account.creditsEmpty": "Credits 0%",
-		"account.creditsEmptyHint": "No credits left. Purchase more to continue converting; {suffix}",
-		"account.creditsLabel": "Credits —",
-		"account.creditsLabelValue": "Credits {percent}{held}",
-		"account.heldSuffix": " ({percent}% processing)",
 		"account.statusSignedIn": "Signed in to Recto",
 		"account.statusSignedOut": "Not signed in to Recto",
 		"account.statusZoteroSetup": "Zotero needs setup",
@@ -1324,20 +1532,15 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.statusPagesUnknown": "Translation pages unknown",
 		"account.statusPagesLow": "Not enough translation pages",
 		"account.statusPagesAvailable": "{count} translation pages available",
-		"account.statusCreditsLow": "Not enough credits",
-		"account.statusCreditsAvailable": "Credits available",
-		"account.statusCreditsPapers": "Credits available · about {count} papers",
 		"account.modalTitle": "Recto account and credits",
 		"account.refreshFailed": "Could not refresh account information. Please try again later.",
 		"account.operationPending": "{label} did not complete. Please try again later.",
 		"account.operationFailed": "{label} failed: {error}",
-		"account.browserWaitingTitle": "Browser sign in · Waiting",
 		"account.browserAccountTitle": "Recto account",
-		"account.browserReturn": "Return here automatically after signing in through your browser.",
+		"account.browserReturn": "Finish signing in with your browser",
 		"account.browserIntro": "Sign in through your browser.",
-		"account.browserWaitingDesc": "Recto is securely waiting for browser authentication. You can keep this panel open or return later.",
-		"account.browserDesc": "Use your system browser to sign in, register, or reset your password. Password managers work there; your password never enters the Obsidian plugin.",
-		"account.browserWaiting": "Waiting for browser sign in",
+		"account.browserDesc": "Sign in, register, or reset your password in your browser. Your password never enters the Obsidian plugin.",
+		"account.browserWaiting": "Waiting… You will return here automatically after signing in.",
 		"account.sessionExpiredDesc": "Your last sign in has expired. Sign in again to continue.",
 		"account.reopenLogin": "Reopen sign in page",
 		"account.loginInBrowser": "Sign in in browser",
@@ -1349,8 +1552,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.copyLoginLink": "Copy sign in link",
 		"account.loginLinkCopied": "Login link copied",
 		"account.loginLinkCopyFailed": "Could not copy the link. Open the account page manually.",
-		"account.browserReturnHint": "Return to Obsidian after finishing in your browser. Recto will continue automatically.",
-		"account.browserOnlyHint": "Sign in, registration, and password reset happen in your browser.",
 		"account.loginTimeout": "The sign in page timed out. Click “Sign in in browser” again.",
 		"account.loginConsumed": "This sign in was already handled. Start again if you are still signed out.",
 		"account.loginIdle": "Browser sign in has not started yet.",
@@ -1359,74 +1560,36 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"account.emailUnverified": "Email not verified yet.",
 		"account.sendVerification": "Send verification email",
 		"account.verificationRequested": "Verification email sent",
-		"account.inviteCode": "Invite code",
 		"account.copyInvite": "Copy invite code",
 		"account.clipboardUnavailable": "Clipboard is unavailable here",
 		"account.inviteCopied": "Invite code copied",
 		"account.invitePagesHint": "When a friend registers and verifies their email, both of you get 60 translation pages.",
-		"account.inviteTrialHint": "When a friend registers with this code, both of you get a 7 day Pro trial.",
+		"account.inviteOffer": "Get 60 free pages",
+		"account.inviteRefer": "Refer a friend",
 		"account.signOut": "Sign out",
 		"account.signedOutNotice": "Signed out of Recto",
 		"account.availablePagesLabel": "Available translation pages",
 		"account.packHelp": "Buy once, keep indefinitely, and stack packs. Translation uses actual pages; estimated paper counts assume typical papers. PDF conversion is currently free.",
 		"account.pagesReadFailed": "Could not load translation pages. Reopen this panel to retry.",
 		"account.pagesDepleted": "No translation pages left. Buy more to continue translating. PDF conversion is currently free.",
-		"account.remainingCreditsLabel": "Remaining credits",
-		"account.heldProcessing": "Another {percent}% is processing",
-		"account.creditsReadFailed": "Could not load credits. Reopen this panel to retry.",
-		"account.creditsDepleted": "No credits left. Buy more to continue converting and translating.",
 		"account.plansReadFailed": "Could not load plans. Reopen this panel to retry.",
 		"account.plansLoading": "Loading plans…",
 		"account.plansUnavailable": "Plan information is temporarily unavailable. Please contact us.",
-		"account.paymentWaiting": "Waiting for payment in your browser. Credits will update automatically.",
 		"account.paymentTimeout": "No payment result yet. Reopening this panel will refresh it. The plugin does not query the order itself.",
-		"account.packEstimateHint": "Estimated at about 20 pages per paper. Actual use is based on translation pages; PDF conversion is currently free.",
-		"account.planEstimateHint": "An estimate based on average paper length. Conversion is charged by paper pages; translation by character count. Actual paper counts vary.",
 		"account.paymentOpened": "Payment page opened in your browser. Complete payment there.",
 		"account.buy": "Buy",
 		"account.buyPending": "Buying…",
-		"account.billingCycle": "Billing cycle",
-		"account.monthly": "Monthly",
-		"account.yearly": "Yearly",
-		"account.saveMonths": "Save {count} months",
-		"plan.basicKicker": "Try it out",
 		"plan.free": "Free",
-		"plan.proKicker": "For regular reading",
-		"plan.maxKicker": "For heavy use",
-		"plan.basicFeatureConvert": "PDF conversion and structure recovery",
-		"plan.basicFeatureCompare": "Original and translation side by side",
-		"plan.basicFeatureZotero": "Zotero library import and indexing",
-		"plan.proFeature": "Everything in Basic",
-		"plan.maxFeature": "Everything in Pro",
 		"plan.packEstimate.1": "About 1 typical paper",
 		"plan.packEstimate.20": "About 20 typical papers",
 		"plan.packEstimate.50": "About 50 typical papers",
 		"plan.recommended": "Recommended",
 		"plan.taxAtCheckout": "Tax calculated at checkout",
+		"plan.perPage": "{price} / page",
+		"plan.save": "Save {percent}%",
+		"account.topUp": "Buy translation pages",
 		"plan.pages": "{count} pages",
-		"plan.perYear": "/year",
-		"plan.perMonth": "/month",
-		"plan.papersPerCycle": "About {count} papers per cycle",
-		"plan.creditsPending": "Credits pending",
-		"plan.quotaMultiple": "About {count}× the Basic allowance",
-		"plan.membershipExpired": "{plan} membership expired. Benefits returned to Basic.",
-		"plan.trial": "trial",
-		"plan.membership": "membership",
-		"plan.membershipActive": "{plan} {kind} active",
-		"plan.membershipExpires": "{plan} {kind} valid until {date}{soon}",
-		"plan.expiresSoon": ". {days} days remain. Renewal is not automatic",
 		"plan.buy": "Buy {plan}",
-		"plan.fallback": "Returns to this plan at expiry",
-		"plan.freeActive": "Free plan active",
-		"plan.current": "Current plan",
-		"plan.renew": "Renew {plan}",
-		"plan.trialActive": "Trial active",
-		"plan.upgrade": "Upgrade to {plan}",
-		"plan.switchAfterExpiry": "Switch after expiry",
-		"plan.downgradeHint": "Your current membership is {plan} {cycle}. Changing to {next} now would recalculate the remaining time using the new plan's daily allowance and forfeit some prepaid days. Wait until your membership expires.",
-		"plan.switchYearly": "Switch to yearly",
-		"plan.switchMonthly": "Switch to monthly",
-		"plan.switch": "Switch to {plan}",
 		"onboarding.title": "Welcome to Recto",
 		"onboarding.zoteroFeature": "Precise conversion from Zotero",
 		"onboarding.zoteroFeatureDesc": "Turn papers into Markdown. PDFs outside Zotero work too.",
@@ -1492,14 +1655,11 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.countScope": "Counts include only papers in “{collection}”",
 		"hub.recent": "Recent",
 		"hub.recentHint": "Separate view of papers you opened, converted, or marked with a reading status, newest first. Entering clears collection and conversion filters; selecting a collection exits. Imports and papers without recorded activity are excluded.",
-		"hub.allPapers": "All papers",
 		"hub.reading": "Reading",
 		"hub.read": "Read",
 		"hub.unread": "Unread",
-		"hub.zoteroCollections": "Zotero collections",
-		"hub.includeSubcollections": "Include papers from subcollections",
-		"hub.currentCollectionOnly": "Only papers in the current collection",
-		"hub.collectionScopeHint": "{current}; click to switch to {next}",
+		"hub.myLibrary": "My library",
+		"hub.includeSubcollections": "Show papers from subcollections",
 		"hub.filters": "Filters",
 		"hub.clearFilter": "Clear this filter: {label}",
 		"hub.clearAll": "Clear all",
@@ -1574,8 +1734,85 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.openUnconvertedPdf": "Open PDF (not converted)",
 		"hub.dualPane": "Compare original and translation side by side",
 		"hub.pdfCompare": "Compare PDF and translation",
-		"hub.copyCitation": "Copy citation",
+		"hub.copyCitation": "Copy reference ({style}); right-click for other formats",
 		"hub.context.copyPaths": "Copy paper path",
+		"hub.context.copyLink": "Copy link",
+		"hub.context.copyCitation": "Copy in-text citation",
+		"hub.context.copyBibliography": "Copy reference",
+		"hub.cite.gb7714": "GB/T 7714",
+		"hub.cite.apa": "APA 7",
+		"hub.cite.ieee": "IEEE",
+		"hub.cite.mla": "MLA 9",
+		"hub.cite.bibtex": "BibTeX",
+		"hub.cite.ris": "RIS",
+		"hub.cite.csl-json": "CSL-JSON",
+		"hub.citeCheck": "Citation",
+		"hub.citeCheck.missing": "Missing {fields}",
+		"hub.citeCheck.fill": "Fill from Crossref",
+		"hub.citeCheck.fillHint": "Looks this paper up on Crossref by DOI or title and fills only the empty fields; nothing is written back to Zotero",
+		"hub.citeCheck.filling": "Looking up…",
+		"hub.citeCheck.filled": "Citation details filled from Crossref",
+		"hub.citeCheck.partial": "Filled from Crossref; still missing {fields}",
+		"hub.citeCheck.nothing": "Crossref has nothing more; still missing {fields}",
+		"hub.citeCheck.notFound": "Crossref could not find this paper",
+		"hub.citeCheck.network": "Could not reach Crossref. Try again later.",
+		"hub.citeCheck.failed": "Could not fill citation details. Try again later.",
+		"hub.citeCheck.batchStart": "Looking up citation details for {count} papers on Crossref…",
+		"hub.citeCheck.batchDone": "Citation details filled: {summary}",
+		"hub.citeCheck.batch.filled": "{count} complete",
+		"hub.citeCheck.batch.partial": "{count} partly filled",
+		"hub.citeCheck.batch.nothing": "{count} with nothing more on Crossref",
+		"hub.citeCheck.batch.not_found": "{count} not found",
+		"hub.citeCheck.batch.network": "{count} could not reach Crossref",
+		"hub.context.fillCitation": "Fill citation details",
+		"hub.citeField.author": "authors",
+		"hub.citeField.year": "year",
+		"hub.citeField.journal": "journal",
+		"hub.citeField.proceedings": "proceedings title",
+		"hub.citeField.book": "book title",
+		"hub.citeField.volume": "volume",
+		"hub.citeField.pages": "pages",
+		"hub.citeField.publisher": "publisher",
+		"hub.citeField.place": "place",
+		"hub.citeField.school": "university",
+		"hub.citeField.institution": "institution",
+		"hub.context.referenceCopied": "Copied: {text}",
+		"hub.context.rename": "Rename…",
+		"settings.paperNaming": "Paper naming",
+		"settings.paperNamingPreset": "Naming format",
+		"settings.paperNamingPresetDesc": "Folder and file names for newly added papers — what you see on Canvas, in the file explorer and in links. Example: {example}",
+		"settings.paperNaming.title": "Title",
+		"settings.paperNaming.author-year": "Author Year",
+		"settings.paperNaming.author-year-title": "Author Year - Title",
+		"settings.paperNaming.citekey": "Zotero citation key",
+		"settings.paperNaming.custom": "Custom template",
+		"settings.paperNamingTemplate": "Custom template",
+		"settings.paperNamingTemplateDesc": "Variables: {author} (Harvard style), {year}, {title}, {shortTitle}, {citekey}.",
+		"settings.paperNamingApply": "Apply to existing papers",
+		"settings.paperNamingApplyDesc": "Rename papers already in the library to the current format. You preview first; translations, notes and links to them (including Canvas) are updated too.",
+		"settings.paperNamingApplyButton": "Preview renames…",
+		"settings.citationStyle": "Reference style",
+		"settings.citationStyleDesc": "Default style for the Hub detail citation button and \"Copy reference\" in the context menu. Example: {example}",
+		"settings.citationStyle.auto": "Follow interface language (Chinese: GB/T 7714, others: APA 7)",
+		"rename.title": "Rename papers",
+		"rename.intro": "{count} papers will get a new name. Folders, PDFs, sources, translations and notes are renamed together, and links to them (including Canvas) are updated.",
+		"rename.introSingle": "Change this paper's folder and file names. Links to it (including Canvas) are updated.",
+		"rename.none": "The selected papers already match the current naming format.",
+		"rename.skipped": "{count} more can't be renamed right now; they are listed at the end.",
+		"rename.newName": "New name",
+		"rename.start": "Rename",
+		"rename.startCount": "Rename {count}",
+		"rename.stop": "Stop",
+		"rename.done": "Done",
+		"rename.progress": "Renaming {done} / {total}…",
+		"rename.result": "Renamed {renamed} papers",
+		"rename.resultFailed": "; {count} not renamed ({error})",
+		"rename.missing": "Paper not found.",
+		"rename.blocker.busy": "Being processed",
+		"rename.blocker.legacy": "Old folder layout; renaming not supported",
+		"rename.blocker.occupied": "Name already in use",
+		"rename.blocker.missing": "Paper not found",
+		"rename.recoveryFailed": "The last rename did not finish. Its recovery record was kept and will be retried after restarting Obsidian: {error}",
 		"hub.context.copyFiles": "Copy files",
 		"hub.context.source": "Original Markdown",
 		"hub.context.translation": "Translated Markdown",
@@ -1596,16 +1833,51 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.flags.failed": "Marker was not saved. Try again.",
 		"hub.context.convert": "Convert to Markdown",
 		"hub.context.translate": "Translate",
-		"hub.context.delete": "Reimport",
+		"hub.context.delete": "Delete…",
 		"hub.context.count": "{label} ({count})",
 		"hub.context.available": "{label} ({count}/{total})",
 		"hub.context.pathsCopied": "Copied {count} paper folder paths",
 		"hub.context.filesCopied": "Copied {count} files; paste into an app that accepts files",
 		"hub.context.skipped": "; skipped {count} papers with missing files",
 		"hub.context.unavailable": "This action is not supported here.",
+		"hub.context.moveTo": "Move to collection…",
+		"hub.context.addTo": "Add to collection…",
+		"hub.context.removeFrom": "Remove from “{name}”",
+		"hub.context.resetCollections": "Restore Zotero collections",
+		"collections.pickerPlaceholder": "Search collections",
+		"collections.pickerMove": "Move to: search or type a new collection name",
+		"collections.pickerAdd": "Add to: search or type a new collection name",
+		"collections.pickerParent": "Move to: choose a parent collection",
+		"collections.pickerSelect": "Select",
+		"collections.pickerCancel": "Cancel",
+		"collections.actionMove": "Move",
+		"collections.actionAdd": "Add",
+		"collections.createNamed": "New collection “{name}”",
+		"collections.topLevel": "Top level",
+		"collections.newRoot": "New collection",
+		"collections.newChild": "New subcollection",
+		"collections.rename": "Rename",
+		"collections.moveTo": "Move to…",
+		"collections.delete": "Delete",
+		"collections.namePlaceholder": "Collection name",
+		"collections.nameEmpty": "Enter a collection name.",
+		"collections.nameInvalid": "Collection names can't contain “ / ” or be “Unfiled”.",
+		"collections.exists": "A collection with this name already exists.",
+		"collections.intoSelf": "A collection can't move into itself or its subcollections.",
+		"collections.notEmpty": "This collection still has papers.",
+		"collections.moved": "Moved {count} to “{name}”",
+		"collections.added": "Added {count} to “{name}”",
+		"collections.removed": "Removed {count} from “{name}”",
+		"collections.unfiledDone": "Removed {count} from all collections",
+		"collections.reset": "Restored Zotero collections for {count}",
+		"collections.unchanged": "Collections unchanged",
+		"collections.undo": "Undo",
+		"collections.undone": "Undone",
+		"collections.failed": "Collections weren't saved. Try again.",
+		"collections.dragCount": "{count} papers",
 		"hub.context.failed": "File operation incomplete. Try again.",
 		"hub.context.statusFailed": "Reading status was not saved. Try again.",
-		"hub.deletePaper": "Reimport from Zotero: keep notes and quick notes; reset outputs and flags",
+		"hub.deletePaper": "Delete paper… (or only clear conversion results)",
 		"hub.authors": "Authors",
 		"hub.collapseAuthors": "Show less",
 		"hub.moreAuthors": "{count} more",
@@ -1614,7 +1886,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.unconvertedTitle": "{title} (not converted)",
 		"hub.selectionDropped": "{count} selected papers are outside the current filters and have been deselected.",
 		"hub.navToggle": "Collections and reading status",
-		"hub.openBatchPane": "Open batch panel to convert, translate, or reimport selected papers",
+		"hub.openBatchPane": "Open batch panel to convert, translate, or delete selected papers",
 		"hub.batchPaneJump": "{count} selected · Process",
 		"hub.backToList": "Back to list",
 		"hub.sort.status": "Reading status",
@@ -1638,8 +1910,10 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.selectedCount": "{count} selected",
 		"hub.escapeHint": "Press Esc to close",
 		"hub.batchSummary": "Not converted {unconverted} · Converted without translation {withoutTranslation} · Complete/legacy translation {translated} · Partly untranslated {partial}",
-		"hub.deleteSelected": "Reimport ({count} papers)",
-		"hub.deleteSelectedHint": "Keep notes and quick notes; reset outputs and flags and read fresh data from Zotero; confirmation comes first",
+		"hub.deleteSelected": "Delete… ({count} papers)",
+		"hub.deleteSelectedHint": "Delete the selected papers, or only clear their conversion results; you confirm first",
+		"hub.deleteTitle": "Delete paper",
+		"hub.deleteAction": "Delete paper",
 		"hub.morePapers": "Another {count} papers",
 		"hub.collapseQueue": "Collapse task list",
 		"hub.expandQueue": "Expand task list",
@@ -1737,11 +2011,13 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"batch.convertTitle": "Convert selected PDFs",
 		"batch.convertIntro": "Convert {count} papers",
 		"batch.convertAction": "{action} {count} papers",
-		"batch.deleteTitle": "Reimport selected papers",
-		"batch.deleteIntro": "Reimport {count} papers",
+		"batch.deleteTitle": "Delete {count} papers",
+		"batch.deleteIntro": "{count} papers selected:",
 		"batch.deleteMore": "{count} more papers",
-		"batch.deleteDesc": "Notes and quick notes are kept. Source, translation and summary files move to trash. Reading status and markers reset; old tasks are abandoned. Convert again after reimporting. Translation pages already used are not refunded.",
-		"batch.deleteAction": "Reimport {count} papers",
+		"batch.deleteDesc": "The paper folder, notes included, moves to the trash.",
+		"batch.deleteDescZotero": "The paper folder, notes included, moves to the trash; Zotero papers will not sync back.",
+		"batch.resetAction": "Only clear conversion results",
+		"batch.deleteAction": "Delete {count} papers",
 		"recovery.abandoned": "Task abandoned. Translation pages already used are not refunded.",
 		"recovery.paperName": "{name}",
 		"recovery.task": "this task",
@@ -1850,9 +2126,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.linkFailed": "Could not open the link. Try again.",
 		"hub.allConverted": "All selected papers have been converted.",
 		"hub.allTranslated": "The selected papers already have translations in the target language.",
-		"hub.copied": "Copied",
-		"hub.copyUnavailable": "Copying is not supported here.",
-		"hub.copyFailed": "Could not copy. Copy the text manually.",
 		"account.loginSuccessNotice": "Signed in to Recto",
 		"account.noLoginUrl": "The sign-in page is unavailable. Try again.",
 		"account.invalidLoginUrl": "The sign-in URL is invalid.",
@@ -1912,19 +2185,25 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"task.exemption": "Settlement completed under the exemption rules for {count} earlier tasks.",
 		"task.failureLog": "; see {path}",
 		"delete.missing": "Paper not found. Refresh the library.",
-		"delete.preflightFailed": "Reimport incomplete: {error}",
-		"delete.done": "Reimported {success} papers; {failed} incomplete",
-		"reimport.checkFailed": "Reimport check failed. Refresh the library and retry.",
+		"delete.preflightFailed": "Clearing conversion results did not finish: {error}",
+		"delete.done": "Cleared conversion results of {success} papers; {failed} incomplete",
+		"reset.done": "Cleared conversion results of {count} papers; you can convert them again",
+		"remove.done": "Deleted {count} papers (moved to the trash)",
+		"remove.partial": "Deleted {success} papers; {failed} not deleted",
+		"remove.failed": "Could not delete",
+		"remove.failedWithReason": "Delete did not finish: {error}",
+		"remove.sharedFolder": "This paper shares its folder with another paper. Delete them together.",
+		"reimport.checkFailed": "Check failed. Refresh the library and retry.",
 		"reimport.sourceUnavailable": "No unambiguous Zotero PDF was found. Check the attachment and retry; the original paper was preserved.",
 		"reimport.pathOccupied": "The recovery path is occupied. Recovery records and files were preserved.",
 		"reimport.trashFailed": "Old files could not move to trash. Recovery records were preserved; please retry.",
 		"reimport.sourceChanged": "The Zotero PDF changed during copying. The original paper was preserved; please retry.",
-		"reimport.taskRunning": "Processing is in progress. Reimport is unavailable.",
+		"reimport.taskRunning": "Processing is in progress. Try again later.",
 		"operation.contextLost": "Operation state was lost. Reload Recto and try again.",
 		"operation.resourceBusy": "A related paper is being processed. Try again shortly.",
-		"reimport.noteUnsaved": "Note has not been saved. Save it before reimporting.",
-		"reimport.recoveryPending": "The previous reimport did not finish. Reimport again.",
-		"reimport.recoveryFailed": "The previous reimport did not finish. Reimport again.",
+		"reimport.noteUnsaved": "Note has not been saved. Save it and try again.",
+		"reimport.recoveryPending": "Clearing conversion results did not finish last time. Please try again.",
+		"reimport.recoveryFailed": "Clearing conversion results did not finish last time. Please try again.",
 		"delete.sourceMissing": "Cannot read the Zotero folder. Check its location.",
 		"distribution.done": "Distribution package created: {file}",
 		"distribution.failed": "Could not create the distribution package. Try again.",
@@ -2086,6 +2365,147 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"feedback.formTooShort": "Please add more detail.",
 		"feedback.formSuccess": "Feedback received. Thank you.",
 		"feedback.formFailed": "Could not send feedback. Try again.",
+		"command.addPapers": "Add papers",
+		"paperIntake.noFileYet": "Nothing has reached the PDF transfer folder 5 minutes after fetching started. If the Recto icon on a browser tab shows \"!\", sign in or pass the check on that page, then reload it. Otherwise check that the links opened in the browser with the Recto extension, and that the transfer folder is the Recto folder in that browser's download location ({folder}).",
+		"paperIntake.noFileYetAuto": "Recto has not received a PDF 5 minutes after fetching started. If the Recto icon on a browser tab shows \"!\", sign in or pass the check on that page, then reload it. Otherwise check that the Recto browser extension is installed. If your browser saves downloads elsewhere, the extension opens a page asking you to send the folder to Obsidian; you can also choose it in Settings → Add papers → PDF transfer folder.",
+		"paperIntake.rejectedFile": "A file in the PDF transfer folder did not pass the check: {file}",
+		"paperIntake.useRejected": "Add anyway",
+		"paperIntake.discardRejected": "Discard",
+		"paperIntake.inboxCleaned": "Moved {count} unused files to the Recycle Bin",
+		"paperIntake.trashUnavailable": "The system Recycle Bin is unavailable, so transfer-folder files were not cleaned up.",
+		"hub.abstract": "Abstract",
+		"hub.expandAbstract": "Show more",
+		"settings.paperIntakeBrowser": "Browser",
+		"settings.paperIntakeBrowserDesc": "The browser with the extension installed and your sign-in.",
+		"settings.paperIntakeBrowser.default": "System default browser",
+		"settings.paperIntakeBrowser.edge": "Microsoft Edge",
+		"settings.paperIntakeBrowser.custom": "Specific program",
+		"settings.paperIntakeBrowserPath": "Browser program path",
+		"settings.paperIntakeBrowserPathInvalid": "Program not found. Enter the full path of the browser executable.",
+		"paperIntake.destinationZoteroHint": "To also add papers to Zotero, choose your Zotero data folder in settings first.",
+		"paperIntake.zoteroNotRunning": "Zotero is not running. Open Zotero and try again, or clear \"Also add to Zotero\".",
+		"paperIntake.zoteroAuthorize": "Switch to Zotero and allow Recto to write in the authorization dialog. Choose \"Always Allow\" so you are not asked again.",
+		"paperIntake.zoteroUnsupported": "This Zotero cannot accept local writes. Zotero 10 or later is required.",
+		"paperIntake.zoteroDenied": "Zotero did not allow Recto to write.",
+		"paperIntake.reason.zotero_write_failed": "Adding to Zotero did not finish",
+		"paperIntake.action.zotero_write_failed": "Make sure Zotero is running, then try again",
+		"command.processIntakeRequests": "Process agent paper requests",
+		"paperIntake.agentProcessed": "Processed an agent request: {added} added, {waiting} need a PDF",
+		"settings.paperIntakeAgent": "AI assistants",
+		"settings.paperIntakeAgentDesc": "Let AI assistants find, check, and add papers for you. To start, copy the setup guide and send it to your assistant.",
+		"paperIntake.open": "Add papers",
+		"hub.add": "Add",
+		"hub.pendingBanner": "{count} papers need a PDF",
+		"hub.pendingView": "View",
+		"paperIntake.back": "Back to papers",
+		"paperIntake.operation": "Adding papers",
+		"paperIntake.quickAddLabel": "Enter a DOI, arXiv ID, title, or paper link to add to \"{target}\":",
+		"paperIntake.quickAddPlaceholder": "Press Enter to add. You can paste several lines.",
+		"paperIntake.alsoZotero": "Also add to Zotero",
+		"paperIntake.add": "Add",
+		"paperIntake.unfiled": "Unfiled",
+		"paperIntake.failed": "Could not add papers. Try again.",
+		"paperIntake.state.queued": "Queued",
+		"paperIntake.state.resolving": "Finding PDF…",
+		"paperIntake.state.ready": "PDF found",
+		"paperIntake.state.duplicate": "Already in library",
+		"paperIntake.state.failed": "Failed",
+		"paperIntake.state.waiting": "Needs PDF",
+		"paperIntake.state.added": "Added to library",
+		"paperIntake.state.removed": "Removed from list",
+		"paperIntake.pendingTitle": "Needs PDF · {count}",
+		"paperIntake.browserFetch": "Fetch in browser",
+		"paperIntake.browserFetchHint": "Opens each paper in the fetch browser. The Recto browser extension saves the PDF to the transfer folder with your own sign-in, and it is added automatically.",
+		"paperIntake.browserNothing": "None of the papers waiting for a PDF has a link to open.",
+		"paperIntake.inboxAutoSet": "Found the PDF transfer folder: {folder}",
+		"paperIntake.inboxSwitched": "Your browser's download location changed. PDF transfer folder is now: {folder}",
+		"paperIntake.browserStarted": "Opening {count} papers in your browser one by one ({rest} left; click again later). Pages that need sign-in or verification are left to you.",
+		"paperIntake.openLinkHint": "Open in browser. With the Recto extension installed, this paper downloads automatically.",
+		"settings.paperIntakeExtension": "Browser extension",
+		"settings.paperIntakeExtensionDesc": "With the Recto browser extension, paywalled papers download through the sign-in you already have in your browser (institution, employer, or personal subscription).",
+		"settings.paperIntakeExtensionOpen": "Open extension folder",
+		"paperIntake.checkInbox": "Check transfer folder",
+		"paperIntake.retryAll": "Retry all",
+		"paperIntake.more": "More",
+		"paperIntake.cleanInbox": "Clean up transfer folder",
+		"paperIntake.editPlaceholder": "Enter a DOI or title",
+		"paperIntake.editOpen": "Enter a DOI or title",
+		"paperIntake.editClose": "Hide the input",
+		"paperIntake.retryEdited": "Retry",
+		"paperIntake.retry": "Search again",
+		"paperIntake.remove": "Remove from list",
+		"paperIntake.openLink": "Open in browser",
+		"paperIntake.attach": "Choose a downloaded PDF",
+		"paperIntake.incomplete": "Some sources could not be reached, so this may be incomplete. Try again later.",
+		"paperIntake.inboxAdded": "Added {count} papers from the transfer folder",
+		"paperIntake.inboxNone": "No matching PDFs in the transfer folder yet",
+		"paperIntake.notPdf": "The selected file is not a valid PDF.",
+		"paperIntake.mismatchTitle": "This PDF may not be this paper",
+		"paperIntake.mismatchIntro": "The title or authors of \"{title}\" were not found in \"{file}\" (scanned PDFs look like this too). Add it only if it is the same paper.",
+		"paperIntake.useAnyway": "Add anyway",
+		"paperIntake.reason.identity_mismatch": "The downloaded PDF does not match this paper",
+		"paperIntake.reason.bot_check": "The site blocked automatic downloads",
+		"paperIntake.fetchingInBrowser": "Fetching in your browser",
+		"paperIntake.fetchingInBrowserHint": "The PDF is added as soon as the browser saves it. If the Recto icon on a tab shows \"!\", sign in or pass the check on that page, then reload it.",
+		"paperIntake.reason.access_required": "Needs institutional access or purchase",
+		"paperIntake.reason.title_unresolved": "No paper found for this title",
+		"paperIntake.reason.link_unresolved": "Could not read the paper from this link",
+		"paperIntake.reason.no_oa_version": "No legal open-access version",
+		"paperIntake.reason.not_pdf": "The link returned a web page, not a PDF",
+		"paperIntake.reason.unreadable": "The PDF could not be read",
+		"paperIntake.reason.rate_limited": "Too many requests; temporarily limited",
+		"paperIntake.reason.link_dead": "The full-text link no longer works",
+		"paperIntake.reason.server_error": "The remote server had an error",
+		"paperIntake.reason.network": "Network connection failed",
+		"paperIntake.reason.no_candidates": "No source offered a full-text link",
+		"paperIntake.reason.pdf_unidentified": "Couldn't identify the paper from this PDF",
+		"paperIntake.action.pdf_unidentified": "Enter a DOI or title and retry, or add the file as is",
+		"paperIntake.addAsFile": "Add as is",
+		"paperIntake.addAsFileHint": "Add with the title from the PDF or its file name; fill in details later",
+		"paperIntake.pickPdf": "Choose PDF…",
+		"paperIntake.state.file_resolving": "Identifying…",
+		"paperIntake.state.file_ready": "Identified",
+		"paperIntake.dropHint": "Drop to add to “{target}”",
+		"paperIntake.dropHintMany": "Drop to add to “{target}” · {count} files",
+		"paperIntake.dropProgress": "Identifying {done}/{total}",
+		"paperIntake.dropAdded": "Added {count} to “{target}”",
+		"paperIntake.dropDuplicates": "{count} already in library",
+		"paperIntake.dropWaiting": "{count} need details",
+		"paperIntake.dropNotPdf": "{count} not PDF",
+		"paperIntake.dropJoin": ", ",
+		"paperIntake.dropNothing": "No papers added",
+		"paperIntake.action.identity_mismatch": "Check in your browser, then pick the file",
+		"paperIntake.action.bot_check": "Open and download in your browser",
+		"paperIntake.action.access_required": "Connect to campus network or VPN, then download",
+		"paperIntake.action.title_unresolved": "Check the title or use the DOI",
+		"paperIntake.action.link_unresolved": "Click \"Fetch in browser\": the extension reads which paper it is from the page and downloads it. If it cannot, click the pencil to enter a DOI or title",
+		"paperIntake.action.no_oa_version": "Download with institutional access",
+		"paperIntake.action.not_pdf": "Open the page and find the PDF",
+		"paperIntake.action.unreadable": "Download it again in your browser",
+		"paperIntake.action.rate_limited": "Try again later",
+		"paperIntake.action.link_dead": "Find the full text from the DOI page",
+		"paperIntake.action.server_error": "Try again later",
+		"paperIntake.action.network": "Check your connection and try again",
+		"paperIntake.action.no_candidates": "Find the full text from the DOI page",
+		"settings.paperIntake": "Add papers",
+		"settings.paperIntakeInbox": "PDF transfer folder",
+		"settings.paperIntakeInboxDesc": "The Recto folder in your browser's download location: the extension saves PDFs here briefly, and Recto deletes them once they are in your library. Usually nothing to set: Recto finds it when fetching, and if your downloads go somewhere other than Downloads or Desktop, the extension tells Recto where.",
+		"settings.paperIntakeInboxHint": "To set it yourself: open {edge} in your browser ({chrome} in Chrome) to see the download location, then click \"Choose folder\" and pick it. No need to create a Recto folder.",
+		"settings.paperIntakeInboxReset": "Detect automatically",
+		"settings.paperIntakeInboxTitle": "Choose your browser's download location",
+		"settings.paperIntakeCopyLink": "Copy {link}",
+		"settings.paperIntakeLinkCopied": "Copied {link}. Paste it into the browser's address bar.",
+		"settings.paperIntakeExtensionPathCopied": "Opened the extension folder and copied its path; paste it into \"Load unpacked\".",
+		"settings.paperIntakeInboxAuto": "Detected automatically",
+		"settings.paperIntakeAgentGuideCopy": "Copy setup guide",
+		"settings.paperIntakeAgentGuideCopied": "Copied. Paste it to your AI assistant; it will install the skill, explain how to use it, and run a demo.",
+		"settings.paperIntakeAgentGuideUnavailable": "Set the paper library folder under Get started first.",
+		"settings.paperIntakeCompanionFailed": "Could not write the companion files: {path}",
+		"settings.paperIntakeExtensionGuide": "How to install",
+		"settings.paperIntakeExtensionStep1": "Click the folder icon on the right to open the extension folder (its path is also copied).",
+		"settings.paperIntakeExtensionStep2": "In Edge, open {edge} ({chrome} in Chrome) and turn on developer mode.",
+		"settings.paperIntakeExtensionStep3": "Click \"Load unpacked\" and select that folder (you can paste the path).",
+		"paperIntake.agentGuide": "Please set up \"AI assistants\" for the Obsidian plugin Recto. Steps:\n\n1. Install the skill: copy the folder {skill} into your skills directory (Codex: ~/.codex/skills/, Claude Code: ~/.claude/skills/, other tools: their own location). If you have no skills mechanism, remember this path and read its SKILL.md before adding papers.\n2. Explain: after reading SKILL.md, tell me in three or four sentences how to ask you to add papers, where they are stored, and what happens when no full text can be fetched.\n3. Demo: with my consent, add the example paper {example} to the collection \"Recto examples\" and report the result.\n4. Ask whether I want \"Fetch in browser\" (downloading paywalled papers through my existing browser sign-in). If so, guide me through installing the browser extension using README.md in {extension}.\n\nHand-off folder: {intake}",
 	},
 });
 let activeRectoUiLocale = "zh-CN";
@@ -2533,6 +2953,8 @@ const DEFAULT_PAPER_LIBRARY_AGENTS = [
 	"- `papers.jsonl` 是首要机器目录。先解析它，不要一开始遍历各论文文件夹或 PDF；摘要路径以每条记录的 `summary_path` 为准。",
 	"- `record_id` 是论文对象的稳定唯一标识；`conversion_status` 为 `unconverted` 时，论文已有本地 PDF 与 Zotero 书目信息，但尚无机器可检索的摘要或 Markdown 全文。",
 	"- `title_original` 是论文原文标题（以 Zotero 为准），任何阶段都不改写；`title_zh` 只放译文标题，没有译文时为 `null`。展示用 `title_zh ?? title_original`，排序与去重一律以原文为准。",
+	"- `cite_label` 是用户常用的引用简称（Harvard「作者 年份」，如 `Smith et al. 2020`），`citekey` 是 Zotero / Better BibTeX 引用键；用户用简称指代论文时据此定位，没有时为 `null`。",
+	"- `csl` 是该论文的标准 CSL-JSON 条目（作者拆好姓与名，含卷、期、页码、DOI 等），`id` 即引用键。写参考文献、换期刊格式或导出 BibTeX 时以它为准，不要从题名或正文猜书目信息；缺的字段就如实缺着。",
 	"- `summary_path`、`ch_path`、`source_path`、`pdf_path` 相对于本目录；导入完成后 `pdf_path` 指向论文文件夹内的本地副本，`zotero_pdf_path` 仅记录原 Zotero 附件目录的相对来源。空值表示该层材料不可用。",
 	"- JSONL 由 Recto 自动生成，不要手动修改。",
 	"",
@@ -2605,6 +3027,9 @@ const EXTERNAL_OUTPUT_MODES = {
 };
 const DEFAULT_EXTERNAL_OUTPUT_FOLDER = "Recto 转换";
 
+const RECTO_INTERFACE_ACCENTS = ["red", "blue", "green"];
+const RECTO_INTERFACE_ACCENT_CLASSES = RECTO_INTERFACE_ACCENTS.map(accent => `recto-accent-${accent}`);
+
 const DEFAULT_SETTINGS = {
 	uiLanguage: "follow",
 	interfaceAccent: "red",
@@ -2620,27 +3045,16 @@ const DEFAULT_SETTINGS = {
 	backendLastAvailableCredits: null,
 	backendLastHeldCredits: null,
 	backendLastGrantedCredits: null,
-	// T87-B：额度制只把“页”作为用户界面的投影，POINT 仍是后端账本真值。旧后端不带这些键时
-	// 安全留在 membership；切换后由 /me 与 /plans 两条路都能把模式带进来，无需再发插件。
-	backendBillingMode: "membership",
+	// T87-B：额度制只把“页”作为用户界面的投影，POINT 仍是后端账本真值。
+	// T118 起只有额度制：会员兼容模式的 backendBillingMode / backendMembership* / backendCreditsPerPaper
+	// 已删，旧 data.json 里的残值由 OBSOLETE_LOCAL_SETTING_KEYS 剥掉。
 	backendCreditsPerTranslationPage: 0,
 	backendAvailableTranslationPages: null,
 	backendHeldTranslationPages: null,
-	// T84-R-A：点数 → 篇数的换算常数由后端随额度一起下发。0 = 后端还没说过，那时回退到
-	// RECTO_CREDITS_PER_PAPER。**退出登录不清它**——它是后端的计价口径而不是账号私有数据，
-	// 与 backendPlansCache 同理（套餐卡片在未登录时照样要画「每期约 N 篇」）。
-	backendCreditsPerPaper: 0,
 	backendLastCheckedAt: "",
 	backendLastError: "",
 	backendPlansCache: [],
 	backendSelectedPlanCode: "",
-	// 当前会员（T82-A-R）。权益判定在后端：这里只缓存后端说的档位与到期时间，用来渲染
-	// 「当前套餐」角标与「续期」按钮，绝不据此自行放行任何功能（CODEMAP 不变量 7）。
-	backendMembershipPlanCode: "",
-	backendMembershipPlanName: "",
-	backendMembershipExpiresAt: "",
-	backendMembershipPeriodEnd: "",
-	backendMembershipIsTrial: false,
 	backendInviteCode: "",
 	// T84-E-A：插件的最新版本号由 `/api/v1/me` 顺带回带（不新开端点、不走 GitHub API）。
 	// 老后端不带这段 → 保持空 → 永远不提示更新，这是 fail-safe 的方向。
@@ -2686,11 +3100,29 @@ const DEFAULT_SETTINGS = {
 	hubViewState: { ...HUB_VIEW_STATE_DEFAULT },
 	hubReadAction: "translation",
 	paperNoteStyle: "blank",
+	// T124：论文目录与文件命名。老用户保持「title」；新安装在 loadPluginData 里改成「作者 年份 - 题名」。
+	paperNaming: { preset: "title", template: "" },
+	// T129：Hub「复制参考文献」的默认格式；auto = 中文界面 GB/T 7714，其余 APA。
+	citationStyle: "auto",
+	// T132：在 Recto 里删除的 Zotero 论文（附件键 → { title, removedAt }），同步不再导入。见 normalizeRemovedZoteroPapers。
+	removedZoteroPapers: {},
+	// T100：添加论文。邮箱只用于 Unpaywall 查询（可空）；收件箱是用户主动指定的目录（可空，默认不读任何 vault 外文件）；
+	// 待补队列只存题名/DOI/原因/链接与用户写的速记，不含任何凭据。
+	paperIntakeInboxFolder: "",
+	paperIntakePending: [],
+	// T100-S：取件用的浏览器（default / edge / custom）与入库后清理收件箱（只清理扩展写的文件，移到回收站）。
+	paperIntakeBrowser: "default",
+	paperIntakeBrowserPath: "",
+	// T101：「添加论文」默认加入到哪里（local / zotero），弹窗里记住上次的选择。
+	paperIntakeDestination: "local",
+	// T102：Agent 通过 <论文库>/_recto-intake/ 交接入库请求；默认关闭，打开后才建这个文件夹。
+	paperIntakeAgentEnabled: false,
 	onboarding: { ...DEFAULT_ONBOARDING_STATE },
 	// 侧边栏默认只放论文库这一个入口（T82-D）。对照阅读与 PDF 对照都是在论文里才用得上的动作，
 	// 在 Hub 和命令面板里都够得着；默认全塞进侧边栏只会让新装的插件占掉四格图标。
 	ribbonButtons: {
 		hub: true,
+		addPapers: false,
 		dualPane: false,
 		pdfCompare: false,
 		externalPdf: false,
@@ -3377,10 +3809,6 @@ function findRectoUnknownGlyphOffsets(text) {
 	return offsets;
 }
 
-function countRectoUnknownGlyphs(text) {
-	return findRectoUnknownGlyphOffsets(text).length;
-}
-
 // 行内代码与行内公式的区间（只在一行内成对，与 Markdown 一致）。反引号按「同长度的成对
 // 反引号串」配，`$…$` 不许跨 `$`。宁可多圈一点也不能漏——漏了就是在代码里打标。
 function findRectoInlineCodeAndMathRanges(line) {
@@ -3550,6 +3978,55 @@ const HUB_READING_ICON_PATHS = {
 	"recto-pdf": ["M5 2h9l5 5v15H5zM14 2v5h5", "M9.5 18v-8h3a2.25 2.25 0 0 1 0 4.5h-3"],
 	"recto-pdf-compare": ["M2 4h8v16H2zM4.5 10h3M4.5 14h3", "M14 4h4l4 4v12h-8zM18 4v4h4"],
 };
+// T109：左栏分类的文件夹画成两块——后板与前盖，展开时前盖向前倒下（CSS 对 `d` 做过渡，
+// styles.css 里同一组路径必须与这里逐字一致，tests/hub-view.test.js 守着）。有子分类的文件夹
+// 收起时主体缩到右上、左下垫一层，表示「里面还有」；展开时垫层并入、主体回到全尺寸。
+// 路径属性也按状态写一遍：不支持 CSS `d` 的内核（iOS WebKit）直接换形，只是没有过渡。
+const HUB_NAV_FOLDER_ART = {
+	closed: {
+		back: "M2 10 L2 6 Q2 4 4 4 L9 4 L11 6 L20 6 Q22 6 22 8 L22 10",
+		front: "M2 10 L22 10 L22 18 Q22 20 20 20 L4 20 Q2 20 2 18 Z",
+	},
+	open: {
+		back: "M2 13.5 L2 6 Q2 4 4 4 L9 4 L11 6 L18 6 Q20 6 20 8 L20 11",
+		front: "M6.4 11 L21.6 11 L18.9 18.8 Q18.5 20 17.2 20 L4 20 Q2.4 20 2.9 18.7 Z",
+	},
+	stack: "M2.5 8 L2.5 19 Q2.5 21 4.5 21 L17 21",
+};
+
+function buildHubNavFolderArt(host, { stacked = false, expanded = false } = {}) {
+	const doc = host.ownerDocument;
+	const ns = "http://www.w3.org/2000/svg";
+	const svg = doc.createElementNS(ns, "svg");
+	for (const [key, value] of Object.entries({ class: `recto-hub-folder-art${stacked ? " is-stacked" : ""}`, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.7", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) svg.setAttribute(key, value);
+	if (stacked) {
+		const stack = doc.createElementNS(ns, "path");
+		stack.setAttribute("class", "recto-hub-folder-stack");
+		stack.setAttribute("d", HUB_NAV_FOLDER_ART.stack);
+		svg.appendChild(stack);
+	}
+	const body = doc.createElementNS(ns, "g");
+	body.setAttribute("class", "recto-hub-folder-body");
+	for (const part of ["back", "front"]) {
+		const path = doc.createElementNS(ns, "path");
+		path.setAttribute("class", `recto-hub-folder-${part}`);
+		body.appendChild(path);
+	}
+	svg.appendChild(body);
+	host.appendChild(svg);
+	syncHubNavFolderArt(host, expanded);
+	return svg;
+}
+
+function syncHubNavFolderArt(host, expanded) {
+	if (!host || typeof host.querySelector !== "function") return;
+	const shape = HUB_NAV_FOLDER_ART[expanded ? "open" : "closed"];
+	for (const part of ["back", "front"]) {
+		const path = host.querySelector(`.recto-hub-folder-${part}`);
+		if (path) path.setAttribute("d", shape[part]);
+	}
+}
+
 const HUB_READ_ACTIONS = ["source", "translation", "pdf"];
 const HUB_READ_ICONS = { source: "recto-source", translation: "languages", pdf: "recto-pdf" };
 function resolveHubReadActions(entry, preference) {
@@ -3557,6 +4034,27 @@ function resolveHubReadActions(entry, preference) {
 	const primary = available.includes(preference) ? preference
 		: ["translation", "source", "pdf"].find(action => available.includes(action)) || null;
 	return { primary, available, secondary: available.filter(action => action !== primary) };
+}
+
+// T126：Hub 论文拖进 Canvas / 笔记时每篇带哪个文件——跟「阅读 ▾」的偏好走，没有就同样按 译文→原文→PDF 降级；
+// 三种都没有的（待补 PDF 的占位记录）计入 missing，不拖。
+function resolveHubDragPaths(entries, preference) {
+	const paths = [];
+	let missing = 0;
+	for (const entry of entries || []) {
+		const action = entry ? resolveHubReadActions(entry, preference).primary : null;
+		const path = action ? entry[`${action}Path`] : "";
+		if (!path) missing++;
+		else if (!paths.includes(path)) paths.push(path);
+	}
+	return { paths, missing };
+}
+
+// T126：详情栏按钮能拖出对应文件（由 hub-view 的 handleDetailDragStart 统一接）；没有路径就收回可拖。
+function markHubDragFile(element, path) {
+	element.draggable = !!path;
+	if (path) element.dataset.hubDragPath = path;
+	else delete element.dataset.hubDragPath;
 }
 
 // 浏览器登录回跳的深链动作：obsidian://recto-auth?handoff=<公开 id>。
@@ -3582,6 +4080,7 @@ const BROWSER_LOGIN_STATUS_NOTES = {
 
 const RIBBON_BUTTONS = [
 	{ key: "hub", name: "Recto 论文库", icon: RECTO_ICON_ID, action: "activateRectoHub" },
+	{ key: "addPapers", name: "添加论文", icon: "book-plus", action: "openPaperIntakeQuickAdd" },
 	{ key: "dualPane", name: "对照阅读：原文/译文双栏", icon: "columns-2", action: "toggleRectoDualPane" },
 	{ key: "pdfCompare", name: "PDF 对照阅读", icon: "recto-pdf-compare", action: "toggleRectoPdfCompare" },
 	{ key: "externalPdf", name: "转换库外 PDF", icon: "file-plus", action: "convertExternalPdfsFromCommand" },
@@ -3615,16 +4114,21 @@ function fallbackStem(originalName) {
 	return sanitizeStem(originalName.replace(/\.pdf$/i, ""));
 }
 
-function sanitizeStem(name) {
+// T124：maxLength / linkSafe 只给命名规则用；不传时与旧版逐字节一致——「题名」预设与
+// 「清除记录后重新导入」靠同一个 stem 认回旧目录（canReclaimImportedPaperFolder），改了就认不回来。
+function sanitizeStem(name, options = {}) {
+	const maxLength = Number.isInteger(options.maxLength) && options.maxLength > 0 ? options.maxLength : 40;
 	let s = String(name || "")
 		.replace(/\.pdf$/i, "")
 		.replace(/[\r\n\t]+/g, " ")
 		.replace(/[\\/:*?"<>|\u2028\u2029\u2215\u2044]/g, " ")
+		// wikilink 里 # ^ [ ] 有语法含义，文件名带上它们就链不上。
+		.replace(options.linkSafe ? /[#^[\]]/g : /(?!)/g, " ")
 		.replace(/\s+/g, " ")
 		.trim()
 		.replace(/[. ]+$/g, "");
 	if (!s || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(s)) s = "未命名论文";
-	s = s.substring(0, 40).replace(/[. ]+$/g, "");
+	s = s.substring(0, maxLength).replace(/[. ]+$/g, "");
 	return s || "未命名论文";
 }
 
@@ -3869,10 +4373,6 @@ function validateApiUrl(raw, label) {
 	throw new Error(`${label || "API URL"} 必须使用 HTTPS；HTTP 仅允许 localhost/127.0.0.1/::1`);
 }
 
-function isBackendAdmin(settings) {
-	return String((settings && settings.backendAccountRole) || "").trim().toLowerCase() === "admin";
-}
-
 const OBSOLETE_LOCAL_SETTING_KEYS = new Set([
 	"processingMode", "providerApiKeys", "aiApiKey", "translationApiKey",
 	"modelVersion", "language", "uploadConcurrency", "aiConcurrency",
@@ -3881,6 +4381,9 @@ const OBSOLETE_LOCAL_SETTING_KEYS = new Set([
 	"translationPrompt", "translationRepairPrompt", "translationChineseRepairPrompt",
 	"translationRepairMarkdown", "translationRepairChinese", "translationOverwriteExisting",
 	"translationSkipChinese", "singleFileOutputMode", "singleFileOutputFolder", "resultConcurrency",
+	// T118：会员兼容模式下线，只剩额度制。
+	"backendBillingMode", "backendCreditsPerPaper", "backendMembershipPlanCode", "backendMembershipPlanName",
+	"backendMembershipExpiresAt", "backendMembershipPeriodEnd", "backendMembershipIsTrial",
 ]);
 
 function stripObsoleteLocalSettings(settings) {
@@ -4471,18 +4974,6 @@ function decideRectoScrollDriver(driver, side) {
 	return { accept: true, driver: side };
 }
 
-function resolveRectoAlignmentPartner(fileName) {
-	const name = String(fileName || "");
-	if (!/\.md$/i.test(name)) return null;
-	if (name.startsWith(EN_MARKDOWN_PREFIX)) {
-		return { side: "source", partnerName: `${CH_MARKDOWN_PREFIX}${name.slice(EN_MARKDOWN_PREFIX.length)}` };
-	}
-	if (name.startsWith(CH_MARKDOWN_PREFIX)) {
-		return { side: "translation", partnerName: `${EN_MARKDOWN_PREFIX}${name.slice(CH_MARKDOWN_PREFIX.length)}` };
-	}
-	return null;
-}
-
 // ── T56 PDF 对照阅读：点译文/原文块 → PDF 跳到来源页并叠一层淡出框（单向）。
 // 数据只来自 Sidecar 的 page + bbox，不重新解析、不猜页。以下均为纯函数，便于单测。
 
@@ -4555,7 +5046,7 @@ function partitionRectoBatchTasks(tasks, state = {}) {
 function describeTranslationQuote(settings, requiredPages) {
 	const view = describeBackendAccountView(settings);
 	const required = Number(requiredPages);
-	if (!view.creditPackMode || !Number.isFinite(required) || required <= 0) {
+	if (!Number.isFinite(required) || required <= 0) {
 		return { active: false, known: false, required: 0, available: null, shortfall: 0, text: "" };
 	}
 	const balance = view.translationPages;
@@ -4614,25 +5105,6 @@ function withRectoTranslationSourcePath(markdown, sourcePath) {
 	const end = text.indexOf("\n---", 3);
 	if (end < 0) return text;
 	return `${text.slice(0, end)}\n${RECTO_TRANSLATION_SOURCE_PATH_KEY}: ${JSON.stringify(clean)}${text.slice(end)}`;
-}
-
-// 反向：从译文的 frontmatter 里读回原文路径。读不到就回空串，调用方退回既有的命名约定。
-function readRectoTranslationSourcePath(markdown) {
-	const text = String(markdown == null ? "" : markdown);
-	if (!/^---\n/.test(text)) return "";
-	const end = text.indexOf("\n---", 3);
-	const head = end < 0 ? text : text.slice(0, end);
-	for (const line of head.split("\n")) {
-		const match = line.match(/^recto-source-path:\s*(.+)$/);
-		if (!match) continue;
-		const raw = match[1].trim();
-		if (!raw) return "";
-		if (raw.startsWith("\"")) {
-			try { return String(JSON.parse(raw) || "").trim(); } catch { return ""; }
-		}
-		return raw;
-	}
-	return "";
 }
 
 // 把一份普通 Markdown 合成为「无页 Sidecar」，好让它原样走现有翻译链路（分批、逐段完整性
@@ -6141,7 +6613,6 @@ function normalizeBackendPlansCache(value) {
 			description: String(item.description || "").trim(),
 			quotaAmount: Number.isFinite(Number(item.quotaAmount)) ? Number(item.quotaAmount) : 0,
 			unit: String(item.unit || "点").trim(),
-			billingMode: String(item.billingMode || "").trim().toLowerCase(),
 			translationPages: item.translationPages !== null
 				&& item.translationPages !== undefined
 				&& item.translationPages !== ""
@@ -6186,7 +6657,6 @@ function applyBackendPlansToSettings(settings, payload) {
 	if (!settings) return [];
 	const plans = normalizeBackendPlansCache(payload);
 	settings.backendPlansCache = plans;
-	if (plans.length) settings.backendBillingMode = resolveBackendBillingMode(plans[0].billingMode, plans);
 	const selected = getBackendSelectedPlan(settings);
 	settings.backendSelectedPlanCode = selected ? selected.code : "";
 	return plans;
@@ -6200,17 +6670,6 @@ function formatBackendPlanPrice(plan) {
 	const currency = String((plan && plan.currency) || "CNY").toUpperCase();
 	if (currency === "CNY") return `¥${amount}`;
 	return currency === "USD" ? `US$${amount}` : `${amount} ${currency}`;
-}
-
-function resolveBackendBillingMode(value, plans = []) {
-	const clean = String(value || "").trim().toLowerCase();
-	if (clean === "credit_pack") return "credit_pack";
-	if (clean === "membership") return "membership";
-	const normalized = normalizeBackendPlansCache(plans);
-	if (normalized.some(plan => plan.billingMode === "credit_pack" || /^translation_\d+$/.test(plan.code))) {
-		return "credit_pack";
-	}
-	return "membership";
 }
 
 function formatTranslationPages(value) {
@@ -6228,15 +6687,8 @@ function projectTranslationPagesFromCredits(credits, perPage) {
 	return amount / unit;
 }
 
-// ── T82-A-A 套餐目录与额度显示；T87-B 起按后端模式在旧百分比与翻译页之间切换 ─────────
-// 点数始终是内部计费单位。会员兼容模式显示百分比与「约几篇」，额度制显示精确翻译页。
-// 折算依据（T82-A-S / T82-A-S-U）：转换 = ceil(真实页数/4) 点，翻译 = 真实页数 × 1 点，
-// 真实语料里一篇含译文中位 21 点、均值 25 点，取 25（比中位保守 = 少承诺）。
-// 后端 account-web.page.ts 的支付页里是同一个数字，改一边必须改两边。
-// **T84-R-A 起这只是回退值**：真值由后端随额度一起下发，有下发值就用下发值。T84-R 会把后端
-// 点数细化 1000 倍并下发 25000；这个常数留着，是为了让**还没读到下发值的那一刻**（老后端、
-// 刚装好还没调过 /me）算出的篇数仍然正确。
-const RECTO_CREDITS_PER_PAPER = 25;
+// ── T82-A-A 套餐目录与额度显示 ─────────
+// 点数始终是内部计费单位，界面只显示精确翻译页（T118 起不再有会员兼容模式的百分比）。
 
 // T82-A-S 尾巴豁免：后端在额度只差一点点时补足并把这一篇做完。界面照旧不说点数
 // （不变量 13），只如实说「已为你补足、额度已用完」。
@@ -6244,72 +6696,9 @@ function backendTaskUsedTailExemption(response) {
 	return (Number(response && response.tailExemptionCredits) || 0) > 0;
 }
 
-// perPaper 是后端下发的换算常数（T84-R-A）；读不到就用本地回退值。两个参数分开传而不是
-// 在这里读 settings，是因为这一层是纯核：取值留在壳里（CODEMAP 第五节）。
-function estimatePapersFromCredits(credits, perPaper) {
-	const amount = Number(credits);
-	if (!Number.isFinite(amount) || amount <= 0) return 0;
-	const divisor = Number(perPaper);
-	const unit = Number.isFinite(divisor) && divisor > 0 ? divisor : RECTO_CREDITS_PER_PAPER;
-	return Math.max(1, Math.round(amount / unit));
-}
-
-// 档位图标（T82-A-A-R 换成用户提供的正稿 rekto-basic/pro/max.svg）：互相穿插的开口环 +
-// 端点圆点，一 / 二 / 三环表示档位递进。原稿的 fill 写死了深灰与蓝，这里换成 CSS 类——
-// 环跟随 currentColor、端点用 --rc-accent，明暗主题与高对比度模式下都成立。viewBox 已按
-// 真实内容裁剪：原稿图形只占 1254 见方画布的中间约三分之一，照搬会让 44px 的图标里
-// 图形只剩十几像素。分发包只有三件套，所以图标只能这样内嵌，不能引用 PNG。
-const PLAN_ICON_BASIC = "<svg viewBox=\"398 389 455 455\" aria-hidden=\"true\"><path class=\"rc-plan-ring\" d=\"M 421.00 697.00 Q 420 690 420.00 672.50 Q 420 655 423.00 638.00 Q 426 621 431.00 605.50 Q 436 590 444.00 572.50 Q 452 555 453.00 554.50 Q 454 554 457.00 547.50 Q 460 541 470.00 525.50 Q 480 510 485.00 504.50 Q 490 499 491.50 496.00 Q 493 493 495.50 491.00 Q 498 489 498.00 488.00 Q 498 487 513.50 471.00 Q 529 455 530.00 455.00 Q 531 455 534.00 451.50 Q 537 448 538.00 448.00 Q 539 448 541.00 445.50 Q 543 443 544.00 443.00 Q 545 443 553.00 436.50 Q 561 430 576.00 422.00 Q 591 414 605.00 409.50 Q 619 405 628.00 403.50 Q 637 402 653.00 402.00 Q 669 402 675.50 403.00 Q 682 404 696.00 408.50 Q 710 413 722.00 420.00 Q 734 427 745.00 437.00 Q 756 447 756.00 448.00 Q 756 449 759.00 451.50 Q 762 454 762.00 455.00 Q 762 456 768.00 463.50 Q 774 471 781.50 485.50 Q 789 500 795.50 519.50 Q 802 539 804.00 550.00 Q 806 561 805.00 563.00 Q 804 565 801.50 566.50 Q 799 568 795.50 568.00 Q 792 568 789.00 565.50 Q 786 563 783.50 550.50 Q 781 538 777.50 527.00 Q 774 516 767.00 501.00 Q 760 486 755.00 478.50 Q 750 471 740.50 460.50 Q 731 450 719.50 442.00 Q 708 434 695.00 429.00 Q 682 424 673.00 422.50 Q 664 421 654.00 421.00 Q 644 421 628.50 424.00 Q 613 427 612.00 428.00 Q 611 429 604.00 431.00 Q 597 433 585.00 439.50 Q 573 446 565.50 452.00 Q 558 458 557.00 458.00 Q 556 458 551.00 463.00 Q 546 468 545.00 468.00 Q 544 468 532.50 479.50 Q 521 491 521.00 492.00 Q 521 493 517.00 496.50 Q 513 500 513.00 501.00 Q 513 502 507.00 508.50 Q 501 515 487.00 536.50 Q 473 558 463.00 579.50 Q 453 601 448.50 616.00 Q 444 631 442.00 643.50 Q 440 656 440.00 673.50 Q 440 691 443.50 705.50 Q 447 720 454.50 734.00 Q 462 748 470.50 757.50 Q 479 767 493.50 777.00 Q 508 787 523.50 793.50 Q 539 800 555.50 804.00 Q 572 808 584.50 809.50 Q 597 811 626.00 810.50 Q 655 810 673.50 807.00 Q 692 804 711.00 798.50 Q 730 793 742.50 787.50 Q 755 782 765.00 775.50 Q 775 769 777.50 766.00 Q 780 763 781.00 763.00 Q 782 763 789.50 754.00 Q 797 745 802.00 733.50 Q 807 722 808.50 715.00 Q 810 708 810.00 693.50 Q 810 679 809.00 675.50 Q 808 672 808.00 667.00 Q 808 662 810.50 659.00 Q 813 656 817.00 655.50 Q 821 655 824.50 658.50 Q 828 662 829.00 669.50 Q 830 677 830.00 692.50 Q 830 708 827.50 720.00 Q 825 732 820.50 742.00 Q 816 752 811.50 758.50 Q 807 765 801.00 771.50 Q 795 778 794.00 778.00 Q 793 778 790.00 781.50 Q 787 785 784.50 786.00 Q 782 787 779.50 789.50 Q 777 792 764.00 799.00 Q 751 806 736.50 811.50 Q 722 817 703.00 821.50 Q 684 826 669.50 828.00 Q 655 830 626.50 830.50 Q 598 831 582.00 829.00 Q 566 827 553.00 824.00 Q 540 821 531.00 818.00 Q 522 815 512.00 810.50 Q 502 806 501.50 805.00 Q 501 804 498.50 803.50 Q 496 803 487.50 797.50 Q 479 792 471.00 784.50 Q 463 777 461.50 776.50 Q 460 776 460.00 775.00 Q 460 774 455.50 770.00 Q 451 766 451.00 765.00 Q 451 764 446.50 759.00 Q 442 754 436.00 742.50 Q 430 731 426.00 717.50 Q 422 704 421.00 697.00 Z\" fill-rule=\"evenodd\"/><path class=\"rc-plan-dot\" d=\"M 787.00 623.50 Q 784 618 783.50 613.00 Q 783 608 784.50 604.00 Q 786 600 789.50 596.50 Q 793 593 796.50 591.50 Q 800 590 808.00 590.50 Q 816 591 820.50 595.00 Q 825 599 826.50 602.00 Q 828 605 828.50 609.50 Q 829 614 828.00 618.00 Q 827 622 823.00 626.50 Q 819 631 816.00 632.50 Q 813 634 809.00 634.50 Q 805 635 800.50 634.00 Q 796 633 793.00 631.00 Q 790 629 787.00 623.50 Z\" fill-rule=\"evenodd\"/></svg>";
-const PLAN_ICON_PRO = "<svg viewBox=\"352 351 535 535\" aria-hidden=\"true\"><path class=\"rc-plan-ring\" d=\"M 710.50 614.00 Q 707 608 706.50 606.00 Q 706 604 700.00 595.00 Q 694 586 682.50 574.50 Q 671 563 662.00 557.00 Q 653 551 637.00 544.50 Q 621 538 605.50 535.50 Q 590 533 571.50 533.50 Q 553 534 539.50 536.50 Q 526 539 512.00 543.50 Q 498 548 497.50 549.00 Q 497 550 497.50 564.00 Q 498 578 501.00 592.00 Q 504 606 509.00 619.00 Q 514 632 522.50 646.00 Q 531 660 535.50 664.50 Q 540 669 540.00 670.00 Q 540 671 553.50 683.50 Q 567 696 577.00 702.50 Q 587 709 597.50 714.00 Q 608 719 615.50 721.50 Q 623 724 637.00 726.50 Q 651 729 662.50 728.50 Q 674 728 685.50 724.00 Q 697 720 704.00 714.00 Q 711 708 715.00 701.00 Q 719 694 720.50 689.00 Q 722 684 722.50 669.00 Q 723 654 718.50 637.00 Q 714 620 710.50 614.00 Z M 571.50 822.50 Q 574 824 584.50 829.00 Q 595 834 610.50 839.00 Q 626 844 640.50 846.50 Q 655 849 672.00 849.50 Q 689 850 705.00 848.00 Q 721 846 734.50 842.00 Q 748 838 759.00 833.00 Q 770 828 784.50 818.00 Q 799 808 812.50 793.50 Q 826 779 834.00 764.50 Q 842 750 846.00 737.50 Q 850 725 851.50 708.00 Q 853 691 851.00 676.50 Q 849 662 845.50 651.50 Q 842 641 834.50 627.50 Q 827 614 816.50 603.00 Q 806 592 805.00 592.00 Q 804 592 801.00 589.00 Q 798 586 798.00 581.50 Q 798 577 801.50 574.00 Q 805 571 808.00 571.00 Q 811 571 823.00 581.50 Q 835 592 835.00 593.00 Q 835 594 837.00 595.50 Q 839 597 845.50 606.50 Q 852 616 857.00 626.50 Q 862 637 864.50 644.50 Q 867 652 869.50 665.00 Q 872 678 872.00 696.00 Q 872 714 869.00 728.50 Q 866 743 860.50 756.50 Q 855 770 854.00 770.50 Q 853 771 851.50 775.00 Q 850 779 845.00 786.50 Q 840 794 827.00 808.00 Q 814 822 813.00 822.00 Q 812 822 810.00 824.50 Q 808 827 797.00 834.50 Q 786 842 770.50 849.50 Q 755 857 742.00 861.00 Q 729 865 713.00 867.50 Q 697 870 678.50 870.00 Q 660 870 648.50 868.50 Q 637 867 615.00 861.00 Q 593 855 574.50 846.00 Q 556 837 555.50 832.00 Q 555 827 557.00 824.50 Q 559 822 564.00 821.50 Q 569 821 571.50 822.50 Z M 662.50 388.50 Q 653 388 641.00 389.00 Q 629 390 617.00 393.50 Q 605 397 592.00 403.50 Q 579 410 572.50 414.50 Q 566 419 564.00 421.50 Q 562 424 561.00 424.00 Q 560 424 557.00 427.50 Q 554 431 553.00 431.00 Q 552 431 542.50 441.50 Q 533 452 525.50 463.50 Q 518 475 512.50 487.00 Q 507 499 504.00 509.00 Q 501 519 501.00 521.50 Q 501 524 504.50 524.00 Q 508 524 515.50 521.50 Q 523 519 542.00 516.00 Q 561 513 577.00 513.00 Q 593 513 610.00 516.00 Q 627 519 638.50 523.00 Q 650 527 662.00 533.50 Q 674 540 679.50 545.00 Q 685 550 686.00 550.00 Q 687 550 690.50 554.00 Q 694 558 695.00 558.00 Q 696 558 705.00 568.50 Q 714 579 722.00 593.00 Q 730 607 735.50 624.00 Q 741 641 742.00 647.50 Q 743 654 743.00 666.50 Q 743 679 742.00 684.50 Q 741 690 737.00 700.50 Q 733 711 730.00 715.50 Q 727 720 721.00 726.00 Q 715 732 704.00 738.00 Q 693 744 680.00 746.50 Q 667 749 653.50 748.50 Q 640 748 622.00 743.50 Q 604 739 585.00 729.50 Q 566 720 559.50 714.50 Q 553 709 552.00 709.00 Q 551 709 549.50 707.00 Q 548 705 547.00 705.00 Q 546 705 543.50 702.00 Q 541 699 540.00 699.00 Q 539 699 539.00 698.00 Q 539 697 530.50 689.00 Q 522 681 522.00 680.00 Q 522 679 516.00 672.00 Q 510 665 501.00 648.50 Q 492 632 486.50 614.50 Q 481 597 479.00 583.50 Q 477 570 477.00 556.00 Q 477 542 480.00 525.00 Q 483 508 488.00 494.00 Q 493 480 502.50 463.50 Q 512 447 517.00 441.50 Q 522 436 522.00 435.00 Q 522 434 525.00 431.50 Q 528 429 528.00 428.00 Q 528 427 535.50 419.50 Q 543 412 544.00 412.00 Q 545 412 553.50 404.50 Q 562 397 577.50 388.50 Q 593 380 609.50 375.00 Q 626 370 632.50 369.00 Q 639 368 654.50 368.00 Q 670 368 678.00 369.50 Q 686 371 698.50 375.50 Q 711 380 720.50 386.00 Q 730 392 740.50 402.00 Q 751 412 759.50 424.50 Q 768 437 775.00 454.00 Q 782 471 784.00 479.50 Q 786 488 785.50 491.00 Q 785 494 781.50 496.50 Q 778 499 773.00 498.00 Q 768 497 767.00 495.50 Q 766 494 763.00 480.50 Q 760 467 755.50 457.00 Q 751 447 750.00 446.50 Q 749 446 746.00 440.00 Q 743 434 734.00 424.00 Q 725 414 724.00 414.00 Q 723 414 721.50 412.00 Q 720 410 713.50 405.50 Q 707 401 698.00 397.00 Q 689 393 680.50 391.00 Q 672 389 662.50 388.50 Z M 387.50 674.00 Q 387 681 387.50 690.50 Q 388 700 390.00 709.50 Q 392 719 398.50 734.00 Q 405 749 409.50 755.50 Q 414 762 416.50 764.00 Q 419 766 419.00 767.00 Q 419 768 427.50 776.00 Q 436 784 446.00 790.00 Q 456 796 465.00 799.00 Q 474 802 476.00 804.50 Q 478 807 478.00 810.50 Q 478 814 476.50 816.50 Q 475 819 473.00 820.00 Q 471 821 468.00 821.00 Q 465 821 452.00 815.50 Q 439 810 430.00 804.00 Q 421 798 413.00 790.50 Q 405 783 405.00 782.00 Q 405 781 400.50 776.50 Q 396 772 388.50 759.50 Q 381 747 376.50 734.50 Q 372 722 370.00 712.50 Q 368 703 367.50 690.00 Q 367 677 368.00 668.50 Q 369 660 371.50 650.00 Q 374 640 379.50 627.50 Q 385 615 392.50 604.00 Q 400 593 410.50 582.00 Q 421 571 422.00 571.00 Q 423 571 425.50 568.00 Q 428 565 434.50 561.00 Q 441 557 442.00 555.50 Q 443 554 446.50 552.50 Q 450 551 453.50 554.00 Q 457 557 457.50 563.00 Q 458 569 448.00 576.00 Q 438 583 434.50 587.00 Q 431 591 430.00 591.00 Q 429 591 417.50 605.00 Q 406 619 399.50 632.50 Q 393 646 390.50 656.50 Q 388 667 387.50 674.00 Z\" fill-rule=\"evenodd\"/><path class=\"rc-plan-dot\" d=\"M 799.00 552.00 Q 794 556 792.00 557.00 Q 790 558 785.00 558.00 Q 780 558 776.00 556.00 Q 772 554 769.00 550.50 Q 766 547 765.50 539.00 Q 765 531 769.00 525.50 Q 773 520 776.50 518.50 Q 780 517 785.50 517.00 Q 791 517 794.50 518.50 Q 798 520 800.50 522.50 Q 803 525 804.50 528.50 Q 806 532 806.00 537.50 Q 806 543 805.00 545.50 Q 804 548 799.00 552.00 Z M 536.00 816.50 Q 537 821 535.50 827.00 Q 534 833 530.50 836.50 Q 527 840 524.50 841.00 Q 522 842 514.50 841.50 Q 507 841 502.50 837.00 Q 498 833 496.50 829.50 Q 495 826 495.00 822.00 Q 495 818 496.50 814.00 Q 498 810 500.50 807.50 Q 503 805 507.00 803.00 Q 511 801 516.00 801.00 Q 521 801 525.00 803.00 Q 529 805 532.00 808.50 Q 535 812 536.00 816.50 Z\" fill-rule=\"evenodd\"/></svg>";
-const PLAN_ICON_MAX = "<svg viewBox=\"289 253 684 684\" aria-hidden=\"true\"><path class=\"rc-plan-ring\" d=\"M 940.50 629.00 Q 943 637 945.00 642.00 Q 947 647 949.50 660.00 Q 952 673 952.50 695.00 Q 953 717 950.50 732.00 Q 948 747 943.00 761.50 Q 938 776 933.00 786.00 Q 928 796 923.00 803.50 Q 918 811 907.50 823.00 Q 897 835 896.00 835.00 Q 895 835 891.50 839.00 Q 888 843 876.50 851.00 Q 865 859 862.00 860.50 Q 859 862 854.50 862.00 Q 850 862 846.50 858.50 Q 843 855 842.50 852.00 Q 842 849 843.00 846.00 Q 844 843 856.50 834.50 Q 869 826 881.00 814.00 Q 893 802 902.00 788.00 Q 911 774 916.50 760.00 Q 922 746 925.00 729.50 Q 928 713 928.00 699.50 Q 928 686 926.00 672.50 Q 924 659 920.50 647.50 Q 917 636 913.00 628.50 Q 909 621 909.00 619.50 Q 909 618 899.00 602.50 Q 889 587 879.00 576.50 Q 869 566 868.00 566.00 Q 867 566 865.00 563.50 Q 863 561 862.00 561.00 Q 861 561 854.50 555.50 Q 848 550 836.50 544.00 Q 825 538 812.50 534.00 Q 800 530 788.00 528.50 Q 776 527 754.50 528.50 Q 733 530 731.50 529.50 Q 730 529 727.00 525.50 Q 724 522 724.00 518.00 Q 724 514 725.00 512.00 Q 726 510 728.00 508.00 Q 730 506 733.50 505.00 Q 737 504 746.00 503.00 Q 755 502 768.00 502.00 Q 781 502 800.00 505.50 Q 819 509 835.50 516.00 Q 852 523 866.50 533.00 Q 881 543 890.50 552.00 Q 900 561 900.00 562.00 Q 900 563 905.00 568.00 Q 910 573 919.50 587.50 Q 929 602 933.50 611.50 Q 938 621 940.50 629.00 Z M 570.00 300.50 Q 584 296 594.00 294.00 Q 604 292 621.00 292.00 Q 638 292 652.50 295.00 Q 667 298 681.00 304.00 Q 695 310 705.50 317.00 Q 716 324 727.50 335.00 Q 739 346 739.00 347.00 Q 739 348 741.00 349.50 Q 743 351 743.00 352.00 Q 743 353 748.50 359.50 Q 754 366 761.50 380.50 Q 769 395 769.00 399.00 Q 769 403 766.50 406.50 Q 764 410 762.00 411.00 Q 760 412 756.50 412.00 Q 753 412 751.00 411.00 Q 749 410 747.50 408.50 Q 746 407 744.00 401.50 Q 742 396 737.50 388.00 Q 733 380 730.00 375.50 Q 727 371 725.00 369.50 Q 723 368 723.00 367.00 Q 723 366 719.50 363.00 Q 716 360 716.00 359.00 Q 716 358 705.00 348.50 Q 694 339 683.50 333.00 Q 673 327 665.00 324.00 Q 657 321 646.50 319.00 Q 636 317 617.50 317.50 Q 599 318 586.00 321.50 Q 573 325 560.00 331.50 Q 547 338 544.50 340.50 Q 542 343 537.50 345.50 Q 533 348 531.00 350.50 Q 529 353 528.00 353.00 Q 527 353 518.50 361.50 Q 510 370 510.00 371.00 Q 510 372 506.00 376.00 Q 502 380 496.00 389.00 Q 490 398 484.50 409.00 Q 479 420 473.50 436.00 Q 468 452 465.50 465.50 Q 463 479 462.00 490.50 Q 461 502 462.00 523.50 Q 463 545 464.50 554.50 Q 466 564 470.00 579.00 Q 474 594 475.00 595.00 Q 476 596 479.00 605.50 Q 482 615 488.00 627.00 Q 494 639 508.00 659.50 Q 522 680 533.50 692.00 Q 545 704 546.00 704.00 Q 547 704 552.50 709.50 Q 558 715 559.00 715.00 Q 560 715 561.00 716.50 Q 562 718 572.00 725.00 Q 582 732 597.50 740.50 Q 613 749 626.50 754.50 Q 640 760 651.00 763.00 Q 662 766 664.50 769.00 Q 667 772 667.50 776.00 Q 668 780 667.00 782.50 Q 666 785 662.00 787.50 Q 658 790 646.50 787.50 Q 635 785 609.00 773.50 Q 583 762 561.50 747.50 Q 540 733 527.00 721.00 Q 514 709 514.00 708.00 Q 514 707 509.00 702.50 Q 504 698 504.00 697.00 Q 504 696 499.50 691.50 Q 495 687 491.50 681.00 Q 488 675 486.50 674.00 Q 485 673 479.50 663.00 Q 474 653 473.00 652.50 Q 472 652 466.00 640.00 Q 460 628 452.50 607.00 Q 445 586 442.00 571.50 Q 439 557 437.50 544.50 Q 436 532 436.00 511.50 Q 436 491 437.00 482.50 Q 438 474 442.00 455.50 Q 446 437 454.50 416.00 Q 463 395 474.50 377.50 Q 486 360 502.00 344.00 Q 518 328 519.00 328.00 Q 520 328 526.00 323.00 Q 532 318 544.00 311.50 Q 556 305 570.00 300.50 Z M 713.50 786.00 Q 700 803 688.00 814.50 Q 676 826 675.00 826.00 Q 674 826 664.50 834.00 Q 655 842 634.50 853.50 Q 614 865 599.00 870.50 Q 584 876 569.00 879.50 Q 554 883 535.00 884.00 Q 516 885 513.00 883.00 Q 510 881 509.00 879.00 Q 508 877 508.00 872.50 Q 508 868 510.50 865.00 Q 513 862 515.00 861.00 Q 517 860 525.00 860.00 Q 533 860 547.00 858.00 Q 561 856 582.00 849.00 Q 603 842 615.50 835.50 Q 628 829 637.00 823.00 Q 646 817 663.50 801.50 Q 681 786 681.00 785.00 Q 681 784 687.50 777.50 Q 694 771 694.00 770.00 Q 694 769 701.50 759.50 Q 709 750 719.00 730.00 Q 729 710 733.50 694.00 Q 738 678 739.00 671.00 Q 740 664 740.00 650.00 Q 740 636 736.00 617.50 Q 732 599 724.00 583.00 Q 716 567 712.50 562.00 Q 709 557 706.00 554.50 Q 703 552 703.00 551.00 Q 703 550 697.00 544.00 Q 691 538 676.50 528.00 Q 662 518 651.50 513.50 Q 641 509 629.00 506.00 Q 617 503 609.00 502.00 Q 601 501 587.50 501.00 Q 574 501 553.50 504.50 Q 533 508 521.00 512.00 Q 509 516 500.00 520.50 Q 491 525 486.50 525.50 Q 482 526 480.50 525.50 Q 479 525 476.00 521.00 Q 473 517 473.00 513.50 Q 473 510 476.00 506.00 Q 479 502 491.50 496.50 Q 504 491 525.50 485.00 Q 547 479 559.00 477.50 Q 571 476 587.50 476.00 Q 604 476 612.50 477.00 Q 621 478 637.50 482.50 Q 654 487 668.50 494.00 Q 683 501 690.50 506.00 Q 698 511 703.50 516.50 Q 709 522 710.00 522.00 Q 711 522 722.00 534.50 Q 733 547 741.00 560.50 Q 749 574 755.00 591.00 Q 761 608 763.00 621.00 Q 765 634 764.50 654.00 Q 764 674 760.50 690.00 Q 757 706 751.00 721.50 Q 745 737 736.00 753.00 Q 727 769 713.50 786.00 Z M 398.00 584.00 Q 397 584 382.00 600.00 Q 367 616 360.50 626.00 Q 354 636 353.00 639.00 Q 352 642 351.00 642.50 Q 350 643 343.50 660.50 Q 337 678 335.50 686.00 Q 334 694 333.50 707.00 Q 333 720 334.00 728.50 Q 335 737 337.50 746.50 Q 340 756 344.00 765.00 Q 348 774 349.00 774.50 Q 350 775 354.00 782.50 Q 358 790 370.50 803.00 Q 383 816 392.50 822.50 Q 402 829 411.00 833.00 Q 420 837 422.50 839.50 Q 425 842 425.00 849.00 Q 425 856 421.00 858.50 Q 417 861 413.50 861.00 Q 410 861 396.50 854.00 Q 383 847 375.00 840.50 Q 367 834 366.00 834.00 Q 365 834 354.50 823.50 Q 344 813 344.00 812.00 Q 344 811 342.00 809.50 Q 340 808 334.50 800.00 Q 329 792 324.00 782.00 Q 319 772 316.00 763.50 Q 313 755 310.50 741.50 Q 308 728 308.00 713.00 Q 308 698 309.50 688.00 Q 311 678 315.00 664.50 Q 319 651 326.50 635.50 Q 334 620 341.50 609.00 Q 349 598 351.00 596.50 Q 353 595 353.00 594.00 Q 353 593 365.50 580.00 Q 378 567 379.00 567.00 Q 380 567 382.50 564.00 Q 385 561 386.00 561.00 Q 387 561 388.50 559.00 Q 390 557 391.00 557.00 Q 392 557 398.50 551.50 Q 405 546 412.00 546.00 Q 419 546 421.50 549.00 Q 424 552 424.00 557.00 Q 424 562 423.00 564.00 Q 422 566 417.50 568.50 Q 413 571 406.00 577.50 Q 399 584 398.00 584.00 Z M 686.00 850.00 Q 691 853 700.00 857.00 Q 709 861 717.50 863.50 Q 726 866 734.00 867.50 Q 742 869 753.50 869.50 Q 765 870 768.50 874.00 Q 772 878 772.00 882.50 Q 772 887 769.50 890.00 Q 767 893 764.50 894.00 Q 762 895 755.50 895.00 Q 749 895 735.50 893.00 Q 722 891 714.50 889.00 Q 707 887 693.50 881.50 Q 680 876 677.50 874.00 Q 675 872 671.00 870.50 Q 667 869 665.00 866.00 Q 663 863 662.50 860.50 Q 662 858 663.00 855.00 Q 664 852 668.00 849.00 Q 672 846 676.50 846.50 Q 681 847 686.00 850.00 Z\" fill-rule=\"evenodd\"/><path class=\"rc-plan-dot\" d=\"M 798.50 441.50 Q 799 444 799.50 450.00 Q 800 456 798.00 460.00 Q 796 464 790.00 468.00 Q 784 472 777.50 472.00 Q 771 472 767.50 470.50 Q 764 469 761.00 466.00 Q 758 463 756.50 460.00 Q 755 457 755.00 450.00 Q 755 443 756.50 440.00 Q 758 437 761.00 434.00 Q 764 431 767.00 429.50 Q 770 428 777.00 428.00 Q 784 428 787.50 429.50 Q 791 431 794.50 435.00 Q 798 439 798.50 441.50 Z M 450.00 847.50 Q 454 844 456.50 843.00 Q 459 842 466.00 842.50 Q 473 843 477.00 845.50 Q 481 848 482.50 850.00 Q 484 852 485.50 855.00 Q 487 858 487.00 864.50 Q 487 871 484.50 875.50 Q 482 880 479.50 882.00 Q 477 884 473.00 885.50 Q 469 887 464.50 887.00 Q 460 887 455.50 885.00 Q 451 883 448.00 880.00 Q 445 877 443.50 873.50 Q 442 870 442.00 865.00 Q 442 860 444.00 855.50 Q 446 851 450.00 847.50 Z M 789.50 866.00 Q 791 863 794.50 859.50 Q 798 856 802.50 854.50 Q 807 853 810.50 853.00 Q 814 853 819.00 855.00 Q 824 857 826.50 859.50 Q 829 862 831.00 868.00 Q 833 874 832.50 878.50 Q 832 883 830.00 886.50 Q 828 890 824.00 893.00 Q 820 896 817.00 897.00 Q 814 898 808.00 897.50 Q 802 897 798.50 895.00 Q 795 893 791.50 887.50 Q 788 882 788.00 875.50 Q 788 869 789.50 866.00 Z\" fill-rule=\"evenodd\"/></svg>";
-
-// 档位靠 code 前缀认，周期靠 code 后缀认。Plan 表还没有这两个字段（加字段要迁移，属 T82-A），
-// 后缀约定写在后端 seed 的 PLAN_CATALOG 注释里，两仓一致。
-const PLAN_TIER_PRESENTATION = {
-	basic: {
-		tier: "basic",
-		label: "Basic",
-		kicker: "先试试",
-		icon: PLAN_ICON_BASIC,
-		features: ["PDF 转换与结构还原", "原文译文双栏对照", "Zotero 库导入与索引"],
-	},
-	pro: {
-		tier: "pro",
-		label: "Pro",
-		kicker: "持续读论文",
-		icon: PLAN_ICON_PRO,
-		features: ["Basic 的全部能力"],
-	},
-	max: {
-		tier: "max",
-		label: "Max",
-		kicker: "重度使用",
-		icon: PLAN_ICON_MAX,
-		features: ["Pro 的全部能力"],
-	},
-};
-const PLAN_TIER_ORDER = ["basic", "pro", "max"];
-
-function resolveBackendPlanTier(code) {
-	const clean = String(code || "").trim().toLowerCase();
-	if (clean.startsWith("max")) return "max";
-	if (clean.startsWith("pro")) return "pro";
-	// 免费档的 code 至今是 `free`——后端 FREE_PLAN_CODE 靠它给新账号发试用额度，改不得，
-	// 所以这里把它映射到 Basic，而不是反过来去改后端那个 code。
-	if (clean === "free" || clean.startsWith("basic")) return "basic";
-	return "";
-}
-
-function resolveBackendPlanCycle(code) {
-	const clean = String(code || "").trim().toLowerCase();
-	if (clean.endsWith("_yearly")) return "yearly";
-	if (clean.endsWith("_monthly")) return "monthly";
-	return "";
-}
-
 // T87-1-A 额度包卡片的展示预设（方案 B：行式价目真机看过后改回卡片）：卡 = 页数 +
 // 价格 + 约 N 篇 + 按钮，无图标、无 kicker、无特性列表——卖点「长期有效，可叠加」整页
-// 只在购买区顶部说一次。推荐档带角标与描边高亮；图标与档位色是会员卡的语言，不再使用。
+// 只在购买区顶部说一次。推荐档带角标与描边高亮。
 const CREDIT_PACK_PRESENTATION = {
 	translation_20: { papersText: "约 1 篇普通论文" },
 	translation_400: { badge: "推荐", featured: true, papersText: "约 20 篇普通论文" },
@@ -6318,7 +6707,7 @@ const CREDIT_PACK_PRESENTATION = {
 
 function buildBackendCreditPackCatalog(plans) {
 	const normalized = normalizeBackendPlansCache(plans);
-	return Object.keys(CREDIT_PACK_PRESENTATION).map(code => {
+	const cards = Object.keys(CREDIT_PACK_PRESENTATION).map(code => {
 		const plan = normalized.find(item => item.code === code);
 		if (!plan) return null;
 		const preset = CREDIT_PACK_PRESENTATION[code];
@@ -6326,6 +6715,7 @@ function buildBackendCreditPackCatalog(plans) {
 			? plan.translationPages
 			: projectTranslationPagesFromCredits(plan.quotaAmount, 1000);
 		const quote = plan.suggestedPayment;
+		const shown = quote || plan;
 		return {
 			kind: "credit-pack",
 			code: plan.code,
@@ -6333,70 +6723,43 @@ function buildBackendCreditPackCatalog(plans) {
 			badge: preset.badge ? rectoUiText("plan.recommended") : "",
 			featured: !!preset.featured,
 			papersText: rectoUiText(`plan.packEstimate.${{ translation_20: 1, translation_400: 20, translation_1000: 50 }[code]}`),
-			price: formatBackendPlanPrice(quote || plan),
+			price: formatBackendPlanPrice(shown),
 			taxNote: quote && !quote.taxIncluded ? rectoUiText("plan.taxAtCheckout") : "",
 			paymentProvider: quote ? quote.provider : "",
 			priceCents: Number(plan.priceCents) || 0,
 			translationPages: pages,
+			displayCurrency: String(shown.currency || "CNY").toUpperCase(),
+			unitPrice: Number(shown.priceCents) > 0 && pages > 0 ? Number(shown.priceCents) / 100 / pages : 0,
 		};
 	}).filter(Boolean);
+	return annotateCreditPackUnitPrices(cards);
 }
 
-// 三档 × 两周期的目录：给定周期挑出该周期的档，免费档没有周期、两栏都出现。
-// 返回的每一项就是一张卡片要显示的全部内容，渲染层只管往 DOM 上放。
-// T82-A-R：原来这里还有一个 currentPlanCode 参数与 isCurrent 字段，语义是「用户选中的那张卡」，
-// 自 T82-A-A 把购买按钮放进卡片后就没人读了。「当前」现在指**已购买的档位**，由
-// describeBackendPlanAction 按后端返回的 membership 判定，所以那对同名的死字段一并移除，
-// 免得两个「current」并存、下一个人读到哪个算哪个。
-function buildBackendPlanCatalog(plans, cycle = "monthly", perPaper = 0, billingMode = "") {
-	const normalized = normalizeBackendPlansCache(plans);
-	if (resolveBackendBillingMode(billingMode, normalized) === "credit_pack") {
-		return buildBackendCreditPackCatalog(normalized);
-	}
-	const wanted = cycle === "yearly" ? "yearly" : "monthly";
-	const cards = [];
+// T109：每张卡给出「每页单价」，三档同币种时再给出相对最小包省多少。币种混排（海外用户
+// 小包走微信人民币价、大包走美元价）时跨币种比价不成立，只写单价、不写省多少。
+function formatCreditPackUnitPrice(amount, currency) {
+	// 一元以下写到厘（0.145），否则四舍五入后小包与中包看不出差别；先放大取整，避开浮点把 0.145 截成 0.14。
+	const digits = amount < 1 ? 3 : 2;
+	const text = (Math.round(amount * 10 ** digits) / 10 ** digits).toFixed(digits);
+	if (currency === "CNY") return `¥${text}`;
+	return currency === "USD" ? `US$${text}` : `${text} ${currency}`;
+}
 
-	for (const tier of PLAN_TIER_ORDER) {
-		const preset = PLAN_TIER_PRESENTATION[tier];
-		const matches = normalized.filter(plan => resolveBackendPlanTier(plan.code) === tier);
-		if (!matches.length) continue;
-		// 免费档没有周期后缀，两栏都用它；付费档只取当前周期，取不到就跳过这一档。
-		const plan = matches.find(item => resolveBackendPlanCycle(item.code) === wanted)
-			|| matches.find(item => !resolveBackendPlanCycle(item.code));
-		if (!plan) continue;
-
-		const papers = estimatePapersFromCredits(plan.quotaAmount, perPaper);
-		const free = Number(plan.priceCents) <= 0;
-		cards.push({
-			tier,
-			code: plan.code,
-			label: preset.label,
-			kicker: rectoUiText(`plan.${tier}Kicker`),
-			icon: preset.icon,
-			price: formatBackendPlanPrice(plan),
-			priceCents: Number(plan.priceCents) || 0,
-			// 免费档没有周期后缀，它的 cycle 是空串——describeBackendPlanAction 靠 free 先分流，
-			// 走不到用 cycle 的那条分支。
-			cycle: resolveBackendPlanCycle(plan.code),
-			period: free ? "" : rectoUiText(wanted === "yearly" ? "plan.perYear" : "plan.perMonth"),
-			papers,
-			papersText: papers > 0 ? rectoUiText("plan.papersPerCycle", { count: papers }) : rectoUiText("plan.creditsPending"),
-			free,
-			features: (tier === "basic" ? ["plan.basicFeatureConvert", "plan.basicFeatureCompare", "plan.basicFeatureZotero"]
-				: tier === "pro" ? ["plan.proFeature"] : ["plan.maxFeature"]).map(key => rectoUiText(key)),
-		});
-	}
-
-	// 「额度约为 Basic 的 N 倍」由真实配额算，不写死——改 seed 的数字这句就跟着变。
-	const base = cards.find(card => card.tier === "basic");
-	if (base && base.papers > 0) {
-		for (const card of cards) {
-			if (card.tier === "basic" || card.papers <= 0) continue;
-			const times = Math.round(card.papers / base.papers);
-			if (times >= 2) card.features.push(rectoUiText("plan.quotaMultiple", { count: times }));
-		}
-	}
-	return cards;
+function annotateCreditPackUnitPrices(cards) {
+	const priced = cards.filter(card => card.unitPrice > 0);
+	const sameCurrency = priced.length > 1 && priced.every(card => card.displayCurrency === priced[0].displayCurrency);
+	const base = sameCurrency
+		? priced.reduce((min, card) => (card.translationPages < min.translationPages ? card : min), priced[0])
+		: null;
+	return cards.map(card => {
+		const unitPriceText = card.unitPrice > 0
+			? rectoUiText("plan.perPage", { price: formatCreditPackUnitPrice(card.unitPrice, card.displayCurrency) })
+			: "";
+		const saving = base && card !== base && card.unitPrice > 0
+			? Math.round((1 - card.unitPrice / base.unitPrice) * 100)
+			: 0;
+		return { ...card, unitPriceText, savingText: saving >= 5 ? rectoUiText("plan.save", { percent: saving }) : "" };
+	});
 }
 
 // ── T84-E-A 插件自更新 ─────────────────────────────────────────────
@@ -6701,197 +7064,6 @@ function requestRectoReleaseAssetViaNode(url, depth = 0) {
 	});
 }
 
-// ── T82-A-R 当前会员与购买闸门 ──────────────────────────────────────
-// 权益判定在后端（`/api/v1/me` 的 membership，过期即返回 null）。插件只缓存它说的档位与
-// 到期时间，用来渲染角标与按钮文案，绝不据此自行放行功能（CODEMAP 不变量 7）。
-
-function applyBackendMembershipToSettings(settings, membership) {
-	if (!settings) return settings;
-	const m = membership && typeof membership === "object" ? membership : null;
-	settings.backendMembershipPlanCode = m ? String(m.planCode || "").trim() : "";
-	settings.backendMembershipPlanName = m ? String(m.planName || "").trim() : "";
-	settings.backendMembershipExpiresAt = m ? String(m.expiresAt || "").trim() : "";
-	settings.backendMembershipPeriodEnd = m ? String(m.periodEnd || "").trim() : "";
-	settings.backendMembershipIsTrial = !!(m && m.isTrial);
-	return settings;
-}
-
-// 到期日按**本地时区**显示。这里与后端支付页那个 +8 小时的写法不同是对的：网页跑在
-// 服务器时区（UTC）里、只能硬编北京时间，而插件跑在用户机器上，本地时区就是用户的时区。
-function formatBackendLocalDate(value) {
-	const ms = Date.parse(String(value || ""));
-	if (!Number.isFinite(ms)) return "";
-	const date = new Date(ms);
-	const pad = number => String(number).padStart(2, "0");
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-function describeBackendMembership(settings, now = Date.now()) {
-	const s = settings && typeof settings === "object" ? settings : {};
-	const planCode = String(s.backendMembershipPlanCode || "").trim();
-	if (!planCode) return null;
-	const expiresAt = String(s.backendMembershipExpiresAt || "").trim();
-	const expiresMs = Date.parse(expiresAt);
-	const known = Number.isFinite(expiresMs);
-	return {
-		planCode,
-		planName: String(s.backendMembershipPlanName || "").trim() || planCode,
-		tier: resolveBackendPlanTier(planCode),
-		cycle: resolveBackendPlanCycle(planCode),
-		expiresAt,
-		expiresMs: known ? expiresMs : null,
-		periodEnd: String(s.backendMembershipPeriodEnd || "").trim(),
-		isTrial: !!s.backendMembershipIsTrial,
-		// 读不出到期时间时按「有效」算：后端愿意返回这份会员就说明它没过期，
-		// 面板不该因为一个日期解析不了就把用户的会员显示成已失效。
-		active: !known || expiresMs > now,
-	};
-}
-
-// 面板上那一行会员状态。只在临近到期时才补「还有 N 天」——平时那句话是噪音，
-// 到期前一周它才是用户真正需要的提醒（产品不自动续费，错过就要清零降档）。
-const BACKEND_MEMBERSHIP_SOON_DAYS = 7;
-
-function describeBackendMembershipLine(membership, now = Date.now()) {
-	if (!membership) return "";
-	if (!membership.active) return rectoUiText("plan.membershipExpired", { plan: membership.planName });
-	const date = formatBackendLocalDate(membership.expiresAt);
-	const trialLabel = rectoUiText(membership.isTrial ? "plan.trial" : "plan.membership");
-	if (!date) return rectoUiText("plan.membershipActive", { plan: membership.planName, kind: trialLabel });
-	const days = membership.expiresMs === null
-		? null
-		: Math.max(0, Math.ceil((membership.expiresMs - now) / (24 * 60 * 60 * 1000)));
-	const soon = days !== null && days <= BACKEND_MEMBERSHIP_SOON_DAYS
-		? rectoUiText("plan.expiresSoon", { days })
-		: "";
-	return rectoUiText("plan.membershipExpires", { plan: membership.planName, kind: trialLabel, date, soon });
-}
-
-// 换档方向（T84-A-A，2026-08-10 用户拍板；与后端 `isPlanDowngrade` 同一套规则）。档位与
-// 周期两个维度**谁都不能降**：年付日单价便宜，剩余价值按月付的贵单价折回来会凭空少掉几个月
-// （剩 300 天只折出 176 天），降档同理，而界面上没有任何提示。用户要降只能等到期。
-// 认不出档位或周期时返回 false——一次性额度包走不到换档这条路，拦下来只会误伤。
-const PLAN_CYCLE_ORDER = ["monthly", "yearly"];
-
-function isBackendPlanDowngrade(card, membership) {
-	if (!card || !membership) return false;
-	const tierFrom = PLAN_TIER_ORDER.indexOf(membership.tier);
-	const tierTo = PLAN_TIER_ORDER.indexOf(card.tier);
-	const cycleFrom = PLAN_CYCLE_ORDER.indexOf(membership.cycle);
-	const cycleTo = PLAN_CYCLE_ORDER.indexOf(card.cycle);
-	if (tierFrom < 0 || tierTo < 0 || cycleFrom < 0 || cycleTo < 0) return false;
-	return tierTo < tierFrom || cycleTo < cycleFrom;
-}
-
-/**
- * 一张套餐卡此刻该显示什么（T82-A-R，2026-08-01 用户拍板）。
- *
- * 关键约束：产品是**到期不自动续费**，所以当前档的按钮**不能消失**——否则用户在到期前
- * 根本没有续费入口，只能等额度清零、降回 Basic 再重买。这与「已购档位置灰」的常见做法
- * 相反，是因为那类产品都在自动续费。当前档改用角标标注，按钮原位换成「续期」。
- */
-function describeBackendPlanAction(card, membership) {
-	const state = card && typeof card === "object" ? card : {};
-	if (state.kind === "credit-pack") {
-		return { kind: "buy", label: rectoUiText("plan.buy", { plan: state.label }), disabled: false, badge: state.badge || "" };
-	}
-	const active = membership && membership.active ? membership : null;
-
-	if (state.free) {
-		// 买了付费档之后，Basic 不再是「正在用」的东西，而是到期后会回到的那一档——
-		// 顺带把「到期作废额度、降回 Basic」这条语义摆在用户眼前。
-		return active
-			? { kind: "fallback", label: rectoUiText("plan.fallback"), disabled: true, badge: "" }
-			: { kind: "free", label: rectoUiText("plan.freeActive"), disabled: true, badge: rectoUiText("plan.current") };
-	}
-
-	if (active && state.code === active.planCode) {
-		return {
-			kind: "renew",
-			label: rectoUiText("plan.renew", { plan: state.label }),
-			disabled: false,
-			badge: rectoUiText(active.isTrial ? "plan.trialActive" : "plan.current"),
-		};
-	}
-
-	if (!active) {
-		return { kind: "buy", label: rectoUiText("plan.upgrade", { plan: state.label }), disabled: false, badge: "" };
-	}
-
-	// T84-A-A：降档与降周期买不了，卡片置灰。真正的守卫在后端 `startHandoff`——这里只是
-	// 让用户不必点一下才知道（不变量 7：客户端只显示，不判权益）。试用不参与判定，
-	// 试用挂 Pro 只是个显示名，拿它当真实档位会挡掉正常购买。
-	if (!active.isTrial && isBackendPlanDowngrade(state, active)) {
-		return {
-			kind: "blocked",
-			label: rectoUiText("plan.switchAfterExpiry"),
-			disabled: true,
-			badge: "",
-			// 文案只用 `.recto-ui` 中文子集里已有的字（`tests/ui-cjk-font.test.js` 守着）——
-			// 「日单价」「损失」里的「价」「损」不在子集内，换成等义的说法，不为一句提示
-			// 重跑一遍字体子集化。
-			hint: rectoUiText("plan.downgradeHint", { plan: active.planName, cycle: rectoUiText(active.cycle === "yearly" ? "account.yearly" : "account.monthly"), next: state.label }),
-		};
-	}
-
-	// 同档换周期：写「升级到 Pro」很怪——用户已经是 Pro 了，换的是付费周期而不是档位。
-	if (state.tier === active.tier) {
-		return {
-			kind: "switch-cycle",
-			label: rectoUiText(state.cycle === "yearly" ? "plan.switchYearly" : "plan.switchMonthly"),
-			disabled: false,
-			badge: "",
-		};
-	}
-
-	// T84-A-A 之后 downgrade 这一支只剩试用用户走得到（试用不参与降档判定），付费会员的降档
-	// 已经在上面拦成 blocked。留着是 `higher` 为假时的兜底，不是活路径。
-	const higher = PLAN_TIER_ORDER.indexOf(state.tier) > PLAN_TIER_ORDER.indexOf(active.tier);
-	return higher
-		? { kind: "upgrade", label: rectoUiText("plan.upgrade", { plan: state.label }), disabled: false, badge: "" }
-		: { kind: "downgrade", label: rectoUiText("plan.switch", { plan: state.label }), disabled: false, badge: "" };
-}
-
-// 年付省多少：两档都在时才算得出，算不出就不显示——宁可少一个标签，也不写一个编的数字。
-function describeBackendPlanYearlySaving(plans, tier = "pro") {
-	const normalized = normalizeBackendPlansCache(plans);
-	const inTier = normalized.filter(plan => resolveBackendPlanTier(plan.code) === tier);
-	const monthly = inTier.find(plan => resolveBackendPlanCycle(plan.code) === "monthly");
-	const yearly = inTier.find(plan => resolveBackendPlanCycle(plan.code) === "yearly");
-	if (!monthly || !yearly) return null;
-	const twelve = Number(monthly.priceCents) * 12;
-	const saved = twelve - Number(yearly.priceCents);
-	if (!(twelve > 0) || saved <= 0) return null;
-	return { savedCents: saved, months: Math.round(saved / Number(monthly.priceCents)) };
-}
-
-// 额度进度条。分母是后端给的「本期发放额度」（T82-A-B 起是周期口径）。
-function describeCreditsMeter(view) {
-	const state = view && typeof view === "object" ? view : {};
-	if (!state.loggedIn) return { known: false, percent: 0, heldPercent: 0, text: "—", tone: "signed-out" };
-	// null 必须先于 Number() 挡掉：Number(null) 是 0 且「有限」，直接算百分比会把
-	// 「还没读过额度」显示成「剩余 0%」——那正是 toBackendCreditNumber 当初要分开的两件事。
-	const unknown = { known: false, percent: 0, heldPercent: 0, text: "—", tone: "unknown" };
-	if (state.availableCredits === null || state.availableCredits === undefined) return unknown;
-	if (state.grantedCredits === null || state.grantedCredits === undefined) return unknown;
-	const available = Number(state.availableCredits);
-	const granted = Number(state.grantedCredits);
-	if (!Number.isFinite(available) || !Number.isFinite(granted) || granted <= 0) return unknown;
-	const clamp = value => Math.max(0, Math.min(100, value));
-	const percent = clamp(Math.round((available / granted) * 100));
-	const held = Number(state.heldCredits);
-	const heldPercent = Number.isFinite(held) && held > 0 ? clamp(Math.round((held / granted) * 100)) : 0;
-	// 还剩一点点时不要显示成 0%——0% 会让人以为已经不能用了。
-	const shown = percent === 0 && available > 0 ? 1 : percent;
-	return {
-		known: true,
-		percent: shown,
-		heldPercent,
-		text: `${shown}%`,
-		tone: available <= 0 ? "empty" : (shown <= 10 ? "low" : "ok"),
-	};
-}
-
 // ── T59 账号视图模型 ────────────────────────────────────────────────
 // 账号与额度散在十几个 settings 字段里；账号弹窗、Hub 额度徽章与设置页入口
 // 都读这一份，避免三处各写一遍「算不算已登录 / 额度算不算已知」的口径。
@@ -6948,21 +7120,11 @@ function describeBackendAccountView(settings, now = Date.now()) {
 	const sessionExpired = loggedIn && isBackendSessionExpired(s.backendSessionExpiresAt, now);
 	const availableCredits = toBackendCreditNumber(s.backendLastAvailableCredits);
 	const heldCredits = toBackendCreditNumber(s.backendLastHeldCredits);
-	const grantedCredits = toBackendCreditNumber(s.backendLastGrantedCredits);
-	const billingMode = resolveBackendBillingMode(s.backendBillingMode, s.backendPlansCache);
-	const creditPackMode = billingMode === "credit_pack";
 	const creditsPerTranslationPage = Number(s.backendCreditsPerTranslationPage) > 0
 		? Number(s.backendCreditsPerTranslationPage)
 		: 0;
-	// T84-R-A：点数 → 篇数的换算常数。0 表示后端没说过，estimatePapersFromCredits 会回退。
-	// 不看 loggedIn——套餐卡片在未登录时照样要画「每期约 N 篇」。
-	const creditsPerPaper = Number(s.backendCreditsPerPaper) > 0 ? Number(s.backendCreditsPerPaper) : 0;
 	const creditsKnown = loggedIn && availableCredits !== null;
 	const plans = normalizeBackendPlansCache(s.backendPlansCache);
-	// 未登录时不谈会员：settings 里可能还留着上一个账号的残值，退出登录会清但顺序不保证。
-	const membership = loggedIn && !creditPackMode ? describeBackendMembership(s) : null;
-	// 点数是内部计费单位（T81-S），所以对外的这句话只说百分比，不说数字。
-	const meter = describeCreditsMeter({ loggedIn, availableCredits, heldCredits, grantedCredits });
 	const translationPages = describeTranslationPageBalance({
 		loggedIn,
 		availableCredits,
@@ -6972,14 +7134,10 @@ function describeBackendAccountView(settings, now = Date.now()) {
 		heldTranslationPages: s.backendHeldTranslationPages,
 	});
 	let creditsText = rectoUiText("account.signedOut");
-	if (creditPackMode && loggedIn && !translationPages.known) creditsText = rectoUiText("account.pagesUnknown");
-	else if (creditPackMode && translationPages.known) {
+	if (loggedIn && !translationPages.known) creditsText = rectoUiText("account.pagesUnknown");
+	else if (translationPages.known) {
 		// T87-1-A：冻结不对用户显示——任务在途时可用页数已按预扣下降，失败退回时数字自然回升。
 		creditsText = rectoUiText("account.pagesAvailable", { count: translationPages.availableText });
-	} else if (loggedIn && !meter.known) creditsText = rectoUiText("account.creditsUnknown");
-	else if (meter.known) {
-		creditsText = rectoUiText("account.creditsRemaining", { percent: meter.text });
-		if (meter.heldPercent > 0) creditsText += rectoUiText("account.creditsProcessing", { percent: meter.heldPercent });
 	}
 	return {
 		loggedIn,
@@ -6989,17 +7147,10 @@ function describeBackendAccountView(settings, now = Date.now()) {
 		sessionExpiresAt: String(s.backendSessionExpiresAt || "").trim(),
 		availableCredits,
 		heldCredits,
-		grantedCredits,
-		billingMode,
-		creditPackMode,
 		creditsPerTranslationPage,
 		translationPages,
-		creditsPerPaper,
-		meter,
 		creditsKnown,
-		creditsEmpty: creditPackMode
-			? (translationPages.known && translationPages.available <= 0)
-			: (creditsKnown && availableCredits <= 0),
+		creditsEmpty: translationPages.known && translationPages.available <= 0,
 		creditsText,
 		lastError: s.backendLastError
 			? getUserFacingErrorMessage(s.backendLastError, rectoUiText("account.actionFailed"))
@@ -7007,72 +7158,35 @@ function describeBackendAccountView(settings, now = Date.now()) {
 		plans,
 		paidPlans: plans.filter(plan => Number(plan.priceCents) > 0),
 		selectedPlan: getBackendSelectedPlan(s),
-		membership,
-		membershipLine: describeBackendMembershipLine(membership),
 		inviteCode: loggedIn ? String(s.backendInviteCode || "").trim() : "",
 	};
 }
 
 // Hub 工具栏的常驻额度徽章：未登录时它就是登录入口，额度为零时要看得出来。
-// 会员兼容模式用百分比圆环；额度制直接显示翻译页，两者都只渲染后端下发的账本投影。
+// 额度制直接显示翻译页，只渲染后端下发的账本投影（T118 起不再有会员兼容模式的百分比圆环）。
 function describeHubCreditsBadge(settings) {
 	const view = describeBackendAccountView(settings);
 	if (!view.loggedIn) {
-		return { tone: "signed-out", text: rectoUiText("account.signIn"), title: rectoUiText("account.signInHint"), known: false, percent: 0, heldPercent: 0 };
+		return { tone: "signed-out", text: rectoUiText("account.signIn"), title: rectoUiText("account.signInHint"), known: false };
 	}
 	// 过期的会话与没登录同一种处境：出路都是重新登录一次。徽章与账号面板必须说同一句话，
-	// 否则徽章画着剩余额度的圆环、面板却是登录页。
+	// 否则徽章画着剩余页数、面板却是登录页。
 	if (view.sessionExpired) {
-		return { tone: "signed-out", text: rectoUiText("account.signIn"), title: rectoUiText("account.sessionExpiredHint"), known: false, percent: 0, heldPercent: 0 };
+		return { tone: "signed-out", text: rectoUiText("account.signIn"), title: rectoUiText("account.sessionExpiredHint"), known: false };
 	}
 	const suffix = `${view.email ? rectoUiText("account.signedInEmail", { email: view.email }) : ""}${rectoUiText("account.openPanelHint")}`;
-	if (view.creditPackMode) {
-		const pages = view.translationPages;
-		if (!pages || !pages.known) {
-			return { mode: "pages", tone: "unknown", text: rectoUiText("account.pagesLabel"), title: `${rectoUiText("account.pagesUnknown")}; ${suffix}`, known: false };
-		}
-		// T87-1-A：title 里同样不提冻结——徽章、账号面板、设置摘要对同一份余额只说一句话。
-		return {
-			mode: "pages",
-			tone: pages.tone,
-			text: rectoUiText("account.pagesCount", { count: pages.availableText }),
-			short: rectoUiText("account.pagesCount", { count: pages.availableText }),
-			title: rectoUiText("account.pagesHint", { count: pages.availableText, suffix }),
-			known: true,
-		};
+	const pages = view.translationPages;
+	if (!pages || !pages.known) {
+		return { mode: "pages", tone: "unknown", text: rectoUiText("account.pagesLabel"), title: `${rectoUiText("account.pagesUnknown")}; ${suffix}`, known: false };
 	}
-	if (view.creditsEmpty) {
-		return { tone: "empty", text: rectoUiText("account.creditsEmpty"), title: rectoUiText("account.creditsEmptyHint", { suffix }), known: true, percent: 0, heldPercent: 0 };
-	}
-	// 百分比要有分母；后端没给分母时退回「—」，绝不把「读不到」显示成一个具体数。
-	if (!view.meter || !view.meter.known) {
-		return { tone: "unknown", text: rectoUiText("account.creditsLabel"), title: `${rectoUiText("account.creditsUnknown")}; ${suffix}`, known: false, percent: 0, heldPercent: 0 };
-	}
-	const held = view.meter.heldPercent > 0 ? rectoUiText("account.heldSuffix", { percent: view.meter.heldPercent }) : "";
+	// T87-1-A：title 里同样不提冻结——徽章、账号面板、设置摘要对同一份余额只说一句话。
 	return {
-		tone: view.meter.tone === "low" ? "low" : "ok",
-		text: rectoUiText("account.creditsLabelValue", { percent: view.meter.text, held }),
-		// 工具栏挨着圆环显示的短文（T86-A 第四轮）：一个裸圆环不悬停就不知道能点、更不知道点开是账号。
-		// 只给百分比，不给点数——不变量 13。`text` 那份带「额度」前缀与「处理中」括注，工具栏放不下。
-		short: view.meter.text,
-		title: `${view.creditsText}；${suffix}`,
+		mode: "pages",
+		tone: pages.tone,
+		text: rectoUiText("account.pagesCount", { count: pages.availableText }),
+		title: rectoUiText("account.pagesHint", { count: pages.availableText, suffix }),
 		known: true,
-		percent: view.meter.percent,
-		heldPercent: view.meter.heldPercent,
 	};
-}
-
-// pathLength=100 的圆环：剩余额度用实弧，冻结额度接在后面用淡弧。
-function buildHubCreditsRingMarkup(percent, heldPercent) {
-	const remaining = Math.max(0, Math.min(100, Number(percent) || 0));
-	const held = Math.max(0, Math.min(100 - remaining, Number(heldPercent) || 0));
-	// 半径与 styles.css 的 stroke-width(4.5) 是一对：r + 描边一半 = 15.75 + 2.25 = 18，
-	// 正好顶到 viewBox 边缘，既不裁切也不留白。改一个必须同时改另一个。
-	// `pathLength="100"` 把周长归一成 100，所以百分比算法与半径无关。
-	const heldArc = held > 0
-		? `<circle class="recto-hub-credits-held" cx="18" cy="18" r="15.75" pathLength="100" stroke-dasharray="0 ${remaining} ${held} ${100 - remaining - held}"/>`
-		: "";
-	return `<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="recto-hub-credits-track" cx="18" cy="18" r="15.75" pathLength="100"/><circle class="recto-hub-credits-fill" cx="18" cy="18" r="15.75" pathLength="100" stroke-dasharray="${remaining} ${100 - remaining}"/>${heldArc}</svg>`;
 }
 
 // 浏览器登录的等待态：轮询是唯一的传输通道，深链只是「立刻醒一次」的加速信号。
@@ -7090,10 +7204,8 @@ function decideBrowserLoginPoll(view, handoff, attempt = 0, maxAttempts = BROWSE
 
 function snapshotCheckoutBilling(settings) {
 	const s = settings && typeof settings === "object" ? settings : {};
+	// 付款到账的信号：可用额度或发放额度任一变化（T118 起不再看会员档位与到期时间）。
 	return {
-		planCode: String(s.backendMembershipPlanCode || "").trim(),
-		expiresAt: String(s.backendMembershipExpiresAt || "").trim(),
-		isTrial: !!s.backendMembershipIsTrial,
 		availableCredits: toBackendCreditNumber(s.backendLastAvailableCredits),
 		grantedCredits: toBackendCreditNumber(s.backendLastGrantedCredits),
 	};
@@ -7101,10 +7213,7 @@ function snapshotCheckoutBilling(settings) {
 
 function checkoutBillingChanged(before, after) {
 	if (!before || !after) return false;
-	return before.planCode !== after.planCode
-		|| before.expiresAt !== after.expiresAt
-		|| before.isTrial !== after.isTrial
-		|| before.availableCredits !== after.availableCredits
+	return before.availableCredits !== after.availableCredits
 		|| before.grantedCredits !== after.grantedCredits;
 }
 
@@ -7652,22 +7761,6 @@ const BACKEND_ERROR_MESSAGE_ZH = {
 	"insufficient credits.": "账户额度不足，本次处理未开始（未扣费）。请先充值，再在 Hub 里单独重试。",
 };
 
-function describeBackendErrorBody(text) {
-	const raw = String(text || "").trim();
-	if (!raw) return "";
-	let message = raw;
-	try {
-		const parsed = JSON.parse(raw);
-		const candidate = parsed && parsed.message;
-		// NestJS 的校验错误会给一个数组，逐条拼起来。
-		if (Array.isArray(candidate)) message = candidate.filter(Boolean).map(String).join("；");
-		else if (candidate) message = String(candidate);
-	} catch {
-		// 不是 JSON（网关的 HTML 错误页之类）就按原文截断，与改动前行为一致。
-	}
-	return BACKEND_ERROR_MESSAGE_ZH[message.trim().toLowerCase()] || message.slice(0, 200);
-}
-
 
 function isCancellationError(error, signal) {
 	if (signal && signal.aborted) return true;
@@ -7703,121 +7796,6 @@ function getPollIntervalMs(settings) {
 
 
 
-
-
-const CRC_TABLE = (() => {
-	const table = new Uint32Array(256);
-	for (let n = 0; n < 256; n++) {
-		let c = n;
-		for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
-		table[n] = c >>> 0;
-	}
-	return table;
-})();
-
-function crc32(buf) {
-	let crc = 0xffffffff;
-	for (const b of buf) crc = CRC_TABLE[(crc ^ b) & 0xff] ^ (crc >>> 8);
-	return (crc ^ 0xffffffff) >>> 0;
-}
-
-function getZipDosDateTime(date = new Date()) {
-	const year = Math.max(1980, date.getFullYear());
-	return {
-		time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
-		date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
-	};
-}
-
-function createZipBuffer(files) {
-	const localParts = [];
-	const centralParts = [];
-	let offset = 0;
-	const dt = getZipDosDateTime();
-	for (const file of files) {
-		const nameBuf = Buffer.from(file.name, "utf8");
-		const data = Buffer.isBuffer(file.data) ? file.data : Buffer.from(file.data);
-		const crc = crc32(data);
-		const local = Buffer.alloc(30 + nameBuf.length);
-		local.writeUInt32LE(0x04034b50, 0);
-		local.writeUInt16LE(20, 4);
-		local.writeUInt16LE(0x0800, 6);
-		local.writeUInt16LE(0, 8);
-		local.writeUInt16LE(dt.time, 10);
-		local.writeUInt16LE(dt.date, 12);
-		local.writeUInt32LE(crc, 14);
-		local.writeUInt32LE(data.length, 18);
-		local.writeUInt32LE(data.length, 22);
-		local.writeUInt16LE(nameBuf.length, 26);
-		nameBuf.copy(local, 30);
-		localParts.push(local, data);
-
-		const central = Buffer.alloc(46 + nameBuf.length);
-		central.writeUInt32LE(0x02014b50, 0);
-		central.writeUInt16LE(20, 4);
-		central.writeUInt16LE(20, 6);
-		central.writeUInt16LE(0x0800, 8);
-		central.writeUInt16LE(0, 10);
-		central.writeUInt16LE(dt.time, 12);
-		central.writeUInt16LE(dt.date, 14);
-		central.writeUInt32LE(crc, 16);
-		central.writeUInt32LE(data.length, 20);
-		central.writeUInt32LE(data.length, 24);
-		central.writeUInt16LE(nameBuf.length, 28);
-		central.writeUInt32LE(offset, 42);
-		nameBuf.copy(central, 46);
-		centralParts.push(central);
-		offset += local.length + data.length;
-	}
-	const centralSize = centralParts.reduce((sum, b) => sum + b.length, 0);
-	const eocd = Buffer.alloc(22);
-	eocd.writeUInt32LE(0x06054b50, 0);
-	eocd.writeUInt16LE(files.length, 8);
-	eocd.writeUInt16LE(files.length, 10);
-	eocd.writeUInt32LE(centralSize, 12);
-	eocd.writeUInt32LE(offset, 16);
-	return Buffer.concat([...localParts, ...centralParts, eocd]);
-}
-
-function createSanitizedDistributionZip(pluginDir) {
-	const manifest = JSON.parse(fs.readFileSync(nodePath.join(pluginDir, "manifest.json"), "utf8"));
-	if (!String(manifest.id || "").trim()) throw new Error("manifest.json 缺少插件 id");
-	if (!String(manifest.version || "").trim()) throw new Error("manifest.json 缺少插件版本");
-	const version = String(manifest.version).replace(/[^A-Za-z0-9._-]+/g, "-");
-	const names = ["manifest.json", "main.js", "styles.css"];
-	const files = names.map(name => ({
-		name,
-		data: fs.readFileSync(nodePath.join(pluginDir, name)),
-	}));
-	const dataPath = nodePath.join(pluginDir, "data.json");
-	if (fs.existsSync(dataPath)) {
-		try {
-			const localData = JSON.parse(fs.readFileSync(dataPath, "utf8"));
-			const secrets = [];
-			const collect = (value, key = "", sensitiveParent = false) => {
-				const sensitive = sensitiveParent || /(key|token|secret|authorization)/i.test(key);
-				if (typeof value === "string" && value.length >= 8 && sensitive) {
-					secrets.push(value);
-					return;
-				}
-				if (value && typeof value === "object") {
-					for (const [childKey, childValue] of Object.entries(value)) collect(childValue, childKey, sensitive);
-				}
-			};
-			collect(localData);
-			for (const secret of secrets) {
-				if (files.some(file => file.data.includes(Buffer.from(secret)))) {
-					throw new Error("运行文件中检测到本机敏感配置，已取消生成分发包");
-				}
-			}
-		} catch (error) {
-			if (/敏感配置/.test(error.message || "")) throw error;
-		}
-	}
-	const zipPath = nodePath.join(pluginDir, `recto-${version}-sanitized.zip`);
-	fs.writeFileSync(zipPath, createZipBuffer(files));
-	return zipPath;
-}
 
 
 function cleanYamlScalar(value) {
@@ -7857,85 +7835,8 @@ function parseSimpleFrontmatter(text) {
 	return out;
 }
 
-function escapeWikiText(text) {
-	return String(text || "").replace(/[\[\]|]/g, " ").replace(/\s+/g, " ").trim();
-}
-
 function cleanDisplayText(text) {
 	return String(text || "").replace(/\s+/g, " ").trim();
-}
-
-function escapeHtmlText(text) {
-	return String(text || "")
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
-}
-
-function normalizeComparableTitle(text) {
-	return cleanDisplayText(text)
-		.replace(/\.pdf$/i, "")
-		.toLowerCase()
-		.replace(/[^\w\u4e00-\u9fa5]+/g, "");
-}
-
-function looksLikeEnglishTitle(text) {
-	const s = cleanDisplayText(text);
-	if (!s) return false;
-	const letters = s.match(/[A-Za-z]/g) || [];
-	const cjk = s.match(/[\u4e00-\u9fa5]/g) || [];
-	return letters.length >= 4 && letters.length >= cjk.length;
-}
-
-function getIndexEnglishTitle(meta) {
-	const english = cleanDisplayText(meta.zoteroTitle || meta.frontmatterTitle || "");
-	const chinese = cleanDisplayText(meta.title || meta.stem || "");
-	if (!looksLikeEnglishTitle(english)) return "";
-	if (normalizeComparableTitle(english) === normalizeComparableTitle(chinese)) return "";
-	return english;
-}
-
-function getIndexFirstAuthor(meta) {
-	const authors = Array.isArray(meta.authors) ? meta.authors : [meta.authors];
-	return cleanDisplayText(authors.find(Boolean) || "");
-}
-
-function getIndexVenue(meta) {
-	const venue = cleanDisplayText(meta.venue);
-	return venue === "未指定" ? "" : venue;
-}
-
-// 列表 UI 只做有界展示：作者最多 ZOTERO_INDEX_MAX_AUTHORS 位、标签最多 ZOTERO_INDEX_MAX_TAGS 个，
-// 摘要只显示存在性，完整作者表、摘要全文和全部原字段留在 papers.jsonl 与记录里。
-function getIndexBoundedAuthors(meta) {
-	const authors = (Array.isArray(meta && meta.authors) ? meta.authors : [meta && meta.authors])
-		.map(cleanDisplayText)
-		.filter(Boolean);
-	if (!authors.length) return "";
-	const shown = authors.slice(0, ZOTERO_INDEX_MAX_AUTHORS).join("；");
-	return authors.length > ZOTERO_INDEX_MAX_AUTHORS ? `${shown} 等 ${authors.length} 人` : shown;
-}
-
-function getIndexBoundedTags(tags) {
-	const names = uniqueStrings((Array.isArray(tags) ? tags : []).map(tag => tag && tag.name));
-	if (!names.length) return "";
-	const shown = names.slice(0, ZOTERO_INDEX_MAX_TAGS).join("、");
-	return names.length > ZOTERO_INDEX_MAX_TAGS ? `${shown} +${names.length - ZOTERO_INDEX_MAX_TAGS}` : shown;
-}
-
-function getPaperSelectionSubtitle(item) {
-	const parts = [];
-	const year = cleanDisplayText(item && item.year);
-	const itemTypeLabel = getZoteroMetadataItemTypeLabel(item && item.zoteroMetadata);
-	const firstAuthor = getIndexFirstAuthor(item || {});
-	const venue = getIndexVenue(item || {});
-	if (year) parts.push(year);
-	if (itemTypeLabel) parts.push(itemTypeLabel);
-	if (firstAuthor) parts.push(firstAuthor);
-	if (venue) parts.push(venue);
-	return parts.join(" · ");
 }
 
 function extractYearFromDateText(value) {
@@ -8076,11 +7977,6 @@ function getZoteroMetadataAuthors(metadata) {
 	return (authors.length ? authors : creators).map(creator => creator.name);
 }
 
-function getZoteroMetadataItemTypeLabel(metadata) {
-	const itemType = metadata && metadata.itemType ? String(metadata.itemType) : "";
-	return itemType ? (ZOTERO_ITEM_TYPE_LABELS[itemType] ? rectoUiText(`zotero.itemType.${itemType}`) : itemType) : "";
-}
-
 function normalizeZoteroCollectionName(value) {
 	const text = String(value || "").trim();
 	if (!text) return "";
@@ -8104,29 +8000,6 @@ function normalizeZoteroCollectionFields(meta) {
 		zoteroCollectionPaths: normalizedPaths,
 		zoteroCollectionPathParts: structured || [],
 	};
-}
-
-function groupItemsByZoteroCollection(items) {
-	const groups = new Map();
-	for (let i = 0; i < (items || []).length; i++) {
-		const item = items[i];
-		const paths = uniqueStrings(item.zoteroCollectionPaths && item.zoteroCollectionPaths.length
-			? item.zoteroCollectionPaths
-			: item.zoteroCollections);
-		const groupName = normalizeZoteroCollectionName(paths[0]) || UNFILED_COLLECTION;
-		if (!groups.has(groupName)) groups.set(groupName, []);
-		groups.get(groupName).push({ item, index: i });
-	}
-	return Array.from(groups.entries())
-		.sort((a, b) => a[0].localeCompare(b[0], "zh-Hans-CN"))
-		.map(([name, groupItems]) => ({
-			name,
-			items: groupItems.sort((a, b) => {
-				const at = a.item.zoteroTitle || a.item.stem || a.item.name || "";
-				const bt = b.item.zoteroTitle || b.item.stem || b.item.name || "";
-				return at.localeCompare(bt, "zh-Hans-CN");
-			}),
-		}));
 }
 
 function getZoteroCollectionSortTitle(entry) {
@@ -8172,8 +8045,19 @@ function getZoteroCollectionPathKey(parts) {
 		? `recto-collection:${JSON.stringify(parts)}` : parts.join(" / ");
 }
 
-function buildZoteroCollectionTree(items) {
+function buildZoteroCollectionTree(items, extraPaths = []) {
 	const root = { children: new Map(), items: [] };
+	// T106：Recto 记住的空分类也要成节点，否则新建后无处可拖。
+	for (const parts of normalizeRectoCollectionParts(extraPaths)) {
+		let node = root;
+		for (let depth = 1; depth <= parts.length; depth++) {
+			const nodePath = getZoteroCollectionPathKey(parts.slice(0, depth));
+			if (!node.children.has(nodePath)) {
+				node.children.set(nodePath, { name: parts[depth - 1], path: nodePath, children: new Map(), items: [], itemIndexes: new Set() });
+			}
+			node = node.children.get(nodePath);
+		}
+	}
 	for (let i = 0; i < (items || []).length; i++) {
 		const item = items[i];
 		const visitedPaths = new Set();
@@ -8229,6 +8113,133 @@ function collectZoteroCollectionTreeItems(node, out = []) {
 	return out;
 }
 
+
+// T132：用户在 Recto 里删除的 Zotero 论文，按附件键记下（值只留题名与时间，供设置页列出），同步不再导入。
+// Zotero 里的条目不动；设置页「恢复同步」或「添加论文」再次加入同一附件时清除。
+function normalizeRemovedZoteroPapers(value) {
+	const out = {};
+	if (!value || typeof value !== "object" || Array.isArray(value)) return out;
+	for (const [key, item] of Object.entries(value)) {
+		const id = String(key || "").trim();
+		if (!id) continue;
+		out[id] = { title: String(item && item.title || "").trim(), removedAt: String(item && item.removedAt || "") };
+	}
+	return out;
+}
+
+// 扫描计划里去掉已删除的附件；已在论文库里的记录（同一附件下没删的另一份 PDF）照常同步。
+function filterRemovedZoteroCandidates(candidates, folderMap, removed) {
+	const map = normalizeRemovedZoteroPapers(removed);
+	return (candidates || []).filter(candidate => (folderMap && folderMap[candidate.recordId]) || !map[candidate.folder]);
+}
+// T105：Hub 当前选中的分类 → 添加论文的目标分类；没选分类或选的是「未分类」时为 []。
+function hubCollectionPathToParts(path) {
+	const value = String(path || "");
+	if (!value || value === UNFILED_COLLECTION) return [];
+	const parts = splitZoteroCollectionPath(value);
+	return parts.length === 1 && parts[0] === UNFILED_COLLECTION ? [] : parts;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// T106 分类管理：纯核
+//
+// Zotero 带来的分类字段仍是不可变原型，Recto 不写回 Zotero（用户拍板：写回要求 Zotero 常驻运行，
+// 而迁移方向是逐步以 Recto 为主）。在 Recto 里改过分类的论文写 `rectoCollectionPathParts`
+// （数组；空数组＝未分类），此后以它为准，Zotero 同步不再改这篇的分类；删掉它即恢复 Zotero 分类。
+// 分类本身另存 `rectoCollections`：`paths` 是 Recto 记住的分类（含空分类），`renames` 是
+// 重命名/移动分类留下的前缀规则，只作用于未覆盖的 Zotero 论文——Zotero 那边还是旧名字，
+// 没有规则的话旧名字会随同步回来，之后同步进来的新论文也落不到新名字下。规则按先后依次套用。
+// ═══════════════════════════════════════════════════════════════════
+
+function normalizeRectoCollectionParts(value) {
+	const out = [];
+	const seen = new Set();
+	for (const path of Array.isArray(value) ? value : []) {
+		if (!Array.isArray(path)) continue;
+		const parts = path.map(part => String(part || "").trim()).filter(Boolean);
+		const key = JSON.stringify(parts);
+		if (!parts.length || seen.has(key)) continue;
+		seen.add(key);
+		out.push(parts);
+	}
+	return out;
+}
+
+function normalizeRectoCollectionStore(value) {
+	const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+	return {
+		paths: normalizeRectoCollectionParts(source.paths),
+		renames: (Array.isArray(source.renames) ? source.renames : []).map(rule => ({
+			from: normalizeRectoCollectionParts([rule && rule.from])[0],
+			to: normalizeRectoCollectionParts([rule && rule.to])[0],
+		})).filter(rule => rule.from && rule.to),
+	};
+}
+
+function isRectoCollectionWithin(parts, prefix) {
+	return !!prefix && parts.length >= prefix.length && prefix.every((part, index) => parts[index] === part);
+}
+
+function replaceRectoCollectionPrefix(parts, from, to) {
+	return isRectoCollectionWithin(parts, from) ? [...to, ...parts.slice(from.length)] : parts;
+}
+
+function hasRectoCollectionOverride(info) {
+	return !!info && Array.isArray(info.rectoCollectionPathParts);
+}
+
+function resolveRectoCollectionParts(info, store, recordId = "") {
+	if (hasRectoCollectionOverride(info)) return normalizeRectoCollectionParts(info.rectoCollectionPathParts);
+	const parts = getZoteroCollectionPathParts(normalizeZoteroCollectionFields(info || {}));
+	if (isLocalPaperRecord(info, recordId)) return normalizeRectoCollectionParts(parts);
+	const renames = (store && store.renames) || [];
+	return normalizeRectoCollectionParts(parts.map(path =>
+		renames.reduce((current, rule) => replaceRectoCollectionPrefix(current, rule.from, rule.to), path)));
+}
+
+function describeRectoCollectionParts(parts) {
+	return { paths: parts.length ? parts.map(path => path.join(" / ")) : [UNFILED_COLLECTION], parts };
+}
+
+// 论文的分类变化。move：移出来源分类（含子分类时连同其下）再放入目标；add：加入目标；
+// remove：移出来源分类；set：只留目标（空＝未分类）。来源为空时 move 等同 add。
+function applyRectoPaperCollectionChange(current, change) {
+	const target = normalizeRectoCollectionParts([change.target])[0] || null;
+	const source = normalizeRectoCollectionParts([change.source])[0] || null;
+	const include = change.includeSubcollections !== false;
+	const inSource = parts => !!source && (include ? isRectoCollectionWithin(parts, source)
+		: parts.length === source.length && isRectoCollectionWithin(parts, source));
+	const kept = ["move", "remove"].includes(change.mode) ? current.filter(parts => !inSource(parts)) : current;
+	if (change.mode === "set") return target ? [target] : [];
+	if (change.mode === "remove" || !target) return normalizeRectoCollectionParts(kept);
+	return normalizeRectoCollectionParts([...kept, target]);
+}
+
+function sameRectoCollectionParts(a, b) {
+	return JSON.stringify(normalizeRectoCollectionParts(a)) === JSON.stringify(normalizeRectoCollectionParts(b));
+}
+
+// 所有已存在的分类路径（含祖先），用于重名判断与选择框。
+function collectRectoCollectionPaths(pathLists) {
+	const seen = new Map();
+	for (const list of pathLists) {
+		for (const parts of list) {
+			for (let depth = 1; depth <= parts.length; depth++) {
+				const prefix = parts.slice(0, depth);
+				seen.set(JSON.stringify(prefix), prefix);
+			}
+		}
+	}
+	return [...seen.values()].sort((a, b) => a.join(" / ").localeCompare(b.join(" / "), "zh-Hans-CN"));
+}
+
+function validateRectoCollectionName(name) {
+	const value = String(name || "").trim();
+	if (!value) return { error: "collections.nameEmpty" };
+	if (/\s\/\s/.test(value) || value === UNFILED_COLLECTION) return { error: "collections.nameInvalid" };
+	return { name: value };
+}
+
 function findZoteroCollectionTreeNode(nodes, path) {
 	for (const node of nodes || []) {
 		if (node.path === path) return node;
@@ -8253,10 +8264,6 @@ function findZoteroCollectionTreeNode(nodes, path) {
 function toVaultFolderPrefix(folder) {
 	const clean = obsidian.normalizePath(String(folder || ""));
 	return clean === "/" ? "/" : `${clean}/`;
-}
-
-function isZoteroCollectionDescendantPath(path, parentPath) {
-	return !!path && !!parentPath && path !== parentPath && path.startsWith(`${parentPath} / `);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -8679,6 +8686,7 @@ function normalizeHubEntry(raw) {
 		publicationDate,
 		venue: cleanDisplayText(entry.venue),
 		category: cleanDisplayText(entry.category),
+		collectionOverride: entry.rectoCollectionOverride === true,
 		collections: collections.length ? collections : [UNFILED_COLLECTION],
 		zoteroCollectionPaths: collections.length ? collections : [UNFILED_COLLECTION],
 		zoteroCollectionPathParts: getZoteroCollectionPathParts(entry),
@@ -8698,6 +8706,8 @@ function normalizeHubEntry(raw) {
 		// 属于「原文原型」的只读投影，不回写论文对象。
 		doi: getZoteroMetadataField(entry.zoteroMetadata, "DOI"),
 		url: getZoteroMetadataField(entry.zoteroMetadata, "url"),
+		// T100-S：原文摘要（书目字段，作者写的），与 br- 的 AI 摘要互不替代。
+		abstract: getZoteroMetadataField(entry.zoteroMetadata, ZOTERO_ABSTRACT_FIELD),
 		summaryPath: String(entry.summaryPath || ""),
 		translationPath: String(entry.translationPath || ""),
 		translations: Array.isArray(entry.translations) ? entry.translations : [],
@@ -8727,6 +8737,8 @@ function getHubContextActionLockKeys(entries, action) {
 	if (action === "delete") return ["process"];
 	if (["convert", "translate"].includes(action)) return entries.map(entry => `intake:${entry.recordId}`);
 	if (action.startsWith("copy:")) return ["clipboard"];
+	// T130：引用补全整批一次落盘，同一时间只跑一批。
+	if (action === "cite:fill") return ["cite:fill"];
 	if (action.startsWith("reveal:")) return [action];
 	if (action.startsWith("flag:")) return entries.map(entry => `flags:${entry.recordId}`);
 	if (action.startsWith("status:")) return entries.map(entry => `status:${entry.readingKey || entry.recordId}`);
@@ -9552,11 +9564,21 @@ function buildPaperJsonlZoteroObject(value) {
 	};
 }
 
+// T124：cite_label 是 Harvard 称呼（与原文 aliases 同源），citekey 取 Zotero / Better BibTeX 引用键；没有就 null。
+// T129：csl 是标准 CSL-JSON 条目（id 即引用键，没有时按「姓年份题名首词」生成），Agent 据此排任意引用格式。
+function paperJsonlCitationFields(info, stem, paperNaming) {
+	if (!info || typeof info !== "object") return { cite_label: null, citekey: null, csl: null };
+	const csl = buildPaperCslItem({ stem, ...info });
+	csl.id = buildPaperCitationKey(csl);
+	return { cite_label: getPaperCitationLabel(info, stem, paperNaming) || null, citekey: getPaperNamingCitekey(info) || null, csl };
+}
+
 function buildPaperJsonlEntries(options) {
 	const vaultBasePath = String(options && options.vaultBasePath || "");
 	const baseFolder = String(options && options.baseFolder || "");
 	const folderMap = options && options.folderMap || {};
 	const readingStates = options && options.readingStates || {};
+	const rectoCollections = options && options.rectoCollections || null;
 	const convertedFolders = new Set(options && options.convertedFolders || []);
 
 	const recordsByStem = new Map();
@@ -9596,7 +9618,7 @@ function buildPaperJsonlEntries(options) {
 		}
 		const titleZh = resolveTranslatedTitleFromPaperFiles(vaultBasePath, chPath, sourcePath, originalTitle);
 		const collections = info && info.stem
-			? normalizeZoteroCollectionFields(info).zoteroCollectionPaths
+			? describeRectoCollectionParts(resolveRectoCollectionParts(info, rectoCollections, record && record.recordId)).paths
 			: [];
 		// T83-I：作者/年份/期刊原本只从摘要 frontmatter 取。没有摘要的论文（关掉摘要转出来的）
 		// 那份 frontmatter 根本不存在，必须回落到论文对象里的 Zotero 原型，否则同一篇论文
@@ -9613,12 +9635,16 @@ function buildPaperJsonlEntries(options) {
 			|| getZoteroMetadataVenue(zoteroMetadata)
 			|| cleanDisplayText(info.venue)
 			|| null;
+		// T100：本地论文（source=local）不冒充 Zotero 键；阅读状态仍按 zoteroKey（= recordId）查。
+		const localRecord = !!record && isLocalPaperRecord(info, record.recordId);
 		return {
 			record_id: record ? record.recordId : `summary:${stem}`,
-			zotero_key: zoteroKey || null,
-			zotero_attachment_key: cleanDisplayText(info.zoteroAttachmentKey) || null,
+			...(localRecord ? { source: "local" } : {}),
+			zotero_key: localRecord ? null : zoteroKey || null,
+			zotero_attachment_key: localRecord ? null : cleanDisplayText(info.zoteroAttachmentKey) || null,
 			title_zh: titleZh,
 			title_original: originalTitle || null,
+			...paperJsonlCitationFields(info, stem, options && options.paperNaming),
 			authors,
 			year,
 			venue,
@@ -9655,17 +9681,20 @@ function buildPaperJsonlEntries(options) {
 		const chPath = isConverted && fs.existsSync(nodePath.join(vaultBasePath, expectedChPath)) ? expectedChPath : "";
 		const pdfPath = findImportedPdfVaultPath(vaultBasePath, baseFolder, info);
 		const titleZh = resolveTranslatedTitleFromPaperFiles(vaultBasePath, chPath, sourcePath, originalTitle);
+		const localRecord = isLocalPaperRecord(info, recordId);
 		entries.push({
 			record_id: recordId,
-			zotero_key: zoteroKey || null,
-			zotero_attachment_key: attachmentKey || null,
+			...(localRecord ? { source: "local" } : {}),
+			zotero_key: localRecord ? null : zoteroKey || null,
+			zotero_attachment_key: localRecord ? null : attachmentKey || null,
 			title_zh: titleZh,
 			title_original: originalTitle || null,
+			...paperJsonlCitationFields(info, info.stem, options && options.paperNaming),
 			authors: authors.length ? authors : uniqueStrings(info.authors),
 			year: normalizeJsonlYear(getZoteroPublicationDate(metadata, info.year).slice(0, 4)),
 			venue: getZoteroMetadataVenue(metadata) || cleanDisplayText(info.venue) || null,
 			category: null,
-			collections: normalizeZoteroCollectionFields(info).zoteroCollectionPaths,
+			collections: describeRectoCollectionParts(resolveRectoCollectionParts(info, rectoCollections, recordId)).paths,
 			keywords: [],
 			zotero: buildPaperJsonlZoteroObject(metadata),
 			summary_brief: null,
@@ -9714,11 +9743,6 @@ function getNextReadingStatus(value) {
 	return READING_STATUS_SEQUENCE[(READING_STATUS_SEQUENCE.indexOf(current) + 1) % READING_STATUS_SEQUENCE.length];
 }
 
-function getReadingStatusControl(key, status) {
-	const symbol = READING_STATUS_SYMBOLS[normalizeReadingStatus(status)];
-	return `<span class="recto-reading-status" data-reading-key="${encodeURIComponent(key)}" role="button" tabindex="0">${symbol}</span>`;
-}
-
 function decodeReadingKey(value) {
 	try {
 		return decodeURIComponent(String(value || ""));
@@ -9762,6 +9786,941 @@ function restoreReadingScrollPosition(snapshot) {
 	}
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// T124 论文命名规则：纯函数，只读论文对象 / 导入任务上的 Zotero 原型字段，不碰 vault。
+// 规格：archive/specs/T124-PAPER-NAMING.md
+// ═══════════════════════════════════════════════════════════════════
+
+const PAPER_NAMING_PRESETS = ["title", "author-year", "author-year-title", "citekey", "custom"];
+const PAPER_NAMING_TEMPLATES = {
+	"author-year": "{author} {year}",
+	"author-year-title": "{author} {year} - {title}",
+	citekey: "{citekey}",
+};
+// 老用户升级后保持「title」（DEFAULT_SETTINGS），只有新安装取这个值（loadPluginData）。
+const PAPER_NAMING_NEW_INSTALL_PRESET = "author-year-title";
+// stem 在路径里出现两次（目录名 + 文件名），再加库路径与 images/recto-region-<24hex>.png，
+// 超过 60 会逼近 Windows 260 的路径上限。「题名」预设仍是旧的 40。
+const PAPER_NAMING_MAX_LENGTH = 60;
+// 撞名时作者最多展开到第几位（APA 7 的消歧做法），再撞才加 a/b。
+const PAPER_NAMING_MAX_LISTED_AUTHORS = 3;
+const PAPER_NAMING_TOKEN_RE = /\{(author|year|title|shortTitle|citekey)\}/g;
+const PAPER_NAMING_STEM_OPTIONS = { maxLength: PAPER_NAMING_MAX_LENGTH, linkSafe: true };
+
+function normalizePaperNamingSettings(value) {
+	const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+	const preset = PAPER_NAMING_PRESETS.includes(raw.preset) ? raw.preset : "title";
+	const template = String(raw.template || "").replace(/[\r\n\t]+/g, " ").trim().slice(0, 200);
+	return { preset, template };
+}
+
+function isPaperNamingCjk(text) {
+	return /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(String(text || ""));
+}
+
+// 从「Michal Aharon」「Aharon, Michal」这类整名里取姓；中日韩整名原样保留。
+function paperNamingSurnameFromFullName(value) {
+	const text = String(value || "").trim();
+	if (!text || isPaperNamingCjk(text)) return text;
+	if (text.includes(",")) return text.split(",")[0].trim();
+	const parts = text.split(/\s+/);
+	return parts[parts.length - 1];
+}
+
+function getPaperNamingAuthorNames(source) {
+	const creators = Array.isArray(source?.zoteroMetadata?.creators) ? source.zoteroMetadata.creators : [];
+	const ofType = type => creators.filter(creator => creator && creator.creatorType === type);
+	const picked = ofType("author").length ? ofType("author") : (ofType("editor").length ? ofType("editor") : creators);
+	const names = picked.map(creator => {
+		const last = String(creator.lastName || "").trim();
+		const first = String(creator.firstName || "").trim();
+		// 中文署名惯例用全名（陈明等 2022），Zotero 常把它拆成姓 + 名两栏。
+		if (last && isPaperNamingCjk(last) && (!first || isPaperNamingCjk(first))) return `${last}${first}`;
+		return last || paperNamingSurnameFromFullName(creator.name);
+	}).filter(Boolean);
+	if (names.length) return names;
+	return (Array.isArray(source?.authors) ? source.authors : []).map(paperNamingSurnameFromFullName).filter(Boolean);
+}
+
+// depth = 1 是 Harvard 正文引用：1 人 Smith；2 人 Smith & Jones；3 人及以上 Smith et al.
+// depth ≥ 2 只用于撞名消歧：列出前 depth 位，列不完再接 et al.。
+function formatPaperNamingAuthor(names, depth = 1) {
+	const list = (names || []).filter(Boolean);
+	if (!list.length) return "";
+	const cjk = isPaperNamingCjk(list[0]);
+	const etAl = cjk ? "等" : " et al.";
+	const joinAll = items => {
+		if (items.length === 1) return items[0];
+		if (cjk) return items.join("、");
+		return `${items.slice(0, -1).join(", ")} & ${items[items.length - 1]}`;
+	};
+	if (list.length <= 2) return joinAll(list);
+	const shown = Math.max(1, Math.min(depth, list.length));
+	if (shown >= list.length) return joinAll(list);
+	return `${list.slice(0, shown).join(cjk ? "、" : ", ")}${etAl}`;
+}
+
+// 题名里的 LaTeX 外壳（真实库：`$rm K$-SVD` → `K-SVD`）。
+function cleanPaperNamingTitle(text) {
+	return stripHubTitleMarkup(text)
+		.replace(/\$([^$]*)\$/g, (_, inner) => inner
+			.replace(/\\?(?:mathrm|mathit|mathbf|mathcal|text|rm|it|bf)\b\s*/g, "")
+			.replace(/[{}\\]/g, ""))
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+function getPaperNamingCitekey(source) {
+	const fields = source?.zoteroMetadata?.fields || {};
+	const native = String(fields.citationKey || "").trim();
+	if (native) return native;
+	// Better BibTeX 把引用键写进 Extra 的 `Citation Key: xxx` 一行。
+	const match = String(fields.extra || "").match(/^\s*Citation Key:\s*(\S+)\s*$/im);
+	return match ? match[1] : "";
+}
+
+function collectPaperNamingFields(source) {
+	const date = getZoteroPublicationDate(source?.zoteroMetadata, source?.year);
+	const year = (String(date || "").match(/\d{4}/) || [""])[0];
+	const fileTitle = String(source?.name || "").replace(/\.[^./\\]+$/, "");
+	const title = cleanPaperNamingTitle(source?.zoteroTitle) || fileTitle;
+	const shortTitle = cleanPaperNamingTitle(getZoteroMetadataField(source?.zoteroMetadata, "shortTitle")) || title;
+	return { authorNames: getPaperNamingAuthorNames(source), year: year || "n.d.", hasYear: !!year,
+		title, shortTitle, citekey: getPaperNamingCitekey(source) };
+}
+
+function resolvePaperNamingTemplate(naming, fields) {
+	if (naming.preset === "title") return "";
+	if (naming.preset === "custom") return naming.template || PAPER_NAMING_TEMPLATES["author-year-title"];
+	if (naming.preset === "citekey" && !fields.citekey) return PAPER_NAMING_TEMPLATES["author-year"];
+	return PAPER_NAMING_TEMPLATES[naming.preset] || "";
+}
+
+function renderPaperNamingTemplate(template, values) {
+	return String(template || "")
+		.replace(PAPER_NAMING_TOKEN_RE, (_, key) => values[key] || "")
+		.replace(/\s+/g, " ")
+		// 某个变量为空时，别留下孤零零的分隔符（`Smith 2020 -`）。
+		.replace(/^[\s\-–—_,;:|]+|[\s\-–—_,;:|]+$/g, "")
+		.trim();
+}
+
+// 超长时尽量在词边界截（不把 Overcomplete 截成 Overco）；中文没有空格，按字截。
+function truncatePaperNamingStem(text) {
+	let s = sanitizeStem(text, { ...PAPER_NAMING_STEM_OPTIONS, maxLength: 1000 });
+	if (s.length > PAPER_NAMING_MAX_LENGTH) {
+		s = s.slice(0, PAPER_NAMING_MAX_LENGTH);
+		const space = s.lastIndexOf(" ");
+		if (space >= PAPER_NAMING_MAX_LENGTH * 0.6) s = s.slice(0, space);
+		s = s.replace(/[\s\-–—_,;:|]+$/g, "");
+	}
+	return sanitizeStem(s, PAPER_NAMING_STEM_OPTIONS);
+}
+
+// 候选按优先级排好：基础名 → 展开作者 → 年份加字母。都占用时由 allocateUniquePaperStem 兜底加哈希。
+// 「题名」预设、或模板要作者而论文没有作者时返回空数组，调用方退回旧的题名逻辑。
+function buildPaperStemCandidates(source, namingSettings) {
+	const naming = normalizePaperNamingSettings(namingSettings);
+	const fields = collectPaperNamingFields(source);
+	const template = resolvePaperNamingTemplate(naming, fields);
+	if (!template) return [];
+	const usesAuthor = /\{author\}/.test(template);
+	if (usesAuthor && !fields.authorNames.length) return [];
+	const render = (depth, letter) => {
+		const author = formatPaperNamingAuthor(fields.authorNames, depth);
+		const year = `${fields.year}${letter}`;
+		const text = renderPaperNamingTemplate(template, { ...fields, author, year });
+		if (!text) return null;
+		return { stem: truncatePaperNamingStem(text),
+			label: fields.authorNames.length ? `${author} ${year}` : "" };
+	};
+	const out = [];
+	const push = candidate => {
+		if (candidate && !out.some(item => item.stem === candidate.stem)) out.push(candidate);
+	};
+	push(render(1, ""));
+	if (usesAuthor) {
+		const maxDepth = Math.min(PAPER_NAMING_MAX_LISTED_AUTHORS, fields.authorNames.length);
+		for (let depth = 2; depth <= maxDepth; depth++) push(render(depth, ""));
+	}
+	if (/\{year\}/.test(template) && fields.hasYear) {
+		for (const letter of "bcdefghijklmnopqrstuvwxyz") push(render(1, letter));
+	}
+	return out;
+}
+
+// 称呼（Harvard `Author Year`）：写进 src 的 aliases、papers.jsonl 的 cite_label 与 Hub「复制引用」。
+// stem 若正是某个消歧候选（展开作者 / 2022b），称呼跟着它走，否则取基础称呼。
+function getPaperCitationLabel(source, stem, namingSettings) {
+	const fields = collectPaperNamingFields(source);
+	if (!fields.authorNames.length) return "";
+	const naming = normalizePaperNamingSettings(namingSettings);
+	if (stem && naming.preset !== "title") {
+		const hit = buildPaperStemCandidates(source, naming).find(candidate => candidate.stem === stem);
+		if (hit && hit.label) return hit.label;
+	}
+	return `${formatPaperNamingAuthor(fields.authorNames, 1)} ${fields.year}`;
+}
+
+// ───────────────────────────────────────────────────────────────────
+// T124 改名事务用的纯函数：算出目录内要改名的文件、把文本里指向旧路径的引用换成新路径。
+// ───────────────────────────────────────────────────────────────────
+
+// 目录内按 stem 命名的文件：`<stem>.pdf`、`<stem>.md`、`<前缀>-<stem>.md`（src- / zh- / note- / br- …）。
+// images/、recto/ 等子目录的文件名与 stem 无关，随目录一起搬走即可。
+function planPaperRenameFileMoves(fileNames, oldStem, newStem) {
+	const moves = [];
+	for (const name of fileNames || []) {
+		if (name === `${oldStem}.pdf` || name === `${oldStem}.md`) {
+			moves.push([name, `${newStem}${name.slice(oldStem.length)}`]);
+			continue;
+		}
+		const suffix = `-${oldStem}.md`;
+		if (!name.endsWith(suffix)) continue;
+		const prefix = name.slice(0, -suffix.length);
+		if (/^[a-z][a-z0-9-]*$/.test(prefix)) moves.push([name, `${prefix}-${newStem}.md`]);
+	}
+	return moves;
+}
+
+function escapePaperRenameRegExp(text) {
+	return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// mapping = { oldFolder, newFolder, files: [[旧库内路径, 新库内路径], …] }。
+// 覆盖 Recto 自己写的三种形态：全路径 wikilink / 嵌入（`![[论文库/旧/images/x.png]]`）、
+// frontmatter 与 sidecar 里的纯路径字符串、Canvas JSON 的 `"file"`；另加用户常写的
+// 「最短路径」wikilink（`[[src-旧]]`、`[[旧.pdf|别名]]`）与 URL 编码的 Markdown 链接。
+// 幂等：文本里已经没有旧路径时原样返回，所以中断后重跑、或反向映射回滚都安全。
+function rewritePaperPathReferences(text, mapping) {
+	let out = String(text ?? "");
+	const oldFolder = String(mapping?.oldFolder || "");
+	const newFolder = String(mapping?.newFolder || "");
+	const files = (mapping?.files || []).filter(pair => pair && pair[0] && pair[1] && pair[0] !== pair[1])
+		.sort((a, b) => b[0].length - a[0].length);
+	const replaceAll = (from, to) => { if (from && from !== to && out.includes(from)) out = out.split(from).join(to); };
+	// Markdown 链接里的路径：Obsidian 只把空格编成 %20；别的工具可能整串 encodeURI。
+	const encoders = [value => value, value => value.replace(/ /g, "%20"), value => encodeURI(value)];
+	const replaceEncoded = (from, to) => {
+		const done = new Set();
+		for (const encode of encoders) {
+			const a = encode(from);
+			if (done.has(a)) continue;
+			done.add(a);
+			replaceAll(a, encode(to));
+		}
+	};
+	for (const [from, to] of files) {
+		replaceEncoded(from, to);
+		// wikilink 可以省掉 .md：`[[论文库/旧/src-旧|…]]`
+		if (/\.md$/i.test(from)) {
+			const bare = from.replace(/\.md$/i, ""), bareTo = to.replace(/\.md$/i, "");
+			out = out.replace(new RegExp(`${escapePaperRenameRegExp(bare)}(?=[\\]|#^])`, "g"), () => bareTo);
+		}
+	}
+	if (oldFolder && newFolder && oldFolder !== newFolder) {
+		replaceEncoded(`${oldFolder}/`, `${newFolder}/`);
+	}
+	const basenames = new Map();
+	for (const [from, to] of files) {
+		const a = from.slice(from.lastIndexOf("/") + 1), b = to.slice(to.lastIndexOf("/") + 1);
+		basenames.set(a, b);
+		if (/\.md$/i.test(a)) basenames.set(a.replace(/\.md$/i, ""), b.replace(/\.md$/i, ""));
+	}
+	if (basenames.size) {
+		out = out.replace(/(\[\[)([^\[\]|#^\n/]+)(?=[\]|#^])/g, (whole, open, target) => {
+			const mapped = basenames.get(target.trim());
+			return mapped ? `${open}${mapped}` : whole;
+		});
+	}
+	return out;
+}
+
+// 原文 frontmatter 的 aliases：支持 `aliases: ["a", "b"]`、`aliases: a` 与块列表 `aliases:\n  - a`。
+// 只在值真的变了时才改写，免得把用户的块列表格式无端改成行内。
+function locatePaperAliases(text) {
+	const source = String(text ?? "");
+	if (!source.startsWith("---\n")) return null;
+	const end = source.indexOf("\n---", 3);
+	if (end < 0) return null;
+	const lines = source.slice(4, end).split("\n");
+	const index = lines.findIndex(line => /^aliases\s*:/.test(line));
+	const unquote = value => String(value).trim().replace(/^(["'])(.*)\1$/, "$2").trim();
+	let count = 0, values = null;
+	if (index >= 0) {
+		count = 1;
+		const rest = lines[index].replace(/^aliases\s*:\s*/, "").trim();
+		if (rest.startsWith("[")) {
+			try { values = JSON.parse(rest); } catch { values = rest.replace(/^\[|\]$/g, "").split(",").map(unquote); }
+		} else if (rest) values = [unquote(rest)];
+		else {
+			values = [];
+			for (let j = index + 1; j < lines.length && /^\s+-\s*/.test(lines[j]); j++, count++) values.push(unquote(lines[j].replace(/^\s+-\s*/, "")));
+		}
+		values = (Array.isArray(values) ? values : []).map(value => String(value ?? "").trim()).filter(Boolean);
+	}
+	return { source, end, lines, index, count, values };
+}
+
+function readPaperRenameAliases(text) {
+	const located = locatePaperAliases(text);
+	return located ? located.values : null;
+}
+
+function updatePaperRenameAliases(text, change = {}) {
+	const located = locatePaperAliases(text);
+	if (!located) return String(text ?? "");
+	const { source, end, lines, index, count, values } = located;
+	const current = values || [];
+	let next = current.filter(value => !change.remove || value !== change.remove);
+	if (change.add && !next.includes(change.add)) next.push(change.add);
+	if (values !== null && next.length === current.length && next.every((value, i) => value === current[i])) return source;
+	if (values === null && !next.length) return source;
+	const out = lines.slice();
+	if (!next.length && change.dropIfEmpty) out.splice(index, count);
+	else if (index >= 0) out.splice(index, count, `aliases: ${JSON.stringify(next)}`);
+	else out.push(`aliases: ${JSON.stringify(next)}`);
+	return `---\n${out.join("\n")}${source.slice(end)}`;
+}
+
+function swapPaperRenameHashes(text, hashMap) {
+	let out = String(text ?? "");
+	for (const [from, to] of hashMap || []) if (from && out.includes(from)) out = out.split(from).join(to);
+	return out;
+}
+
+function paperRenameEntryIds(entry) {
+	return Array.isArray(entry?.recordIds) && entry.recordIds.length ? entry.recordIds : [entry?.recordId].filter(Boolean);
+}
+// ═══════════════════════════════════════════════════════════════════
+// T129 论文引用格式：纯函数。论文对象（Zotero 同形元数据）→ CSL-JSON 条目 →
+// GB/T 7714-2015 / APA 7 / IEEE / MLA 9 参考文献，以及 BibTeX / RIS / CSL-JSON 导出。
+// 只读 folderMap 里的 Zotero 原型字段（不变量第 1 条），不联网、不改元数据；题名大小写按库里原样（与 Zotero 一致）。
+// ═══════════════════════════════════════════════════════════════════
+
+const PAPER_CITATION_STYLES = ["gb7714", "apa", "ieee", "mla"];
+const PAPER_CITATION_EXPORTS = ["bibtex", "ris", "csl-json"];
+// 斜体标记：排版时包住期刊名/书名，纯文本里去掉，HTML 里换成 <i>（粘进 Word 保留斜体，同 Zotero 快速复制）。
+const PAPER_CITATION_ITALIC_OPEN = "\u0002";
+const PAPER_CITATION_ITALIC_CLOSE = "\u0003";
+const PAPER_CITATION_CSL_TYPES = {
+	journalArticle: "article-journal", magazineArticle: "article-magazine", newspaperArticle: "article-newspaper",
+	conferencePaper: "paper-conference", book: "book", bookSection: "chapter", thesis: "thesis", report: "report",
+	preprint: "article", webpage: "webpage", blogPost: "post-weblog", patent: "patent", manuscript: "manuscript",
+	document: "document", encyclopediaArticle: "entry-encyclopedia", dictionaryEntry: "entry-dictionary",
+};
+const PAPER_CITATION_IEEE_MONTHS = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
+
+function normalizePaperCitationStyle(value) {
+	return PAPER_CITATION_STYLES.includes(value) ? value : "auto";
+}
+
+// 「跟随界面语言」：中文界面默认 GB/T 7714，其余 APA。
+function resolvePaperCitationStyle(value, locale) {
+	const style = normalizePaperCitationStyle(value);
+	if (style !== "auto") return style;
+	return /^zh/i.test(String(locale || "")) ? "gb7714" : "apa";
+}
+
+function paperCitationItalic(text) {
+	return text ? `${PAPER_CITATION_ITALIC_OPEN}${text}${PAPER_CITATION_ITALIC_CLOSE}` : "";
+}
+
+function paperCitationPlainText(text) {
+	return String(text || "").split(PAPER_CITATION_ITALIC_OPEN).join("").split(PAPER_CITATION_ITALIC_CLOSE).join("");
+}
+
+function paperCitationHtml(text) {
+	return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+		.split(PAPER_CITATION_ITALIC_OPEN).join("<i>").split(PAPER_CITATION_ITALIC_CLOSE).join("</i>");
+}
+
+function normalizePaperCitationDoi(value) {
+	return String(value || "").trim().replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, "").replace(/[.,;]+$/, "");
+}
+
+// 整名（「Aharon, Michal」「Michal Aharon」）拆成 CSL 姓名；中日韩整名与单个词保持 literal。
+function paperCitationNameFromText(value) {
+	const text = String(value || "").trim();
+	if (!text) return null;
+	if (isPaperNamingCjk(text)) return { literal: text };
+	const comma = text.match(/^([^,]+),\s*(.+)$/);
+	if (comma) return { family: comma[1].trim(), given: comma[2].trim() };
+	const parts = text.split(/\s+/);
+	if (parts.length < 2) return { literal: text };
+	return { family: parts.pop(), given: parts.join(" ") };
+}
+
+function paperCitationNameFromCreator(creator) {
+	const family = String(creator?.lastName || "").trim();
+	const given = String(creator?.firstName || "").trim();
+	if (family && given) return { family, given };
+	if (family) return isPaperNamingCjk(family) ? { literal: family } : { family };
+	return paperCitationNameFromText(creator?.name);
+}
+
+function getPaperCitationField(fields, ...names) {
+	for (const name of names) {
+		const value = String(fields?.[name] || "").trim();
+		if (value) return value;
+	}
+	return "";
+}
+
+// 论文对象 → CSL-JSON 条目（https://citeproc-js.readthedocs.io/en/latest/csl-json/markup.html）。
+// 字段名按 Zotero 自己的 CSL 映射取；没有元数据的旧导入退回 zoteroTitle / authors / year / venue。
+function buildPaperCslItem(source, id = "") {
+	const metadata = mergePaperCitationSupplement(normalizeZoteroItemMetadata(source?.zoteroMetadata), source?.citationSupplement);
+	const fields = metadata.fields || {};
+	const zoteroType = metadata.itemType || "journalArticle";
+	const type = PAPER_CITATION_CSL_TYPES[zoteroType] || "document";
+	const item = { id: String(id || source?.recordId || source?.stem || ""), type };
+	const fileTitle = String(source?.name || "").replace(/\.[^./\\]+$/, "");
+	item.title = cleanPaperNamingTitle(getPaperCitationField(fields, "title") || source?.zoteroTitle) || fileTitle || String(source?.stem || "");
+	const creators = metadata.creators || [];
+	const ofType = kind => creators.filter(creator => creator.creatorType === kind).map(paperCitationNameFromCreator).filter(Boolean);
+	let authors = ofType("author");
+	if (!authors.length && !creators.length) authors = (Array.isArray(source?.authors) ? source.authors : []).map(paperCitationNameFromText).filter(Boolean);
+	if (!authors.length) authors = creators.filter(creator => creator.creatorType !== "editor").map(paperCitationNameFromCreator).filter(Boolean);
+	if (authors.length) item.author = authors;
+	const editors = ofType("editor");
+	if (editors.length) item.editor = editors;
+	const date = getZoteroPublicationDate(metadata, source?.year);
+	const dateMatch = String(date || "").match(/^(\d{4})(?:-(\d{2}))?/);
+	if (dateMatch) item.issued = { "date-parts": [dateMatch[2] ? [Number(dateMatch[1]), Number(dateMatch[2])] : [Number(dateMatch[1])]] };
+	const container = getPaperCitationField(fields, "publicationTitle", "proceedingsTitle", "bookTitle", "websiteTitle", "blogTitle",
+		"encyclopediaTitle", "dictionaryTitle", "forumTitle", "programTitle");
+	const venue = String(source?.venue || "").trim();
+	const publisher = getPaperCitationField(fields, "publisher", "university", "institution", "repository");
+	if (container) item["container-title"] = container;
+	else if (venue && venue !== publisher && !["book", "thesis", "report", "article"].includes(type)) item["container-title"] = venue;
+	const map = [["volume", "volume"], ["issue", "issue"], ["pages", "page"], ["edition", "edition"], ["place", "publisher-place"],
+		["ISBN", "ISBN"], ["ISSN", "ISSN"], ["url", "URL"], ["language", "language"], ["series", "collection-title"],
+		["conferenceName", "event-title"], ["journalAbbreviation", "container-title-short"]];
+	for (const [from, to] of map) {
+		const value = getPaperCitationField(fields, from);
+		if (value) item[to] = value;
+	}
+	if (publisher) item.publisher = publisher;
+	const genre = getPaperCitationField(fields, "thesisType", "reportType");
+	if (genre) item.genre = genre;
+	const number = getPaperCitationField(fields, "reportNumber", "patentNumber", "archiveID", "number");
+	if (number) item.number = number;
+	const extraDoi = String(fields.extra || "").match(/^\s*DOI:\s*(\S+)\s*$/im);
+	const doi = normalizePaperCitationDoi(getPaperCitationField(fields, "DOI") || (extraDoi && extraDoi[1]));
+	if (doi) item.DOI = doi;
+	const arxiv = (String(fields.archiveID || "").match(/^arxiv:\s*(\S+)$/i) || (doi.match(/^10\.48550\/arxiv\.(.+)$/i)) || [])[1];
+	if (arxiv) {
+		item.number = `arXiv:${arxiv}`;
+		if (type === "article" && !item.publisher) item.publisher = "arXiv";
+		if (!item.URL) item.URL = `https://arxiv.org/abs/${arxiv}`;
+	}
+	const citekey = getPaperNamingCitekey({ zoteroMetadata: metadata });
+	if (citekey) item["citation-key"] = citekey;
+	return item;
+}
+
+function paperCitationYear(item) {
+	const part = item?.issued?.["date-parts"]?.[0];
+	return part && part[0] ? String(part[0]) : "";
+}
+
+function paperCitationMonth(item) {
+	const part = item?.issued?.["date-parts"]?.[0];
+	return part && part[1] ? Number(part[1]) : 0;
+}
+
+function paperCitationArxivId(item) {
+	return (String(item?.number || "").match(/^arXiv:(.+)$/i) || [])[1] || "";
+}
+
+function paperCitationIsCjkItem(item) {
+	const first = item?.author?.[0];
+	return isPaperNamingCjk(item?.title) || isPaperNamingCjk(first && (first.literal || first.family));
+}
+
+// 名的首字母：「John Andrew」→ J. A.；「Jean-Paul」→ J.-P.；dots=false 时为 GB/T 的「J A」。
+function paperCitationInitials(given, dots = true) {
+	return String(given || "").split(/\s+/).filter(Boolean).map(part => part.split("-").filter(Boolean)
+		.map(piece => `${piece.replace(/[.]/g, "").charAt(0).toUpperCase()}${dots ? "." : ""}`).join("-")).join(" ");
+}
+
+function paperCitationCjkName(name) {
+	return name.literal || `${name.family || ""}${name.given || ""}`;
+}
+
+function paperCitationNameIsCjk(name) {
+	return isPaperNamingCjk(name.literal || name.family);
+}
+
+// 句末补标点：已经以 . ? ! 结尾就不再加，避免「et al..」「Learning?.」。
+function paperCitationEnd(text, mark = ".") {
+	const value = String(text || "").trim();
+	if (!value) return "";
+	const plain = paperCitationPlainText(value);
+	return /[.?!。？！]$/.test(plain) ? value : `${value}${mark}`;
+}
+
+function paperCitationPages(item, dash) {
+	return String(item?.page || "").replace(/\s*[-–—~]+\s*/g, dash);
+}
+
+function paperCitationLink(item) {
+	if (item.DOI) return `https://doi.org/${item.DOI}`;
+	return item.URL || "";
+}
+
+function paperCitationOrdinal(value) {
+	const text = String(value || "").trim();
+	if (!/^\d+$/.test(text)) return text;
+	const n = Number(text);
+	const suffix = n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" })[n % 10] || "th";
+	return `${n}${suffix}`;
+}
+
+// ── GB/T 7714-2015（顺序编码制条目） ─────────────────────────────────
+// 著者：西文姓全大写 + 名首字母（无点），中文全名；超过 3 人列前 3 人加「, 等」或「, et al.」（按文献语种）。
+function formatGbtNames(names, cjkItem) {
+	const list = (names || []).map(name => {
+		if (paperCitationNameIsCjk(name)) return paperCitationCjkName(name);
+		if (name.literal) return name.literal;
+		const initials = paperCitationInitials(name.given, false);
+		return `${String(name.family || "").toUpperCase()}${initials ? ` ${initials}` : ""}`;
+	}).filter(Boolean);
+	if (list.length <= 3) return list.join(", ");
+	return `${list.slice(0, 3).join(", ")}, ${cjkItem ? "等" : "et al."}`;
+}
+
+function formatGbtPublication(item) {
+	const place = item["publisher-place"] || "";
+	const publisher = item.publisher || "";
+	const head = place && publisher ? `${place}: ${publisher}` : (place || publisher);
+	const year = paperCitationYear(item);
+	return [head, year].filter(Boolean).join(", ");
+}
+
+function formatGbtEntry(item) {
+	const cjk = paperCitationIsCjkItem(item);
+	const authors = formatGbtNames(item.author, cjk);
+	const year = paperCitationYear(item);
+	const pages = paperCitationPages(item, "-");
+	const title = item.title;
+	const arxiv = paperCitationArxivId(item);
+	let body;
+	switch (item.type) {
+		case "article-journal": case "article-magazine": case "article-newspaper": {
+			let tail = [item["container-title"], year].filter(Boolean).join(", ");
+			if (item.volume) tail += `${tail ? ", " : ""}${item.volume}`;
+			// 无卷有期时写「2020(3)」，期号紧跟年份。
+			if (item.issue) tail += `(${item.issue})`;
+			if (pages) tail += `: ${pages}`;
+			body = `${title}[${item.type === "article-newspaper" ? "N" : "J"}]${tail ? `. ${tail}` : ""}`;
+			break;
+		}
+		case "paper-conference": {
+			const venue = item["container-title"] || item["event-title"] || "";
+			const pub = formatGbtPublication(item);
+			body = `${title}[C]${venue ? `//${venue}` : ""}${pub ? `. ${pub}` : ""}${pages ? `: ${pages}` : ""}`;
+			break;
+		}
+		case "chapter": {
+			const editors = formatGbtNames(item.editor, cjk);
+			const book = [editors, item["container-title"]].filter(Boolean).join(". ");
+			const pub = formatGbtPublication(item);
+			body = `${title}[M]${book ? `//${book}` : ""}${pub ? `. ${pub}` : ""}${pages ? `: ${pages}` : ""}`;
+			break;
+		}
+		case "book": {
+			const edition = item.edition ? (/^\d+$/.test(item.edition) ? (cjk ? `${item.edition}版` : `${paperCitationOrdinal(item.edition)} ed`) : item.edition) : "";
+			body = [`${title}[M]`, edition, formatGbtPublication(item)].filter(Boolean).join(". ");
+			break;
+		}
+		case "thesis": body = [`${title}[D]`, formatGbtPublication(item)].filter(Boolean).join(". "); break;
+		case "report": body = [`${title}[R]`, formatGbtPublication(item)].filter(Boolean).join(". "); break;
+		case "patent": body = [`${title}[P]`, item.number, year].filter(Boolean).join(". "); break;
+		case "article":
+			// 预印本：GB/T 7714 没有专门类型，按国内常见写法（Google 学术 / 百度学术同款）「[J]. arXiv preprint arXiv:xxxx, 年」。
+			body = arxiv ? `${title}[J]. arXiv preprint arXiv:${arxiv}${year ? `, ${year}` : ""}`
+				: [`${title}[EB/OL]`, [item.publisher, year].filter(Boolean).join(", "), item.URL].filter(Boolean).join(". ");
+			break;
+		case "webpage": case "post-weblog":
+			body = [`${title}[EB/OL]`, [item["container-title"] || item.publisher, year].filter(Boolean).join(", "), item.URL].filter(Boolean).join(". ");
+			break;
+		default:
+			body = [`${title}[Z]`, [item["container-title"] || item.publisher, year].filter(Boolean).join(", ")].filter(Boolean).join(". ");
+	}
+	const doi = item.DOI && !(item.type === "article" && arxiv) ? ` DOI:${item.DOI}.` : "";
+	return `${authors ? `${paperCitationEnd(authors)} ` : ""}${paperCitationEnd(body)}${doi}`;
+}
+
+// ── APA 7 ─────────────────────────────────────────────────────────────
+function formatApaName(name) {
+	if (paperCitationNameIsCjk(name)) return paperCitationCjkName(name);
+	if (name.literal) return name.literal;
+	const initials = paperCitationInitials(name.given, true);
+	return initials ? `${name.family}, ${initials}` : name.family;
+}
+
+// 1 人 A；2 人 A, & B；3–20 人 A, B, & C；21 人及以上列前 19 人，「. . .」，再接最后一人。
+function formatApaNames(names) {
+	const list = (names || []).map(formatApaName).filter(Boolean);
+	if (list.length <= 1) return list.join("");
+	if (list.length > 20) return `${list.slice(0, 19).join(", ")}, . . . ${list[list.length - 1]}`;
+	return `${list.slice(0, -1).join(", ")}, & ${list[list.length - 1]}`;
+}
+
+function formatApaEditors(names) {
+	const list = (names || []).map(name => paperCitationNameIsCjk(name) || name.literal ? paperCitationCjkName(name)
+		: `${paperCitationInitials(name.given, true)} ${name.family}`.trim()).filter(Boolean);
+	if (!list.length) return "";
+	const joined = list.length <= 2 ? list.join(" & ") : `${list.slice(0, -1).join(", ")}, & ${list[list.length - 1]}`;
+	return `${joined} (${list.length > 1 ? "Eds." : "Ed."}), `;
+}
+
+function formatApaEntry(item) {
+	const authors = formatApaNames(item.author);
+	const year = paperCitationYear(item);
+	const date = `(${year || "n.d."})`;
+	const pages = paperCitationPages(item, "–");
+	const link = paperCitationLink(item);
+	const italicTitle = paperCitationItalic(item.title);
+	const edition = item.edition ? ` (${paperCitationOrdinal(item.edition)} ed.)` : "";
+	let work;
+	switch (item.type) {
+		case "article-journal": case "article-magazine": case "article-newspaper": {
+			let source = paperCitationItalic(item["container-title"] || "");
+			if (item.volume) source += `${source ? ", " : ""}${paperCitationItalic(item.volume)}`;
+			if (item.issue) source += `(${item.issue})`;
+			if (pages) source += `${source ? ", " : ""}${pages}`;
+			work = [paperCitationEnd(item.title), paperCitationEnd(source)];
+			break;
+		}
+		case "paper-conference": case "chapter": {
+			const container = paperCitationItalic(item["container-title"] || item["event-title"] || "");
+			const inPart = container ? `In ${item.type === "chapter" ? formatApaEditors(item.editor) : ""}${container}${pages ? ` (pp. ${pages})` : ""}` : "";
+			work = [paperCitationEnd(item.title), paperCitationEnd(inPart), paperCitationEnd(item.publisher)];
+			break;
+		}
+		case "book": work = [paperCitationEnd(`${italicTitle}${edition}`), paperCitationEnd(item.publisher)]; break;
+		case "thesis": {
+			const kind = [item.genre || "Doctoral dissertation", item.publisher].filter(Boolean).join(", ");
+			work = [paperCitationEnd(`${italicTitle} [${kind}]`)];
+			break;
+		}
+		case "report":
+			work = [paperCitationEnd(`${italicTitle}${item.number ? ` (Report No. ${item.number})` : ""}`), paperCitationEnd(item.publisher)];
+			break;
+		default:
+			work = [paperCitationEnd(italicTitle), paperCitationEnd(item["container-title"] || item.publisher)];
+	}
+	// 作者末尾不是缩写点（中文全名、机构作者）时补句点：「赵六. (2024).」，同 APA 机构作者写法。
+	const lead = authors ? `${paperCitationEnd(authors)} ${date}.` : `${paperCitationEnd(work.shift())} ${date}.`;
+	return [lead, ...work, link].filter(Boolean).join(" ");
+}
+
+// ── IEEE ──────────────────────────────────────────────────────────────
+function formatIeeeNames(names) {
+	const list = (names || []).map(name => paperCitationNameIsCjk(name) || name.literal ? paperCitationCjkName(name)
+		: `${paperCitationInitials(name.given, true)} ${name.family}`.trim()).filter(Boolean);
+	if (list.length > 6) return `${list[0]} et al.`;
+	if (list.length <= 2) return list.join(" and ");
+	return `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
+}
+
+function formatIeeeEntry(item) {
+	const authors = formatIeeeNames(item.author);
+	const year = paperCitationYear(item);
+	const month = paperCitationMonth(item);
+	const date = [month ? PAPER_CITATION_IEEE_MONTHS[month - 1] : "", year].filter(Boolean).join(" ");
+	const pages = paperCitationPages(item, "–");
+	const pagePart = pages ? `${/[–-]/.test(pages) ? "pp." : "p."} ${pages}` : "";
+	const doi = item.DOI ? `doi: ${item.DOI}` : "";
+	const quoted = `“${item.title},”`;
+	const place = item["publisher-place"] || "";
+	const pub = place && item.publisher ? `${place}: ${item.publisher}` : (item.publisher || place);
+	let parts;
+	let lead = quoted;
+	switch (item.type) {
+		case "article-journal": case "article-magazine": case "article-newspaper":
+			parts = [paperCitationItalic(item["container-title"] || ""), item.volume ? `vol. ${item.volume}` : "",
+				item.issue ? `no. ${item.issue}` : "", pagePart, date, doi];
+			break;
+		case "paper-conference":
+			parts = [item["container-title"] || item["event-title"] ? `in ${paperCitationItalic(item["container-title"] || item["event-title"])}` : "",
+				place, date, pagePart, doi];
+			break;
+		case "chapter": {
+			const editors = formatIeeeNames(item.editor);
+			parts = [item["container-title"] ? `in ${paperCitationItalic(item["container-title"])}` : "",
+				editors ? `${editors}, ${item.editor.length > 1 ? "Eds." : "Ed."}` : "", pub, year, pagePart, doi];
+			break;
+		}
+		case "book":
+			lead = `${paperCitationItalic(item.title)}${item.edition ? `, ${paperCitationOrdinal(item.edition)} ed` : ""}.`;
+			parts = [pub ? `${pub}, ${year}`.replace(/, $/, "") : year, doi];
+			break;
+		case "thesis":
+			parts = [item.genre || "Ph.D. dissertation", item.publisher, place, year];
+			break;
+		case "report":
+			parts = [item.publisher, place, item.number ? `Rep. ${item.number}` : "", date, doi];
+			break;
+		case "article": {
+			const arxiv = paperCitationArxivId(item);
+			parts = [date, arxiv ? paperCitationItalic(`arXiv:${arxiv}`) : (item.publisher || ""), arxiv ? "" : doi];
+			break;
+		}
+		default:
+			parts = [item["container-title"] || item.publisher || "", date, doi];
+	}
+	const rest = parts.filter(Boolean).join(", ");
+	let body;
+	if (lead === quoted) body = rest ? `${quoted} ${rest}.` : `“${paperCitationEnd(item.title)}”`;
+	else body = rest ? `${lead} ${rest}.` : lead;
+	if (!item.DOI && item.URL && !["article"].includes(item.type)) body += ` [Online]. Available: ${item.URL}`;
+	return authors ? `${authors}, ${body}` : body;
+}
+
+// ── MLA 9 ─────────────────────────────────────────────────────────────
+function formatMlaNames(names) {
+	const list = names || [];
+	if (!list.length) return "";
+	const inverted = name => paperCitationNameIsCjk(name) || name.literal ? paperCitationCjkName(name)
+		: (name.given ? `${name.family}, ${name.given}` : name.family);
+	const natural = name => paperCitationNameIsCjk(name) || name.literal ? paperCitationCjkName(name)
+		: `${name.given || ""} ${name.family || ""}`.trim();
+	if (list.length === 1) return inverted(list[0]);
+	if (list.length === 2) return `${inverted(list[0])}, and ${natural(list[1])}`;
+	return `${inverted(list[0])}, et al.`;
+}
+
+function formatMlaEntry(item) {
+	const authors = formatMlaNames(item.author);
+	const year = paperCitationYear(item);
+	const pages = paperCitationPages(item, "-");
+	const link = paperCitationLink(item);
+	let segments;
+	switch (item.type) {
+		case "book": {
+			const edition = item.edition ? (/^\d+$/.test(item.edition) ? `${paperCitationOrdinal(item.edition)} ed.` : item.edition) : "";
+			segments = [paperCitationEnd(paperCitationItalic(item.title)), paperCitationEnd([edition, item.publisher, year].filter(Boolean).join(", ")), link ? paperCitationEnd(link) : ""];
+			break;
+		}
+		case "thesis":
+			segments = [paperCitationEnd(paperCitationItalic(item.title)), paperCitationEnd(year), paperCitationEnd([item.publisher, item.genre].filter(Boolean).join(", ")), link ? paperCitationEnd(link) : ""];
+			break;
+		default: {
+			const editors = item.type === "chapter" && item.editor?.length
+				? `edited by ${item.editor.map(name => paperCitationNameIsCjk(name) || name.literal ? paperCitationCjkName(name) : `${name.given || ""} ${name.family || ""}`.trim()).join(" and ")}` : "";
+			const container = paperCitationItalic(item["container-title"] || (item.type === "article" ? item.publisher : "") || "");
+			const source = [container, editors, item.volume ? `vol. ${item.volume}` : "", item.issue ? `no. ${item.issue}` : "",
+				["book", "chapter", "report"].includes(item.type) ? item.publisher : "", year, pages ? `pp. ${pages}` : "", link].filter(Boolean).join(", ");
+			segments = [`“${paperCitationEnd(item.title)}”`, paperCitationEnd(source)];
+		}
+	}
+	return [authors ? paperCitationEnd(authors) : "", ...segments].filter(Boolean).join(" ");
+}
+
+function formatPaperCitationEntry(item, style) {
+	if (style === "apa") return formatApaEntry(item);
+	if (style === "ieee") return formatIeeeEntry(item);
+	if (style === "mla") return formatMlaEntry(item);
+	return formatGbtEntry(item);
+}
+
+function paperCitationSortKey(item) {
+	const first = item.author?.[0];
+	const name = first ? (first.literal || first.family || "") : item.title;
+	return `${String(name).toLowerCase()}\u0000${paperCitationYear(item)}\u0000${String(item.title || "").toLowerCase()}`;
+}
+
+// 参考文献表：GB/T 7714、IEEE 按给定顺序编号 [1] [2]；APA、MLA 按第一作者字母排序、不编号。
+// 返回 { text, html }：纯文本给 Markdown，HTML 带斜体给 Word / 网页编辑器。
+function formatPaperBibliography(items, style) {
+	const list = (items || []).filter(Boolean);
+	const numbered = style === "gb7714" || style === "ieee";
+	const ordered = numbered ? list : [...list].sort((a, b) => paperCitationSortKey(a).localeCompare(paperCitationSortKey(b), "en"));
+	const entries = ordered.map((item, index) => {
+		const entry = formatPaperCitationEntry(item, style);
+		return numbered && list.length > 1 ? `[${index + 1}] ${entry}` : entry;
+	});
+	return {
+		text: entries.map(paperCitationPlainText).join("\n"),
+		html: entries.map(entry => `<div>${paperCitationHtml(entry)}</div>`).join(""),
+	};
+}
+
+// ── 导出：BibTeX / RIS / CSL-JSON ──────────────────────────────────────
+function paperCitationBibtexEscape(text) {
+	return String(text || "").replace(/\\/g, "\\textbackslash{}").replace(/([&%#_$])/g, "\\$1");
+}
+
+function paperCitationAscii(text) {
+	return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+const PAPER_CITATION_KEY_STOPWORDS = new Set(["a", "an", "the", "on", "of", "for", "and", "in", "to", "with", "via", "from", "towards", "toward"]);
+
+// 有 Zotero / Better BibTeX 引用键就用；没有就生成「姓年份题名首词」（vaswani2017attention），同批撞键加 a/b。
+function buildPaperCitationKey(item) {
+	if (item["citation-key"]) return item["citation-key"];
+	const first = item.author?.[0];
+	const family = paperCitationAscii(first ? (first.family || first.literal) : "") || "ref";
+	const word = String(item.title || "").split(/[\s:]+/).map(paperCitationAscii).find(token => token && !PAPER_CITATION_KEY_STOPWORDS.has(token)) || "";
+	return `${family}${paperCitationYear(item) || "nd"}${word}`;
+}
+
+function paperCitationBibtexName(name) {
+	if (name.literal) return `{${paperCitationBibtexEscape(name.literal)}}`;
+	return [name.family, name.given].filter(Boolean).map(paperCitationBibtexEscape).join(", ");
+}
+
+function formatPaperBibtexEntry(item, key) {
+	const arxiv = paperCitationArxivId(item);
+	const genre = String(item.genre || "");
+	const types = { "article-journal": "article", "article-magazine": "article", "article-newspaper": "article", "paper-conference": "inproceedings",
+		book: "book", chapter: "incollection", report: "techreport" };
+	const type = item.type === "thesis" ? (/master|硕士/i.test(genre) ? "mastersthesis" : "phdthesis") : (types[item.type] || "misc");
+	const containerField = type === "article" ? "journal" : (type === "inproceedings" || type === "incollection" ? "booktitle" : "");
+	const publisherField = type === "phdthesis" || type === "mastersthesis" ? "school" : (type === "techreport" ? "institution" : "publisher");
+	const fields = [
+		["author", (item.author || []).map(paperCitationBibtexName).join(" and ")],
+		["editor", type === "incollection" ? (item.editor || []).map(paperCitationBibtexName).join(" and ") : ""],
+		["title", paperCitationBibtexEscape(item.title)],
+		[containerField, containerField ? paperCitationBibtexEscape(item["container-title"] || item["event-title"]) : ""],
+		["year", paperCitationYear(item)],
+		["volume", item.volume], ["number", type === "techreport" ? item.number : item.issue],
+		["pages", paperCitationPages(item, "--")],
+		[publisherField, item.type === "article" && arxiv ? "" : paperCitationBibtexEscape(item.publisher)],
+		["address", paperCitationBibtexEscape(item["publisher-place"])],
+		["edition", item.edition], ["isbn", item.ISBN], ["issn", item.ISSN],
+		["doi", item.DOI], ["url", item.URL],
+		["eprint", arxiv], ["archiveprefix", arxiv ? "arXiv" : ""],
+	].filter(([name, value]) => name && value);
+	return `@${type}{${key},\n${fields.map(([name, value]) => `  ${name} = {${value}}`).join(",\n")}\n}`;
+}
+
+function formatPaperRisEntry(item) {
+	const types = { "article-journal": "JOUR", "article-magazine": "MGZN", "article-newspaper": "NEWS", "paper-conference": "CPAPER",
+		book: "BOOK", chapter: "CHAP", thesis: "THES", report: "RPRT", webpage: "ELEC", patent: "PAT" };
+	const lines = [["TY", types[item.type] || "GEN"]];
+	const name = person => person.literal || [person.family, person.given].filter(Boolean).join(", ");
+	for (const author of item.author || []) lines.push(["AU", name(author)]);
+	for (const editor of item.editor || []) lines.push(["ED", name(editor)]);
+	lines.push(["TI", item.title]);
+	if (item["container-title"]) lines.push(["T2", item["container-title"]]);
+	const year = paperCitationYear(item);
+	const month = paperCitationMonth(item);
+	if (year) lines.push(["PY", year]);
+	if (year && month) lines.push(["DA", `${year}/${String(month).padStart(2, "0")}`]);
+	const [start, end] = paperCitationPages(item, "-").split("-");
+	for (const [tag, value] of [["VL", item.volume], ["IS", item.issue], ["SP", start], ["EP", end], ["PB", item.publisher],
+		["CY", item["publisher-place"]], ["SN", item.ISSN || item.ISBN], ["ET", item.edition], ["DO", item.DOI], ["UR", item.URL]]) {
+		if (value) lines.push([tag, value]);
+	}
+	lines.push(["ER", ""]);
+	return lines.map(([tag, value]) => `${tag}  - ${value}`.trimEnd()).join("\n");
+}
+
+function formatPaperCitationExport(items, format) {
+	const list = (items || []).filter(Boolean);
+	if (format === "csl-json") return JSON.stringify(list, null, 2);
+	if (format === "ris") return list.map(formatPaperRisEntry).join("\n\n");
+	const used = new Map();
+	return list.map(item => {
+		const base = buildPaperCitationKey(item);
+		const count = used.get(base) || 0;
+		used.set(base, count + 1);
+		const key = count ? `${base}${"abcdefghijklmnopqrstuvwxyz"[Math.min(count, 25) - 1]}` : base;
+		return formatPaperBibtexEntry(item, key);
+	}).join("\n\n");
+}
+
+// ── T130 引用信息体检与补全 ─────────────────────────────────────────────
+// 书目字段是只写一次的原型（CODEMAP 不变量第 1 条），补来的字段另存 folderMap 的 citationSupplement；
+// 排引用时只填原型的空缺，原型字段始终优先（以后 Zotero / 用户补上了就以它为准）。
+const PAPER_CITATION_SUPPLEMENT_FIELDS = ["publicationTitle", "proceedingsTitle", "bookTitle", "volume", "issue", "pages",
+	"date", "DOI", "publisher", "place", "ISSN", "ISBN", "journalAbbreviation"];
+const PAPER_CITATION_CONTAINER_FIELDS = ["publicationTitle", "proceedingsTitle", "bookTitle"];
+// 批量补全时两次 Crossref 请求之间的间隔（毫秒）。
+const PAPER_CITATION_FILL_GAP_MS = 250;
+
+function mergePaperCitationSupplement(metadata, supplement) {
+	const base = metadata || { itemType: "", fields: {}, creators: [], tags: [] };
+	const extra = supplement && typeof supplement === "object" ? normalizeZoteroItemMetadata(supplement) : null;
+	if (!extra) return base;
+	return {
+		...base,
+		itemType: extra.itemType || base.itemType,
+		fields: { ...extra.fields, ...base.fields },
+		creators: base.creators && base.creators.length ? base.creators : extra.creators,
+	};
+}
+
+// 一条完整引用（GB/T 7714 与 APA 的共同要求）至少要有哪些字段。预印本只要作者与年份。
+const PAPER_CITATION_REQUIRED_FIELDS = {
+	"article-journal": ["author", "year", "journal", "volume", "pages"],
+	"paper-conference": ["author", "year", "proceedings", "pages"],
+	chapter: ["author", "year", "book", "pages", "publisher"],
+	book: ["author", "year", "publisher", "place"],
+	thesis: ["author", "year", "school"],
+	report: ["year", "institution"],
+};
+
+function checkPaperCitationMetadata(item) {
+	const required = PAPER_CITATION_REQUIRED_FIELDS[item?.type] || ["author", "year"];
+	const has = {
+		author: !!(item?.author && item.author.length), year: !!paperCitationYear(item),
+		journal: !!item?.["container-title"], proceedings: !!(item?.["container-title"] || item?.["event-title"]), book: !!item?.["container-title"],
+		volume: !!item?.volume, pages: !!item?.page, publisher: !!item?.publisher, school: !!item?.publisher, institution: !!item?.publisher,
+		place: !!item?.["publisher-place"],
+	};
+	return required.filter(key => !has[key]);
+}
+
+// 题名检索的候选里挑同一篇：题名相似度 ≥ 0.9，两边都有年份时相差不超过 1 年（在线先行与正式出版跨年）。
+function pickPaperCitationCrossrefMatch(candidates, item) {
+	const year = Number(paperCitationYear(item)) || 0;
+	return (Array.isArray(candidates) ? candidates : []).find(candidate => {
+		if (!candidate || paperIntakeSimilarity((candidate.title || [])[0], item?.title) < 0.9) return false;
+		const parts = ((candidate.published || candidate.issued || {})["date-parts"] || [])[0] || [];
+		const found = Number(parts[0]) || 0;
+		return !year || !found || Math.abs(found - year) <= 1;
+	}) || null;
+}
+
+// Crossref 条目 → 只含原型空缺的补充字段；没有任何新东西返回 null。
+// 原型没有任何出处字段时才采用 Crossref 的条目类型（本地建档缺类型时默认记成期刊论文）。
+function buildPaperCitationSupplement(source, crossref) {
+	const built = buildPaperIntakeMetadata({ crossref });
+	if (!built || !built.metadata) return null;
+	const found = { ...built.metadata.fields };
+	const firstOf = value => String(Array.isArray(value) ? value[0] || "" : value || "").trim();
+	if (crossref.publisher) found.publisher = String(crossref.publisher).trim();
+	if (crossref["publisher-location"]) found.place = String(crossref["publisher-location"]).trim();
+	if (firstOf(crossref.ISSN)) found.ISSN = firstOf(crossref.ISSN);
+	if (firstOf(crossref.ISBN)) found.ISBN = firstOf(crossref.ISBN);
+	if (firstOf(crossref["short-container-title"])) found.journalAbbreviation = firstOf(crossref["short-container-title"]);
+	const current = mergePaperCitationSupplement(normalizeZoteroItemMetadata(source?.zoteroMetadata), source?.citationSupplement);
+	const hasContainer = PAPER_CITATION_CONTAINER_FIELDS.some(name => current.fields[name]);
+	const fields = {};
+	for (const name of PAPER_CITATION_SUPPLEMENT_FIELDS) {
+		if (!found[name] || current.fields[name]) continue;
+		// 已有出处时不再加另一种出处字段（期刊论文不该同时冒出会议录名）。
+		if (PAPER_CITATION_CONTAINER_FIELDS.includes(name) && hasContainer) continue;
+		fields[name] = found[name];
+	}
+	const creators = current.creators && current.creators.length ? [] : built.metadata.creators;
+	const itemType = !hasContainer && built.metadata.itemType && built.metadata.itemType !== current.itemType ? built.metadata.itemType : "";
+	if (!Object.keys(fields).length && !creators.length && !itemType) return null;
+	const previous = source?.citationSupplement && typeof source.citationSupplement === "object" ? source.citationSupplement : {};
+	return {
+		source: "crossref",
+		itemType: itemType || previous.itemType || "",
+		fields: { ...(previous.fields || {}), ...fields },
+		creators: creators.length ? creators : (previous.creators || []),
+	};
+}
 function sqliteFileUri(filePath) {
 	const p = encodeURI(nodePath.resolve(filePath).replace(/\\/g, "/")).replace(/#/g, "%23").replace(/\?/g, "%3F");
 	return `file:${p}?mode=ro`;
@@ -10143,11 +11102,12 @@ function shortStableId(value, length = 8) {
 	return crypto.createHash("sha256").update(String(value || "")).digest("hex").substring(0, length);
 }
 
-function appendStemSuffix(stem, suffix) {
+function appendStemSuffix(stem, suffix, options = {}) {
 	const cleanSuffix = String(suffix || "").replace(/[^A-Za-z0-9-]/g, "");
-	const maxBaseLength = Math.max(1, 40 - cleanSuffix.length - 1);
-	const base = sanitizeStem(stem).substring(0, maxBaseLength).replace(/[. ]+$/g, "") || "未命名论文";
-	return sanitizeStem(`${base}-${cleanSuffix}`);
+	const maxLength = Number.isInteger(options.maxLength) && options.maxLength > 0 ? options.maxLength : 40;
+	const maxBaseLength = Math.max(1, maxLength - cleanSuffix.length - 1);
+	const base = sanitizeStem(stem, options).substring(0, maxBaseLength).replace(/[. ]+$/g, "") || "未命名论文";
+	return sanitizeStem(`${base}-${cleanSuffix}`, options);
 }
 
 function getTaskRecordId(folder, fileName, useFolderIdentity = true) {
@@ -10243,7 +11203,8 @@ const ZOTERO_AUTO_CHECK_STARTUP_DELAY_MS = 10 * 1000;
 function resolveZoteroLibraryImportOptIn(input = {}) {
 	if (input.optedIn === true) return true;
 	const map = input.folderMap;
-	if (map && typeof map === "object" && Object.keys(map).length > 0) return true;
+	// T100：只用「添加论文」建的本地论文不代表用户开通过 Zotero 静默导入。
+	if (map && typeof map === "object" && Object.entries(map).some(([recordId, info]) => !isLocalPaperRecord(info, recordId))) return true;
 	return false;
 }
 
@@ -10257,17 +11218,6 @@ function shouldRunZoteroAutoCheck(input = {}) {
 		: ZOTERO_AUTO_CHECK_COOLDOWN_MS;
 	if (last > 0 && (now - last) < windowMs) return { run: false, reason: "cooldown" };
 	return { run: true, reason: "due" };
-}
-
-function shouldSkipZoteroScanByMtime(input = {}) {
-	if (input.force) return false;
-	const last = input.lastMtimeMs;
-	const current = input.currentMtimeMs;
-	if (last == null || current == null || last === "" || current === "") return false;
-	const a = Number(last);
-	const b = Number(current);
-	if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
-	return a === b;
 }
 
 function isZoteroAutoCheckTransientError(error) {
@@ -10329,6 +11279,982 @@ function countPendingAmbiguousGroups(ambiguousGroups, folderMap) {
 			return id && !map[id];
 		});
 	}).length;
+}
+
+// ═══ T100：文献入库（Paper Intake）纯核 ═══════════════════════════════════════════
+// 只取合法公开全文：OpenAlex / Unpaywall / Semantic Scholar / Crossref / arXiv / 出版社 OA 直链 /
+// 落地页 citation_pdf_url。不带 cookie、不登录、不处理验证码；拿不到的进待补队列，由用户在
+// 自己的浏览器下载后经收件箱配对。设计与原型见 archive/specs/T100-PAPER-INTAKE.md。
+const PAPER_INTAKE_MAX_PDF_BYTES = 120 * 1024 * 1024;
+const PAPER_INTAKE_MAX_ATTEMPTS = 14;
+const PAPER_INTAKE_VERSION_RANK = Object.freeze({ publishedVersion: 0, acceptedVersion: 1, submittedVersion: 2 });
+const PAPER_INTAKE_SOURCE_RANK = Object.freeze({
+	unpaywall: 0, openalex: 1, semantic_scholar: 2, crossref: 3, landing_meta: 4, publisher_rule: 5, arxiv: 6,
+});
+const PAPER_INTAKE_EDITIONS = Object.freeze({
+	publishedVersion: "publisher_version", acceptedVersion: "author_manuscript", submittedVersion: "author_preprint",
+});
+// 顺序即解释优先级：一篇的多次失败里，排在前面的那一类最能说明它为什么没拿到。
+const PAPER_INTAKE_REASONS = Object.freeze([
+	"identity_mismatch", "bot_check", "access_required", "title_unresolved", "link_unresolved", "no_oa_version", "not_pdf",
+	"unreadable", "rate_limited", "link_dead", "server_error", "network", "no_candidates", "zotero_write_failed", "pdf_unidentified",
+]);
+const PAPER_INTAKE_BOT_MARKERS = Object.freeze([
+	"just a moment", "cf-chl", "challenge-platform", "captcha", "are you a robot", "verify you are human",
+	"unusual traffic", "perfdrive", "radware", "bot protection", "access to this page has been denied",
+	"enable javascript and cookies",
+]);
+const PAPER_INTAKE_ACCESS_MARKERS = Object.freeze([
+	"institutional login", "institutional access", "sign in to access", "log in to access", "purchase this article",
+	"buy article", "buy this article", "get access", "subscribe to", "access denied", "you do not have access",
+	"rent this article", "purchase pdf",
+]);
+const PAPER_INTAKE_ARXIV_ID = "([0-9]{4}\\.[0-9]{4,5}|[a-z][a-z-]*(?:\\.[a-z]{2})?/[0-9]{7})";
+const PAPER_INTAKE_ARXIV_URL = new RegExp(`(?:arxiv\\.org/(?:abs|pdf)/|doi\\.org/10\\.48550/arxiv\\.)${PAPER_INTAKE_ARXIV_ID}`, "i");
+const PAPER_INTAKE_DOI_IN_TEXT = /\b(10\.\d{4,9}\/[^\s"<>]+)/gi;
+const PAPER_INTAKE_CROSSREF_TYPES = Object.freeze({
+	"journal-article": "journalArticle", "proceedings-article": "conferencePaper", "posted-content": "preprint",
+	"book-chapter": "bookSection", book: "book", monograph: "book", report: "report", dissertation: "thesis",
+});
+
+function normalizePaperIntakeDoi(value) {
+	let text = String(value || "").trim();
+	try { text = decodeURIComponent(text); } catch { /* 保留原文 */ }
+	text = text.replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, "").replace(/[.,;)\]]+$/, "");
+	return /^10\.\d{4,9}\/\S+$/.test(text) ? text.toLowerCase() : "";
+}
+
+function normalizePaperIntakeArxivId(value) {
+	const text = String(value || "").trim();
+	const match = text.match(PAPER_INTAKE_ARXIV_URL)
+		|| text.match(new RegExp(`^(?:arxiv:\\s*)?${PAPER_INTAKE_ARXIV_ID}(?:v\\d+)?$`, "i"));
+	return match ? match[1].toLowerCase() : "";
+}
+
+function paperIntakeWords(value) {
+	const text = String(value || "").normalize("NFKD").toLowerCase();
+	return new Set(text.match(/[a-z0-9]+|[一-鿿]/g) || []);
+}
+
+function paperIntakeTitleKey(value) {
+	const text = String(value || "").normalize("NFKD").toLowerCase();
+	return (text.match(/[a-z0-9]+|[一-鿿]/g) || []).join(" ");
+}
+
+function paperIntakeSimilarity(a, b) {
+	const x = paperIntakeWords(a);
+	const y = paperIntakeWords(b);
+	let both = 0;
+	for (const word of x) if (y.has(word)) both++;
+	return both / Math.max(1, x.size + y.size - both);
+}
+
+function paperIntakeRowKey(row) {
+	return normalizePaperIntakeDoi(row && row.doi) || (row && row.arxivId ? `arxiv:${row.arxivId}`
+		: row && row.url ? `url:${String(row.url).trim()}` : paperIntakeTitleKey(row && row.title));
+}
+
+// 一行一篇：DOI（含 doi.org 链接）、arXiv（ID 或链接）、论文页链接（T105）或题名。同一篇重复粘贴只留一条。
+function parsePaperIntakeInput(text) {
+	const rows = [];
+	const seen = new Set();
+	for (const rawLine of String(text || "").split(/\r?\n/)) {
+		const line = rawLine.trim();
+		if (!line || line.startsWith("#")) continue;
+		const doiMatch = line.match(/10\.\d{4,9}\/[^\s"<>]+/);
+		const doi = normalizePaperIntakeDoi(doiMatch ? doiMatch[0] : "");
+		const arxivFromDoi = doi.startsWith("10.48550/arxiv.") ? doi.slice("10.48550/arxiv.".length) : "";
+		const arxivId = arxivFromDoi || (doi ? "" : normalizePaperIntakeArxivId(line));
+		const url = !doi && !arxivId && /^https?:\/\/\S+$/i.test(line) ? line : "";
+		const row = doi && !arxivFromDoi ? { kind: "doi", doi, arxivId: "", title: "", raw: line }
+			: arxivId ? { kind: "arxiv", doi: "", arxivId, title: "", raw: line }
+				: url ? { kind: "url", doi: "", arxivId: "", title: "", url, raw: line }
+					: { kind: "title", doi: "", arxivId: "", title: line, raw: line };
+		if (row.kind === "title" && paperIntakeWords(line).size < 2) continue;
+		const key = paperIntakeRowKey(row);
+		if (!key || seen.has(key)) continue;
+		seen.add(key);
+		rows.push(row);
+	}
+	return rows;
+}
+
+function addPaperIntakeCandidate(list, url, source, version, note = "") {
+	let href = String(url || "").trim();
+	let from = source;
+	let edition = version || "publishedVersion";
+	const arxiv = href.match(PAPER_INTAKE_ARXIV_URL);
+	if (arxiv) {
+		href = `https://arxiv.org/pdf/${arxiv[1]}`;
+		from = "arxiv";
+		edition = "submittedVersion";
+	}
+	if (!/^https?:\/\//i.test(href) || list.some(candidate => candidate.url === href)) return list;
+	list.push({ url: href, source: from, version: edition, note: String(note || "") });
+	return list;
+}
+
+function collectOpenAlexPaperIntake(work) {
+	const out = { candidates: [], landings: [], isOa: false, landing: "", arxivId: "", doi: "", title: "" };
+	if (!work || typeof work !== "object") return out;
+	out.isOa = !!(work.open_access && work.open_access.is_oa);
+	out.doi = normalizePaperIntakeDoi(work.doi);
+	out.title = String(work.title || work.display_name || "");
+	for (const location of Array.isArray(work.locations) ? work.locations : []) {
+		if (!location || typeof location !== "object") continue;
+		const landing = String(location.landing_page_url || "");
+		const arxiv = landing.match(PAPER_INTAKE_ARXIV_URL);
+		if (arxiv && !out.arxivId) out.arxivId = arxiv[1].toLowerCase();
+		if (landing && !out.landing && !arxiv) out.landing = landing;
+		if (location.pdf_url) {
+			addPaperIntakeCandidate(out.candidates, location.pdf_url, "openalex", location.version,
+				location.source && location.source.display_name);
+		} else if (location.is_oa && landing) {
+			out.landings.push({ url: landing, version: location.version || "" });
+		}
+	}
+	return out;
+}
+
+function collectUnpaywallPaperIntake(data) {
+	const out = { candidates: [], landings: [], isOa: false };
+	if (!data || typeof data !== "object") return out;
+	out.isOa = !!data.is_oa;
+	for (const location of Array.isArray(data.oa_locations) ? data.oa_locations : []) {
+		if (!location || typeof location !== "object") continue;
+		if (location.url_for_pdf) addPaperIntakeCandidate(out.candidates, location.url_for_pdf, "unpaywall", location.version, location.host_type);
+		else if (location.url_for_landing_page) out.landings.push({ url: location.url_for_landing_page, version: location.version || "" });
+	}
+	return out;
+}
+
+function collectSemanticScholarPaperIntake(data) {
+	const out = { candidates: [], arxivId: "" };
+	if (!data || typeof data !== "object") return out;
+	const pdf = data.openAccessPdf && data.openAccessPdf.url;
+	if (pdf) addPaperIntakeCandidate(out.candidates, pdf, "semantic_scholar", "", data.openAccessPdf.status);
+	const arxiv = data.externalIds && data.externalIds.ArXiv;
+	if (arxiv) out.arxivId = String(arxiv).toLowerCase();
+	return out;
+}
+
+function collectCrossrefPaperIntake(message) {
+	const out = { candidates: [], isOa: false, publisher: "" };
+	if (!message || typeof message !== "object") return out;
+	out.publisher = String(message.publisher || "");
+	if ((message.license || []).some(license => /creativecommons\.org/i.test(String(license && license.URL || "")))) out.isOa = true;
+	for (const link of Array.isArray(message.link) ? message.link : []) {
+		if (!link || link["content-type"] !== "application/pdf") continue;
+		const url = String(link.URL || "");
+		const version = /[-_]aam\b|accepted/i.test(url) ? "acceptedVersion" : "publishedVersion";
+		addPaperIntakeCandidate(out.candidates, url, "crossref", version, link["intended-application"]);
+	}
+	return out;
+}
+
+// 只对站内开放的文章生效的直链规则；付费文章会被归为 access_required，正好成为待补线索。
+function paperIntakePublisherRuleUrls(doi, landing = "") {
+	const id = normalizePaperIntakeDoi(doi);
+	const urls = [];
+	if (id) {
+		const prefix = id.split("/")[0];
+		if (["10.1007", "10.1038", "10.1186"].includes(prefix)) urls.push(`https://link.springer.com/content/pdf/${id}.pdf`);
+		if (["10.1002", "10.1111", "10.1049"].includes(prefix)) urls.push(`https://onlinelibrary.wiley.com/doi/pdfdirect/${id}`);
+		if (prefix === "10.3389") urls.push(`https://www.frontiersin.org/articles/${id}/pdf`);
+		if (prefix === "10.1088") urls.push(`https://iopscience.iop.org/article/${id}/pdf`);
+	}
+	if (/mdpi\.com/i.test(String(landing || ""))) urls.push(`${String(landing).replace(/\/+$/, "")}/pdf`);
+	return urls;
+}
+
+function decodePaperIntakeXmlText(value) {
+	return String(value || "").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+		.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&")
+		.replace(/\s+/g, " ").trim();
+}
+
+function parseArxivAtomPaperIntake(xml) {
+	const entries = [];
+	for (const match of String(xml || "").matchAll(/<entry\b[^>]*>([\s\S]*?)<\/entry>/gi)) {
+		const body = match[1];
+		const pick = tag => {
+			const found = body.match(new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+			return found ? decodePaperIntakeXmlText(found[1]) : "";
+		};
+		const id = normalizePaperIntakeArxivId(pick("id"));
+		if (!id) continue;
+		const authors = [...body.matchAll(/<author\b[^>]*>[\s\S]*?<name>([\s\S]*?)<\/name>[\s\S]*?<\/author>/gi)]
+			.map(author => decodePaperIntakeXmlText(author[1]));
+		entries.push({ id, title: pick("title"), published: pick("published"), summary: pick("summary"), authors });
+	}
+	return entries;
+}
+
+function rankPaperIntakeCandidates(candidates) {
+	const rank = candidate => [
+		PAPER_INTAKE_VERSION_RANK[candidate.version] ?? 1,
+		PAPER_INTAKE_SOURCE_RANK[candidate.source] ?? 9,
+	];
+	return [...(candidates || [])].map((candidate, index) => ({ candidate, index })).sort((a, b) => {
+		const x = rank(a.candidate);
+		const y = rank(b.candidate);
+		return x[0] - y[0] || x[1] - y[1] || a.index - b.index;
+	}).map(item => item.candidate);
+}
+
+function classifyPaperIntakeResponse(response = {}) {
+	if (response.error) return "network";
+	const status = Number(response.status) || 0;
+	const head = String(response.text || "").slice(0, 200000).toLowerCase();
+	const headers = response.headers || {};
+	if (status === 429) return "rate_limited";
+	if (status === 404 || status === 410) return "link_dead";
+	if (headers["cf-mitigated"] || PAPER_INTAKE_BOT_MARKERS.some(marker => head.includes(marker))) return "bot_check";
+	if ([401, 402, 403].includes(status) || PAPER_INTAKE_ACCESS_MARKERS.some(marker => head.includes(marker))) return "access_required";
+	if (status >= 500) return "server_error";
+	if (Number(response.byteLength) > PAPER_INTAKE_MAX_PDF_BYTES) return "unreadable";
+	return "not_pdf";
+}
+
+function extractPaperIntakeCitationPdfUrl(html, baseUrl) {
+	for (const tag of String(html || "").slice(0, 400000).match(/<meta\b[^>]*>/gi) || []) {
+		if (!/name\s*=\s*["']citation_pdf_url["']/i.test(tag)) continue;
+		const content = tag.match(/content\s*=\s*["']([^"']+)["']/i);
+		if (!content) continue;
+		try { return new URL(decodePaperIntakeXmlText(content[1]), baseUrl).href; } catch { return ""; }
+	}
+	return "";
+}
+
+// T105：不含 DOI 的论文页链接（如 IEEE 的 document/<编号>）从页面的引用元数据读 DOI 与题名；
+// 只认 citation_* / Dublin Core / PRISM 标记和页面内嵌数据里的 "doi" 字段，不从正文里猜。
+function extractPaperIntakeLandingIdentity(html) {
+	const text = String(html || "").slice(0, 600000);
+	const meta = {};
+	for (const tag of text.match(/<meta\b[^>]*>/gi) || []) {
+		const name = (tag.match(/\b(?:name|property)\s*=\s*["']([^"']+)["']/i) || [])[1];
+		const content = (tag.match(/\bcontent\s*=\s*["']([^"']*)["']/i) || [])[1];
+		if (!name || content === undefined) continue;
+		const key = name.toLowerCase();
+		if (!(key in meta)) meta[key] = decodePaperIntakeEntities(content).trim();
+	}
+	const doiOf = value => normalizePaperIntakeDoi((String(value || "").match(/10\.\d{4,9}\/[^\s"<>]+/) || [""])[0]);
+	let doi = "";
+	for (const key of ["citation_doi", "dc.identifier", "prism.doi", "bepress_citation_doi"]) {
+		doi = doiOf(meta[key]);
+		if (doi) break;
+	}
+	if (!doi) doi = doiOf((text.match(/"doi"\s*:\s*"(10\.\d{4,9}\/[^"\s]+)"/i) || [])[1]);
+	const arxivId = normalizePaperIntakeArxivId(meta.citation_arxiv_id || "");
+	const title = String(meta.citation_title || meta["dc.title"] || "").replace(/\s+/g, " ").trim().slice(0, 500);
+	return { doi, arxivId, title };
+}
+
+function isPaperIntakePdfBytes(bytes) {
+	if (!bytes || bytes.length < 5) return false;
+	return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d;
+}
+
+function getPaperIntakeCreatorWords(creator) {
+	if (!creator || typeof creator !== "object") return new Set();
+	return paperIntakeWords(creator.name || `${creator.firstName || ""} ${creator.lastName || ""}`);
+}
+
+// 与 zotero-local-batch 的 ingest_ready.inspect_pdf 同一道门：前 6 页题名词覆盖 ≥ 0.8；
+// 有作者时要求任一作者命中；题名不足 4 个词又没有作者时不自动接受；没有文字层交给人工。
+function checkPaperIntakePdfIdentity(input = {}) {
+	const text = String(input.text || "");
+	const title = String(input.title || "");
+	const creators = Array.isArray(input.creators) ? input.creators : [];
+	if (!text.trim()) return { ok: false, reason: "identity_mismatch" };
+	const found = paperIntakeWords(text);
+	const expected = paperIntakeWords(title);
+	let hit = 0;
+	for (const word of expected) if (found.has(word)) hit++;
+	if (!expected.size || hit / expected.size < 0.8) return { ok: false, reason: "identity_mismatch" };
+	const authorSets = creators.map(getPaperIntakeCreatorWords).filter(set => set.size);
+	if (authorSets.length) {
+		const matched = authorSets.some(set => {
+			let count = 0;
+			for (const word of set) if (found.has(word)) count++;
+			return count >= Math.min(2, set.size);
+		});
+		if (!matched) return { ok: false, reason: "identity_mismatch" };
+	} else if (expected.size < 4) {
+		return { ok: false, reason: "identity_mismatch" };
+	}
+	const titleKey = paperIntakeTitleKey(title);
+	return { ok: true, authorsChecked: authorSets.length > 0, titlePhrase: titleKey.split(" ").length >= 4 && ` ${paperIntakeTitleKey(text)} `.includes(` ${titleKey} `),
+		arxivStamp: /arXiv:\s*\d{4}\.\d{4,5}/.test(text.slice(0, 6000)) };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// T107 拖入 PDF：从文件本身认出是哪一篇
+//
+// 线索按可信度排：PDF 自带信息里的 DOI → 前两页正文的 DOI（按出现先后，最多两个）→ arXiv 号 →
+// PDF 自带题名 → 第 1 页字号最大的那一行。只看前两页，参考文献里的 DOI 才不会混进来；
+// 凭线索查到的元数据还要过正文核对（checkPaperIntakePdfIdentity），对不上就换下一条线索。
+// ═══════════════════════════════════════════════════════════════════
+
+function isPaperIntakeInfoTitle(value) {
+	const text = String(value || "").replace(/\s+/g, " ").trim();
+	if (text.length < 12 || text.length > 300) return false;
+	if (/\.(docx?|tex|pdf|dvi|indd)\b|^microsoft word|^untitled|^manuscript\b|^(?:title|paper|article|doi)$/i.test(text)) return false;
+	return paperIntakeWords(text).size >= 3;
+}
+
+// items：第 1 页的文字块 { str, size, x, y, width }（阅读顺序）。同一行相邻块之间有空隙才补空格，
+// 否则 pdf.js 把一个词拆成两块时题名会变成「Deno ising」，检索就对不上了。
+function pickPaperIntakeTitleLine(items) {
+	const rows = (Array.isArray(items) ? items : []).map(item => ({
+		text: String(item && item.str || ""), size: Number(item && item.size) || 0,
+		x: Number(item && item.x) || 0, y: Number(item && item.y) || 0, width: Number(item && item.width) || 0,
+	})).filter(item => item.text.trim() && item.size > 0);
+	const sizes = [...new Set(rows.map(item => Math.round(item.size * 2) / 2))].sort((a, b) => b - a);
+	for (const size of sizes.slice(0, 4)) {
+		let text = "";
+		let previous = null;
+		for (const item of rows) {
+			if (Math.abs(item.size - size) > 0.5) continue;
+			const sameLine = previous && Math.abs(item.y - previous.y) < size * 0.5;
+			const gap = sameLine ? item.x - (previous.x + previous.width) : Infinity;
+			text += !previous ? item.text : gap > size * 0.15 ? ` ${item.text}` : item.text;
+			previous = item;
+		}
+		text = text.replace(/\s+/g, " ").trim();
+		if (text.length >= 12 && text.length <= 300 && paperIntakeWords(text).size >= 3) return text;
+	}
+	return "";
+}
+
+function collectPaperIntakeFileHints(input = {}) {
+	const info = input.info || {};
+	const hints = [];
+	const seen = new Set();
+	const push = hint => {
+		const key = paperIntakeRowKey(hint);
+		if (!key || seen.has(key)) return;
+		seen.add(key);
+		hints.push(hint);
+	};
+	const dois = text => [...String(text || "").matchAll(PAPER_INTAKE_DOI_IN_TEXT)].map(match => normalizePaperIntakeDoi(match[1])).filter(Boolean);
+	for (const doi of dois([info.doi, info.subject, info.keywords, info.xmp].filter(Boolean).join(" ")).slice(0, 1)) push({ kind: "doi", doi });
+	for (const doi of dois(input.head).slice(0, 2)) push({ kind: "doi", doi });
+	const arxiv = String(input.head || "").match(/arXiv:\s*([0-9]{4}\.[0-9]{4,5})(?:v\d+)?/i);
+	if (arxiv) push({ kind: "arxiv", arxivId: normalizePaperIntakeArxivId(arxiv[1]) });
+	if (isPaperIntakeInfoTitle(info.title)) push({ kind: "title", title: String(info.title).replace(/\s+/g, " ").trim() });
+	if (input.titleLine) push({ kind: "title", title: input.titleLine });
+	return hints.slice(0, 4);
+}
+
+function isRectoFileDrag(event) {
+	const types = event && event.dataTransfer && event.dataTransfer.types;
+	return !!types && [...types].includes("Files");
+}
+
+// 拖入结果一句话：加入几篇到哪个分类，另有几篇已在库中、几篇待补、几个不是 PDF。
+function describePaperIntakeDropReport(report, target) {
+	const parts = [];
+	if (report.added.length) parts.push(rectoUiText("paperIntake.dropAdded", { count: report.added.length, target }));
+	if (report.duplicates.length) parts.push(rectoUiText("paperIntake.dropDuplicates", { count: report.duplicates.length }));
+	if (report.waiting.length) parts.push(rectoUiText("paperIntake.dropWaiting", { count: report.waiting.length }));
+	if ((report.notPdf || []).length) parts.push(rectoUiText("paperIntake.dropNotPdf", { count: report.notPdf.length }));
+	return parts.join(rectoUiText("paperIntake.dropJoin")) || rectoUiText("paperIntake.dropNothing");
+}
+
+// 同一个文件（字节相同）已经在库里：Zotero 导入与本地论文入库都记了 zoteroPdfContentHash。
+function findPaperIntakeFileDuplicate(folderMap, contentHash) {
+	if (!contentHash) return "";
+	for (const [recordId, info] of Object.entries(folderMap || {})) {
+		if (!info || !info.stem || info.zoteroSyncState === "orphaned") continue;
+		if (info.zoteroPdfContentHash === contentHash || info.contentHash === contentHash) return recordId;
+	}
+	return "";
+}
+
+// 认不出时待补条目与「按文件加入」用的题名：第 1 页大字 → PDF 自带题名 → 文件名。
+function guessPaperIntakeFileTitle(input = {}) {
+	if (input.titleLine) return input.titleLine;
+	if (isPaperIntakeInfoTitle(input.info && input.info.title)) return String(input.info.title).replace(/\s+/g, " ").trim();
+	return String(input.fileName || "").replace(/\.pdf$/i, "").replace(/[_]+/g, " ").trim() || "PDF";
+}
+
+function resolvePaperIntakeReason(attempts, context = {}) {
+	if (!context.hasDoi && !context.hadCandidates) return "title_unresolved";
+	if (!context.hadCandidates) return context.isOa ? "no_candidates" : "no_oa_version";
+	const seen = new Set((attempts || []).map(attempt => attempt.result));
+	return PAPER_INTAKE_REASONS.find(reason => seen.has(reason)) || "no_candidates";
+}
+
+function splitPaperIntakePersonName(name) {
+	const text = String(name || "").replace(/\s+/g, " ").trim();
+	if (!text) return null;
+	if (text.includes(",")) {
+		const [lastName, firstName] = text.split(",").map(part => part.trim());
+		return { creatorType: "author", firstName: firstName || "", lastName };
+	}
+	if (/[一-鿿]/.test(text) && !/\s/.test(text)) return { creatorType: "author", firstName: "", lastName: text };
+	const parts = text.split(" ");
+	const lastName = parts.pop();
+	return { creatorType: "author", firstName: parts.join(" "), lastName };
+}
+
+function formatPaperIntakeDateParts(parts) {
+	const values = Array.isArray(parts) ? parts.filter(value => Number.isFinite(Number(value))) : [];
+	if (!values.length) return "";
+	return values.slice(0, 3).map((value, index) => index === 0 ? String(value) : String(value).padStart(2, "0")).join("-");
+}
+
+// 产出与 Zotero 父条目同形的元数据（itemType / fields / creators），Hub、papers.jsonl、引用格式
+// 都不必区分来源；`source=local` 只决定同步与重新导入怎么走（TASKS.md 数据契约 T100 修订）。
+function buildPaperIntakeMetadata(input = {}) {
+	const crossref = input.crossref && typeof input.crossref === "object" ? input.crossref : null;
+	const openalex = input.openalex && typeof input.openalex === "object" ? input.openalex : null;
+	const arxiv = input.arxiv && typeof input.arxiv === "object" ? input.arxiv : null;
+	const row = input.row || {};
+	const fields = {};
+	let itemType = "journalArticle";
+	let creators = [];
+	let origin = "input";
+	if (crossref && (crossref.title || []).length) {
+		origin = "crossref";
+		itemType = PAPER_INTAKE_CROSSREF_TYPES[crossref.type] || "journalArticle";
+		fields.title = decodePaperIntakeXmlText(crossref.title[0]);
+		const venue = decodePaperIntakeXmlText((crossref["container-title"] || [])[0] || "");
+		if (venue) fields[itemType === "conferencePaper" ? "proceedingsTitle" : itemType === "bookSection" ? "bookTitle" : "publicationTitle"] = venue;
+		const date = formatPaperIntakeDateParts(((crossref.published || crossref.issued || {})["date-parts"] || [])[0]);
+		if (date) fields.date = date;
+		for (const [from, to] of [["volume", "volume"], ["issue", "issue"], ["page", "pages"]]) {
+			if (crossref[from]) fields[to] = String(crossref[from]);
+		}
+		creators = (crossref.author || []).map(author => author && (author.family || author.name) ? {
+			creatorType: "author", firstName: String(author.given || ""), lastName: String(author.family || author.name || ""),
+		} : null).filter(Boolean);
+	} else if (openalex && (openalex.title || openalex.display_name)) {
+		origin = "openalex";
+		itemType = openalex.type === "preprint" ? "preprint" : "journalArticle";
+		fields.title = String(openalex.title || openalex.display_name);
+		const venue = openalex.primary_location && openalex.primary_location.source && openalex.primary_location.source.display_name;
+		if (venue) fields[itemType === "preprint" ? "repository" : "publicationTitle"] = String(venue);
+		if (openalex.publication_date || openalex.publication_year) fields.date = String(openalex.publication_date || openalex.publication_year);
+		creators = (openalex.authorships || []).map(item => splitPaperIntakePersonName(item && item.author && item.author.display_name)).filter(Boolean);
+	} else if (arxiv && arxiv.title) {
+		origin = "arxiv";
+		itemType = "preprint";
+		fields.title = arxiv.title;
+		fields.repository = "arXiv";
+		if (arxiv.published) fields.date = String(arxiv.published).slice(0, 10);
+		creators = (arxiv.authors || []).map(splitPaperIntakePersonName).filter(Boolean);
+	}
+	if (!fields.title && row.title) fields.title = String(row.title);
+	if (!fields.title) return null;
+	const doi = normalizePaperIntakeDoi(input.doi || row.doi || (crossref && crossref.DOI) || (openalex && openalex.doi));
+	const arxivId = row.arxivId || input.arxivId || (arxiv && arxiv.id) || "";
+	if (doi && !doi.startsWith("10.48550/")) fields.DOI = doi;
+	fields.url = fields.DOI ? `https://doi.org/${fields.DOI}` : arxivId ? `https://arxiv.org/abs/${arxivId}` : "";
+	if (arxivId && itemType === "preprint") fields.archiveID = `arXiv:${arxivId}`;
+	return { metadata: normalizeZoteroItemMetadata({ itemType, fields, creators }), origin };
+}
+
+function createPaperIntakeRecordId(row, randomHex) {
+	const seed = paperIntakeRowKey(row) || String(row && row.raw || "");
+	const suffix = String(randomHex || "").replace(/[^a-f0-9]/gi, "").slice(0, 8);
+	return `local-${documentContentHash(seed).slice(0, 12)}${suffix ? `-${suffix}` : ""}`;
+}
+
+function isLocalPaperRecord(info, recordId = "") {
+	return !!(info && info.source === "local") || String(recordId || "").startsWith("local-");
+}
+
+function normalizePaperIntakeCollectionParts(value) {
+	return (Array.isArray(value) ? value : [])
+		.map(path => (Array.isArray(path) ? path : splitZoteroCollectionPath(String(path || "")))
+			.map(part => String(part || "").trim()).filter(Boolean))
+		.filter(path => path.length);
+}
+
+// 本地论文走与 Zotero 导入同一个建档核（commitZoteroImportTasks）：同形字段 + source=local。
+function buildLocalPaperImportTask(input = {}) {
+	const metadata = normalizeZoteroItemMetadata(input.metadata) || { itemType: "journalArticle", fields: {}, creators: [], tags: [] };
+	const title = getZoteroMetadataField(metadata, "title") || String(input.title || "");
+	const parts = normalizePaperIntakeCollectionParts(input.collectionParts);
+	const fileName = String(input.fileName || "paper.pdf");
+	const task = {
+		recordId: input.recordId,
+		folder: input.recordId,
+		path: input.path,
+		name: fileName,
+		sourceFileName: fileName,
+		source: "local",
+		zoteroTitle: title,
+		year: extractYearFromDateText(getZoteroMetadataField(metadata, "date")),
+		authors: getZoteroMetadataAuthors(metadata),
+		venue: getZoteroMetadataVenue(metadata),
+		zoteroMetadata: metadata,
+		zoteroCollections: parts.map(path => path[path.length - 1]),
+		zoteroCollectionPaths: parts.map(path => path.join(" / ")),
+		zoteroCollectionPathParts: parts,
+		...(input.contentHash ? { contentHash: input.contentHash } : {}),
+	};
+	return { ...task, ...normalizeZoteroCollectionFields(task) };
+}
+
+function findPaperIntakeDuplicate(folderMap, row, metadata) {
+	const doi = normalizePaperIntakeDoi((metadata && getZoteroMetadataField(metadata, "DOI")) || row && row.doi);
+	const titleKey = paperIntakeTitleKey((metadata && getZoteroMetadataField(metadata, "title")) || row && row.title);
+	for (const [recordId, info] of Object.entries(folderMap || {})) {
+		if (!info || !info.stem || info.zoteroSyncState === "orphaned") continue;
+		const existingDoi = normalizePaperIntakeDoi(getZoteroMetadataField(normalizeZoteroItemMetadata(info.zoteroMetadata), "DOI"));
+		if (doi && existingDoi && doi === existingDoi) return recordId;
+		if (titleKey && titleKey.split(" ").length >= 4 && paperIntakeTitleKey(info.zoteroTitle) === titleKey) return recordId;
+	}
+	return "";
+}
+
+// 收件箱只看开头：题名与 DOI 都在首页附近。整 6 页的词袋会让「Deep reinforcement learning for power
+// system: An overview」这种通用题名在任何一篇相关论文里都凑齐全部词（T100 真机实测误配）。
+function fingerprintPaperIntakePdfText(text) {
+	const value = String(text || "");
+	const head = value.slice(0, 6000);
+	const dois = new Set();
+	for (const match of value.slice(0, 20000).matchAll(PAPER_INTAKE_DOI_IN_TEXT)) {
+		const doi = normalizePaperIntakeDoi(match[1]);
+		if (doi) dois.add(doi);
+	}
+	return { words: paperIntakeWords(head), key: ` ${paperIntakeTitleKey(head)} `, dois };
+}
+
+// 收件箱配对：正文 DOI 命中 2 分 > 开头出现完整题名 1.5 分 > 开头题名词覆盖率；一个文件或一篇论文
+// 出现多个同分候选时不猜，交给用户确认。
+function matchPaperIntakeInbox(pending, files) {
+	const scores = [];
+	(pending || []).forEach((item, pendingIndex) => {
+		const doi = normalizePaperIntakeDoi(item && item.doi);
+		const expected = paperIntakeWords(item && item.title);
+		(files || []).forEach((file, fileIndex) => {
+			if (!file || !file.words) return;
+			let score = 0;
+			const titleKey = paperIntakeTitleKey(item && item.title);
+			if (doi && file.dois && file.dois.has(doi)) score = 2;
+			else if (titleKey.split(" ").length >= 4 && file.key && file.key.includes(` ${titleKey} `)) score = 1.5;
+			else if (expected.size) {
+				let hit = 0;
+				for (const word of expected) if (file.words.has(word)) hit++;
+				score = hit / expected.size;
+			}
+			if (score >= 0.9) scores.push({ pendingIndex, fileIndex, score });
+		});
+	});
+	const matches = [];
+	const review = [];
+	(pending || []).forEach((item, pendingIndex) => {
+		const hits = scores.filter(entry => entry.pendingIndex === pendingIndex).sort((a, b) => b.score - a.score);
+		if (!hits.length) return;
+		const top = hits.filter(entry => entry.score === hits[0].score);
+		const contested = scores.some(entry => entry.fileIndex === top[0].fileIndex && entry.pendingIndex !== pendingIndex
+			&& entry.score >= top[0].score);
+		if (top.length > 1 || contested) review.push({ pendingIndex, fileIndexes: top.map(entry => entry.fileIndex) });
+		else matches.push({ pendingIndex, fileIndex: top[0].fileIndex, score: top[0].score });
+	});
+	return { matches, review };
+}
+
+// T100-R：「在浏览器中取件」的任务号。Recto 打开 <链接>#recto-intake=<任务号>，浏览器扩展把 PDF 存成
+// 下载目录/Recto/recto-<任务号>.pdf；收件箱按文件名直接对应到这一篇（仍要过前两页核验）。
+const PAPER_INTAKE_BROWSER_BATCH = 10;
+const PAPER_INTAKE_BROWSER_GAP_MS = 6000;
+// 浏览器自动去重会写成「recto-xxx (1).pdf」，同样认；.json 是扩展从出版商页面读到的摘要与关键词。
+const PAPER_INTAKE_BROWSER_FILE = /^recto-([a-f0-9]{12})(?: \(\d+\))?\.(pdf|json)$/i;
+const PAPER_INTAKE_NO_FILE_HINT_MS = 5 * 60 * 1000;
+// T125：已配置的中转文件夹取件 15 秒仍没收到本批文件，就顺带去候选位置找（用户可能换了浏览器或改了下载位置）。
+// 只有别处真出现本批任务号文件才改，提早找不会认错，只多读两三个目录。
+const PAPER_INTAKE_REDETECT_MS = 15 * 1000;
+const PAPER_INTAKE_SYSTEM_FILES = Object.freeze([".ds_store", "thumbs.db", "desktop.ini"]);
+const PAPER_INTAKE_ABSTRACT_MIN = 80;
+const PAPER_INTAKE_ABSTRACT_MAX = 12000;
+const PAPER_INTAKE_PAGE_META_MAX_BYTES = 256 * 1024;
+// 摘要来源优先级：出版商页面（扩展读取）> Crossref > arXiv > Semantic Scholar > OpenAlex 重建。
+const PAPER_INTAKE_ABSTRACT_SOURCES = Object.freeze(["page", "crossref", "arxiv", "semantic_scholar", "openalex"]);
+
+// T100-S：任务号 = 论文身份 + 待补条目自己的随机数。同一篇删掉后再添加会得到新任务号，
+// 收件箱里旧请求留下的文件就不会被当成新请求的结果；没有随机数的旧条目沿用 T100-R 的算法。
+function paperIntakeBrowserToken(id, nonce = "") {
+	return documentContentHash(`browser:${String(id || "")}${nonce ? `:${nonce}` : ""}`).slice(0, 12);
+}
+
+// 「指定程序」的合法形态：可执行文件（Windows / Linux），或 macOS 的 .app 应用包（是文件夹）。
+function describePaperIntakeBrowserProgram(program, platform = process.platform) {
+	const value = String(program || "").trim();
+	if (!value) return "";
+	try {
+		const stat = fs.statSync(value);
+		if (platform === "darwin" && /\.app\/?$/i.test(value) && stat.isDirectory()) return "app";
+		return stat.isFile() ? "file" : "";
+	} catch { return ""; }
+}
+
+function parsePaperIntakeBrowserFile(name) {
+	const match = String(name || "").match(PAPER_INTAKE_BROWSER_FILE);
+	return match ? { token: match[1].toLowerCase(), ext: match[2].toLowerCase() } : null;
+}
+
+function decodePaperIntakeEntities(value) {
+	return String(value || "")
+		.replace(/&#x([0-9a-f]+);/gi, (_, hex) => { const code = parseInt(hex, 16); return code > 0 && code < 0x110000 ? String.fromCodePoint(code) : " "; })
+		.replace(/&#(\d+);/g, (_, dec) => { const code = Number(dec); return code > 0 && code < 0x110000 ? String.fromCodePoint(code) : " "; })
+		.replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&");
+}
+
+// 摘要清洗：去掉 JATS/HTML 标签与开头的「Abstract」字样，保留段落；太短、太长或只有版权声明的一律不要。
+function cleanPaperIntakeAbstract(value) {
+	let text = String(value || "");
+	if (!text.trim()) return "";
+	text = text.replace(/<(jats:)?title\b[^>]*>[\s\S]*?<\/(jats:)?title>/gi, " ")
+		.replace(/<\/?(jats:)?(p|sec)\b[^>]*>/gi, "\n").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " ");
+	text = decodePaperIntakeEntities(text);
+	const paragraphs = text.split(/\n+/).map(line => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+	text = paragraphs.join("\n\n").replace(/^(abstract|summary|摘要)\s*[:：.—–-]?\s*/i, "").trim();
+	if (text.length < PAPER_INTAKE_ABSTRACT_MIN || text.length > PAPER_INTAKE_ABSTRACT_MAX) return "";
+	if (/^(©|\(c\)|copyright)/i.test(text) && text.length < 400) return "";
+	return text;
+}
+
+function rebuildOpenAlexAbstract(index) {
+	if (!index || typeof index !== "object" || Array.isArray(index)) return "";
+	const words = [];
+	let count = 0;
+	for (const [word, positions] of Object.entries(index)) {
+		if (!Array.isArray(positions)) return "";
+		for (const position of positions) {
+			if (!Number.isInteger(position) || position < 0 || position > 5000) return "";
+			words[position] = word;
+			if (++count > 5000) return "";
+		}
+	}
+	// 稀疏数组的 some() 会跳过空位，必须逐位检查：有空位说明索引不完整，宁可不要。
+	for (let index = 0; index < words.length; index++) if (words[index] === undefined) return "";
+	return words.join(" ");
+}
+
+function cleanPaperIntakeKeywords(value) {
+	const raw = (Array.isArray(value) ? value : [value]).flatMap(item => String(item || "").split(/[;,；，]/));
+	const seen = new Set();
+	const out = [];
+	for (const item of raw) {
+		const name = decodePaperIntakeEntities(String(item || "")).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+		const key = name.toLowerCase();
+		if (name.length < 2 || name.length > 80 || /^\d+$/.test(name) || seen.has(key)) continue;
+		seen.add(key);
+		out.push(name);
+		if (out.length >= 20) break;
+	}
+	return out;
+}
+
+// 只补缺：已有摘要（如 Agent 给的已核实元数据）不被覆盖；页面摘要（force）优先于数据库来源。
+function applyPaperIntakeFieldEnrichment(metadata, enrichment = {}, sources = {}) {
+	const base = normalizeZoteroItemMetadata(metadata);
+	if (!base) return { metadata: base, sources: { ...sources } };
+	const fields = { ...base.fields };
+	const nextSources = { ...sources };
+	const abstract = (enrichment.abstracts || []).map(item => ({ source: item.source, text: cleanPaperIntakeAbstract(item.text) }))
+		.filter(item => item.text && PAPER_INTAKE_ABSTRACT_SOURCES.includes(item.source))
+		.sort((a, b) => PAPER_INTAKE_ABSTRACT_SOURCES.indexOf(a.source) - PAPER_INTAKE_ABSTRACT_SOURCES.indexOf(b.source))[0];
+	if (abstract && (!fields[ZOTERO_ABSTRACT_FIELD] || (abstract.source === "page" && nextSources[ZOTERO_ABSTRACT_FIELD] && nextSources[ZOTERO_ABSTRACT_FIELD] !== "input"))) {
+		fields[ZOTERO_ABSTRACT_FIELD] = abstract.text;
+		nextSources[ZOTERO_ABSTRACT_FIELD] = abstract.source;
+	} else if (fields[ZOTERO_ABSTRACT_FIELD] && !nextSources[ZOTERO_ABSTRACT_FIELD]) {
+		nextSources[ZOTERO_ABSTRACT_FIELD] = "input";
+	}
+	const tags = [...base.tags];
+	const keywords = cleanPaperIntakeKeywords(enrichment.keywords || []);
+	for (const name of keywords) {
+		if (!tags.some(tag => tag.name.toLowerCase() === name.toLowerCase())) tags.push({ name, type: "automatic" });
+	}
+	if (keywords.length) nextSources.tags = "page";
+	return { metadata: normalizeZoteroItemMetadata({ ...base, fields, tags }), sources: nextSources };
+}
+
+// 扩展写的页面元数据只当数据读：限定字段与类型，长度在清洗时再卡一次。
+function parsePaperIntakePageMetadata(text) {
+	let data;
+	try { data = JSON.parse(String(text || "")); } catch { return null; }
+	if (!data || typeof data !== "object" || Array.isArray(data) || data.version !== 1) return null;
+	const abstract = typeof data.abstract === "string" ? data.abstract.slice(0, 20000) : "";
+	const keywords = Array.isArray(data.keywords) ? data.keywords.filter(item => typeof item === "string").slice(0, 40) : [];
+	// T128：扩展顺带读到的论文身份（题名、DOI、作者），供只有论文页链接的待补认出是哪篇。
+	const title = typeof data.title === "string" ? data.title.replace(/\s+/g, " ").trim().slice(0, 500) : "";
+	const doi = typeof data.doi === "string" ? normalizePaperIntakeDoi(data.doi) : "";
+	const authors = Array.isArray(data.authors) ? data.authors.filter(item => typeof item === "string" && item.trim()).map(item => item.trim().slice(0, 120)).slice(0, 50) : [];
+	if (!abstract && !keywords.length && !title && !doi) return null;
+	return { abstract, keywords, title, doi, authors };
+}
+
+// T128 起「只有论文页链接」的待补也交给扩展：它从页面读题名、DOI、作者，收件时据此认出是哪篇再核对 PDF。
+function buildPaperIntakeBrowserUrl(item) {
+	if (!item || item.localFile) return "";
+	const token = paperIntakeBrowserToken(item.id, item.browserNonce);
+	const doi = normalizePaperIntakeDoi(item.doi);
+	let base = doi && !doi.startsWith("10.48550/") ? `https://doi.org/${doi}`
+		: item.arxivId ? `https://arxiv.org/abs/${item.arxivId}` : (item.links || []).find(link => /^https?:\/\//i.test(link)) || "";
+	if (!base) return "";
+	return `${base}${base.includes("#") ? "&" : "#"}recto-intake=${token}`;
+}
+
+function paperIntakeTokenFromFileName(name) {
+	const parsed = parsePaperIntakeBrowserFile(name);
+	return parsed && parsed.ext === "pdf" ? parsed.token : "";
+}
+
+// ═══ T101：同时加入 Zotero 与 Recto ═══════════════════════════════════════════════
+// 先写 Zotero（父条目 + 存储附件 + Extra 速记块），再用 Recto 原有的 Zotero 导入把它建成**普通 Zotero 论文**
+// （recordId = 附件 key、没有 source=local），以后同步照常认领。写入走 Zotero 10 本地 API，需用户在 Zotero 里授权一次。
+const ZOTERO_INTAKE_APP_NAME = "Recto";
+// /api/itemTypeFields 不可用时的回退字段表（Zotero 7/10 schema 中这些类型的常用字段）；不在表里的字段不写，
+// DOI 退到 Extra 的「DOI: …」行（Zotero 自己的约定）。
+const ZOTERO_INTAKE_COMMON_FIELDS = ["title", "abstractNote", "date", "language", "shortTitle", "url", "accessDate", "archive",
+	"archiveLocation", "libraryCatalog", "callNumber", "rights", "extra"];
+const ZOTERO_INTAKE_FIELD_FALLBACK = Object.freeze({
+	journalArticle: [...ZOTERO_INTAKE_COMMON_FIELDS, "publicationTitle", "volume", "issue", "pages", "series", "seriesTitle", "seriesText", "journalAbbreviation", "DOI", "ISSN"],
+	conferencePaper: [...ZOTERO_INTAKE_COMMON_FIELDS, "proceedingsTitle", "conferenceName", "place", "publisher", "volume", "pages", "series", "DOI", "ISBN"],
+	preprint: [...ZOTERO_INTAKE_COMMON_FIELDS, "genre", "repository", "archiveID", "place", "series", "seriesNumber", "DOI"],
+	bookSection: [...ZOTERO_INTAKE_COMMON_FIELDS, "bookTitle", "series", "seriesNumber", "volume", "edition", "place", "publisher", "pages", "ISBN"],
+	book: [...ZOTERO_INTAKE_COMMON_FIELDS, "series", "seriesNumber", "volume", "edition", "place", "publisher", "numPages", "ISBN"],
+	report: [...ZOTERO_INTAKE_COMMON_FIELDS, "reportNumber", "reportType", "seriesTitle", "place", "institution", "pages"],
+	thesis: [...ZOTERO_INTAKE_COMMON_FIELDS, "thesisType", "university", "place", "numPages"],
+});
+
+function buildZoteroIntakeItem(metadata, options = {}) {
+	const meta = normalizeZoteroItemMetadata(metadata) || { itemType: "journalArticle", fields: {}, creators: [], tags: [] };
+	const itemType = ZOTERO_INTAKE_FIELD_FALLBACK[meta.itemType] || (options.validFields && options.validFields.length) ? (meta.itemType || "journalArticle") : "journalArticle";
+	const allowed = new Set(options.validFields && options.validFields.length ? options.validFields : ZOTERO_INTAKE_FIELD_FALLBACK[itemType]);
+	const item = {
+		itemType,
+		creators: meta.creators.map(creator => creator.lastName || creator.firstName
+			? { creatorType: creator.creatorType || "author", firstName: creator.firstName || "", lastName: creator.lastName || "" }
+			: { creatorType: creator.creatorType || "author", name: creator.name }),
+		tags: meta.tags.map(tag => ({ tag: tag.name, type: tag.type === "automatic" ? 1 : 0 })),
+		collections: (options.collectionKeys || []).filter(Boolean),
+		relations: {},
+	};
+	const extra = [];
+	for (const [name, value] of Object.entries(meta.fields)) {
+		if (name === "extra") continue;
+		if (allowed.has(name)) item[name] = value;
+		else if (name === "DOI") extra.push(`DOI: ${value}`);
+	}
+	const note = String(options.quickNote || "").replace(/\r\n?/g, "\n").trim();
+	if (note && !note.includes("[Recto Quick Note v1]") && !note.includes("[/Recto Quick Note]")) {
+		extra.push(`[Recto Quick Note v1]\n${note}\n[/Recto Quick Note]`);
+	}
+	if (extra.length) item.extra = extra.join("\n");
+	return item;
+}
+
+// 分类路径 → 已有的最深一层 key 与还缺的那几层（按顺序新建）。名称精确匹配，同名不同父的分类不会认错。
+function resolveZoteroIntakeCollection(collections, parts) {
+	const list = (collections || []).map(item => item && item.data ? { key: item.key || item.data.key, name: item.data.name, parent: item.data.parentCollection || false } : null).filter(Boolean);
+	let parent = false;
+	let depth = 0;
+	for (; depth < (parts || []).length; depth++) {
+		const found = list.find(item => item.name === parts[depth] && (item.parent || false) === parent);
+		if (!found) break;
+		parent = found.key;
+	}
+	return { key: parent || "", missing: (parts || []).slice(depth) };
+}
+
+function findZoteroIntakeDuplicate(items, target = {}) {
+	const doi = normalizePaperIntakeDoi(target.doi);
+	const titleKey = paperIntakeTitleKey(target.title);
+	for (const item of items || []) {
+		const data = item && item.data;
+		if (!data || ["attachment", "note", "annotation"].includes(data.itemType) || data.deleted) continue;
+		const itemDoi = normalizePaperIntakeDoi(data.DOI) || normalizePaperIntakeDoi((String(data.extra || "").match(/^DOI:\s*(\S+)/im) || [])[1]);
+		if (doi && itemDoi && doi === itemDoi) return item;
+		if (!doi && titleKey && titleKey.split(" ").length >= 4 && paperIntakeTitleKey(data.title) === titleKey) return item;
+	}
+	return null;
+}
+
+// ═══ T102：Agent 入库协议（文件交接）═══════════════════════════════════════════════
+// Agent 往 <论文库>/_recto-intake/ 写 *.request.json，Recto 处理后在旁边写 *.result.json，并维护只读的 context.json
+// （分类、已入库论文的 DOI/题名、待补队列、协议版本）。不开端口；文件里不含任何账号、令牌或 data.json 内容。
+// ===== BEGIN RECTO COMPANIONS (generated by tools/embed-companions.js from tools/recto-paper-intake-skill and tools/recto-browser-extension; do not edit by hand) =====
+const RECTO_COMPANIONS = {
+	"recto-paper-intake": {
+		"references/protocol.md": "# Recto intake protocol v1\n\nFolder: `<vault>/<paper library>/_recto-intake/` (exists only when the user enabled \u300cAI \u52a9\u624b\u5165\u5e93\u300d in Recto settings).\n\n| File | Written by | Purpose |\n|---|---|---|\n| `context.json` | Recto | Read-only snapshot for agents |\n| `<id>.request.json` | Agent | One batch of papers to add |\n| `<id>.result.json` | Recto | Outcome of that request; its presence means \"processed\" |\n\nRecto processes every `*.request.json` that has no matching `*.result.json`, one at a time. To resubmit, use a new `<id>`.\n\n## context.json\n\n```json\n{\n  \"schema\": \"recto-intake-context\", \"version\": 1,\n  \"request_schema\": \"recto-intake-request\", \"request_version\": 1, \"max_items_per_request\": 50,\n  \"zotero_available\": true,\n  \"skill_version\": 2, \"skill_path\": \"\u2026/.obsidian/plugins/recto/companions/recto-paper-intake\",\n  \"extension_path\": \"\u2026/.obsidian/plugins/recto/companions/recto-browser-extension\",\n  \"collections\": [\"\u673a\u5668\u5b66\u4e60 / \u7535\u529b\u7cfb\u7edf\"],\n  \"papers\": [{ \"record_id\": \"TY5CZAYE\", \"title\": \"\u2026\", \"doi\": \"10.3390/su16177498\", \"source\": \"zotero\" }],\n  \"pending\": [{ \"id\": \"10.1109/\u2026\", \"title\": \"\u2026\", \"doi\": \"10.1109/\u2026\", \"reason\": \"bot_check\", \"browser_url\": \"https://doi.org/\u2026#recto-intake=\u2026\" }],\n  \"updated_at\": \"2026-11-16T12:00:00.000Z\"\n}\n```\n\n## Request\n\n```json\n{\n  \"schema\": \"recto-intake-request\",\n  \"version\": 1,\n  \"id\": \"opf-batch-01\",\n  \"destination\": \"local\",\n  \"collection\": \"\u673a\u5668\u5b66\u4e60 / \u7535\u529b\u7cfb\u7edf\",\n  \"fetch_in_browser\": false,\n  \"items\": [\n    {\n      \"doi\": \"10.1109/TSG.2022.3154718\",\n      \"title\": \"Reinforcement Learning for Selective Key Applications in Power Systems: Recent Advances and Future Challenges\",\n      \"creators\": [{ \"firstName\": \"Xin\", \"lastName\": \"Chen\" }],\n      \"quick_note\": \"RL-01\\n\u7efc\u8ff0\u7535\u529b\u7cfb\u7edf\u4e2d\u5f3a\u5316\u5b66\u4e60\u7684\u5173\u952e\u5e94\u7528\u4e0e\u6311\u6218\u3002\\n\u8bfb\u6cd5\uff1a\u5148\u770b\u5206\u7c7b\u6846\u67b6\uff0c\u518d\u6311\u611f\u5174\u8da3\u7684\u5e94\u7528\u7ae0\u8282\u3002\"\n    },\n    { \"arxiv_id\": \"2104.12225\" },\n    {\n      \"title\": \"Paper the agent downloaded itself\",\n      \"creators\": [{ \"firstName\": \"Jane\", \"lastName\": \"Smith\" }],\n      \"pdf_path\": \"C:/Users/me/Downloads/paper.pdf\"\n    }\n  ]\n}\n```\n\nFields per item (at least one of `doi`, `arxiv_id`, `title`):\n\n| Field | Notes |\n|---|---|\n| `doi` | Bare DOI or `https://doi.org/\u2026` |\n| `arxiv_id` | e.g. `2104.12225` |\n| `title` | Used for matching and the PDF identity check |\n| `creators` | `[{firstName, lastName}]` or `[{name}]`; strongly recommended |\n| `metadata` | Optional, Zotero-shaped `{itemType, fields, creators, tags}`; only when verified and complete \u2014 otherwise Recto fills from Crossref/OpenAlex |\n| `quick_note` | Optional, \u2264 4000 chars, plain text |\n| `collection` | Optional, overrides the request-level collection; levels separated by ` / ` |\n| `pdf_path` | Optional absolute path to a PDF you downloaded; requires `title` + `creators`; Recto verifies the first two pages and copies it (your file is not moved) |\n\nRequest-level: `destination` = `local` (Recto only) or `zotero` (Recto + Zotero; requires `context.zotero_available`), `fetch_in_browser` = open waiting papers in the user's browser for the Recto extension.\n\n## Result\n\n```json\n{\n  \"schema\": \"recto-intake-result\", \"version\": 1, \"request_id\": \"opf-batch-01\",\n  \"status\": \"done\", \"processed_at\": \"\u2026\", \"browser_fetch_opened\": 0, \"pending_total\": 3,\n  \"items\": [\n    { \"index\": 0, \"status\": \"waiting\", \"pending_id\": \"10.1109/tsg.2022.3154718\", \"title\": \"\u2026\", \"reason\": \"bot_check\",\n      \"reason_text\": \"\u7f51\u7ad9\u62e6\u622a\u4e86\u81ea\u52a8\u4e0b\u8f7d\", \"links\": [\"https://doi.org/\u2026\"], \"browser_url\": \"https://doi.org/\u2026#recto-intake=\u2026\" },\n    { \"index\": 1, \"status\": \"added\", \"record_id\": \"local-\u2026\", \"title\": \"DC3: \u2026\", \"zotero\": false },\n    { \"index\": 2, \"status\": \"failed\", \"reason\": \"identity_mismatch\", \"reason_text\": \"\u4e0b\u8f7d\u5230\u7684 PDF \u4e0e\u8fd9\u7bc7\u8bba\u6587\u5bf9\u4e0d\u4e0a\" }\n  ]\n}\n```\n\n`status`: `done` or `rejected` (whole request refused; see `error`: `invalid_json`, `invalid_schema`, `unsupported_version`, `no_items`, `too_many_items`, `zotero_not_configured`, `zotero_not_running`, `too_large`, `unreadable`, `intake_failed`).\n\nItem `status`: `added`, `duplicate` (already in the library; `record_id` given), `waiting` (queued in Recto; see `reason`), `rejected` (invalid item: `invalid_item`, `no_identifier`, `invalid_quick_note`, `invalid_pdf_path`, `metadata_required`), `failed`.\n\nWaiting reasons: `identity_mismatch`, `bot_check`, `access_required`, `title_unresolved`, `no_oa_version`, `not_pdf`, `unreadable`, `rate_limited`, `link_dead`, `server_error`, `network`, `no_candidates`, `zotero_write_failed`.\n",
+		"SKILL.md": "---\nname: recto-paper-intake\ndescription: Add papers to the user's Recto paper library in Obsidian (optionally also Zotero) by DOI, arXiv ID or title, with reading-order quick notes. Use when the user asks to add/import papers into Recto or Obsidian, \"\u6dfb\u52a0\u8bba\u6587\", \"\u8bba\u6587\u5165\u5e93\", \"\u52a0\u5230\u8bba\u6587\u5e93\", \"\u6574\u7406\u901f\u8bb0\", or wants found papers saved with their PDFs. Works through Recto's file hand-off folder; no plugin internals, no network ports.\n---\n\n# Recto paper intake\n\nSkill version: 2\n\nRecto (an Obsidian plugin) does the mechanical work \u2014 finding legal open-access PDFs, verifying them, filing them, queueing the rest for the user's browser. Your job is the judgment: choosing papers, checking metadata, writing quick notes, and reporting honestly.\n\nProtocol details and JSON schemas: [references/protocol.md](references/protocol.md).\n\n## Before you start\n\n1. Find the hand-off folder: `<vault>/<paper library>/_recto-intake/` containing `context.json`. Ask the user for the vault path if you don't know it, then search for `_recto-intake/context.json`.\n   - Missing folder \u2192 the user must turn on **Recto settings \u2192 \u6dfb\u52a0\u8bba\u6587 \u2192 AI \u52a9\u624b\u5165\u5e93**. Tell them; don't create the folder yourself.\n2. Read `context.json`: protocol version (must be `1`), existing papers (`papers[].doi` / `title`), collections, pending papers, whether Zotero is available.\n   - If `context.skill_version` is higher than this file's `Skill version`, Recto has a newer copy of this skill at `context.skill_path`. Replace your installed copy with it (tell the user), then re-read it.\n3. **Never read** `.obsidian/plugins/recto/data.json` or anything else in the plugin folder. It holds account data. `context.json` and `papers.jsonl` in the library are all you need.\n\n## Workflow\n\n1. **Select papers.** Search with your own tools (OpenAlex, Crossref, arXiv, Semantic Scholar\u2026). Skip anything already in `context.json \u2192 papers` (match DOI, else exact title). Present candidates to the user when they asked for a search rather than specific papers.\n2. **Verify identity and metadata.** DOI and title must belong to the same work; prefer the DOI. Give `title` and `creators` when you know them \u2014 Recto uses them to check that a downloaded PDF really is this paper. Give a full `metadata` object only if it is verified (itemType, title, creators); otherwise leave it out and Recto fills metadata from Crossref/OpenAlex.\n3. **Write quick notes** (optional, `quick_note`): three short lines \u2014 `<topic>-<NN>` reading number, what problem and method the paper is about (from the abstract or text you actually read, not guessed), `\u8bfb\u6cd5\uff1a` how to read it. Separate the paper's claims from your reading advice. If you only read the abstract, say so. Never include `[Recto Quick Note v1]` markers.\n4. **Write one request file** per batch (\u2264 50 items) into `_recto-intake/`: write `<id>.request.json.tmp` first, then rename to `<id>.request.json` so Recto never reads a half-written file. `<id>`: letters, digits, `.`, `_`, `-`.\n5. **Optionally wake Recto** by opening `obsidian://recto-intake` (Recto also notices new files by itself within a few seconds while Obsidian is open).\n6. **Wait for `<id>.result.json`** (poll every few seconds, up to ~10 minutes for large batches). Obsidian must be running.\n7. **Report** to the user per item: `added`, `duplicate`, `waiting` (with the reason text and `browser_url`), `rejected` / `failed` (with reason). Say how many were added versus waiting; never call a waiting paper done.\n\n## Papers that end up waiting\n\n`waiting` means no legal open copy could be fetched automatically (paywall, bot check, no OA version). Options, in order:\n\n- Set `\"fetch_in_browser\": true` in the request (or ask the user to click \u300c\u5728\u6d4f\u89c8\u5668\u4e2d\u53d6\u4ef6\u300d in Recto). Recto opens each paper in the user's own browser; with the Recto browser extension installed, the PDF is saved using the user's existing sign-in (institution, employer or personal subscription) and added automatically. If the extension is not installed yet, `context.extension_path` holds its files and README; walk the user through it.\n- Give the user the `browser_url` list to open themselves.\n- If **you** downloaded a PDF legitimately (e.g. from the author's page), pass it as `pdf_path` with verified `title` + `creators`; Recto still checks the first two pages and rejects a mismatch.\n\nNever solve CAPTCHAs, bypass paywalls, use shadow libraries, or substitute a different paper.\n\n## Boundaries\n\n- One request = one batch the user authorized. Searching or discussing is not authorization to add.\n- `destination: \"zotero\"` writes into the user's Zotero too (Zotero must be running; first time the user clicks Allow in Zotero). Use it only when the user asked for Zotero.\n- Do not edit Recto's notes, papers or settings directly; everything goes through request files.\n",
+	},
+	"recto-browser-extension": {
+		"background.js": "// Recto Paper Fetcher \u2014 background service worker (T100-R).\n// Only tabs that Recto opened with \"#recto-intake=<task>\" become jobs; every other tab is ignored.\n// A job follows its tab through redirects, finds the PDF, saves it as Downloads/Recto/recto-<task>.pdf\n// and closes the tab. Logins, CAPTCHAs and blocks are never handled here: the tab stays open for\n// the user, marked with \"!\" on the toolbar icon; reloading the page after fixing it resumes the job.\nimportScripts(\"resolver.js\");\nconst R = self.RectoResolver;\n\nconst MAX_STEPS = 6;\nconst MAX_WAITS = 8;\nconst WAIT_MS = 4000;\nconst SETTLE_MS = 1500;\nconst JOB_TTL_MS = 45 * 60 * 1000;\n\nconst sleep = ms => new Promise(resolve => setTimeout(resolve, ms));\n\nasync function readJobs() {\n\treturn (await chrome.storage.session.get(\"jobs\")).jobs || {};\n}\n\nasync function writeJob(tabId, job) {\n\tconst jobs = await readJobs();\n\tif (job) jobs[tabId] = job;\n\telse delete jobs[tabId];\n\tawait chrome.storage.session.set({ jobs });\n}\n\nasync function badge(tabId, text, title) {\n\ttry {\n\t\tawait chrome.action.setBadgeText({ tabId, text });\n\t\tawait chrome.action.setBadgeBackgroundColor({ tabId, color: text === \"!\" ? \"#b3261e\" : \"#5f6368\" });\n\t\tif (title) await chrome.action.setTitle({ tabId, title });\n\t} catch { /* tab already closed */ }\n}\n\nconst USER_TITLES = {\n\tchallenge: \"Recto: this page needs you (sign-in, verification or a block). Fix it here, then reload the page.\",\n\taccess: \"Recto: no access to the PDF with the current sign-in. Sign in through your institution, then reload.\",\n\t\"no-pdf\": \"Recto: could not find the PDF on this page. Download it yourself into Downloads/Recto, or close the tab.\",\n\t\"not-pdf\": \"Recto: the site returned a web page instead of a PDF. Check the page, then reload.\",\n\t\"page-blocked\": \"Recto: this site is outside the extension's permissions. Download the PDF yourself.\",\n\ttimeout: \"Recto: gave up waiting. Reload the page to try again.\",\n};\n\nasync function handToUser(tabId, job, reason) {\n\tawait writeJob(tabId, { ...job, state: \"user\", reason });\n\tawait badge(tabId, \"!\", USER_TITLES[reason] || USER_TITLES.challenge);\n}\n\nasync function evaluate(tabId) {\n\tlet job = (await readJobs())[tabId];\n\tif (!job || job.state !== \"working\") return;\n\tif (Date.now() - job.startedAt > JOB_TTL_MS) return handToUser(tabId, job, \"timeout\");\n\tawait sleep(SETTLE_MS);\n\tjob = (await readJobs())[tabId];\n\tif (!job || job.state !== \"working\") return;\n\tlet info;\n\ttry {\n\t\tconst [result] = await chrome.scripting.executeScript({ target: { tabId }, func: R.collectPageInfo });\n\t\tinfo = result && result.result;\n\t} catch {\n\t\treturn handToUser(tabId, job, \"page-blocked\");\n\t}\n\t// Keep the best page metadata seen along the way (IEEE: the article page has it, the stamp page does not).\n\tconst merged = R.mergePageMetadata(job.meta, R.buildPageMetadata(info || {}));\n\tif (merged && JSON.stringify(merged) !== JSON.stringify(job.meta)) {\n\t\tjob = { ...job, meta: merged };\n\t\tawait writeJob(tabId, job);\n\t}\n\tconst decision = R.resolvePdfAction(info || {});\n\tif (decision.action === \"wait\") {\n\t\tif (job.waits >= MAX_WAITS) return handToUser(tabId, job, \"challenge\");\n\t\tawait writeJob(tabId, { ...job, waits: job.waits + 1 });\n\t\tawait sleep(WAIT_MS);\n\t\treturn evaluate(tabId);\n\t}\n\tif (decision.action === \"navigate\") {\n\t\tconst plan = R.planNavigate(job, decision.url, info || {}, MAX_STEPS);\n\t\tif (plan.handTo) return handToUser(tabId, job, plan.handTo);\n\t\tawait writeJob(tabId, plan.job);\n\t\tawait chrome.tabs.update(tabId, { url: decision.url });\n\t\treturn;\n\t}\n\tif (decision.action === \"download\") {\n\t\t// Remember whether the page offered institutional access, so a failed download is explained as an access problem.\n\t\tjob = { ...job, accessHint: R.noAccess(info || {}) };\n\t\tawait writeJob(tabId, { ...job, state: \"downloading\" });\n\t\tif (job.meta && !job.metaSaved) {\n\t\t\t// Abstract + keywords go next to the PDF as recto-<task>.json (a data: URL, no network request).\n\t\t\ttry {\n\t\t\t\tconst metaDownloadId = await chrome.downloads.download({\n\t\t\t\t\turl: `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(job.meta))}`,\n\t\t\t\t\tfilename: R.metadataName(job.token), conflictAction: \"overwrite\", saveAs: false,\n\t\t\t\t});\n\t\t\t\tjob = { ...job, metaSaved: true, metaDownloadId };\n\t\t\t\tawait writeJob(tabId, { ...job, state: \"downloading\" });\n\t\t\t} catch { /* metadata is optional */ }\n\t\t}\n\t\ttry {\n\t\t\tconst downloadId = await chrome.downloads.download({\n\t\t\t\turl: decision.url, filename: R.downloadName(job.token), conflictAction: \"overwrite\", saveAs: false,\n\t\t\t});\n\t\t\tawait writeJob(tabId, { ...job, state: \"downloading\", downloadId });\n\t\t} catch {\n\t\t\tawait handToUser(tabId, job, \"not-pdf\");\n\t\t}\n\t\treturn;\n\t}\n\treturn handToUser(tabId, job, decision.reason || \"challenge\");\n}\n\nchrome.webNavigation.onBeforeNavigate.addListener(async details => {\n\tif (details.frameId !== 0) return;\n\tconst token = R.tokenFromUrl(details.url);\n\tif (!token) return;\n\tif (!R.shouldStartJob((await readJobs())[details.tabId], token)) return;\n\tawait writeJob(details.tabId, { token, state: \"working\", steps: 0, waits: 0, tried: [], startedAt: Date.now() });\n\tawait badge(details.tabId, \"\u2026\", \"Recto: looking for the PDF\");\n});\n\nchrome.webNavigation.onCompleted.addListener(async details => {\n\tif (details.frameId !== 0) return;\n\tconst job = (await readJobs())[details.tabId];\n\tif (!job) return;\n\tif (job.state === \"user\") {\n\t\t// The user fixed something (signed in, passed a check) and reloaded: resume, and allow the same jumps again.\n\t\tawait writeJob(details.tabId, { ...job, state: \"working\", waits: 0, steps: 0, tried: [] });\n\t\tawait badge(details.tabId, \"\u2026\", \"Recto: looking for the PDF\");\n\t} else if (job.state !== \"working\") {\n\t\treturn;\n\t}\n\tawait evaluate(details.tabId);\n});\n\nchrome.downloads.onChanged.addListener(async delta => {\n\tif (!delta.state || ![\"complete\", \"interrupted\"].includes(delta.state.current)) return;\n\tconst jobs = await readJobs();\n\t// The metadata file is an internal hand-off: once written, drop it from the browser's download list\n\t// (erase removes the list entry only; Recto moves the file to the Recycle Bin after importing).\n\tif (Object.values(jobs).some(job => job.metaDownloadId === delta.id)) {\n\t\tif (delta.state.current === \"complete\") await chrome.downloads.erase({ id: delta.id }).catch(() => {});\n\t\treturn;\n\t}\n\tconst entry = Object.entries(jobs).find(([, job]) => job.downloadId === delta.id);\n\tif (!entry) return;\n\tconst tabId = Number(entry[0]);\n\tconst job = entry[1];\n\tconst [item] = await chrome.downloads.search({ id: delta.id });\n\tconst isPdf = delta.state.current === \"complete\" && item && /pdf/i.test(item.mime || \"\");\n\tif (isPdf) {\n\t\tawait writeJob(tabId, null);\n\t\tawait chrome.tabs.remove(tabId).catch(() => {});\n\t\tawait scheduleInboxCheck(delta.id, R.folderOf(item.filename));\n\t\treturn;\n\t}\n\t// A login page or block saved under a .pdf name would only confuse Recto's inbox: remove it.\n\tif (delta.state.current === \"complete\") await chrome.downloads.removeFile(delta.id).catch(() => {});\n\tawait handToUser(tabId, { ...job, state: \"working\" }, job.accessHint ? \"access\" : \"not-pdf\");\n});\n\nchrome.tabs.onRemoved.addListener(tabId => { void writeJob(tabId, null); });\n\n// T125: Recto looks for the PDFs in the usual Downloads/Desktop places. When this browser saves somewhere else\n// (D:\\Downloads, OneDrive\u2026), Recto never sees them. A minute after a PDF is saved, check whether Recto has taken\n// it (it removes the file once it is in the library). If it is still there, open inbox.html once, which asks the\n// browser to pass the folder to Obsidian (obsidian://recto-intake?inbox=\u2026). Recto only accepts the folder after\n// finding this fetch's own task file in it. Session storage only: forgotten when the browser closes.\nconst INBOX_CHECK_ALARM = \"recto-inbox-check\";\nconst INBOX_CHECK_DELAY_MIN = 1;\n\nasync function scheduleInboxCheck(downloadId, folder) {\n\tif (!folder) return;\n\tconst { inboxKnown, inboxChecks = [] } = await chrome.storage.session.get([\"inboxKnown\", \"inboxChecks\"]);\n\tif (R.sameFolder(inboxKnown, folder)) return;\n\tawait chrome.storage.session.set({ inboxChecks: [...inboxChecks, { id: downloadId, folder }].slice(-10) });\n\tawait chrome.alarms.create(INBOX_CHECK_ALARM, { delayInMinutes: INBOX_CHECK_DELAY_MIN });\n}\n\nchrome.alarms.onAlarm.addListener(async alarm => {\n\tif (alarm.name !== INBOX_CHECK_ALARM) return;\n\tconst { inboxChecks = [] } = await chrome.storage.session.get(\"inboxChecks\");\n\tawait chrome.storage.session.set({ inboxChecks: [] });\n\tif (!inboxChecks.length) return;\n\t// search() starts the browser's file-existence check; the second search reads its result.\n\tconst ids = inboxChecks.map(check => check.id);\n\tfor (const id of ids) await chrome.downloads.search({ id }).catch(() => []);\n\tawait sleep(2000);\n\tlet taken = \"\";\n\tlet left = \"\";\n\tfor (const check of inboxChecks) {\n\t\tconst [item] = await chrome.downloads.search({ id: check.id }).catch(() => []);\n\t\tif (!item) continue;\n\t\tif (item.exists === false) taken = check.folder;\n\t\telse left = check.folder;\n\t}\n\tif (taken && !left) {\n\t\t// Recto already watches this folder: nothing to report.\n\t\tawait chrome.storage.session.set({ inboxKnown: taken });\n\t\treturn;\n\t}\n\tif (!left) return;\n\tawait chrome.storage.session.set({ inboxKnown: left });\n\tawait chrome.tabs.create({ url: chrome.runtime.getURL(`inbox.html#${encodeURIComponent(left)}`), active: true });\n});\n",
+		"icons/icon-128.png": { base64: "iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAC2ElEQVR42u3YIXLyQBiAYVxdHSeorKtjZkVPwKzB1dXhcJW4HqQOh6tjVW/QE9Th6nD8MBNmEP9AKJDshke8mux+D8kmvRRDT7ebTQDAJgAgAASAABAAAkAACAABIAAEgAAQALfZXYrhJcXwkWL4TjGsM2iZYlhsru09xfAIwPUapxh+Mhn6oWYboA8AXK5+9Q9bF9SqulMBcIHhfxc2/P3GbQMYbDZw1HLDapB/uf5FwcPfNWwawPag9FYdTnLaiM8Uw9MJ65h0YPjr6txy3xSA7Q99Zf5sHNVcx29HAGybNgVgXsgBaXBkHa8dGv7uVfHqAJ4L2pDFkbV8dgzAugb6swHMCtuQQ+/Ky5p3kmnLB9yXEx65k2sDKO116dBZ4GIb2tDXyeWlzgHnXMjqxgCMMvpeMc8BwBqA1poBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUBCAFQCtNc8BwPeNAZhkMvy7FMMyBwCzwgA8HFhLnQ1dVZs6arGXFMPXJcGeA+C5oOEvjqzls8AzzbEG1wZQ91nUdqsam/HaseEv687wXAD3J9yS2hr+qOY6fjsEYNoUgN2h5K3mc7TJtrf1pxPWMenI8H8q0I0B2G/Q8iFp2zDF0P/j9S86AGB4ypp7Gb3b5lC/wNfb/canrtnQ/4+gtDvBqnpF7AFwucbV8zT34c+OfOMA4MwD7vaf9ZHRo2FZ3aHeUwyP567RkG88mwCATQBAAAgAASAABIAAEAACQAAIAAGgrvYPwRFdAEWAxmAAAAAASUVORK5CYII=" },
+		"icons/icon-16.png": { base64: "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAUklEQVR42mM4EGDDQATWxoKVQXLICkLRsCVUbseBAJv/OHAfzIAfOBS4Q+nHBwJsVqHhjyA5mAG4bAiF0quweOvqqAGjBlDdAIqTMsWZiezsDACYVNtUgkhhxwAAAABJRU5ErkJggg==" },
+		"icons/icon-32.png": { base64: "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAkklEQVR42mM4EGDDMJCYYTg5QOZAgI02EZiP2g5gPxBgs/FAgM1/IvGPAwE2hbgcEHMgwGYVEbgPajFIz2ISLEfGfugOkCHRgGSovh9IYlcJ4MdIahejO0CbRAc0QPUhixGKrlAktatGHTDqgFEHjDpg1AGjDhh1wKgDRh0w6Bww4I3SAW+WD4qOyZDsmg3t3jEASKUGxMzM2JMAAAAASUVORK5CYII=" },
+		"icons/icon-48.png": { base64: "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAyUlEQVR42u3ZIQ4CMRCF4TpOwClwuE1G4HBkDJfgBEgOgltXh0POBZA4TsAlICS7yZglLYXdlPzimYqZ+ZqqTjCVUHMCAAAARm3YmMr2gyymBrwGuJjKoyAnU5nnAFamcjSVmJG2uzFfZ2Yqt8Lh+5xTAZvCRntXa/el4fs0KYBY2OTqarXu/G4qy+5JpWb95nJGAcSB85z42gcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqAAwyedu9d/r1S84/mLFxJKPPTEAAL/PExMHGKxqQpPCAAAAAElFTkSuQmCC" },
+		"inbox.html": "<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Recto</title>\n<link rel=\"icon\" type=\"image/png\" href=\"icons/icon-32.png\">\n<style>\n\t/* Same tokens as the Recto panel (styles.css .recto-ui): brand red, 4/8/12/16 gaps, 6/10/14 radii, Lucide icons. */\n\t:root {\n\t\t--rc-brand: #c0503c;\n\t\t--rc-brand-contrast: #ffffff;\n\t\t--rc-bg: #f6f5f2;\n\t\t--rc-surface: #ffffff;\n\t\t--rc-surface-2: #f1f0ec;\n\t\t--rc-border: #e3e1db;\n\t\t--rc-text: #1f1e1c;\n\t\t--rc-muted: #6b6860;\n\t\t--rc-success: #2f7d4f;\n\t\t--rc-gap-1: 4px;\n\t\t--rc-gap-2: 8px;\n\t\t--rc-gap-3: 12px;\n\t\t--rc-gap-4: 16px;\n\t\t--rc-radius-s: 6px;\n\t\t--rc-radius-m: 10px;\n\t\t--rc-radius-l: 14px;\n\t\t--rc-font-ui: \"Inter\", \"Segoe UI\", system-ui, -apple-system, \"PingFang SC\", \"Microsoft YaHei\", sans-serif;\n\t\t--rc-font-mono: ui-monospace, \"Cascadia Mono\", Consolas, monospace;\n\t\tcolor-scheme: light dark;\n\t}\n\t@media (prefers-color-scheme: dark) {\n\t\t:root {\n\t\t\t--rc-brand: #e08a77;\n\t\t\t--rc-brand-contrast: #202020;\n\t\t\t--rc-bg: #1c1c1c;\n\t\t\t--rc-surface: #262626;\n\t\t\t--rc-surface-2: #2f2f2f;\n\t\t\t--rc-border: #3a3a3a;\n\t\t\t--rc-text: #e6e4df;\n\t\t\t--rc-muted: #a19d94;\n\t\t\t--rc-success: #6cc18e;\n\t\t}\n\t}\n\t* { box-sizing: border-box; }\n\tbody { margin: 0; min-height: 100vh; background: var(--rc-bg); color: var(--rc-text); font: 14px/1.6 var(--rc-font-ui); -webkit-font-smoothing: antialiased; }\n\tmain { max-width: 520px; margin: 0 auto; padding: 12vh var(--rc-gap-4) var(--rc-gap-4); }\n\t.card { background: var(--rc-surface); border: 1px solid var(--rc-border); border-radius: var(--rc-radius-l); padding: 28px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05); }\n\t.brand { display: inline-flex; align-items: center; gap: var(--rc-gap-2); font-weight: 650; font-size: 15px; letter-spacing: -0.01em; margin-bottom: 20px; }\n\t.brand svg { width: 18px; height: 18px; color: var(--rc-brand); }\n\th1 { font-size: 18px; font-weight: 650; line-height: 1.4; margin: 0 0 var(--rc-gap-2); }\n\tp { margin: 0; }\n\t.lead { color: var(--rc-muted); margin-bottom: var(--rc-gap-3); }\n\t.path { display: flex; align-items: center; gap: var(--rc-gap-2); padding: 10px var(--rc-gap-3); margin-bottom: 20px; background: var(--rc-surface-2); border-radius: var(--rc-radius-m); font: 13px/1.5 var(--rc-font-mono); word-break: break-all; }\n\t.icon { flex: 0 0 auto; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }\n\t.path .icon { color: var(--rc-muted); }\n\tol { list-style: none; counter-reset: step; margin: 0 0 20px; padding: 0; display: grid; gap: var(--rc-gap-3); }\n\tli { counter-increment: step; display: grid; grid-template-columns: 22px 1fr; gap: var(--rc-gap-3); align-items: start; }\n\tli::before { content: counter(step); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--rc-brand); background: color-mix(in srgb, var(--rc-brand) 12%, transparent); }\n\tli b { font-weight: 600; }\n\t.actions { display: flex; flex-wrap: wrap; gap: var(--rc-gap-2); }\n\tbutton { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-weight: 500; padding: 7px 14px; border-radius: var(--rc-radius-s); border: 1px solid var(--rc-border); background: var(--rc-surface); color: var(--rc-text); cursor: pointer; transition: background-color 0.15s, border-color 0.15s, filter 0.15s; }\n\tbutton:hover { background: var(--rc-surface-2); }\n\tbutton:focus-visible { outline: 2px solid var(--rc-brand); outline-offset: 2px; }\n\tbutton:disabled { opacity: 0.5; cursor: default; filter: none; }\n\tbutton.primary { background: var(--rc-brand); border-color: var(--rc-brand); color: var(--rc-brand-contrast); }\n\tbutton.primary:hover { background: var(--rc-brand); filter: brightness(1.06); }\n\tbutton.is-done .icon { color: var(--rc-success); }\n\t.status { min-height: 1.6em; margin-top: var(--rc-gap-3); font-size: 13px; color: var(--rc-muted); }\n\t.manual { margin-top: 20px; padding-top: var(--rc-gap-4); border-top: 1px solid var(--rc-border); font-size: 13px; color: var(--rc-muted); }\n\t@media (prefers-reduced-motion: reduce) { button { transition: none; } }\n</style>\n</head>\n<body>\n<main>\n\t<div class=\"card\">\n\t\t<div class=\"brand\">\n\t\t\t<svg viewBox=\"0 0 100 100\" aria-hidden=\"true\"><rect x=\"12.5\" y=\"16.7\" width=\"33.3\" height=\"66.6\" rx=\"5\" fill=\"currentColor\"/><rect x=\"54.2\" y=\"16.7\" width=\"33.3\" height=\"66.6\" rx=\"5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"7\"/></svg>\n\t\t\t<span>Recto</span>\n\t\t</div>\n\t\t<h1 id=\"title\"></h1>\n\t\t<p class=\"lead\" id=\"lead\"></p>\n\t\t<div class=\"path\">\n\t\t\t<svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\"/></svg>\n\t\t\t<span id=\"folder\"></span>\n\t\t</div>\n\t\t<ol>\n\t\t\t<li><span id=\"step1\"></span></li>\n\t\t\t<li><span id=\"step2\"></span></li>\n\t\t\t<li><span id=\"step3\"></span></li>\n\t\t</ol>\n\t\t<div class=\"actions\">\n\t\t\t<button id=\"open\" class=\"primary\" type=\"button\">\n\t\t\t\t<svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M15 3h6v6\"/><path d=\"M10 14 21 3\"/><path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/></svg>\n\t\t\t\t<span id=\"openLabel\"></span>\n\t\t\t</button>\n\t\t\t<button id=\"copy\" type=\"button\">\n\t\t\t\t<svg class=\"icon\" id=\"copyIcon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/></svg>\n\t\t\t\t<span id=\"copyLabel\"></span>\n\t\t\t</button>\n\t\t</div>\n\t\t<p class=\"status\" id=\"status\" role=\"status\"></p>\n\t\t<p class=\"manual\" id=\"manual\"></p>\n\t</div>\n</main>\n<script src=\"resolver.js\"></script>\n<script src=\"inbox.js\"></script>\n</body>\n</html>\n",
+		"inbox.js": "// T125: shown when Recto has not picked up a saved PDF within a minute, which usually means this browser saves\n// downloads outside the Downloads/Desktop folders Recto looks in. Passes the folder to Obsidian through\n// obsidian://recto-intake?inbox=\u2026; Recto accepts it only after finding a file of the current fetch there.\n// Nothing happens until the user clicks: the browser's own \"Open Obsidian?\" prompt should follow a click they made.\n(function () {\n\t\"use strict\";\n\tconst folder = decodeURIComponent(location.hash.slice(1));\n\tconst zh = /^zh\\b/i.test(navigator.language || \"\");\n\tconst text = zh ? {\n\t\ttitle: \"\u8ba9 Recto \u627e\u5230\u4f60\u7684\u4e0b\u8f7d\u4f4d\u7f6e\",\n\t\tlead: \"\u8fd9\u4e2a\u6d4f\u89c8\u5668\u628a\u8bba\u6587 PDF \u5b58\u5728\u4e86\u4e0b\u9762\u7684\u6587\u4ef6\u5939\uff0cRecto \u8fd8\u6ca1\u5728\u8fd9\u91cc\u6536\u5230\u6587\u4ef6\uff1a\",\n\t\tstep1: \"\u70b9\u4e0b\u65b9\u7684 <b>\u4ea4\u7ed9 Obsidian</b>\u3002\",\n\t\tstep2: \"\u6d4f\u89c8\u5668\u4f1a\u8be2\u95ee\u662f\u5426\u6253\u5f00 Obsidian\uff1a\u52fe\u9009 <b>\u59cb\u7ec8\u5141\u8bb8</b>\uff0c\u518d\u70b9 <b>\u6253\u5f00</b>\u3002\",\n\t\tstep3: \"Recto \u6838\u5bf9\u8fd9\u91cc\u786e\u5b9e\u6709\u672c\u6b21\u53d6\u4ef6\u7684\u6587\u4ef6\u540e\uff0c\u4f1a\u8bb0\u4f4f\u8fd9\u4e2a\u4f4d\u7f6e\u5e76\u81ea\u52a8\u6536\u4ef6\u3002\u4e4b\u540e\u4e0d\u4f1a\u518d\u51fa\u73b0\u672c\u9875\u3002\",\n\t\topen: \"\u4ea4\u7ed9 Obsidian\",\n\t\tcopy: \"\u590d\u5236\u8def\u5f84\",\n\t\tcopied: \"\u5df2\u590d\u5236\",\n\t\tsent: \"\u5df2\u4ea4\u7ed9 Obsidian\uff0c\u8bf7\u56de\u5230 Obsidian \u67e5\u770b\u63d0\u793a\u3002\u6ca1\u6709\u5f39\u51fa\u786e\u8ba4\u65f6\uff0c\u53ef\u4ee5\u518d\u70b9\u4e00\u6b21\u3002\",\n\t\tmanual: \"\u4e5f\u53ef\u4ee5\u624b\u52a8\u8bbe\u7f6e\uff1aRecto \u8bbe\u7f6e \u2192 \u6dfb\u52a0\u8bba\u6587 \u2192 PDF \u4e2d\u8f6c\u6587\u4ef6\u5939\uff0c\u9009\u62e9\u4e0a\u9762\u8fd9\u4e2a\u6587\u4ef6\u5939\u3002\",\n\t} : {\n\t\ttitle: \"Help Recto find your downloads\",\n\t\tlead: \"This browser saved the paper PDF in the folder below, and Recto has not picked it up there yet:\",\n\t\tstep1: \"Click <b>Send to Obsidian</b> below.\",\n\t\tstep2: \"Your browser asks whether to open Obsidian: tick <b>Always allow</b>, then click <b>Open</b>.\",\n\t\tstep3: \"Once Recto finds a file from this fetch there, it remembers the folder and picks up PDFs automatically. You will not see this page again.\",\n\t\topen: \"Send to Obsidian\",\n\t\tcopy: \"Copy path\",\n\t\tcopied: \"Copied\",\n\t\tsent: \"Sent to Obsidian. Check Obsidian for a confirmation. If no prompt appeared, click again.\",\n\t\tmanual: \"Or set it yourself: Recto settings \u2192 Add papers \u2192 PDF transfer folder, and choose the folder above.\",\n\t};\n\tconst $ = id => document.getElementById(id);\n\tdocument.documentElement.lang = zh ? \"zh-CN\" : \"en\";\n\tdocument.title = `Recto \u00b7 ${text.title}`;\n\t$(\"title\").textContent = text.title;\n\t$(\"lead\").textContent = text.lead;\n\t$(\"folder\").textContent = folder;\n\t// Step texts are fixed strings from this file (only <b> markup), never page or URL input.\n\tfor (const key of [\"step1\", \"step2\", \"step3\"]) $(key).innerHTML = text[key];\n\t$(\"openLabel\").textContent = text.open;\n\t$(\"copyLabel\").textContent = text.copy;\n\t$(\"manual\").textContent = text.manual;\n\tconst url = self.RectoResolver.inboxReportUrl(folder);\n\t$(\"open\").addEventListener(\"click\", () => {\n\t\tlocation.href = url;\n\t\t$(\"status\").textContent = text.sent;\n\t});\n\t$(\"copy\").addEventListener(\"click\", async () => {\n\t\ttry {\n\t\t\tawait navigator.clipboard.writeText(folder);\n\t\t\t$(\"copyLabel\").textContent = text.copied;\n\t\t\t$(\"copy\").classList.add(\"is-done\");\n\t\t\t$(\"copyIcon\").innerHTML = '<path d=\"M20 6 9 17l-5-5\"/>';\n\t\t} catch { /* clipboard unavailable: the path stays visible on the page */ }\n\t});\n\tif (!folder) $(\"open\").disabled = true;\n})();\n",
+		"manifest.json": "{\n  \"manifest_version\": 3,\n  \"name\": \"Recto Paper Fetcher\",\n  \"version\": \"0.1.5\",\n  \"description\": \"Saves the PDF of papers that Recto opens in your browser (links marked #recto-intake only), using your own sign-in. Ignores all other tabs.\",\n  \"minimum_chrome_version\": \"116\",\n  \"permissions\": [\"downloads\", \"webNavigation\", \"scripting\", \"storage\", \"alarms\"],\n  \"host_permissions\": [\n    \"https://doi.org/*\",\n    \"https://dx.doi.org/*\",\n    \"https://ieeexplore.ieee.org/*\",\n    \"https://www.sciencedirect.com/*\",\n    \"https://linkinghub.elsevier.com/*\",\n    \"https://www.cell.com/*\",\n    \"https://cell.com/*\",\n    \"https://www.science.org/*\",\n    \"https://www.pnas.org/*\",\n    \"https://pubs.acs.org/*\",\n    \"https://pubs.rsc.org/*\",\n    \"https://academic.oup.com/*\",\n    \"https://journals.sagepub.com/*\",\n    \"https://www.cambridge.org/*\",\n    \"https://journals.aps.org/*\",\n    \"https://*.onlinelibrary.wiley.com/*\",\n    \"https://onlinelibrary.wiley.com/*\",\n    \"https://link.springer.com/*\",\n    \"https://www.tandfonline.com/*\",\n    \"https://www.mdpi.com/*\",\n    \"https://iopscience.iop.org/*\",\n    \"https://www.frontiersin.org/*\",\n    \"https://www.nature.com/*\",\n    \"https://dl.acm.org/*\",\n    \"https://pubs.aip.org/*\",\n    \"https://arxiv.org/*\"\n  ],\n  \"background\": { \"service_worker\": \"background.js\" },\n  \"icons\": { \"16\": \"icons/icon-16.png\", \"32\": \"icons/icon-32.png\", \"48\": \"icons/icon-48.png\", \"128\": \"icons/icon-128.png\" },\n  \"action\": { \"default_title\": \"Recto Paper Fetcher\", \"default_icon\": { \"16\": \"icons/icon-16.png\", \"32\": \"icons/icon-32.png\" } }\n}\n",
+		"README.md": "# Recto \u8bba\u6587\u53d6\u4ef6\uff08\u6d4f\u89c8\u5668\u6269\u5c55\uff09\n\n\u914d\u5408 Recto\u300c\u6dfb\u52a0\u8bba\u6587\u300d\u7684\u5f85\u8865\u961f\u5217\u4f7f\u7528\uff1a\u5728 Recto \u91cc\u70b9\u300c\u5728\u6d4f\u89c8\u5668\u4e2d\u53d6\u4ef6\u300d\uff0c\u8fd9\u4e2a\u6269\u5c55\u4f1a\u5728\u4f60\u81ea\u5df1\u7684\u6d4f\u89c8\u5668\u91cc\uff0c\u7528\u4f60\u5df2\u6709\u7684\u767b\u5f55\uff08\u5b66\u6821\u3001\u5355\u4f4d\u6216\u4e2a\u4eba\u8ba2\u9605\uff09\uff0c\u628a\u8bba\u6587 PDF \u5b58\u5230 `\u4e0b\u8f7d\u76ee\u5f55/Recto/`\uff0cRecto \u968f\u540e\u4ece\u8fd9\u4e2a\u4e2d\u8f6c\u6587\u4ef6\u5939\u628a\u5b83\u52a0\u5165\u8bba\u6587\u5e93\u3002\n\n## \u5b89\u88c5\uff08Edge / Chrome\uff09\n\n1. \u6253\u5f00 `edge://extensions`\uff08Chrome \u4e3a `chrome://extensions`\uff09\uff0c\u6253\u5f00\u300c\u5f00\u53d1\u4eba\u5458\u6a21\u5f0f\u300d\u3002\n2. \u70b9\u300c\u52a0\u8f7d\u89e3\u538b\u7f29\u7684\u6269\u5c55\u300d\uff0c\u9009\u4e2d\u8fd9\u4e2a\u6587\u4ef6\u5939 `recto-browser-extension`\u3002\n3. \u5728 Recto \u8bbe\u7f6e \u2192\u300c\u6dfb\u52a0\u8bba\u6587\u300d\u2192\u300c\u53d6\u4ef6\u6d4f\u89c8\u5668\u300d\u91cc\u9009\u8fd9\u4e2a\u6d4f\u89c8\u5668\uff08\u9ed8\u8ba4\u662f\u7cfb\u7edf\u9ed8\u8ba4\u6d4f\u89c8\u5668\uff09\u3002\n4. \u901a\u5e38\u4e0d\u7528\u518d\u8bbe\u7f6e\uff1a\u53d6\u4ef6\u65f6 Recto \u4f1a\u5728\u300c\u4e0b\u8f7d\u300d\u6216\u300c\u684c\u9762\u300d\u6587\u4ef6\u5939\u91cc\u81ea\u52a8\u8bc6\u522b `Recto` \u4e2d\u8f6c\u6587\u4ef6\u5939\u3002\u6d4f\u89c8\u5668\u7684\u4e0b\u8f7d\u4f4d\u7f6e\u5728\u522b\u5904\uff08\u5982 `D:Downloads`\u3001OneDrive\uff09\u65f6\uff0c\u6269\u5c55\u4f1a\u5728 PDF \u5b58\u597d\u7ea6\u4e00\u5206\u949f\u3001Recto \u4ecd\u672a\u6536\u8d70\u65f6\u6253\u5f00\u4e00\u9875\u300c\u8ba9 Recto \u627e\u5230\u4f60\u7684\u4e0b\u8f7d\u4f4d\u7f6e\u300d\uff0c\u70b9\u300c\u4ea4\u7ed9 Obsidian\u300d\u5e76\u5728\u6d4f\u89c8\u5668\u7684\u786e\u8ba4\u91cc\u5141\u8bb8\u6253\u5f00 Obsidian \u5373\u53ef\uff0c\u6bcf\u6b21\u6253\u5f00\u6d4f\u89c8\u5668\u6700\u591a\u51fa\u73b0\u4e00\u6b21\u3002\u4e5f\u53ef\u4ee5\u624b\u52a8\u8bbe\u7f6e\uff1a\u5728\u6d4f\u89c8\u5668\u6253\u5f00 `edge://settings/downloads`\uff08Chrome \u4e3a `chrome://settings/downloads`\uff09\u67e5\u770b\u4e0b\u8f7d\u4f4d\u7f6e\uff0c\u518d\u5230 Recto \u8bbe\u7f6e \u2192\u300c\u6dfb\u52a0\u8bba\u6587\u300d\u2192\u300cPDF \u4e2d\u8f6c\u6587\u4ef6\u5939\u300d\u91cc\u9009\u62e9\u8fd9\u4e2a\u4e0b\u8f7d\u4f4d\u7f6e\uff08\u4e0d\u7528\u81ea\u5df1\u5efa `Recto` \u6587\u4ef6\u5939\uff09\u3002\n\n## \u5b83\u505a\u4ec0\u4e48\uff0c\u4e0d\u505a\u4ec0\u4e48\n\n- **\u53ea\u5904\u7406 Recto \u6253\u5f00\u7684\u6807\u7b7e\u9875**\uff1a\u7f51\u5740\u672b\u5c3e\u5e26 `#recto-intake=<\u4efb\u52a1\u53f7>` \u7684\u6807\u7b7e\u9875\u624d\u4f1a\u88ab\u5904\u7406\uff0c\u5176\u4ed6\u6d4f\u89c8\u4e00\u6982\u4e0d\u8bfb\u53d6\u3001\u4e0d\u8bb0\u5f55\u3002\n- \u5728\u51fa\u7248\u5546\u9875\u9762\u4e0a\u627e\u5230 PDF \u94fe\u63a5\uff08citation_pdf_url\uff0c\u6216 IEEE\u3001ScienceDirect\u3001Wiley\u3001Taylor & Francis \u7684\u56fa\u5b9a\u89c4\u5219\uff09\uff0c\u4e0b\u8f7d\u4e3a `Recto/recto-<\u4efb\u52a1\u53f7>.pdf`\uff0c\u4e0b\u8f7d\u5b8c\u5173\u95ed\u6807\u7b7e\u9875\u3002\n- \u9047\u5230\u767b\u5f55\u9875\u3001\u9a8c\u8bc1\u7801\u3001\u300cUnusual Traffic\u300d\u6216\u6ca1\u6709\u8bbf\u95ee\u6743\u9650\u65f6\uff0c**\u4ec0\u4e48\u90fd\u4e0d\u505a**\uff1a\u6807\u7b7e\u9875\u7559\u7ed9\u4f60\uff0c\u5de5\u5177\u680f\u56fe\u6807\u663e\u793a\u300c!\u300d\u3002\u5904\u7406\u597d\u540e\u5237\u65b0\u9875\u9762\uff0c\u6269\u5c55\u4f1a\u63a5\u7740\u4e0b\u8f7d\u3002\n- \u9875\u9762\u4e0a\u6709\u6807\u51c6\u7684\u6458\u8981\u3001\u5173\u952e\u8bcd\u3001\u9898\u540d\u3001DOI\u3001\u4f5c\u8005\u6807\u7b7e\uff08`citation_abstract`\u3001`citation_keywords`\u3001`citation_title`\u3001`citation_doi`\u3001`citation_author`\u3001Dublin Core\uff1bIEEE \u4ece\u9875\u9762\u5185\u5d4c\u6570\u636e\u8bfb DOI\uff09\u65f6\uff0c\u53e6\u5b58\u4e00\u4efd `recto-<\u4efb\u52a1\u53f7>.json`\u3002\u53ea\u6709\u8bba\u6587\u9875\u94fe\u63a5\u3001Recto \u8bfb\u4e0d\u5230 DOI \u7684\u5f85\u8865\u8bba\u6587\uff0c\u9760\u8fd9\u4efd\u6587\u4ef6\u8ba4\u51fa\u662f\u54ea\u7bc7\u3002\u8fd9\u4efd\u6587\u4ef6\u7528 data: URL \u5199\u51fa\uff08\u4e0d\u53d1\u7f51\u7edc\u8bf7\u6c42\uff09\uff0c\u5199\u5b8c\u4f1a\u4ece\u6d4f\u89c8\u5668\u7684\u4e0b\u8f7d\u5217\u8868\u91cc\u62b9\u6389\u8fd9\u4e00\u6761\u3002\n- Recto \u786e\u8ba4 PDF \u5df2\u9010\u5b57\u8282\u5b8c\u6574\u590d\u5236\u8fdb\u8bba\u6587\u5e93\u540e\uff0c\u4f1a\u76f4\u63a5\u5220\u9664\u8fd9\u4e24\u4e2a\u6587\u4ef6\uff08\u8bba\u6587\u5e93\u91cc\u6709\u540c\u6837\u7684\u4e00\u4efd\uff09\uff0c\u7a7a\u7684 `Recto` \u6587\u4ef6\u5939\u968f\u4e4b\u5220\u9664\u3002\u6838\u9a8c\u6ca1\u901a\u8fc7\u3001\u6216\u5bf9\u4e0d\u4e0a\u4efb\u4f55\u4efb\u52a1\u7684\u6587\u4ef6\u4e0d\u4f1a\u81ea\u52a8\u5220\u9664\uff0c\u7531\u4f60\u5728 Recto \u91cc\u9009\u62e9\u300c\u4e22\u5f03\u300d\uff0c\u53ea\u79fb\u5230\u56de\u6536\u7ad9\u3002\n- macOS\uff1a\u652f\u6301 Chrome \u4e0e Edge\uff1bSafari \u7684\u6269\u5c55\u683c\u5f0f\u4e0d\u540c\uff0c\u6682\u4e0d\u652f\u6301\u3002\n- \u4e0d\u5bfc\u51fa cookie \u6216\u5bc6\u7801\uff0c\u4e0d\u8fde\u63a5 Recto \u670d\u52a1\u5668\u6216\u4efb\u4f55\u5176\u4ed6\u670d\u52a1\u5668\uff0c\u4e0d\u4f2a\u88c5\u6d4f\u89c8\u5668\u8eab\u4efd\uff0c\u4e0d\u7834\u89e3\u9a8c\u8bc1\u7801\u3002\n- \u4e0b\u8f7d\u56de\u6765\u7684\u4e0d\u662f PDF\uff08\u6bd4\u5982\u767b\u5f55\u9875\uff09\u65f6\uff0c\u4f1a\u5220\u9664\u8fd9\u4e2a\u6587\u4ef6\uff0c\u5e76\u628a\u6807\u7b7e\u9875\u7559\u7ed9\u4f60\u3002\n- \u53ea\u628a\u4e00\u6837\u4e1c\u897f\u4ea4\u7ed9 Recto\uff1aPDF \u5b9e\u9645\u5b58\u653e\u7684\u6587\u4ef6\u5939\u8def\u5f84\uff0c\u7ecf `obsidian://recto-intake?inbox=\u2026` \u94fe\u63a5\u4f20\u7ed9 Obsidian\uff0c\u5e76\u4e14\u53ea\u5728 Recto \u4e00\u5206\u949f\u5185\u6ca1\u6536\u8d70\u6587\u4ef6\u65f6\u624d\u4f20\u3002Recto \u8981\u5728\u8fd9\u4e2a\u6587\u4ef6\u5939\u91cc\u770b\u5230\u672c\u6b21\u53d6\u4ef6\u7684\u4efb\u52a1\u53f7\u6587\u4ef6\u624d\u4f1a\u91c7\u7528\u5b83\u3002\n\n## \u6743\u9650\n\n- `downloads`\uff1a\u4fdd\u5b58 PDF\u3002\n- `webNavigation`\uff1a\u8bc6\u522b\u54ea\u4e9b\u6807\u7b7e\u9875\u662f Recto \u6253\u5f00\u7684\uff08\u5e26 `#recto-intake` \u6807\u8bb0\uff09\u3002\n- `scripting` \u4e0e\u4e0b\u5217\u7f51\u7ad9\u7684\u8bbf\u95ee\u6743\u9650\uff1a\u5728\u8fd9\u4e9b\u9875\u9762\u4e0a\u67e5\u627e PDF \u94fe\u63a5\u3002doi.org\u3001IEEE Xplore\u3001ScienceDirect\u3001Wiley\u3001Springer\u3001Taylor & Francis\u3001MDPI\u3001IOP\u3001Frontiers\u3001Nature\u3001ACM\u3001AIP\u3001arXiv\u3002\n- `storage`\uff1a\u5728\u6d4f\u89c8\u5668\u4f1a\u8bdd\u5185\u8bb0\u4f4f\u8fdb\u884c\u4e2d\u7684\u4efb\u52a1\u548c\u5df2\u786e\u8ba4\u7684\u4e0b\u8f7d\u6587\u4ef6\u5939\uff0c\u6d4f\u89c8\u5668\u5173\u95ed\u5373\u6e05\u7a7a\u3002\n- `alarms`\uff1aPDF \u5b58\u597d\u4e00\u5206\u949f\u540e\u68c0\u67e5 Recto \u662f\u5426\u5df2\u6536\u8d70\uff08\u6269\u5c55\u540e\u53f0\u4e0d\u80fd\u957f\u65f6\u95f4\u7b49\u5f85\uff09\u3002\n\n\u901a\u8fc7 WebVPN \u4e00\u7c7b\u6539\u5199\u57df\u540d\u7684\u65b9\u5f0f\u8bbf\u95ee\u51fa\u7248\u5546\u65f6\uff0c\u9875\u9762\u4e0d\u5728\u4e0a\u8ff0\u7f51\u7ad9\u4e4b\u5185\uff0c\u6269\u5c55\u4e0d\u4f1a\u5904\u7406\uff1b\u8fd9\u65f6\u8bf7\u5728\u9875\u9762\u4e0a\u624b\u52a8\u4e0b\u8f7d PDF\uff0c\u5b58\u8fdb `\u4e0b\u8f7d\u76ee\u5f55/Recto`\u3002\n",
+		"resolver.js": "// Recto Paper Fetcher \u2014 pure decision core (T100-R). No chrome.* calls here, so Node tests can load it.\n// Given a snapshot of the current page, decide the next step: download a PDF, navigate to the PDF\n// page, wait for an automatic check to finish, or hand the tab to the user. Never solves CAPTCHAs,\n// never fakes the browser identity: anything interactive is left to the person using the browser.\n(function (root, factory) {\n\tconst api = factory();\n\tif (typeof module === \"object\" && module.exports) module.exports = api;\n\telse root.RectoResolver = api;\n})(typeof self !== \"undefined\" ? self : this, function () {\n\t\"use strict\";\n\n\tconst TOKEN_PATTERN = /#(?:.*&)?recto-intake=([a-f0-9]{8,32})(?:&|$)/i;\n\t// Interstitials that clear by themselves in a real browser (seen in T100-R spike: Wiley ~7 s).\n\tconst AUTO_CHECK = [/^just a moment/i, /^\u8bf7\u7a0d\u5019/, /checking your browser/i, /^attention required/i, /\u6b63\u5728\u8fdb\u884c\u5b89\u5168\u9a8c\u8bc1/];\n\t// Anything that needs a human, or a hard block. The tab is left to the user.\n\tconst USER_CHECK = [/are you a robot/i, /verify you are (a )?human/i, /complete the captcha/i, /captcha challenge/i,\n\t\t/unusual traffic detected/i, /error 418/i, /request unsuccessful/i, /access denied/i, /\u4eba\u673a\u9a8c\u8bc1/];\n\tconst NO_ACCESS = [/purchase (this )?(article|pdf)/i, /get access/i, /institutional (sign in|login|access)/i,\n\t\t/sign in to (view|access|download)/i, /buy (this )?article/i, /subscribe to/i];\n\n\tfunction tokenFromUrl(url) {\n\t\tconst match = String(url || \"\").match(TOKEN_PATTERN);\n\t\treturn match ? match[1].toLowerCase() : \"\";\n\t}\n\n\tfunction downloadName(token) {\n\t\treturn `Recto/recto-${String(token).toLowerCase()}.pdf`;\n\t}\n\n\tfunction metadataName(token) {\n\t\treturn `Recto/recto-${String(token).toLowerCase()}.json`;\n\t}\n\n\t// T125: the folder a finished download really landed in (DownloadItem.filename is an absolute path).\n\tfunction folderOf(filename) {\n\t\tconst value = String(filename || \"\");\n\t\tconst cut = Math.max(value.lastIndexOf(\"/\"), value.lastIndexOf(\"\\\\\"));\n\t\treturn cut > 0 ? value.slice(0, cut) : \"\";\n\t}\n\n\tfunction sameFolder(a, b) {\n\t\tconst key = value => String(value || \"\").replace(/\\\\/g, \"/\").replace(/\\/+$/, \"\").toLowerCase();\n\t\treturn !!a && !!b && key(a) === key(b);\n\t}\n\n\t// The page that asks the browser to hand the folder to Obsidian (obsidian://recto-intake?inbox=\u2026).\n\tfunction inboxReportUrl(folder) {\n\t\treturn `obsidian://recto-intake?inbox=${encodeURIComponent(String(folder || \"\"))}`;\n\t}\n\n\t// Abstract and author keywords from standard meta tags only (citation_* / Dublin Core). og:description and\n\t// generic \"description\"/\"keywords\" tags are skipped: they are often truncated or site-wide. Recto cleans\n\t// and validates again on its side; this is a best-effort hint, never required.\n\tfunction buildPageMetadata(info) {\n\t\tconst abstract = String(info && info.metaAbstract || \"\").replace(/\\s+/g, \" \").trim().slice(0, 20000);\n\t\tconst seen = new Set();\n\t\tconst keywords = [];\n\t\tfor (const raw of Array.isArray(info && info.metaKeywords) ? info.metaKeywords : []) {\n\t\t\tfor (const part of String(raw || \"\").split(/[;,]/)) {\n\t\t\t\tconst name = part.replace(/\\s+/g, \" \").trim();\n\t\t\t\tif (name.length < 2 || name.length > 120 || seen.has(name.toLowerCase())) continue;\n\t\t\t\tseen.add(name.toLowerCase());\n\t\t\t\tkeywords.push(name);\n\t\t\t\tif (keywords.length >= 40) break;\n\t\t\t}\n\t\t}\n\t\t// T128: the paper's identity from the same standard tags (plus IEEE's embedded \"doi\" field), so Recto can\n\t\t// take papers it only had a page link for. Recto looks the DOI up itself and still checks the PDF text.\n\t\tconst title = String(info && info.metaTitle || \"\").replace(/\\s+/g, \" \").trim().slice(0, 500);\n\t\tconst doi = (String(info && info.metaDoi || \"\").match(/10\\.\\d{4,9}\\/[^\\s\"<>]+/) || [\"\"])[0].replace(/[.,;]+$/, \"\").slice(0, 200);\n\t\tconst authors = [];\n\t\tfor (const raw of Array.isArray(info && info.metaAuthors) ? info.metaAuthors : []) {\n\t\t\tconst name = String(raw || \"\").replace(/\\s+/g, \" \").trim();\n\t\t\tif (name.length >= 2 && name.length <= 120 && !authors.includes(name)) authors.push(name);\n\t\t\tif (authors.length >= 50) break;\n\t\t}\n\t\tif (abstract.length < 80 && !keywords.length && !title && !doi) return null;\n\t\treturn { version: 1, abstract: abstract.length >= 80 ? abstract : \"\", keywords, title, doi, authors };\n\t}\n\n\t// Pages along one job (IEEE: article page, then the stamp page) each add what they have; the first value wins,\n\t// except that a longer keyword list replaces a shorter one.\n\tfunction mergePageMetadata(previous, next) {\n\t\tif (!next) return previous || null;\n\t\tif (!previous) return next;\n\t\treturn {\n\t\t\tversion: 1,\n\t\t\tabstract: previous.abstract || next.abstract || \"\",\n\t\t\tkeywords: (next.keywords || []).length > (previous.keywords || []).length ? next.keywords : previous.keywords || [],\n\t\t\ttitle: previous.title || next.title || \"\",\n\t\t\tdoi: previous.doi || next.doi || \"\",\n\t\t\tauthors: (previous.authors || []).length ? previous.authors : next.authors || [],\n\t\t};\n\t}\n\n\tfunction absolute(href, base) {\n\t\tconst value = String(href || \"\").trim();\n\t\t// new URL(\"\", base) returns the page itself \u2014 an empty link must stay empty.\n\t\tif (!value) return \"\";\n\t\ttry { return new URL(value.replace(/&amp;/g, \"&\"), base).href; } catch { return \"\"; }\n\t}\n\n\tfunction hostOf(url) {\n\t\ttry { return new URL(url).hostname.toLowerCase(); } catch { return \"\"; }\n\t}\n\n\tfunction pathOf(url) {\n\t\ttry { return new URL(url).pathname; } catch { return \"\"; }\n\t}\n\n\tfunction detectChallenge(info) {\n\t\tconst title = String(info && info.title || \"\").trim();\n\t\tconst text = String(info && info.text || \"\").slice(0, 3000);\n\t\tif (USER_CHECK.some(pattern => pattern.test(title) || pattern.test(text))) return \"user\";\n\t\tif (AUTO_CHECK.some(pattern => pattern.test(title) || pattern.test(text.trim()))) return \"auto\";\n\t\treturn \"\";\n\t}\n\n\tfunction looksLikePdfUrl(url) {\n\t\tconst path = pathOf(url).toLowerCase();\n\t\treturn path.endsWith(\".pdf\") || /\\/stamppdf\\/getpdf\\.jsp/i.test(path) || /\\/pdfdirect\\//.test(path);\n\t}\n\n\tfunction doiFromPath(path) {\n\t\tconst match = String(path || \"\").match(/\\/doi\\/(?:abs\\/|full\\/|epdf\\/|pdf\\/|pdfdirect\\/|reader\\/)?(10\\.\\d{4,9}\\/[^?#]+)/i);\n\t\treturn match ? decodeURIComponent(match[1]) : \"\";\n\t}\n\n\tfunction noAccess(info) {\n\t\tconst text = String(info && info.text || \"\").slice(0, 4000);\n\t\treturn NO_ACCESS.some(pattern => pattern.test(text));\n\t}\n\n\tfunction pdfLinkFrom(info) {\n\t\tconst links = Array.isArray(info && info.links) ? info.links : [];\n\t\tconst scored = links.map(link => {\n\t\t\tconst href = absolute(link && link.href, info.url);\n\t\t\tconst text = String(link && link.text || \"\");\n\t\t\tlet score = 0;\n\t\t\tif (!href || /^javascript:/i.test(href)) return null;\n\t\t\tif (/\\.pdf(\\?|$)/i.test(href)) score += 2;\n\t\t\tif (/\\/(pdf|pdfft|pdfdirect)\\b/i.test(href)) score += 2;\n\t\t\tif (/\\b(download )?pdf\\b/i.test(text)) score += 2;\n\t\t\tif (/supplement|appendix|esm|figure|slides/i.test(href + \" \" + text)) score -= 4;\n\t\t\treturn score >= 3 ? { href, score } : null;\n\t\t}).filter(Boolean).sort((a, b) => b.score - a.score);\n\t\treturn scored.length ? scored[0].href : \"\";\n\t}\n\n\t// info: { url, title, text, metaPdf, links: [{ href, text }], frames: [src] }\n\tfunction resolvePdfAction(info) {\n\t\tconst url = String(info && info.url || \"\");\n\t\tconst host = hostOf(url);\n\t\tconst path = pathOf(url);\n\t\tconst challenge = detectChallenge(info);\n\t\tif (challenge === \"user\") return { action: \"user\", reason: \"challenge\" };\n\t\tif (challenge === \"auto\") return { action: \"wait\", reason: \"challenge\" };\n\t\tif (looksLikePdfUrl(url) && !(info && info.text)) return { action: \"download\", url };\n\n\t\tif (host === \"ieeexplore.ieee.org\") {\n\t\t\tconst doc = path.match(/^\\/document\\/(\\d+)/);\n\t\t\tif (doc) return { action: \"navigate\", url: `https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=${doc[1]}` };\n\t\t\tif (/^\\/stamp\\/stamp\\.jsp/.test(path)) {\n\t\t\t\tconst frame = (info.frames || []).map(src => absolute(src, url)).find(src => /getpdf\\.jsp|\\.pdf(\\?|$)/i.test(src));\n\t\t\t\tif (frame) return { action: \"download\", url: frame };\n\t\t\t\treturn { action: \"user\", reason: \"access\" };\n\t\t\t}\n\t\t}\n\n\t\tif (/(^|\\.)sciencedirect\\.com$/.test(host) && /\\/science\\/article\\//.test(path)) {\n\t\t\tconst meta = absolute(info.metaPdf, url);\n\t\t\tif (meta) return { action: \"download\", url: meta };\n\t\t\tconst link = (info.links || []).map(item => absolute(item && item.href, url)).find(href => /\\/pdfft\\b/.test(href));\n\t\t\tif (link) return { action: \"download\", url: link };\n\t\t\treturn { action: \"user\", reason: noAccess(info) ? \"access\" : \"no-pdf\" };\n\t\t}\n\n\t\tif (/(^|\\.)onlinelibrary\\.wiley\\.com$/.test(host)) {\n\t\t\tconst doi = doiFromPath(path);\n\t\t\tif (doi && !/\\/pdfdirect\\//.test(path)) return { action: \"download\", url: `https://${host}/doi/pdfdirect/${doi}?download=true` };\n\t\t}\n\n\t\tif (host === \"www.tandfonline.com\") {\n\t\t\tconst doi = doiFromPath(path);\n\t\t\tif (doi && !/\\/doi\\/pdf\\//.test(path)) return { action: \"download\", url: `https://www.tandfonline.com/doi/pdf/${doi}?download=true` };\n\t\t}\n\n\t\tconst meta = absolute(info && info.metaPdf, url);\n\t\tif (meta) return { action: \"download\", url: meta };\n\t\tconst link = pdfLinkFrom(info || {});\n\t\tif (link) return { action: \"download\", url: link };\n\t\treturn { action: \"user\", reason: noAccess(info) ? \"access\" : \"no-pdf\" };\n\t}\n\n\t// A tagged navigation in a tab already working on the same task is the site re-navigating by itself\n\t// (IEEE adds or drops a trailing slash and keeps the fragment). Keep the counters, or the job restarts\n\t// forever; only a different task starts fresh.\n\tfunction shouldStartJob(existing, token) {\n\t\treturn !existing || existing.token !== token;\n\t}\n\n\t// Being sent back from the PDF page twice means no access (IEEE: stamp.jsp returns to the article page).\n\t// One bounce is tolerated: IEEE sometimes bounces once just to start a session (;jsessionid=\u2026) and the\n\t// second try works. Then hand the tab to the user instead of bouncing until the step limit.\n\t// Signing in and reloading starts over.\n\tfunction planNavigate(job, url, info, maxSteps) {\n\t\tconst tried = Array.isArray(job && job.tried) ? job.tried : [];\n\t\tif (tried.filter(item => item === url).length >= 2) return { handTo: \"access\" };\n\t\tconst steps = Number(job && job.steps) || 0;\n\t\tif (steps >= maxSteps) return { handTo: \"no-pdf\" };\n\t\treturn { job: { ...job, steps: steps + 1, tried: [...tried, url] } };\n\t}\n\n\t// Injected into the page with chrome.scripting.executeScript; must stay self-contained.\n\tfunction collectPageInfo() {\n\t\tconst pick = selector => Array.prototype.slice.call(document.querySelectorAll(selector));\n\t\tconst meta = document.querySelector('meta[name=\"citation_pdf_url\"]');\n\t\tconst content = selector => { const el = document.querySelector(selector); return el ? el.getAttribute(\"content\") || \"\" : \"\"; };\n\t\treturn {\n\t\t\tmetaAbstract: content('meta[name=\"citation_abstract\"]') || content('meta[name=\"dc.description\"]') || content('meta[name=\"DC.Description\"]') || content('meta[name=\"DC.description\"]'),\n\t\t\tmetaKeywords: pick('meta[name=\"citation_keywords\"], meta[name=\"dc.subject\"], meta[name=\"DC.Subject\"], meta[name=\"DC.subject\"]').map(el => el.getAttribute(\"content\") || \"\").filter(Boolean).slice(0, 60),\n\t\t\tmetaTitle: content('meta[name=\"citation_title\"]') || content('meta[name=\"dc.title\"]') || content('meta[name=\"DC.title\"]') || content('meta[name=\"DC.Title\"]'),\n\t\t\t// IEEE Xplore has no citation_doi tag; its page data carries \"doi\":\"10.\u2026\" in an inline script.\n\t\t\tmetaDoi: content('meta[name=\"citation_doi\"]') || content('meta[name=\"prism.doi\"]') || content('meta[name=\"dc.identifier\"]') || content('meta[name=\"DC.identifier\"]')\n\t\t\t\t|| ((pick(\"script:not([src])\").map(el => el.textContent || \"\").join(\"\\n\").slice(0, 600000).match(/\"doi\"\\s*:\\s*\"(10\\.\\d{4,9}\\/[^\"\\s]+)\"/i) || [])[1] || \"\"),\n\t\t\tmetaAuthors: pick('meta[name=\"citation_author\"], meta[name=\"dc.creator\"], meta[name=\"DC.creator\"], meta[name=\"DC.Creator\"]').map(el => el.getAttribute(\"content\") || \"\").filter(Boolean).slice(0, 60),\n\t\t\turl: location.href,\n\t\t\ttitle: document.title || \"\",\n\t\t\ttext: document.body ? document.body.innerText.slice(0, 4000) : \"\",\n\t\t\tmetaPdf: meta ? meta.getAttribute(\"content\") || \"\" : \"\",\n\t\t\tlinks: pick(\"a[href]\").slice(0, 600).map(a => ({ href: a.href, text: (a.innerText || a.title || a.getAttribute(\"aria-label\") || \"\").trim().slice(0, 80) })),\n\t\t\tframes: pick(\"iframe[src], embed[src], object[data]\").map(el => el.src || el.data || \"\").filter(Boolean),\n\t\t};\n\t}\n\n\treturn { tokenFromUrl, downloadName, metadataName, folderOf, sameFolder, inboxReportUrl, buildPageMetadata, mergePageMetadata, detectChallenge, resolvePdfAction, collectPageInfo, looksLikePdfUrl,\n\t\tshouldStartJob, planNavigate, noAccess };\n});\n",
+	},
+};
+const RECTO_INTAKE_SKILL_VERSION = 2;
+// ===== END RECTO COMPANIONS =====
+
+const PAPER_INTAKE_AGENT_FOLDER = "_recto-intake";
+// T104：Unpaywall 要求查询附带一个能联系到人的邮箱（只作标识，不会收到邮件）。固定用 Recto 的联系邮箱，
+// 不给用户改：用户的邮箱不必发给第三方，也没有收件的意义。
+const PAPER_INTAKE_UNPAYWALL_EMAIL = "j4756237@gmail.com";
+const PAPER_INTAKE_REQUEST_SCHEMA = "recto-intake-request";
+const PAPER_INTAKE_RESULT_SCHEMA = "recto-intake-result";
+const PAPER_INTAKE_CONTEXT_SCHEMA = "recto-intake-context";
+const PAPER_INTAKE_PROTOCOL_VERSION = 1;
+const PAPER_INTAKE_REQUEST_MAX_BYTES = 1024 * 1024;
+const PAPER_INTAKE_REQUEST_MAX_ITEMS = 50;
+const PAPER_INTAKE_REQUEST_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.request\.json$/;
+
+function cleanPaperIntakeAgentText(value, max) {
+	return typeof value === "string" ? value.replace(/\r\n?/g, "\n").trim().slice(0, max) : "";
+}
+
+// 请求只当数据读：限定字段、类型和长度；整份不合格就整份拒绝，单条不合格只拒那一条。
+function parsePaperIntakeRequest(text, options = {}) {
+	let data;
+	try { data = JSON.parse(String(text || "")); } catch { return { ok: false, error: "invalid_json" }; }
+	if (!data || typeof data !== "object" || Array.isArray(data) || data.schema !== PAPER_INTAKE_REQUEST_SCHEMA) return { ok: false, error: "invalid_schema" };
+	if (data.version !== PAPER_INTAKE_PROTOCOL_VERSION) return { ok: false, error: "unsupported_version" };
+	if (!Array.isArray(data.items) || !data.items.length) return { ok: false, error: "no_items" };
+	if (data.items.length > PAPER_INTAKE_REQUEST_MAX_ITEMS) return { ok: false, error: "too_many_items" };
+	const destination = data.destination === "zotero" ? "zotero" : "local";
+	if (destination === "zotero" && !options.zoteroConfigured) return { ok: false, error: "zotero_not_configured" };
+	const requestCollection = cleanPaperIntakeAgentText(data.collection, 200);
+	const rows = [];
+	const rejected = [];
+	data.items.forEach((item, index) => {
+		if (!item || typeof item !== "object" || Array.isArray(item)) { rejected.push({ index, error: "invalid_item" }); return; }
+		const doi = normalizePaperIntakeDoi(item.doi);
+		const arxivId = normalizePaperIntakeArxivId(item.arxiv_id || item.arxivId);
+		const title = cleanPaperIntakeAgentText(item.title, 500);
+		if (!doi && !arxivId && paperIntakeWords(title).size < 2) { rejected.push({ index, error: "no_identifier" }); return; }
+		const quickNote = cleanPaperIntakeAgentText(item.quick_note, 4000);
+		if (quickNote.includes("[Recto Quick Note v1]") || quickNote.includes("[/Recto Quick Note]")) { rejected.push({ index, error: "invalid_quick_note" }); return; }
+		const creators = (Array.isArray(item.creators) ? item.creators : []).slice(0, 100).map(creator => creator && typeof creator === "object" ? {
+			creatorType: cleanPaperIntakeAgentText(creator.creatorType, 40) || "author", firstName: cleanPaperIntakeAgentText(creator.firstName, 200),
+			lastName: cleanPaperIntakeAgentText(creator.lastName, 200), name: cleanPaperIntakeAgentText(creator.name, 200),
+		} : null).filter(creator => creator && (creator.lastName || creator.name));
+		// 已核实的完整元数据（有题名、有作者、有类型）才整份采用；不全就只用标识符，让 Crossref/OpenAlex 补齐。
+		const given = normalizeZoteroItemMetadata(item.metadata);
+		const metadata = given && getZoteroMetadataField(given, "title") && given.creators.length && given.itemType ? given
+			: title && creators.length ? normalizeZoteroItemMetadata({ itemType: "journalArticle", fields: { title, ...(doi ? { DOI: doi } : {}) }, creators }) : null;
+		const pdfPath = cleanPaperIntakeAgentText(item.pdf_path, 1000);
+		if (pdfPath && (!/\.pdf$/i.test(pdfPath) || !(/^[A-Za-z]:[\\/]/.test(pdfPath) || pdfPath.startsWith("/")))) { rejected.push({ index, error: "invalid_pdf_path" }); return; }
+		if (pdfPath && !metadata) { rejected.push({ index, error: "metadata_required" }); return; }
+		const collection = cleanPaperIntakeAgentText(item.collection, 200) || requestCollection;
+		rows.push({
+			agentIndex: index, kind: doi ? "doi" : arxivId ? "arxiv" : "title", doi, arxivId, title: doi || arxivId ? "" : title, raw: title || doi || arxivId,
+			destination, quickNote, ...(metadata && (pdfPath || given) ? { metadata } : {}), ...(metadata && !pdfPath && !given ? { identityMetadata: metadata } : {}),
+			collectionParts: collection ? [splitZoteroCollectionPath(collection)] : [], ...(pdfPath ? { agentPdfPath: pdfPath } : {}),
+		});
+	});
+	return { ok: true, request: { id: cleanPaperIntakeAgentText(data.id, 120), destination, fetchInBrowser: data.fetch_in_browser === true, rows, rejected } };
+}
+
+function buildPaperIntakeResult(input = {}) {
+	const items = [];
+	const reasonText = code => rectoUiText(`paperIntake.reason.${code}`);
+	for (const item of input.rejected || []) items.push({ index: item.index, status: "rejected", reason: item.error });
+	const report = input.report || { added: [], duplicates: [], waiting: [], failed: [] };
+	for (const entry of report.added) items.push({ index: entry.row.agentIndex, status: "added", record_id: entry.recordId, title: entry.title || "", zotero: !!entry.zotero });
+	for (const entry of report.duplicates) items.push({ index: entry.row.agentIndex, status: "duplicate", record_id: entry.recordId });
+	const pendingById = new Map((input.pending || []).map(item => [item.id, item]));
+	const waitingRows = new Map();
+	for (const entry of input.waitingRows || []) waitingRows.set(entry.id, entry.row);
+	for (const item of report.waiting) {
+		const row = waitingRows.get(item.id);
+		if (!row) continue;
+		const pending = pendingById.get(item.id) || item;
+		items.push({ index: row.agentIndex, status: "waiting", pending_id: item.id, title: item.title, reason: item.reason, reason_text: reasonText(item.reason),
+			links: item.links || [], browser_url: buildPaperIntakeBrowserUrl(pending) || "" });
+	}
+	for (const entry of input.agentFailures || []) items.push({ index: entry.index, status: "failed", reason: entry.reason, reason_text: reasonText(entry.reason) });
+	items.sort((a, b) => a.index - b.index);
+	const seen = new Set(items.map(item => item.index));
+	for (const index of input.indexes || []) if (!seen.has(index)) items.push({ index, status: "failed", reason: "no_candidates" });
+	return {
+		schema: PAPER_INTAKE_RESULT_SCHEMA, version: PAPER_INTAKE_PROTOCOL_VERSION, request_id: input.requestId || "",
+		status: input.error ? "rejected" : "done", ...(input.error ? { error: input.error } : {}),
+		processed_at: input.now || new Date().toISOString(), browser_fetch_opened: input.browserOpened || 0,
+		items: items.sort((a, b) => a.index - b.index), pending_total: (input.pending || []).length,
+	};
+}
+
+// T104：示例论文选公开、稳定、人人熟悉的一篇；已在库里时结果为 duplicate，同样能演示链路。
+const PAPER_INTAKE_GUIDE_EXAMPLE = "arXiv:1706.03762";
+
+function buildPaperIntakeAgentGuide(input = {}) {
+	return rectoUiText(input.extensionPath ? "paperIntake.agentGuide" : "paperIntake.agentGuideNoExtension", {
+		skill: input.skillPath || "", extension: input.extensionPath || "", intake: input.intakePath || "", example: PAPER_INTAKE_GUIDE_EXAMPLE,
+	});
+}
+
+function buildPaperIntakeContext(input = {}) {
+	const papers = [];
+	for (const [recordId, info] of Object.entries(input.folderMap || {})) {
+		if (!info || !info.stem || info.zoteroSyncState === "orphaned") continue;
+		const metadata = normalizeZoteroItemMetadata(info.zoteroMetadata);
+		papers.push({ record_id: recordId, title: info.zoteroTitle || info.stem, doi: normalizePaperIntakeDoi(getZoteroMetadataField(metadata, "DOI")) || null,
+			source: isLocalPaperRecord(info, recordId) ? "local" : "zotero" });
+	}
+	return {
+		schema: PAPER_INTAKE_CONTEXT_SCHEMA, version: PAPER_INTAKE_PROTOCOL_VERSION,
+		request_schema: PAPER_INTAKE_REQUEST_SCHEMA, request_version: PAPER_INTAKE_PROTOCOL_VERSION, max_items_per_request: PAPER_INTAKE_REQUEST_MAX_ITEMS,
+		zotero_available: !!input.zoteroConfigured,
+		skill_version: RECTO_INTAKE_SKILL_VERSION, skill_path: input.skillPath || "", extension_path: input.extensionPath || "",
+		collections: input.collections || [],
+		papers: papers.sort((a, b) => String(a.title).localeCompare(String(b.title))),
+		pending: (input.pending || []).map(item => ({ id: item.id, title: item.title, doi: item.doi || null, reason: item.reason, browser_url: buildPaperIntakeBrowserUrl(item) || "" })),
+		updated_at: input.now || new Date().toISOString(),
+	};
+}
+
+// T100-S：弹窗里的逐篇结果是那一次运行的快照。之后经浏览器、收件箱或手动补件加入的论文，要随待补队列
+// 更新为「已加入论文库」，不能一直停在「没有合法公开的版本」（用户实测反馈）。
+function reconcilePaperIntakeProgress(rows, pending, folderMap) {
+	const pendingIds = new Set((pending || []).map(item => item && item.id));
+	return (rows || []).map(row => {
+		if (!row || !row.key || !["waiting", "failed"].includes(row.state) || pendingIds.has(row.key)) return row;
+		const added = findPaperIntakeDuplicate(folderMap, { doi: row.doi, title: row.title }, null);
+		return { ...row, state: added ? "added" : "removed", reason: "" };
+	});
+}
+
+function normalizePaperIntakePending(value) {
+	return (Array.isArray(value) ? value : []).map(item => {
+		if (!item || typeof item !== "object") return null;
+		const title = String(item.title || "").trim();
+		const doi = normalizePaperIntakeDoi(item.doi);
+		const arxivId = normalizePaperIntakeArxivId(item.arxivId);
+		if (!title && !doi && !arxivId) return null;
+		return {
+			id: String(item.id || paperIntakeRowKey({ title, doi, arxivId })),
+			title, doi, arxivId,
+			reason: PAPER_INTAKE_REASONS.includes(item.reason) ? item.reason : "no_candidates",
+			links: (Array.isArray(item.links) ? item.links : []).map(String).filter(link => /^https?:\/\//i.test(link)).slice(0, 4),
+			collectionParts: normalizePaperIntakeCollectionParts(item.collectionParts),
+			quickNote: typeof item.quickNote === "string" ? item.quickNote : "",
+			metadata: normalizeZoteroItemMetadata(item.metadata),
+			incompleteSources: (Array.isArray(item.incompleteSources) ? item.incompleteSources : []).map(String).slice(0, 8),
+			createdAt: String(item.createdAt || ""),
+			...(/^[a-f0-9]{8,16}$/.test(String(item.browserNonce || "")) ? { browserNonce: String(item.browserNonce) } : {}),
+			...(item.destination === "zotero" ? { destination: "zotero" } : {}),
+			...(typeof item.rejectedFile === "string" && /\.pdf$/i.test(item.rejectedFile) ? { rejectedFile: item.rejectedFile } : {}),
+			// T107：拖入后没认出的 PDF 暂存在插件目录 intake-files/，重试与「按文件加入」都用它，不再下载。
+			...(typeof item.localFile === "string" && /\.pdf$/i.test(item.localFile) ? { localFile: item.localFile } : {}),
+			...(item.fieldSources && typeof item.fieldSources === "object" && !Array.isArray(item.fieldSources)
+				? { fieldSources: Object.fromEntries(Object.entries(item.fieldSources).filter(([k, v]) => typeof k === "string" && typeof v === "string").slice(0, 8)) } : {}),
+		};
+	}).filter(Boolean).slice(0, 500);
 }
 
 function classifyZoteroAutoImportCandidates(plan, folderMap) {
@@ -10440,46 +12366,20 @@ function describeSetupStatusLights(input = {}) {
 	let credits;
 	if (!view.loggedIn || view.sessionExpired) {
 		credits = { key: "credits", state: "unknown", text: rectoUiText("account.statusCreditsUnknown"), icon: "circle-dashed" };
-	} else if (view.creditPackMode && (!view.translationPages || !view.translationPages.known)) {
+	} else if (!view.translationPages || !view.translationPages.known) {
 		credits = { key: "credits", state: "unknown", text: rectoUiText("account.statusPagesUnknown"), icon: "circle-dashed" };
-	} else if (view.creditPackMode && view.creditsEmpty) {
+	} else if (view.creditsEmpty) {
 		credits = { key: "credits", state: "warning", text: rectoUiText("account.statusPagesLow"), icon: "circle-alert" };
-	} else if (view.creditPackMode) {
+	} else {
 		credits = {
 			key: "credits",
 			state: "ready",
 			text: rectoUiText("account.statusPagesAvailable", { count: view.translationPages.availableText }),
 			icon: "check",
 		};
-	} else if (!view.meter || !view.meter.known) {
-		credits = { key: "credits", state: "unknown", text: rectoUiText("account.statusCreditsUnknown"), icon: "circle-dashed" };
-	} else if (view.creditsEmpty || view.availableCredits <= 0) {
-		credits = { key: "credits", state: "warning", text: rectoUiText("account.statusCreditsLow"), icon: "circle-alert" };
-	} else {
-		const papers = estimatePapersFromCredits(view.availableCredits, view.creditsPerPaper);
-		credits = {
-			key: "credits",
-			state: "ready",
-			text: papers > 0 ? rectoUiText("account.statusCreditsPapers", { count: papers }) : rectoUiText("account.statusCreditsAvailable"),
-			icon: "check",
-		};
 	}
 
 	return { account, zotero: zoteroLight, credits };
-}
-
-// T86-D-B：「开始使用」是否配好的判据（三灯 ready + 已导入）。不用 onboarding.completed——
-// 跳过引导 ≠ 配好。折叠不再拿它去自动收起，只留给测试与将来若要再判断「配好了没有」。
-function isSettingsQuickStartComplete(input = {}) {
-	const lights = describeSetupStatusLights(input);
-	const imported = resolveZoteroLibraryImportOptIn({
-		optedIn: input.optedIn,
-		folderMap: input.folderMap,
-	});
-	return lights.account.state === "ready"
-		&& lights.zotero.state === "ready"
-		&& lights.credits.state === "ready"
-		&& imported === true;
 }
 
 async function dedupeZoteroPdfCandidates(candidates, signal = null, folderMap = {}) {
@@ -12047,6 +13947,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.folderMap = {};
 		this.readingStates = {};
 		this.paperFlags = {};
+		this.rectoCollections = normalizeRectoCollectionStore(null);
 		this.readingTouchedAt = {};
 		this.paperOpenTrackingFrom = 0;
 		this.paperActivitySaveTimer = null;
@@ -12106,6 +14007,27 @@ class RectoPlugin extends obsidian.Plugin {
 		this.addLocalizedCommand("open-account", "command.openAccount", () => this.openAccountModal());
 		this.addLocalizedCommand("repair-pdfs", "command.repairPdfs", () => this.repairPdfs());
 		this.addLocalizedCommand("import-zotero-library", "command.importZotero", () => this.importZoteroLibrary());
+		this.addLocalizedCommand("add-papers", "command.addPapers", () => { void this.openPaperIntakeQuickAdd(); });
+		this.addLocalizedCommand("process-intake-requests", "command.processIntakeRequests", () => { void this.processPaperIntakeRequests(); });
+		if (typeof this.registerObsidianProtocolHandler === "function") {
+			// T125：浏览器扩展用 obsidian://recto-intake?inbox=<文件夹> 告诉 Recto PDF 实际存在哪里（只作线索，要核对任务号）。
+			this.registerObsidianProtocolHandler("recto-intake", params => {
+				if (params && params.inbox) void this.acceptPaperIntakeInboxReport(params.inbox).catch(() => {});
+				void this.processPaperIntakeRequests();
+			});
+		}
+		if (this.app && this.app.vault && typeof this.app.vault.on === "function" && typeof this.registerEvent === "function") {
+			const onAgentFile = file => {
+				const filePath = String(file && file.path || "");
+				if (filePath.includes(`/${PAPER_INTAKE_AGENT_FOLDER}/`) && /\.request\.json$/.test(filePath)) this.schedulePaperIntakeAgentRun();
+			};
+			this.registerEvent(this.app.vault.on("create", onAgentFile));
+			this.registerEvent(this.app.vault.on("rename", onAgentFile));
+		}
+		if (this.app && this.app.workspace && typeof this.app.workspace.onLayoutReady === "function") {
+			this.app.workspace.onLayoutReady(() => { this.schedulePaperIntakeAgentRun(3000); });
+		}
+		this.startPaperIntakeInboxWatcher();
 		// T84：库外 PDF 的入口。命令 id 一经发布永不改动（不变量 4），改的只能是显示名。
 		// 拆成两条命令而不是一条加确认弹窗：转换与翻译是两段独立计费，「要不要译文」是用户的
 		// 动作选择而不是一道确认，混成一条会让人点一次被扣两段费。
@@ -12147,10 +14069,17 @@ class RectoPlugin extends obsidian.Plugin {
 		this.registerPaperJsonlWatchers();
 		this.app.workspace.onLayoutReady(async () => {
 			this.suspendPaperJsonlRefresh();
-			try { await this.recoverPaperReimport(); }
-			catch (error) {
-				showRectoNotice(rectoUiText("reimport.recoveryFailed", { error: getSanitizedErrorMessage(error) }), { tone: "error" });
-				return;
+			try {
+				try { await this.recoverPaperReimport(); }
+				catch (error) {
+					showRectoNotice(rectoUiText("reimport.recoveryFailed", { error: getSanitizedErrorMessage(error) }), { tone: "error" });
+					return;
+				}
+				// T124：上次改名中断——已提交的做完，未提交的整篇改回旧名。失败不挡其余启动步骤，恢复单保留。
+				try { await this.recoverPaperRename(); }
+				catch (error) {
+					showRectoNotice(rectoUiText("rename.recoveryFailed", { error: getSanitizedErrorMessage(error) }), { tone: "error" });
+				}
 			}
 			finally { await this.resumePaperJsonlRefresh({ flush: false }); }
 			this.applyReaderTheme();
@@ -12212,7 +14141,7 @@ class RectoPlugin extends obsidian.Plugin {
 		this.rectoUiCommands.push({ command, key });
 	}
 	applyInterfaceAccent(extraDocument) {
-		// Stamp only a Recto preference; CSS consumes it exclusively inside panel roots.
+		// Obsidian startup snapshots preserve the document root's class list.
 		const documents = new Set(this.interfaceAccentDocuments || []);
 		if (typeof document !== "undefined") documents.add(document);
 		if (extraDocument) documents.add(extraDocument);
@@ -12220,11 +14149,12 @@ class RectoPlugin extends obsidian.Plugin {
 			const doc = leaf.view?.containerEl?.ownerDocument;
 			if (doc) documents.add(doc);
 		});
-		const accent = ["red", "blue", "green"].includes(this.settings.interfaceAccent) ? this.settings.interfaceAccent : "red";
+		const accent = RECTO_INTERFACE_ACCENTS.includes(this.settings.interfaceAccent) ? this.settings.interfaceAccent : "red";
+		const activeClass = `recto-accent-${accent}`;
 		this.interfaceAccentDocuments = new Set();
 		for (const doc of documents) {
 			if (!doc.documentElement || doc.defaultView?.closed) continue;
-			doc.documentElement.setAttribute("data-recto-interface-accent", accent);
+			for (const className of RECTO_INTERFACE_ACCENT_CLASSES) doc.documentElement.classList.toggle(className, className === activeClass);
 			this.interfaceAccentDocuments.add(doc);
 		}
 	}
@@ -12277,7 +14207,7 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 	onunload() {
-		for (const doc of this.interfaceAccentDocuments || []) doc.documentElement?.removeAttribute("data-recto-interface-accent");
+		for (const doc of this.interfaceAccentDocuments || []) doc.documentElement?.classList.remove(...RECTO_INTERFACE_ACCENT_CLASSES);
 		this.interfaceAccentDocuments?.clear();
 		for (const stop of rectoBrandConfettiRuns.values()) stop();
 		for (const session of rectoBrandConfettiSessions.values()) session.dispose();
@@ -12317,6 +14247,7 @@ class RectoPlugin extends obsidian.Plugin {
 		if (d) {
 			this.settings = { ...DEFAULT_SETTINGS, ...d.settings };
 			this.settings.paperNoteStyle = this.getPaperNoteStyle();
+			this.settings.paperNaming = normalizePaperNamingSettings(this.settings.paperNaming);
 			if (Object.prototype.hasOwnProperty.call(this.settings, "autoCreateNoteOutline")) {
 				delete this.settings.autoCreateNoteOutline;
 				migrated = true;
@@ -12326,7 +14257,7 @@ class RectoPlugin extends obsidian.Plugin {
 				backendTranslationTargetLanguage: d.settings && d.settings.backendTranslationTargetLanguage,
 			};
 			this.settings.uiLanguage = normalizeRectoUiPreference(this.settings.uiLanguage);
-			if (!["red", "blue", "green"].includes(this.settings.interfaceAccent)) this.settings.interfaceAccent = "red";
+			if (!RECTO_INTERFACE_ACCENTS.includes(this.settings.interfaceAccent)) this.settings.interfaceAccent = "red";
 			this.settings.backendBaseUrl = String(this.settings.backendBaseUrl || DEFAULT_BACKEND_BASE_URL).trim() || DEFAULT_BACKEND_BASE_URL;
 			// T82-B-R：全量切 API 域名，不留过渡；已保存的旧默认地址一次性改写。
 			const legacyApiBase = "https://api.paper-brain.uk";
@@ -12343,10 +14274,6 @@ class RectoPlugin extends obsidian.Plugin {
 			this.settings.backendAccountRole = String(this.settings.backendAccountRole || "").trim().toLowerCase();
 			this.settings.backendPlansCache = normalizeBackendPlansCache(this.settings.backendPlansCache);
 			this.settings.backendSelectedPlanCode = String(this.settings.backendSelectedPlanCode || "").trim();
-			this.settings.backendMembershipPlanCode = String(this.settings.backendMembershipPlanCode || "").trim();
-			this.settings.backendMembershipPlanName = String(this.settings.backendMembershipPlanName || "").trim();
-			this.settings.backendMembershipExpiresAt = String(this.settings.backendMembershipExpiresAt || "").trim();
-			this.settings.backendMembershipPeriodEnd = String(this.settings.backendMembershipPeriodEnd || "").trim();
 			this.settings.backendOutputLanguage = normalizeBackendChoice(this.settings.backendOutputLanguage, BACKEND_OUTPUT_LANGUAGES, DEFAULT_SETTINGS.backendOutputLanguage);
 			this.settings.summaryDepth = normalizeBackendChoice(this.settings.summaryDepth, BACKEND_SUMMARY_DEPTHS, DEFAULT_SETTINGS.summaryDepth);
 			this.settings.generateSummaryOnTranslate = this.settings.generateSummaryOnTranslate === true;
@@ -12369,6 +14296,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.folderMap = d.folderMap || {}; // zoteroFolder → { stem, originalName }
 			this.readingStates = d.readingStates || {}; // zoteroItemKey → reading | read
 			this.paperFlags = normalizeHubPaperFlagStore(d.paperFlags); // recordId → independent additional marks
+			this.rectoCollections = normalizeRectoCollectionStore(d.rectoCollections); // T106：Recto 记住的分类与改名规则
 			this.readingTouchedAt = d.readingTouchedAt || {}; // readingKey → 上次打开或改阅读状态的 ISO 时间（T86-C）
 			this.zoteroImportProjectionPending = d.zoteroImportProjectionPending === true;
 			const resolvedOptIn = resolveZoteroLibraryImportOptIn({
@@ -12401,6 +14329,8 @@ class RectoPlugin extends obsidian.Plugin {
 			const target = normalizeDocumentLanguage(aliases[String(hostLanguage).toLowerCase()] || hostLanguage) || normalizeDocumentLanguage("en");
 			this.settings.documentLanguages = { version: 1, translationTarget: target, summaryLanguage: target.id, ocrLanguage: "auto" };
 			delete this.settings.documentLanguageLegacy;
+			// T124：只有新安装默认「作者 年份 - 题名」；老用户沿用题名，库里不会突然混两种命名。
+			this.settings.paperNaming = { preset: PAPER_NAMING_NEW_INSTALL_PRESET, template: "" };
 			migrated = true;
 		}
 		this.cloudProcessingConsentAccepted = !!(d && d.cloudProcessingConsentAccepted === true);
@@ -12440,6 +14370,7 @@ class RectoPlugin extends obsidian.Plugin {
 			readingStates: this.readingStates,
 			readingTouchedAt: this.readingTouchedAt,
 			paperFlags: this.paperFlags || {},
+			rectoCollections: this.rectoCollections || normalizeRectoCollectionStore(null),
 			zoteroImportProjectionPending: this.zoteroImportProjectionPending === true,
 			zoteroLibraryImportOptedIn: this.zoteroLibraryImportOptedIn === true,
 			zoteroLastAutoCheckAt: Number(this.zoteroLastAutoCheckAt) || 0,
@@ -13142,10 +15073,6 @@ class RectoPlugin extends obsidian.Plugin {
 		new RectoOnboardingModal(this, { replay: true }).open();
 	}
 
-	getBackendBaseUrl() {
-		return normalizeBackendBaseUrl(this.settings.backendBaseUrl);
-	}
-
 	hasCloudProcessingConsent() {
 		return this.cloudProcessingConsentAccepted === true;
 	}
@@ -13394,34 +15321,18 @@ class RectoPlugin extends obsidian.Plugin {
 		if (credits && Number.isFinite(Number(credits.heldCredits))) {
 			this.settings.backendLastHeldCredits = Number(credits.heldCredits);
 		}
-		// 进度条的分母。老后端不返回这个字段，那时保持 null，进度条自己降级成纯数字。
+		// 发放额度只用来判断付款是否到账（snapshotCheckoutBilling）；老后端不返回时保持 null。
 		if (credits && Number.isFinite(Number(credits.grantedCredits))) {
 			this.settings.backendLastGrantedCredits = Number(credits.grantedCredits);
 		}
-		// T84-R-A：点数 → 篇数的换算常数。只认正数，老后端不带这个字段时保持上一次读到的值。
-		// **后端一旦开始下发就不能再停**——停了插件会继续用上一次的值，而 T84-R 切完单位后
-		// 那个值与旧单位差 1000 倍；真要回滚单位，后端必须跟着把这里下发回 25。
-		if (credits && Number(credits.creditsPerPaper) > 0) {
-			this.settings.backendCreditsPerPaper = Number(credits.creditsPerPaper);
-		}
 		if (credits && typeof credits === "object") {
-			this.settings.backendBillingMode = resolveBackendBillingMode(
-				credits.billingMode,
-				this.settings.backendPlansCache,
-			);
 			if (Number(credits.creditsPerTranslationPage) > 0) {
 				this.settings.backendCreditsPerTranslationPage = Number(credits.creditsPerTranslationPage);
 			}
 			this.settings.backendAvailableTranslationPages = toBackendCreditNumber(credits.availableTranslationPages);
 			this.settings.backendHeldTranslationPages = toBackendCreditNumber(credits.heldTranslationPages);
 		}
-		// 当前会员（T82-A-R）。只有 /api/v1/me 会带这个键，登录/注册的响应不带——所以用
-		// 「键在不在」判断，而不是「值真不真」：null 是有意义的答案（= 权益回到 Basic），
-		// 用 falsy 判断会让登录后的一次刷新把刚读到的档位又抹掉。
-		if (payload && typeof payload === "object" && "membership" in payload) {
-			applyBackendMembershipToSettings(this.settings, payload.membership);
-		}
-		// T84-E-A：插件版本同样按「键在不在」判断——老后端不带 `client`，那时保持上一次读到
+		// T84-E-A：插件版本按「键在不在」判断——老后端不带 `client`，那时保持上一次读到
 		// 的值，不要清空；带了就以它为准（含「清成空」这个有意义的答案）。
 		if (payload && typeof payload === "object" && "client" in payload) {
 			const release = normalizeRectoClientRelease(payload.client);
@@ -13433,7 +15344,6 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 	clearBackendAccountSession() {
-		applyBackendMembershipToSettings(this.settings, null);
 		this.settings.backendSessionToken = "";
 		this.settings.backendSessionExpiresAt = "";
 		this.settings.backendUserId = "";
@@ -15193,7 +17103,7 @@ class RectoPlugin extends obsidian.Plugin {
 		for (const btn of RIBBON_BUTTONS) {
 			if (!cfg[btn.key]) continue;
 			const customIcon = !!HUB_READING_ICON_PATHS[btn.icon];
-			const el = this.addRibbonIcon(customIcon ? "columns-2" : btn.icon, rectoUiText({ hub: "hub.viewTitle", dualPane: "command.toggleDualPane", pdfCompare: "command.togglePdfCompare", externalPdf: "command.convertExternalPdf" }[btn.key]), () => this[btn.action]());
+			const el = this.addRibbonIcon(customIcon ? "columns-2" : btn.icon, rectoUiText({ hub: "hub.viewTitle", addPapers: "paperIntake.open", dualPane: "command.toggleDualPane", pdfCompare: "command.togglePdfCompare", externalPdf: "command.convertExternalPdf" }[btn.key]), () => this[btn.action]());
 			if (customIcon) {
 				setChromeIcon(el, btn.icon);
 				el.querySelector("svg")?.classList.add("svg-icon");
@@ -15536,20 +17446,6 @@ class RectoPlugin extends obsidian.Plugin {
 		};
 	}
 
-	async enrichTasksWithZoteroMetadata(tasks) {
-		let metadata;
-		try { metadata = await this.readZoteroMetadata(); }
-		catch (e) {
-			setRectoInlineFeedback(this, "scan", rectoUiText("import.collectionReadFailed", { error: getUserFacingErrorMessage(e, "") }));
-			return tasks;
-		}
-		return tasks.map(task => {
-			const z = metadata.byAttachment[task.folder];
-			if (!z) return { ...task, zoteroAttachmentKey: task.folder, zoteroCollections: [], zoteroCollectionPaths: [] };
-			return { ...task, ...z };
-		});
-	}
-
 	readSummaryMeta(summaryPath) {
 		try {
 			const abs = nodePath.join(this.app.vault.adapter.basePath, summaryPath);
@@ -15580,7 +17476,9 @@ class RectoPlugin extends obsidian.Plugin {
 			baseFolder: this.getValidatedBaseFolder(),
 			folderMap: this.folderMap,
 			readingStates: this.readingStates,
+			rectoCollections: this.rectoCollections,
 			convertedFolders: this.convertedFolders,
+			paperNaming: this.settings?.paperNaming,
 		});
 	}
 
@@ -16056,7 +17954,9 @@ class RectoPlugin extends obsidian.Plugin {
 				candidate.verifiedSourceRename = true;
 			} else candidate.requiresIdentityConfirmation = true;
 		}
-		const dedupedCandidates = await dedupeZoteroPdfCandidates(candidates, options.signal || this.getActiveSignal(), this.folderMap || {});
+		// T132：在 Recto 里删除过的 Zotero 论文不再导入（一键导入与自动同步都走这里）。
+		const keptCandidates = filterRemovedZoteroCandidates(candidates, this.folderMap, this.settings?.removedZoteroPapers);
+		const dedupedCandidates = await dedupeZoteroPdfCandidates(keptCandidates, options.signal || this.getActiveSignal(), this.folderMap || {});
 		return { ...buildZoteroPdfSelectionPlan(dedupedCandidates), quickNotesByAttachment: metadata.quickNotesByAttachment || {} };
 	}
 
@@ -16341,13 +18241,13 @@ class RectoPlugin extends obsidian.Plugin {
 				// 于是 `<i>Colloquium</i>: Topological insulators` 会变成目录名
 				// `i Colloquium i Topological insulators`（T81 的真实转换日志里就有这个）。
 				// 先去标签再定 stem；已有目录按数据契约不改名，只影响新导入的论文。
-				const desiredStem = stripHubTitleMarkup(task.zoteroTitle)
-					|| nodePath.basename(task.name || "未命名论文", nodePath.extname(task.name || ""));
+				// T124：stem 由命名规则定（getPaperStemRequest）；「题名」预设仍是上面说的去标签题名。
+				const naming = this.getPaperStemRequest(task);
 				const sourceSize = await getReadableFileSize(task.path);
 				const stem = current && current.stem
 					? current.stem
-					: this.allocateUniquePaperStem(desiredStem, recordId, nextFolderMap, {
-						operation,
+					: this.allocateUniquePaperStem(naming.desiredStem, recordId, nextFolderMap, {
+						operation, candidates: naming.candidates,
 						canReclaimFolder: candidate => this.canReclaimImportedPaperFolder(candidate, sourceSize),
 					});
 				this.claimTaskResources({ ...task, recordId, stem }, operation);
@@ -16372,6 +18272,10 @@ class RectoPlugin extends obsidian.Plugin {
 					zoteroImportedAt: current && current.zoteroImportedAt || importedAt,
 					zoteroPdfImportPending: true,
 					...(!current ? { zoteroQuickNoteImportPending: true } : {}),
+					...(task.source === "local" || isLocalPaperRecord(current, recordId) ? { source: "local" } : {}),
+					...(task.paperIntakeEdition ? { paperIntakeEdition: task.paperIntakeEdition } : {}),
+					...(task.paperIntakeSourceUrl ? { paperIntakeSourceUrl: task.paperIntakeSourceUrl } : {}),
+					...(task.paperIntakeFieldSources ? { paperIntakeFieldSources: task.paperIntakeFieldSources } : {}),
 				};
 				delete next.orphanedAt;
 				delete next.orphanDeletePrompted;
@@ -16621,6 +18525,1495 @@ class RectoPlugin extends obsidian.Plugin {
 		return counts;
 	}
 
+	// ═══ T100：文献入库（仅加入 Recto）═══════════════════════════════════════════════
+	// 本地论文与 Zotero 论文共用建档核 commitZoteroImportTasks；区别只在 source=local：
+	// 同步不认领、不标 orphaned，重新导入用论文库里的 PDF 副本。
+	getPaperIntakePending() {
+		return normalizePaperIntakePending(this.settings && this.settings.paperIntakePending);
+	}
+
+	async paperIntakeFetch(url, options = {}) {
+		if (typeof this.paperIntakeHttp === "function") return await this.paperIntakeHttp(url, options);
+		const version = this.manifest && this.manifest.version ? this.manifest.version : "dev";
+		const headers = { "User-Agent": `Recto/${version} (Obsidian plugin; paper intake)`, ...(options.headers || {}) };
+		let timer = null;
+		try {
+			const response = await Promise.race([
+				obsidian.requestUrl({ url, method: "GET", headers, throw: false }),
+				new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), options.timeoutMs || 45000); }),
+			]);
+			const bytes = response && response.arrayBuffer ? new Uint8Array(response.arrayBuffer) : new Uint8Array();
+			const lower = {};
+			for (const [name, value] of Object.entries((response && response.headers) || {})) lower[String(name).toLowerCase()] = String(value);
+			return { status: Number(response && response.status) || 0, headers: lower, bytes, url };
+		} catch (error) {
+			return { status: 0, headers: {}, bytes: new Uint8Array(), url, error: getSanitizedErrorMessage(error) || "network" };
+		} finally {
+			if (timer) clearTimeout(timer);
+		}
+	}
+
+	async paperIntakeJson(url, headers = {}, signal = null) {
+		const get = () => this.paperIntakeFetch(url, { headers: { Accept: "application/json", ...headers }, timeoutMs: 30000 });
+		let response = await get();
+		if (response.error || response.status === 429 || response.status >= 500) {
+			await sleep(1500, signal);
+			response = await get();
+		}
+		let data = null;
+		if (response.status === 200) {
+			try { data = JSON.parse(new TextDecoder("utf-8").decode(response.bytes)); } catch { data = null; }
+		}
+		return { data, status: response.error ? "error" : response.status };
+	}
+
+	async extractPaperIntakePdfText(bytes) {
+		if (typeof this.paperIntakePdfText === "function") return await this.paperIntakePdfText(bytes);
+		const pdfjs = await obsidian.loadPdfJs();
+		const doc = await pdfjs.getDocument({ data: bytes.slice() }).promise;
+		try {
+			const pages = doc.numPages;
+			const parts = [];
+			let firstPage = [];
+			for (let index = 1; index <= Math.min(6, pages); index++) {
+				const page = await doc.getPage(index);
+				const content = await page.getTextContent();
+				if (index === 1) firstPage = content.items;
+				parts.push(content.items.map(item => item && item.str || "").join(" "));
+			}
+			// T107：拖入的 PDF 还要文件自带信息与第 1 页大字题名。取不到就留空，不影响正文核对。
+			let info = {};
+			try {
+				const meta = await doc.getMetadata();
+				const raw = meta && meta.info || {};
+				let xmp = "";
+				try { xmp = meta && meta.metadata && typeof meta.metadata.getAll === "function" ? JSON.stringify(meta.metadata.getAll()).slice(0, 20000) : ""; } catch { xmp = ""; }
+				info = { title: String(raw.Title || ""), subject: String(raw.Subject || ""), keywords: String(raw.Keywords || ""), doi: String(raw.doi || raw.DOI || ""), xmp };
+			} catch { info = {}; }
+			const titleLine = pickPaperIntakeTitleLine(firstPage.map(item => ({
+				str: item && item.str, size: item && item.transform ? Math.hypot(item.transform[2], item.transform[3]) : 0,
+				x: item && item.transform ? item.transform[4] : 0, y: item && item.transform ? item.transform[5] : 0, width: item && item.width,
+			})));
+			return { text: parts.join("\n"), head: parts.slice(0, 2).join("\n"), pages, info, titleLine };
+		} finally {
+			if (typeof doc.destroy === "function") await doc.destroy();
+		}
+	}
+
+	async resolvePaperIntakeRow(row, options = {}) {
+		const signal = options.signal || null;
+		const check = () => { if (signal && signal.aborted) throw new Error("任务已取消"); };
+		const sources = {};
+		const candidates = [];
+		const landings = [];
+		let isOa = false;
+		let landing = "";
+		let doi = normalizePaperIntakeDoi(row.doi);
+		let arxivId = normalizePaperIntakeArxivId(row.arxivId);
+		// T105：不含 DOI 的论文页链接先读页面上的 DOI 与题名；读不到就带着链接进待补，由用户补填 DOI。
+		if (row.url && !doi && !arxivId) {
+			const page = await this.readPaperIntakeLandingPage(row.url);
+			check();
+			if (!page.doi && !page.arxivId && paperIntakeWords(page.title).size < 2) {
+				return { status: "waiting", reason: "link_unresolved", links: [row.url], metadata: null, fieldSources: null, title: "", doi: "", arxivId: "",
+					nearMatch: null, incompleteSources: [], attempts: [], sources: {} };
+			}
+			doi = page.doi;
+			arxivId = page.arxivId;
+			row = { ...row, title: page.title };
+		}
+		let work = null;
+		let crossref = null;
+		let arxivEntry = null;
+		let nearMatch = null;
+		let s2Abstract = "";
+		const merge = part => {
+			for (const candidate of part.candidates || []) addPaperIntakeCandidate(candidates, candidate.url, candidate.source, candidate.version, candidate.note);
+			landings.push(...(part.landings || []));
+			if (part.isOa) isOa = true;
+		};
+		if (doi) {
+			const result = await this.paperIntakeJson(`https://api.openalex.org/works/doi:${encodeURIComponent(doi)}`, {}, signal);
+			sources.openalex = result.status;
+			work = result.data;
+		} else if (!arxivId && row.title) {
+			const result = await this.paperIntakeJson(`https://api.openalex.org/works?per-page=5&search=${encodeURIComponent(row.title)}`, {}, signal);
+			sources.openalex = result.status;
+			const results = Array.isArray(result.data && result.data.results) ? result.data.results : [];
+			work = results.find(item => paperIntakeSimilarity(item && (item.title || item.display_name), row.title) >= 0.9) || null;
+			if (!work && results[0] && paperIntakeSimilarity(results[0].title || results[0].display_name, row.title) >= 0.5) {
+				nearMatch = { title: String(results[0].title || results[0].display_name || ""), doi: normalizePaperIntakeDoi(results[0].doi) };
+			}
+		}
+		check();
+		if (work) {
+			const part = collectOpenAlexPaperIntake(work);
+			merge(part);
+			landing = part.landing;
+			doi = doi || part.doi;
+			arxivId = arxivId || part.arxivId;
+		}
+		if (doi.startsWith("10.48550/arxiv.")) {
+			arxivId = arxivId || doi.slice("10.48550/arxiv.".length);
+		}
+		const email = PAPER_INTAKE_UNPAYWALL_EMAIL;
+		// T107：PDF 已在手（拖入的文件）时只查书目信息，不找全文。
+		const metadataOnly = options.metadataOnly === true;
+		if (!metadataOnly && doi && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+			const result = await this.paperIntakeJson(`https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${encodeURIComponent(email)}`, {}, signal);
+			sources.unpaywall = result.status;
+			merge(collectUnpaywallPaperIntake(result.data));
+		}
+		check();
+		if (!metadataOnly && (doi || arxivId)) {
+			const id = doi ? `DOI:${doi}` : `ARXIV:${arxivId}`;
+			const result = await this.paperIntakeJson(`https://api.semanticscholar.org/graph/v1/paper/${encodeURIComponent(id)}?fields=title,openAccessPdf,externalIds,abstract`, {}, signal);
+			sources.semantic_scholar = result.status;
+			const part = collectSemanticScholarPaperIntake(result.data);
+			merge(part);
+			arxivId = arxivId || part.arxivId;
+			s2Abstract = result.data && typeof result.data.abstract === "string" ? result.data.abstract : "";
+		}
+		check();
+		if (doi && !doi.startsWith("10.48550/")) {
+			const result = await this.paperIntakeJson(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {}, signal);
+			sources.crossref = result.status;
+			crossref = result.data && result.data.message || null;
+			merge(collectCrossrefPaperIntake(crossref));
+		}
+		for (const url of paperIntakePublisherRuleUrls(doi, landing)) addPaperIntakeCandidate(candidates, url, "publisher_rule");
+		for (const item of landings) addPaperIntakeCandidate(candidates, item.url, "landing_meta", item.version);
+		check();
+		const arxivTitle = !arxivId && !doi && row.title ? row.title : (!arxivId && work ? work.title : "");
+		if (arxivId || arxivTitle) {
+			const query = arxivId ? `id_list=${encodeURIComponent(arxivId)}`
+				: `max_results=5&search_query=${encodeURIComponent(`ti:"${(String(arxivTitle).match(/[\p{L}\p{N}]+/gu) || []).slice(0, 18).join(" ")}"`)}`;
+			let response = await this.paperIntakeFetch(`https://export.arxiv.org/api/query?${query}`, { timeoutMs: 60000 });
+			if (response.error || response.status === 429 || response.status >= 500) {
+				await sleep(3000, signal);
+				response = await this.paperIntakeFetch(`https://export.arxiv.org/api/query?${query}`, { timeoutMs: 60000 });
+			}
+			sources.arxiv = response.error ? "error" : response.status;
+			if (response.status === 200) {
+				const entries = parseArxivAtomPaperIntake(new TextDecoder("utf-8").decode(response.bytes));
+				arxivEntry = arxivId ? entries.find(entry => entry.id === arxivId) || null
+					: entries.find(entry => paperIntakeSimilarity(entry.title, arxivTitle) >= 0.9) || null;
+				if (arxivEntry) arxivId = arxivEntry.id;
+			}
+		}
+		if (arxivId) addPaperIntakeCandidate(candidates, `https://arxiv.org/pdf/${arxivId}`, "arxiv", "submittedVersion");
+		const built = buildPaperIntakeMetadata({ crossref, openalex: work, arxiv: arxivEntry, row: { ...row, arxivId }, doi, arxivId });
+		const baseMetadata = row.metadata ? normalizeZoteroItemMetadata(row.metadata) : built && built.metadata;
+		// T100-S：摘要尽量补全，取不到就留空；只补缺，不覆盖已核实的元数据。
+		const enriched = applyPaperIntakeFieldEnrichment(baseMetadata, { abstracts: [
+			{ source: "crossref", text: crossref && crossref.abstract },
+			{ source: "arxiv", text: arxivEntry && arxivEntry.summary },
+			{ source: "semantic_scholar", text: s2Abstract },
+			{ source: "openalex", text: rebuildOpenAlexAbstract(work && work.abstract_inverted_index) },
+		] }, row.fieldSources || (row.metadata ? {} : {}));
+		const metadata = enriched.metadata;
+		const fieldSources = enriched.sources;
+		const title = getZoteroMetadataField(metadata, "title") || row.title || "";
+		const identityMeta = row.identityMetadata ? normalizeZoteroItemMetadata(row.identityMetadata) : null;
+		const creators = (metadata && metadata.creators && metadata.creators.length ? metadata.creators : identityMeta && identityMeta.creators) || [];
+		// Semantic Scholar 免密钥时常年 429，而它给的开放全文 OpenAlex / Unpaywall 基本都有——
+		// 把它的限流也算「不完整」会让几乎每篇待补都挂一句警告，等于没有警告（真机实测）。
+		const incompleteSources = Object.entries(sources)
+			.filter(([name, status]) => status === "error" || Number(status) >= 500 || (status === 429 && name !== "semantic_scholar"))
+			.map(([name]) => name);
+		if (metadataOnly) {
+			const found = !!(work || crossref || arxivEntry);
+			if (!found) return { status: "waiting", reason: incompleteSources.length ? "network" : "pdf_unidentified", metadata: null, fieldSources: null,
+				title: "", doi, arxivId, nearMatch, incompleteSources, attempts: [], sources };
+			// 用户亲手填的 DOI/题名不再核对（扫描件没有文字层，核对必然失败）；自动线索必须过正文核对。
+			const identity = typeof options.pdfText === "string"
+				? checkPaperIntakePdfIdentity({ text: options.pdfText, title, creators }) : { ok: true, arxivStamp: false };
+			if (!identity.ok) return { status: "waiting", reason: "pdf_unidentified", metadata: null, fieldSources: null,
+				title: "", doi: "", arxivId: "", nearMatch: null, incompleteSources, attempts: [], sources };
+			return { status: "ready", metadata, fieldSources, title, edition: identity.arxivStamp ? "author_preprint" : "user_file", sourceUrl: "", sources };
+		}
+		const queue = rankPaperIntakeCandidates(candidates);
+		const attempts = [];
+		for (let index = 0; index < queue.length && attempts.length < PAPER_INTAKE_MAX_ATTEMPTS; index++) {
+			check();
+			const candidate = queue[index];
+			const response = await this.paperIntakeFetch(candidate.url, { headers: { Accept: "application/pdf,*/*;q=0.8" }, timeoutMs: 90000 });
+			const attempt = { url: candidate.url, source: candidate.source, version: candidate.version, status: response.status };
+			if (!response.error && isPaperIntakePdfBytes(response.bytes) && response.bytes.length <= PAPER_INTAKE_MAX_PDF_BYTES) {
+				let extracted;
+				try { extracted = await this.extractPaperIntakePdfText(response.bytes); }
+				catch { attempts.push({ ...attempt, result: "unreadable" }); continue; }
+				const identity = checkPaperIntakePdfIdentity({ text: extracted.head || extracted.text, title, creators });
+				if (!identity.ok) { attempts.push({ ...attempt, result: identity.reason }); continue; }
+				attempts.push({ ...attempt, result: "ok" });
+				const edition = candidate.source === "arxiv" || identity.arxivStamp ? "author_preprint"
+					: PAPER_INTAKE_EDITIONS[candidate.version] || "repository_or_author_version";
+				return { status: "ready", bytes: response.bytes, pages: extracted.pages, metadata, fieldSources, title, edition,
+					sourceUrl: candidate.url, pdfSource: candidate.source, authorsChecked: identity.authorsChecked, attempts, sources };
+			}
+			const text = new TextDecoder("utf-8").decode(response.bytes.subarray(0, 400000));
+			const result = classifyPaperIntakeResponse({ status: response.status, headers: response.headers, text, error: response.error, byteLength: response.bytes.length });
+			attempts.push({ ...attempt, result });
+			if (result === "not_pdf" && !candidate.fromMeta) {
+				const found = extractPaperIntakeCitationPdfUrl(text, candidate.url);
+				if (found && !queue.some(item => item.url === found)) queue.splice(index + 1, 0, { ...candidate, url: found, fromMeta: true });
+			}
+		}
+		const reason = resolvePaperIntakeReason(attempts, { hasDoi: !!doi || !!arxivId, hadCandidates: queue.length > 0, isOa });
+		const links = uniqueStrings([doi && !doi.startsWith("10.48550/") ? `https://doi.org/${doi}` : "", landing,
+			...attempts.filter(item => ["bot_check", "access_required", "not_pdf"].includes(item.result)).map(item => item.url)].filter(Boolean)).slice(0, 4);
+		return { status: "waiting", reason, links, metadata, fieldSources, title, doi, arxivId, nearMatch, incompleteSources, attempts, sources };
+	}
+
+	async readPaperIntakeLandingPage(url) {
+		const empty = { doi: "", arxivId: "", title: "" };
+		let response;
+		try { response = await this.paperIntakeFetch(url, { headers: { Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8" }, timeoutMs: 30000 }); }
+		catch { return empty; }
+		if (!response || response.error || response.status !== 200 || !response.bytes || isPaperIntakePdfBytes(response.bytes)) return empty;
+		return extractPaperIntakeLandingIdentity(new TextDecoder("utf-8").decode(response.bytes.subarray(0, 600000)));
+	}
+
+	buildPaperIntakePendingItem(row, resolved, now = new Date().toISOString()) {
+		const metadata = resolved && resolved.metadata || null;
+		const fileTitle = row.kind === "pdf" ? (resolved && resolved.title) || row.fileTitle || row.fileName || "" : "";
+		return normalizePaperIntakePending([{
+			id: row.pendingId || paperIntakeRowKey(row),
+			title: getZoteroMetadataField(metadata, "title") || fileTitle || row.title || (resolved && resolved.nearMatch && resolved.nearMatch.title) || row.doi || row.arxivId || row.url,
+			...(row.kind === "pdf" && row.localPath ? { localFile: row.localPath } : {}),
+			doi: normalizePaperIntakeDoi(row.doi || resolved && resolved.doi),
+			arxivId: row.arxivId || resolved && resolved.arxivId || "",
+			reason: resolved && resolved.reason || "no_candidates",
+			links: resolved && resolved.links || [],
+			collectionParts: row.collectionParts || [],
+			quickNote: row.quickNote || "",
+			metadata,
+			incompleteSources: resolved && resolved.incompleteSources || [],
+			createdAt: now,
+			browserNonce: crypto.randomBytes(4).toString("hex"),
+			...(row.destination === "zotero" ? { destination: "zotero" } : {}),
+			...(resolved && resolved.fieldSources ? { fieldSources: resolved.fieldSources } : {}),
+		}])[0];
+	}
+
+	async addPapersFromIntake(rows, options = {}) {
+		return await this.withOperationContext("addPapersFromIntake", operation => this.addPapersFromIntakeScoped(rows, { ...options, operation }));
+	}
+
+	async addPapersFromIntakeScoped(rows, options = {}) {
+		const list = (Array.isArray(rows) ? rows : []).filter(Boolean);
+		if (!list.length) return null;
+		if (!this.getValidatedBaseFolderOrNotice()) return null;
+		// T101：要写 Zotero 的批次先确认 Zotero 在运行、数据目录已配置；不满足就整批不动，不写一半。
+		const wantsZotero = list.some(row => row.destination === "zotero");
+		if (wantsZotero && !String(this.settings.sourceFolder || "").trim()) throw createRectoUiError("paperIntake.destinationZoteroHint");
+		const zoteroContext = wantsZotero ? await this.getZoteroIntakeContext() : null;
+		const operation = this.beginOperation(rectoUiText("paperIntake.operation"), { operation: options.operation });
+		if (!operation) return null;
+		const signal = operation.controller.signal;
+		const report = { added: [], duplicates: [], waiting: [], failed: [], cancelled: false };
+		const notify = (index, row, state, detail = {}) => {
+			if (typeof options.onProgress === "function") options.onProgress({ index, total: list.length, row, state, ...detail });
+		};
+		const staging = options.fromInbox ? "" : await fs.promises.mkdtemp(nodePath.join(require("os").tmpdir(), "recto-intake-"));
+		const tasks = [];
+		const quickNotes = {};
+		const zoteroWrites = [];
+		try {
+			for (let index = 0; index < list.length; index++) {
+				this.throwIfUnloaded(operation);
+				if (signal.aborted) { report.cancelled = true; break; }
+				let row = list[index];
+				const early = row.kind === "pdf" ? findPaperIntakeFileDuplicate(this.folderMap, row.contentHash)
+					: row.doi ? findPaperIntakeDuplicate(this.folderMap, row, null) : "";
+				if (early) { report.duplicates.push({ row, recordId: early }); notify(index, row, "duplicate"); continue; }
+				notify(index, row, "resolving");
+				let resolved;
+				try {
+					resolved = row.kind === "pdf" ? await this.identifyPaperIntakeFile(row, signal)
+						: row.localPath ? { status: "ready", metadata: normalizeZoteroItemMetadata(row.metadata), fieldSources: row.fieldSources || null, edition: row.edition || "", sourceUrl: row.sourceUrl || "" }
+						: await this.resolvePaperIntakeRow(row, { signal });
+					// 认出来以后用查到的 DOI 与题名去重、起记录号，和粘贴 DOI 加入的同一篇得到同样的结果。
+					if (row.kind === "pdf" && resolved.status === "ready") {
+						row = { ...row, doi: getZoteroMetadataField(resolved.metadata, "DOI") || "", title: getZoteroMetadataField(resolved.metadata, "title") || row.title };
+					}
+				} catch (error) {
+					if (isCancellationError(error, signal)) { report.cancelled = true; break; }
+					report.failed.push({ row, error: getSanitizedErrorMessage(error) });
+					notify(index, row, "failed");
+					continue;
+				}
+				const duplicate = findPaperIntakeDuplicate(this.folderMap, row, resolved.metadata)
+					|| (tasks.some(task => findPaperIntakeDuplicate({ [task.recordId]: { stem: "x", zoteroTitle: task.zoteroTitle, zoteroMetadata: task.zoteroMetadata } }, row, resolved.metadata)) ? "batch" : "");
+				if (duplicate) { report.duplicates.push({ row, recordId: duplicate }); notify(index, row, "duplicate"); continue; }
+				if (resolved.status !== "ready") {
+					const item = this.buildPaperIntakePendingItem(row, resolved);
+					report.waiting.push(item);
+					notify(index, row, "waiting", { reason: item.reason });
+					continue;
+				}
+				const recordId = createPaperIntakeRecordId(row, crypto.randomBytes(4).toString("hex"));
+				const title = getZoteroMetadataField(resolved.metadata, "title") || row.title || recordId;
+				const fileName = `${sanitizeStem(stripHubTitleMarkup(title)) || recordId}.pdf`;
+				let filePath = row.localPath;
+				if (!filePath) {
+					filePath = nodePath.join(staging, `${recordId}.pdf`);
+					await fs.promises.writeFile(filePath, Buffer.from(resolved.bytes));
+				}
+				if (row.destination === "zotero") {
+					try {
+						const written = await this.addPaperToZotero(zoteroContext, { metadata: resolved.metadata, title, doi: row.doi, pdfPath: filePath, fileName,
+							collectionParts: row.collectionParts || options.collectionParts || [], quickNote: row.quickNote, sourceUrl: resolved.sourceUrl || "" });
+						zoteroWrites.push({ row, ...written, title, edition: resolved.edition || "", sourceUrl: resolved.sourceUrl || "", metadata: resolved.metadata, fieldSources: resolved.fieldSources });
+						notify(index, row, "ready", { title });
+					} catch (error) {
+						if (error && error.rectoUiKey) throw error;
+						report.failed.push({ row, error: getSanitizedErrorMessage(error) });
+						const item = this.buildPaperIntakePendingItem(row, { ...resolved, reason: "zotero_write_failed" });
+						report.waiting.push(item);
+						notify(index, row, "waiting", { reason: item.reason });
+					}
+					continue;
+				}
+				const contentHash = await hashFileSha256(filePath);
+				tasks.push({
+					...buildLocalPaperImportTask({ recordId, path: filePath, fileName, metadata: resolved.metadata, title,
+						collectionParts: row.collectionParts || options.collectionParts || [], contentHash }),
+					paperIntakeEdition: resolved.edition || "", paperIntakeSourceUrl: resolved.sourceUrl || "",
+					...(resolved.fieldSources && Object.keys(resolved.fieldSources).length ? { paperIntakeFieldSources: resolved.fieldSources } : {}),
+				});
+				quickNotes[recordId] = { notes: typeof row.quickNote === "string" ? row.quickNote : "", noteKey: "recto-intake" };
+				report.added.push({ row, recordId, title, edition: resolved.edition || "" });
+				notify(index, row, "ready", { title });
+			}
+			if (tasks.length) {
+				this.throwIfUnloaded(operation);
+				await this.commitZoteroImportTasks(tasks, {
+					operation, quickNotesByAttachment: quickNotes, skipConfirm: true, quiet: true, manageOperation: false,
+				});
+				// 本地论文没有 Zotero 原件可供自动修复：复制没成功的直接撤回建档，回到待补队列重试。
+				const failedIds = tasks.map(task => task.recordId)
+					.filter(id => !this.folderMap[id] || this.folderMap[id].zoteroPdfImportPending || !this.folderMap[id].localPdfPath);
+				if (failedIds.length) {
+					const nextMap = { ...this.folderMap };
+					for (const id of failedIds) delete nextMap[id];
+					this.folderMap = nextMap;
+					this.convertedFolders = (this.convertedFolders || []).filter(id => !failedIds.includes(id));
+					for (const entry of report.added.filter(item => failedIds.includes(item.recordId))) {
+						report.failed.push({ row: entry.row, error: "write" });
+						report.waiting.push(this.buildPaperIntakePendingItem(entry.row, { reason: "unreadable", metadata: null }));
+					}
+					report.added = report.added.filter(item => !failedIds.includes(item.recordId));
+				}
+			}
+			if (zoteroWrites.length) {
+				// 用 Recto 原有的 Zotero 导入建档：与「一键导入」得到的论文对象完全一样，速记从 Extra 块初始化。
+				this.throwIfUnloaded(operation);
+				const wanted = new Set(zoteroWrites.map(item => item.attachmentKey));
+				// T132：用户亲手再加一次之前删掉的 Zotero 论文，就把它放回同步范围。
+				const removed = normalizeRemovedZoteroPapers(this.settings.removedZoteroPapers);
+				if ([...wanted].some(key => removed[key])) {
+					for (const key of wanted) delete removed[key];
+					this.settings.removedZoteroPapers = removed;
+				}
+				const plan = await this.getPdfScanPlan({ requireMetadata: true, quiet: true, signal, operation });
+				const zoteroTasks = [...plan.tasks, ...plan.ambiguousGroups.flatMap(group => group.files)]
+					.filter(task => wanted.has(task.recordId) && !this.folderMap[task.recordId]);
+				if (zoteroTasks.length) {
+					await this.commitZoteroImportTasks(zoteroTasks, {
+						operation, quickNotesByAttachment: plan.quickNotesByAttachment, skipConfirm: true, quiet: true, manageOperation: false,
+					});
+				}
+				for (const written of zoteroWrites) {
+					const info = this.folderMap[written.attachmentKey];
+					if (info && info.localPdfPath && !info.zoteroPdfImportPending) {
+						this.folderMap[written.attachmentKey] = { ...info, ...(written.edition ? { paperIntakeEdition: written.edition } : {}),
+							...(written.sourceUrl ? { paperIntakeSourceUrl: written.sourceUrl } : {}) };
+						report.added.push({ row: written.row, recordId: written.attachmentKey, title: written.title, edition: written.edition, zotero: true, reused: written.reused });
+					} else {
+						// Zotero 里已经有了：留在待补，重试时会认出 Zotero 里的这一篇直接导入，不会重复写。
+						report.failed.push({ row: written.row, error: "import" });
+						report.waiting.push(this.buildPaperIntakePendingItem(written.row, { reason: "zotero_write_failed", metadata: written.metadata, fieldSources: written.fieldSources }));
+					}
+				}
+			}
+			await this.cleanupPaperIntakeStagedFiles(report);
+			const keyOf = row => row.pendingId || paperIntakeRowKey(row);
+			const addedKeys = new Set(report.added.map(item => keyOf(item.row)));
+			const duplicateKeys = new Set(report.duplicates.map(item => keyOf(item.row)));
+			const waitingById = new Map(report.waiting.map(item => [item.id, item]));
+			const kept = this.getPaperIntakePending().filter(item => !addedKeys.has(item.id) && !duplicateKeys.has(item.id) && !waitingById.has(item.id)
+				&& !(options.removePendingIds || []).includes(item.id));
+			this.settings.paperIntakePending = normalizePaperIntakePending([...report.waiting, ...kept]);
+			await this.save();
+			try { await this.writePaperJsonlIndex({ operation }); } catch { /* 投影失败由下次刷新补齐 */ }
+			return report;
+		} finally {
+			if (staging) await fs.promises.rm(staging, { recursive: true, force: true }).catch(() => {});
+			this.finishOperation(operation);
+			this.safeRefreshHubViews();
+			this.notifyPaperIntakeChanged();
+		}
+	}
+
+	async retryPaperIntakePending(ids = null, options = {}) {
+		const wanted = ids ? new Set(ids) : null;
+		const rows = this.getPaperIntakePending().filter(item => !wanted || wanted.has(item.id)).map(item => {
+			if (item.localFile) return this.buildPaperIntakeFileRow(item);
+			const url = !item.doi && !item.arxivId && /^https?:\/\//i.test(item.title) ? item.title : "";
+			return {
+				pendingId: item.id,
+				fieldSources: item.fieldSources,
+				destination: item.destination,
+				kind: item.doi ? "doi" : item.arxivId ? "arxiv" : url ? "url" : "title",
+				doi: item.doi, arxivId: item.arxivId, title: item.doi || item.arxivId || url ? "" : item.title, raw: item.title,
+				...(url ? { url } : {}),
+				collectionParts: item.collectionParts, quickNote: item.quickNote, metadata: item.metadata,
+			};
+		});
+		return await this.addPapersFromIntake(rows, options);
+	}
+
+	// T105：待补条目原地改题名或填 DOI 后重查。沿用原条目的编号，找到就移出待补，找不到就原位更新。
+	async editPaperIntakePending(id, text) {
+		const item = this.getPaperIntakePending().find(entry => entry.id === id);
+		const [row] = parsePaperIntakeInput(text);
+		if (!item || !row) return null;
+		// T107：拖入的 PDF 填了 DOI/题名，就按用户给的线索查书目，PDF 仍用手上这一份。
+		if (item.localFile) {
+			return await this.addPapersFromIntake([{ ...this.buildPaperIntakeFileRow(item), userHint: true,
+				doi: row.doi || "", arxivId: row.arxivId || "", title: row.doi || row.arxivId ? "" : row.title || "" }], { fromInbox: true });
+		}
+		return await this.addPapersFromIntake([{ ...row, pendingId: item.id, destination: item.destination,
+			collectionParts: item.collectionParts, quickNote: item.quickNote }]);
+	}
+
+	// 待补论文的手动补件：用户在浏览器下载后直接选文件。核验不过时问一次——那是用户自己挑的文件，
+	// 扫描件没有文字层也可能是对的，不能一律拒绝；但也不能不吭声就收下。
+	async attachPaperIntakePdf(id) {
+		const item = this.getPaperIntakePending().find(entry => entry.id === id);
+		if (!item) return null;
+		const [file] = await this.pickExternalPdfFiles();
+		if (!file) return null;
+		const bytes = new Uint8Array(await fs.promises.readFile(file.path));
+		if (!isPaperIntakePdfBytes(bytes)) {
+			showRectoNotice(rectoUiText("paperIntake.notPdf"), { tone: "attention" });
+			return null;
+		}
+		// T128：只有链接的待补没有题名可核对，选来的 PDF 按「拖入 PDF」那条路认（文件自带信息、前两页 DOI、首页题名）；
+		// 认出就入库，认不出变成可「按文件加入」的待补。处理过后原来那条链接待补删掉，不留两条。
+		if (item.reason === "link_unresolved" && !normalizePaperIntakeDoi(item.doi) && !item.arxivId) {
+			const report = await this.addPaperIntakeFiles([{ name: file.name, bytes }], { collectionParts: item.collectionParts, destination: item.destination });
+			if (report && (report.added.length || report.duplicates.length || report.waiting.length)) await this.removePaperIntakePending([item.id]);
+			return report;
+		}
+		const metadata = item.metadata || (buildPaperIntakeMetadata({ row: item }) || {}).metadata || null;
+		const title = getZoteroMetadataField(metadata, "title") || item.title;
+		let identity = { ok: false };
+		try {
+			const extracted = await this.extractPaperIntakePdfText(bytes);
+			identity = checkPaperIntakePdfIdentity({ text: extracted.head || extracted.text, title, creators: metadata && metadata.creators || [] });
+		} catch { identity = { ok: false }; }
+		if (!identity.ok) {
+			const choice = await this.openDecision({
+				title: rectoUiText("paperIntake.mismatchTitle"),
+				intro: rectoUiText("paperIntake.mismatchIntro", { title, file: file.name }),
+				actions: [
+					{ label: rectoUiText("dialog.cancel"), value: "cancel", defaultFocus: true },
+					{ label: rectoUiText("paperIntake.useAnyway"), value: "use" },
+				],
+			});
+			if (choice !== "use") return null;
+		}
+		return await this.addPapersFromIntake([{
+			pendingId: item.id, destination: item.destination, kind: "file", doi: item.doi, arxivId: item.arxivId, title, raw: item.title, metadata,
+			collectionParts: item.collectionParts, quickNote: item.quickNote, localPath: file.path, fieldSources: item.fieldSources,
+			edition: identity.arxivStamp ? "author_preprint" : "manual_download", sourceUrl: "",
+		}], { fromInbox: true });
+	}
+
+	async removePaperIntakePending(ids) {
+		const drop = new Set(ids || []);
+		const staged = this.getPaperIntakePending().filter(item => drop.has(item.id) && item.localFile).map(item => item.localFile);
+		this.settings.paperIntakePending = this.getPaperIntakePending().filter(item => !drop.has(item.id));
+		await this.save();
+		for (const file of staged) await this.removePaperIntakeStagedFile(file);
+		this.notifyPaperIntakeChanged();
+	}
+
+	// ── T107 拖入 PDF ─────────────────────────────────────────────
+	// 文件先复制进插件目录 intake-files/（原文件不动），认出来并入库后删掉这份暂存；
+	// 认不出就留着给待补条目用，重试与「按文件加入」都不需要再找原文件。
+	getPaperIntakeFileStore() {
+		return nodePath.join(this.getPluginDirectoryPath(), "intake-files");
+	}
+
+	isPaperIntakeStagedFile(filePath) {
+		const store = nodePath.resolve(this.getPaperIntakeFileStore());
+		return !!filePath && nodePath.resolve(nodePath.dirname(String(filePath))) === store;
+	}
+
+	async removePaperIntakeStagedFile(filePath) {
+		if (!this.isPaperIntakeStagedFile(filePath)) return;
+		if (this.getPaperIntakePending().some(item => item.localFile && nodePath.resolve(item.localFile) === nodePath.resolve(filePath))) return;
+		try { await fs.promises.unlink(filePath); } catch { /* 已不在或被占用 */ }
+	}
+
+	async cleanupPaperIntakeStagedFiles(report) {
+		const done = [...report.added.filter(item => {
+			const info = this.folderMap[item.recordId];
+			return info && info.localPdfPath && !info.zoteroPdfImportPending;
+		}), ...report.duplicates].map(item => item.row).filter(row => row && row.kind === "pdf" && row.localPath);
+		for (const row of done) {
+			if (!this.isPaperIntakeStagedFile(row.localPath)) continue;
+			try { await fs.promises.unlink(row.localPath); } catch { /* 已不在或被占用 */ }
+		}
+	}
+
+	buildPaperIntakeFileRow(item) {
+		return { kind: "pdf", pendingId: item.id, localPath: item.localFile, fileTitle: item.title, fileName: nodePath.basename(item.localFile),
+			destination: item.destination, collectionParts: item.collectionParts, quickNote: item.quickNote, title: "", doi: "", arxivId: "" };
+	}
+
+	// files：[{ name, bytes }] 或 [{ name, path }]。返回 addPapersFromIntake 的报告，另带 notPdf（跳过的文件名）。
+	async addPaperIntakeFiles(files, options = {}) {
+		const store = this.getPaperIntakeFileStore();
+		const rows = [];
+		const notPdf = [];
+		for (const file of files || []) {
+			let bytes = file.bytes || null;
+			try { if (!bytes && file.path) bytes = new Uint8Array(await fs.promises.readFile(file.path)); } catch { bytes = null; }
+			if (!bytes || !isPaperIntakePdfBytes(bytes) || bytes.length > PAPER_INTAKE_MAX_PDF_BYTES) { notPdf.push(String(file.name || "")); continue; }
+			const contentHash = crypto.createHash("sha256").update(bytes).digest("hex");
+			if (rows.some(row => row.contentHash === contentHash)) continue;
+			await fs.promises.mkdir(store, { recursive: true });
+			const localPath = nodePath.join(store, `${contentHash.slice(0, 16)}.pdf`);
+			if (!fs.existsSync(localPath)) await fs.promises.writeFile(localPath, Buffer.from(bytes));
+			rows.push({ kind: "pdf", pendingId: `file:${contentHash.slice(0, 16)}`, localPath, contentHash, fileName: String(file.name || ""),
+				title: "", doi: "", arxivId: "", collectionParts: options.collectionParts || [], destination: options.destination || "local" });
+		}
+		if (typeof options.onRows === "function") options.onRows(rows);
+		if (!rows.length) return { added: [], duplicates: [], waiting: [], failed: [], notPdf, rows };
+		const report = await this.addPapersFromIntake(rows, { fromInbox: true, onProgress: options.onProgress });
+		return report ? { ...report, notPdf, rows } : null;
+	}
+
+	// 「按文件加入」：认不出也照样入库，题名用第 1 页大字或文件名，书目信息以后再补。
+	async addPaperIntakeFileAsIs(id) {
+		const item = this.getPaperIntakePending().find(entry => entry.id === id);
+		if (!item || !item.localFile || !fs.existsSync(item.localFile)) return null;
+		return await this.addPapersFromIntake([{ ...this.buildPaperIntakeFileRow(item), asFile: true }], { fromInbox: true });
+	}
+
+	// T128：扩展从论文页读到的身份 → 书目信息。先按 DOI（没有 DOI 才按题名）查数据库；查不到就用页面自己的题名与作者，
+	// 之后照样过 PDF 正文核对（题名不足 4 个词又没有作者时核对不会通过）。网络不通返回 network，留待下一轮。
+	async resolvePaperIntakePageIdentity(page) {
+		const doi = normalizePaperIntakeDoi(page && page.doi);
+		const title = String(page && page.title || "").replace(/\s+/g, " ").trim();
+		if (!doi && paperIntakeWords(title).size < 2) return { status: "unknown" };
+		const resolved = await this.resolvePaperIntakeRow({ doi, arxivId: "", title: doi ? "" : title }, { metadataOnly: true });
+		if (resolved.status === "ready" && resolved.metadata) return { status: "ready", metadata: resolved.metadata, fieldSources: resolved.fieldSources || null };
+		if (resolved.reason === "network") return { status: "network" };
+		const built = title ? buildPaperIntakeMetadata({ row: { title, doi } }) : null;
+		if (!built) return { status: "unknown" };
+		const creators = (page.authors || []).map(splitPaperIntakePersonName).filter(Boolean);
+		return { status: "ready", metadata: normalizeZoteroItemMetadata({ ...built.metadata, creators }), fieldSources: null };
+	}
+
+	async identifyPaperIntakeFile(row, signal = null) {
+		let bytes;
+		try { bytes = new Uint8Array(await fs.promises.readFile(row.localPath)); }
+		catch { return { status: "waiting", reason: "unreadable", metadata: null, title: row.fileTitle || "" }; }
+		if (row.asFile) {
+			const built = buildPaperIntakeMetadata({ row: { title: row.fileTitle || guessPaperIntakeFileTitle({ fileName: row.fileName }) } });
+			return { status: "ready", metadata: built && built.metadata || null, fieldSources: null, edition: "user_file", sourceUrl: "" };
+		}
+		let extracted = { text: "", head: "", info: {}, titleLine: "" };
+		try { extracted = await this.extractPaperIntakePdfText(bytes); } catch { /* 无文字层或文件损坏：只能靠用户填的线索 */ }
+		const head = extracted.head || extracted.text || "";
+		const hint = row.userHint ? [{ kind: row.doi ? "doi" : row.arxivId ? "arxiv" : "title", doi: row.doi || "", arxivId: row.arxivId || "", title: row.title || "" }] : null;
+		const hints = hint || collectPaperIntakeFileHints({ info: extracted.info, head, titleLine: extracted.titleLine });
+		let reason = "pdf_unidentified";
+		for (const item of hints) {
+			if (signal && signal.aborted) throw new Error("任务已取消");
+			const resolved = await this.resolvePaperIntakeRow({ ...item, collectionParts: row.collectionParts }, { signal, metadataOnly: true, pdfText: hint ? null : head });
+			if (resolved.status === "ready") return resolved;
+			if (resolved.reason === "network") reason = "network";
+		}
+		return { status: "waiting", reason, metadata: null, title: row.fileTitle || guessPaperIntakeFileTitle({ ...extracted, fileName: row.fileName }) };
+	}
+
+	onPaperIntakeChanged(listener) {
+		if (!this.paperIntakeListeners) this.paperIntakeListeners = new Set();
+		this.paperIntakeListeners.add(listener);
+		return () => this.paperIntakeListeners.delete(listener);
+	}
+
+	notifyPaperIntakeChanged() {
+		for (const listener of this.paperIntakeListeners || []) {
+			try { listener(); } catch { /* 视图已关闭 */ }
+		}
+		if (this.isPaperIntakeAgentEnabled()) void this.writePaperIntakeAgentContext().catch(() => {});
+	}
+
+	getPaperIntakeInboxFolder() {
+		const folder = String(this.settings && this.settings.paperIntakeInboxFolder || "").trim();
+		return folder ? normalizeZoteroLocalPath(folder) : "";
+	}
+
+	// T104：浏览器默认下载位置的常见两处。只用来找带本次任务号的文件，不读其他内容。
+	// T125：再加上浏览器扩展本次会话报来的文件夹（acceptPaperIntakeInboxReport 记下的线索）。
+	getPaperIntakeInboxCandidates() {
+		const dirs = [];
+		try {
+			const remote = typeof window !== "undefined" && window.require ? window.require("electron").remote : null;
+			for (const name of ["downloads", "desktop"]) {
+				try { if (remote && remote.app) dirs.push(remote.app.getPath(name)); } catch { /* 该位置不可用 */ }
+			}
+		} catch { /* 非 Electron 环境 */ }
+		const home = require("os").homedir();
+		dirs.push(nodePath.join(home, "Downloads"), nodePath.join(home, "Desktop"));
+		const seen = new Set();
+		const hints = this.paperIntakeInboxHints || [];
+		return [...hints, ...dirs.filter(Boolean).map(dir => nodePath.join(dir, "Recto"))].filter(dir => {
+			const key = dir.toLowerCase();
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	}
+
+	// 只有出现待补论文任务号文件的位置才采用（不猜）。T125：已配置的文件夹里有本批文件就不动；
+	// 没有、而别处有，说明浏览器换了下载位置，自动改过去并提示。
+	// options.since：只认这个时刻之后出现的文件（取件中用本次开始时间：旧文件夹里以前留下的同号文件不算本批）；
+	// options.trustCandidates：扩展刚亲眼看到文件存进去的文件夹，当前文件夹里有旧文件也照样切换。
+	async detectPaperIntakeInbox(candidates = this.getPaperIntakeInboxCandidates(), options = {}) {
+		const tokens = new Set(this.getPaperIntakePending().map(item => paperIntakeBrowserToken(item.id, item.browserNonce)));
+		if (!tokens.size) return "";
+		const since = Number(options.since) || 0;
+		const hasTaskFile = async dir => {
+			let names;
+			try { names = await fs.promises.readdir(dir); } catch { return false; }
+			for (const name of names) {
+				const file = parsePaperIntakeBrowserFile(name);
+				if (!file || !tokens.has(file.token)) continue;
+				if (!since) return true;
+				try { if ((await fs.promises.stat(nodePath.join(dir, name))).mtimeMs >= since) return true; } catch { /* 刚被移走 */ }
+			}
+			return false;
+		};
+		const current = this.getPaperIntakeInboxFolder();
+		const currentKey = current ? nodePath.resolve(current).toLowerCase() : "";
+		if (current && !options.trustCandidates && await hasTaskFile(current)) return "";
+		for (const dir of candidates) {
+			if (!dir || nodePath.resolve(dir).toLowerCase() === currentKey) continue;
+			if (!await hasTaskFile(dir)) continue;
+			this.settings.paperIntakeInboxFolder = dir;
+			await this.save();
+			showRectoNotice(rectoUiText(current ? "paperIntake.inboxSwitched" : "paperIntake.inboxAutoSet", { folder: dir }), { tone: "success" });
+			return dir;
+		}
+		return "";
+	}
+
+	// T125：浏览器扩展经 obsidian://recto-intake?inbox=… 报来的文件夹。链接任何网页都能构造，所以只当线索：
+	// 必须是本机绝对路径、名为 Recto（扩展固定存到 下载目录/Recto），且里面有待补论文的任务号文件才采用。
+	// 拒绝网络路径（\\server\share），避免读目录时向外发起 SMB 认证。
+	async acceptPaperIntakeInboxReport(raw) {
+		const dir = String(raw || "").trim().replace(/[\\/]+$/, "");
+		if (!dir || dir.length > 1024 || !nodePath.isAbsolute(dir) || /^[\\/]{2}/.test(dir)) return "";
+		if (nodePath.basename(dir).toLowerCase() !== "recto") return "";
+		if (!this.paperIntakeInboxHints) this.paperIntakeInboxHints = [];
+		if (!this.paperIntakeInboxHints.some(hint => hint.toLowerCase() === dir.toLowerCase())) this.paperIntakeInboxHints = [...this.paperIntakeInboxHints, dir].slice(-5);
+		const found = await this.detectPaperIntakeInbox([dir], { trustCandidates: true });
+		if (found || this.getPaperIntakeInboxFolder()) await this.checkPaperIntakeInbox({ quiet: true });
+		return found;
+	}
+
+	getPaperIntakeDefaultDownloads() {
+		let downloads = "";
+		try {
+			const remote = typeof window !== "undefined" && window.require ? window.require("electron").remote : null;
+			downloads = remote && remote.app ? remote.app.getPath("downloads") : "";
+		} catch { downloads = ""; }
+		if (!downloads) downloads = nodePath.join(require("os").homedir(), "Downloads");
+		return downloads;
+	}
+
+	// T100-S：取件用的浏览器。「Microsoft Edge」在 Windows 上走 microsoft-edge: 协议，不受系统默认浏览器影响；
+	// 「指定程序」直接把链接交给用户选的浏览器程序。
+	openPaperIntakeBrowserUrl(url) {
+		const target = String(url || "");
+		if (!/^https?:\/\//i.test(target)) throw new Error(rectoUiText("paperIntake.failed"));
+		const mode = this.settings && this.settings.paperIntakeBrowser;
+		const platform = this.paperIntakePlatform || process.platform;
+		const spawn = typeof this.paperIntakeSpawn === "function" ? this.paperIntakeSpawn
+			: (command, args) => require("child_process").spawn(command, args, { detached: true, stdio: "ignore" }).unref();
+		if (mode === "edge" && platform === "win32") {
+			const shell = typeof window !== "undefined" && window.require ? window.require("electron").shell : null;
+			if (shell && typeof shell.openExternal === "function") { void shell.openExternal(`microsoft-edge:${target}`); return true; }
+		}
+		// macOS 没有 microsoft-edge: 协议；用系统的 open -a 指定应用打开。
+		if (mode === "edge" && platform === "darwin") { spawn("open", ["-a", "Microsoft Edge", target]); return true; }
+		if (mode === "custom") {
+			const program = String(this.settings.paperIntakeBrowserPath || "").trim();
+			const kind = describePaperIntakeBrowserProgram(program, platform);
+			if (!kind) throw new Error(rectoUiText("settings.paperIntakeBrowserPathInvalid"));
+			// macOS 的浏览器是 .app 文件夹，不是可执行文件，要交给 open -a。
+			if (kind === "app") spawn("open", ["-a", program, target]);
+			else spawn(program, [target]);
+			return true;
+		}
+		return this.openExternalUrl(target);
+	}
+
+	// T100-R：在用户的默认浏览器里逐篇打开待补论文（带 #recto-intake 标记），由浏览器扩展用用户自己的
+	// 登录把 PDF 存进 下载目录/Recto；收件箱随后按任务号把它加入。Recto 与扩展之间不开端口、不直接通信。
+	async fetchPaperIntakeInBrowser(ids = null, options = {}) {
+		const wanted = ids ? new Set(ids) : null;
+		const candidates = () => this.getPaperIntakePending().filter(item => (!wanted || wanted.has(item.id)) && buildPaperIntakeBrowserUrl(item));
+		if (!candidates().length) {
+			showRectoNotice(rectoUiText("paperIntake.browserNothing"), { tone: "attention" });
+			return { opened: 0 };
+		}
+		// T104：中转文件夹没设置时不再先弹选择框。取件开始后由 detectPaperIntakeInbox 按任务号去「下载」「桌面」
+		// 下的 Recto 文件夹里找，见到本次任务的文件才采用那个位置——仍然不猜（T100-S：Edge 曾存到桌面）。
+		// 旧条目补随机数：之后这一篇的任务号不再与历史请求重合。
+		const missingNonce = this.getPaperIntakePending().filter(item => !item.browserNonce);
+		if (missingNonce.length) {
+			this.settings.paperIntakePending = this.getPaperIntakePending().map(item => item.browserNonce ? item : { ...item, browserNonce: crypto.randomBytes(4).toString("hex") });
+			await this.save();
+		}
+		// T125：用户从插件目录加载的扩展随插件升级刷新文件（浏览器下次启动时载入新版）。
+		const extensionDir = this.getRectoCompanionPath("recto-browser-extension");
+		if (extensionDir && fs.existsSync(extensionDir)) this.getPaperIntakeExtensionFolder();
+		const items = candidates();
+		const batch = items.slice(0, PAPER_INTAKE_BROWSER_BATCH);
+		this.paperIntakeBrowserWatch = { at: Date.now(), tokens: new Set(batch.map(item => paperIntakeBrowserToken(item.id, item.browserNonce))), seen: false, warned: false };
+		this.paperIntakeInboxFastUntil = Date.now() + 20 * 60 * 1000;
+		showRectoNotice(rectoUiText("paperIntake.browserStarted", { count: batch.length, rest: items.length - batch.length }), { tone: "attention" });
+		this.notifyPaperIntakeChanged();
+		const open = typeof options.open === "function" ? options.open : url => this.openPaperIntakeBrowserUrl(url);
+		const wait = typeof options.wait === "function" ? options.wait : ms => sleep(ms);
+		let opened = 0;
+		for (const item of batch) {
+			if (this.isUnloading) break;
+			if (opened) await wait(PAPER_INTAKE_BROWSER_GAP_MS);
+			try { open(buildPaperIntakeBrowserUrl(item)); opened++; }
+			catch (error) { showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("paperIntake.failed")), { tone: "error" }); break; }
+		}
+		return { opened, remaining: items.length - opened };
+	}
+
+	// 收件箱只在用户指定目录后启用；只读该目录第一层、只复制不移动，配不准的不猜。
+	async checkPaperIntakeInbox(options = {}) {
+		const folder = this.getPaperIntakeInboxFolder();
+		const pending = this.getPaperIntakePending();
+		if (!folder || !pending.length) return { skipped: true, reason: folder ? "no-pending" : "no-inbox" };
+		if (this.activeOperation || this.paperIntakeInboxRunning) return { skipped: true, reason: "busy" };
+		this.paperIntakeInboxRunning = true;
+		try {
+			let entries;
+			try { entries = await fs.promises.readdir(folder, { withFileTypes: true }); }
+			catch { return { skipped: true, reason: "unreadable" }; }
+			const earliest = Math.min(...pending.map(item => Date.parse(item.createdAt) || Date.now())) - 10 * 60 * 1000;
+			if (!this.paperIntakeInboxSeen) this.paperIntakeInboxSeen = new Map();
+			const stats = [];
+			const pageMeta = new Map();
+			for (const entry of entries) {
+				const browserFile = entry.isFile() ? parsePaperIntakeBrowserFile(entry.name) : null;
+				if (browserFile && browserFile.ext === "json") pageMeta.set(browserFile.token, nodePath.join(folder, entry.name));
+				// T125：只有本次取件开始后出现的文件才算「收到本批」；文件夹里以前留下的同号文件不算，否则永远不去别处找。
+				const watch = this.paperIntakeBrowserWatch;
+				if (browserFile && watch && !watch.seen && watch.tokens.has(browserFile.token)) {
+					try { if ((await fs.promises.stat(nodePath.join(folder, entry.name))).mtimeMs >= this.getPaperIntakeWatchSince()) watch.seen = true; } catch { /* 刚被移走 */ }
+				}
+				if (!entry.isFile() || !/\.pdf$/i.test(entry.name)) continue;
+				const filePath = nodePath.join(folder, entry.name);
+				try {
+					const stat = await fs.promises.stat(filePath);
+					if (stat.mtimeMs < earliest || stat.size > PAPER_INTAKE_MAX_PDF_BYTES || stat.size < 5) continue;
+					stats.push({ filePath, stat });
+				} catch { /* 下载中或已移走 */ }
+			}
+			stats.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+			const files = [];
+			for (const { filePath, stat } of stats.slice(0, 40)) {
+				const signature = `${stat.mtimeMs}:${stat.size}`;
+				const cached = this.paperIntakeInboxSeen.get(filePath);
+				if (cached && cached.signature === signature) { if (cached.fingerprint) files.push({ filePath, ...cached }); continue; }
+				let fingerprint = null;
+				let text = "";
+				try {
+					const bytes = new Uint8Array(await fs.promises.readFile(filePath));
+					if (isPaperIntakePdfBytes(bytes)) {
+						const extracted = await this.extractPaperIntakePdfText(bytes);
+						text = extracted.head || extracted.text;
+						fingerprint = fingerprintPaperIntakePdfText(text);
+					}
+				} catch { fingerprint = null; }
+				const record = { signature, fingerprint, text };
+				this.paperIntakeInboxSeen.set(filePath, record);
+				if (fingerprint) files.push({ filePath, ...record });
+			}
+			const rows = [];
+			const ambiguous = [];
+			// T100-R：扩展存下的 recto-<任务号>.pdf 已经指明是哪一篇，不再参与按内容猜测；
+			// 仍要过前两页核验（题名覆盖，已知作者时作者也要对上），不过就交给人工。
+			const byToken = new Map(pending.map(item => [paperIntakeBrowserToken(item.id, item.browserNonce), item]));
+			const rejected = new Map();
+			const tokenHandled = new Set();
+			const looseFiles = [];
+			for (const file of files) {
+				const token = paperIntakeTokenFromFileName(nodePath.basename(file.filePath));
+				const item = token ? byToken.get(token) : null;
+				if (!token) { looseFiles.push(file); continue; }
+				if (!item || tokenHandled.has(item.id)) continue;
+				tokenHandled.add(item.id);
+				const metaPath = pageMeta.get(token) || "";
+				let page = null;
+				if (metaPath) {
+					try {
+						const stat = await fs.promises.stat(metaPath);
+						if (stat.size <= PAPER_INTAKE_PAGE_META_MAX_BYTES) page = parsePaperIntakePageMetadata(await fs.promises.readFile(metaPath, "utf8"));
+					} catch { page = null; }
+				}
+				let baseMetadata = item.metadata || (buildPaperIntakeMetadata({ row: item }) || {}).metadata || null;
+				let fieldSources = item.fieldSources || {};
+				let doi = item.doi;
+				let arxivId = item.arxivId;
+				// T128：只有论文页链接的待补（item.title 只是链接本身），先用扩展从页面读到的题名 / DOI / 作者认出是哪篇。
+				if (item.reason === "link_unresolved" && !normalizePaperIntakeDoi(item.doi) && !item.arxivId) {
+					const found = page ? await this.resolvePaperIntakePageIdentity(page) : { status: "unknown" };
+					if (found.status === "network") continue; // 网络不通：文件留着，下一轮再认
+					if (found.status !== "ready") { ambiguous.push(item.id); rejected.set(item.id, file.filePath); continue; }
+					baseMetadata = found.metadata;
+					fieldSources = found.fieldSources || {};
+					doi = getZoteroMetadataField(baseMetadata, "DOI") || page.doi || "";
+				}
+				const title = getZoteroMetadataField(baseMetadata, "title") || item.title;
+				const identity = checkPaperIntakePdfIdentity({ text: file.text, title, creators: baseMetadata && baseMetadata.creators || [] });
+				if (!identity.ok) { ambiguous.push(item.id); rejected.set(item.id, file.filePath); continue; }
+				const enriched = page ? applyPaperIntakeFieldEnrichment(baseMetadata, { abstracts: [{ source: "page", text: page.abstract }], keywords: page.keywords }, fieldSources)
+					: { metadata: baseMetadata, sources: fieldSources };
+				rows.push({ pendingId: item.id, destination: item.destination, kind: "browser", doi, arxivId, title, raw: item.title, metadata: enriched.metadata,
+					fieldSources: enriched.sources, collectionParts: item.collectionParts, quickNote: item.quickNote, localPath: file.filePath,
+					cleanupFiles: [file.filePath, metaPath].filter(Boolean),
+					edition: identity.arxivStamp ? "author_preprint" : "browser_download", sourceUrl: "" });
+			}
+			// 核验没通过的文件留在收件箱，记到待补条目上，由用户选「仍然加入」或「丢弃」。
+			const pendingNow = this.getPaperIntakePending();
+			let rejectedChanged = false;
+			const withRejected = pendingNow.map(item => {
+				const filePath = rejected.get(item.id);
+				if (!filePath || item.rejectedFile === filePath) return item;
+				rejectedChanged = true;
+				return { ...item, rejectedFile: filePath };
+			});
+			if (rejectedChanged) {
+				this.settings.paperIntakePending = normalizePaperIntakePending(withRejected);
+				await this.save();
+				this.notifyPaperIntakeChanged();
+			}
+			const loosePending = pending.filter(item => !tokenHandled.has(item.id));
+			const { matches, review } = matchPaperIntakeInbox(loosePending, looseFiles.map(file => file.fingerprint));
+			ambiguous.push(...review.map(item => loosePending[item.pendingIndex].id));
+			for (const match of matches) {
+				const item = loosePending[match.pendingIndex];
+				const file = looseFiles[match.fileIndex];
+				const metadata = item.metadata || (buildPaperIntakeMetadata({ row: item }) || {}).metadata || null;
+				const title = getZoteroMetadataField(metadata, "title") || item.title;
+				const identity = checkPaperIntakePdfIdentity({ text: file.text, title, creators: metadata && metadata.creators || [] });
+				// 收件箱会在后台自动加入，宁可漏配也不能错配（T100 真机：通用题名把另一篇的 PDF 当成了自己）。
+				// 自动加入只认强证据：前两页有 DOI 或完整题名，且已知作者时作者也要对上；只凭词覆盖率的一律交给人工。
+				const strong = identity.ok && (match.score >= 1.5 || identity.titlePhrase) && (identity.authorsChecked || !(metadata && metadata.creators && metadata.creators.length));
+				if (!strong) { ambiguous.push(item.id); continue; }
+				rows.push({ pendingId: item.id, destination: item.destination, kind: "inbox", doi: item.doi, arxivId: item.arxivId, title, raw: item.title, metadata,
+					collectionParts: item.collectionParts, quickNote: item.quickNote, localPath: file.filePath,
+					edition: identity.arxivStamp ? "author_preprint" : "manual_download", sourceUrl: "" });
+			}
+			if (!rows.length) return { matched: 0, review: ambiguous.length };
+			this.paperIntakeInboxRunning = false;
+			const report = await this.addPapersFromIntake(rows, { fromInbox: true });
+			const added = report ? report.added.length : 0;
+			if (report) await this.cleanupPaperIntakeAfterImport(report);
+			// 后台轮询配上也要说一声：PDF 是用户自己刚下载的，论文悄悄出现在 Hub 里反而让人疑惑。
+			if (added) showRectoNotice(rectoUiText("paperIntake.inboxAdded", { count: added }), { tone: "success" });
+			return { matched: added, review: ambiguous.length };
+		} finally {
+			this.paperIntakeInboxRunning = false;
+		}
+	}
+
+	// T102：Agent 入库协议。只在用户打开设置「允许 Agent 通过文件入库」后工作。
+	getPaperIntakeAgentFolderPath() {
+		const base = this.getValidatedBaseFolder();
+		const vaultBasePath = this.app && this.app.vault && this.app.vault.adapter ? this.app.vault.adapter.basePath : "";
+		return base && vaultBasePath ? nodePath.join(vaultBasePath, base, PAPER_INTAKE_AGENT_FOLDER) : "";
+	}
+
+	isPaperIntakeAgentEnabled() {
+		return !!(this.settings && this.settings.paperIntakeAgentEnabled);
+	}
+
+	async writePaperIntakeAgentJson(filePath, data) {
+		const tmp = `${filePath}.${crypto.randomBytes(4).toString("hex")}.tmp`;
+		await fs.promises.writeFile(tmp, JSON.stringify(data, null, 2), "utf8");
+		await fs.promises.rename(tmp, filePath);
+	}
+
+	async writePaperIntakeAgentContext() {
+		if (!this.isPaperIntakeAgentEnabled()) return false;
+		const folder = this.getPaperIntakeAgentFolderPath();
+		if (!folder) return false;
+		await fs.promises.mkdir(folder, { recursive: true });
+		await this.writePaperIntakeAgentJson(nodePath.join(folder, "context.json"), buildPaperIntakeContext({
+			folderMap: this.folderMap, pending: this.getPaperIntakePending(), collections: this.getPaperIntakeCollectionOptions(),
+			zoteroConfigured: !!String(this.settings.sourceFolder || "").trim(),
+			skillPath: this.getPaperIntakeSkillFolder(), extensionPath: this.getPaperIntakeExtensionFolder(),
+		}));
+		return true;
+	}
+
+	schedulePaperIntakeAgentRun(delay = 1200) {
+		if (!this.isPaperIntakeAgentEnabled()) return;
+		if (this.paperIntakeAgentTimer) clearTimeout(this.paperIntakeAgentTimer);
+		this.paperIntakeAgentTimer = setTimeout(() => {
+			this.paperIntakeAgentTimer = null;
+			void this.processPaperIntakeRequests().catch(() => {});
+		}, delay);
+	}
+
+	// 逐份处理还没有结果文件的请求；忙（别的操作在跑）就稍后再来。结果文件写完才算处理过。
+	async processPaperIntakeRequests() {
+		if (!this.isPaperIntakeAgentEnabled() || this.paperIntakeAgentRunning) return { processed: 0 };
+		const folder = this.getPaperIntakeAgentFolderPath();
+		if (!folder) return { processed: 0 };
+		if (this.activeOperation) { this.schedulePaperIntakeAgentRun(5000); return { processed: 0, busy: true }; }
+		this.paperIntakeAgentRunning = true;
+		let processed = 0;
+		try {
+			await fs.promises.mkdir(folder, { recursive: true });
+			const names = (await fs.promises.readdir(folder)).filter(name => PAPER_INTAKE_REQUEST_FILE.test(name)).sort();
+			for (const name of names) {
+				const requestPath = nodePath.join(folder, name);
+				const resultPath = requestPath.replace(/\.request\.json$/, ".result.json");
+				if (fs.existsSync(resultPath)) continue;
+				await this.processPaperIntakeRequestFile(requestPath, resultPath);
+				processed++;
+			}
+			await this.writePaperIntakeAgentContext();
+			return { processed };
+		} finally {
+			this.paperIntakeAgentRunning = false;
+		}
+	}
+
+	async processPaperIntakeRequestFile(requestPath, resultPath) {
+		let text = "";
+		try {
+			const stat = await fs.promises.stat(requestPath);
+			if (stat.size > PAPER_INTAKE_REQUEST_MAX_BYTES) throw new Error("too_large");
+			text = await fs.promises.readFile(requestPath, "utf8");
+		} catch (error) {
+			await this.writePaperIntakeAgentJson(resultPath, buildPaperIntakeResult({ error: error && error.message === "too_large" ? "too_large" : "unreadable" }));
+			return;
+		}
+		const parsed = parsePaperIntakeRequest(text, { zoteroConfigured: !!String(this.settings.sourceFolder || "").trim() });
+		if (!parsed.ok) {
+			await this.writePaperIntakeAgentJson(resultPath, buildPaperIntakeResult({ error: parsed.error }));
+			return;
+		}
+		const request = parsed.request;
+		const rows = [];
+		const agentFailures = [];
+		// Agent 自己下载的 PDF 也要过同一道前两页核验（T100-R 交接：不能为协议放宽）。
+		for (const row of request.rows) {
+			if (!row.agentPdfPath) { rows.push(row); continue; }
+			try {
+				const stat = await fs.promises.stat(row.agentPdfPath);
+				if (!stat.isFile() || stat.size > PAPER_INTAKE_MAX_PDF_BYTES) throw new Error("unreadable");
+				const bytes = new Uint8Array(await fs.promises.readFile(row.agentPdfPath));
+				if (!isPaperIntakePdfBytes(bytes)) throw new Error("not_pdf");
+				const extracted = await this.extractPaperIntakePdfText(bytes);
+				const identity = checkPaperIntakePdfIdentity({ text: extracted.head || extracted.text, title: getZoteroMetadataField(row.metadata, "title"), creators: row.metadata.creators });
+				if (!identity.ok) throw new Error("identity_mismatch");
+				rows.push({ ...row, localPath: row.agentPdfPath, edition: identity.arxivStamp ? "author_preprint" : "agent_download", sourceUrl: "" });
+			} catch (error) {
+				const reason = PAPER_INTAKE_REASONS.includes(error && error.message) ? error.message : "unreadable";
+				agentFailures.push({ index: row.agentIndex, reason });
+			}
+		}
+		let report = null;
+		let error = "";
+		try {
+			report = rows.length ? await this.addPapersFromIntake(rows, { fromInbox: rows.every(row => row.localPath) }) : { added: [], duplicates: [], waiting: [], failed: [] };
+		} catch (caught) {
+			error = caught && caught.rectoUiKey === "paperIntake.zoteroNotRunning" ? "zotero_not_running" : "intake_failed";
+		}
+		if (!report && !error) { this.schedulePaperIntakeAgentRun(5000); return; }
+		let browserOpened = 0;
+		if (report && request.fetchInBrowser && report.waiting.length) {
+			try { browserOpened = (await this.fetchPaperIntakeInBrowser(report.waiting.map(item => item.id))).opened || 0; } catch { browserOpened = 0; }
+		}
+		const keyOf = row => row.pendingId || paperIntakeRowKey(row);
+		const waitingRows = rows.map(row => ({ id: keyOf(row), row }));
+		await this.writePaperIntakeAgentJson(resultPath, buildPaperIntakeResult({
+			requestId: request.id, report: report || undefined, error, rejected: parsed.request.rejected, agentFailures, waitingRows,
+			pending: this.getPaperIntakePending(), browserOpened, indexes: error ? [] : request.rows.map(row => row.agentIndex),
+		}));
+		if (report) showRectoNotice(rectoUiText("paperIntake.agentProcessed", { added: report.added.length, waiting: report.waiting.length }), { tone: "success" });
+	}
+
+	// T104：配套件（skill、浏览器扩展）内置在 main.js（RECTO_COMPANIONS），用到时才写到插件目录 companions/<名称>/。
+	// 内容与内置版本不同就覆盖（插件升级后自动跟上）；同一会话只写一次。不弹窗、不打开任何东西。
+	getRectoCompanionPath(name) {
+		const base = this.app && this.app.vault && this.app.vault.adapter ? this.app.vault.adapter.basePath : "";
+		const dir = this.manifest && this.manifest.dir ? this.manifest.dir : "";
+		return base && dir && RECTO_COMPANIONS[name] ? nodePath.join(base, dir, "companions", name) : "";
+	}
+
+	ensureRectoCompanion(name) {
+		const folder = this.getRectoCompanionPath(name);
+		if (!folder) return "";
+		this.rectoCompanionsWritten = this.rectoCompanionsWritten || new Set();
+		if (this.rectoCompanionsWritten.has(name)) return folder;
+		try {
+			for (const [rel, value] of Object.entries(RECTO_COMPANIONS[name])) {
+				const target = nodePath.join(folder, ...rel.split("/"));
+				// 文本按 UTF-8 写；扩展图标等二进制文件内置为 { base64 }（T128）。
+				const wanted = typeof value === "string" ? Buffer.from(value, "utf8") : Buffer.from(String(value && value.base64 || ""), "base64");
+				let current = null;
+				try { current = fs.readFileSync(target); } catch { current = null; }
+				if (current && current.equals(wanted)) continue;
+				fs.mkdirSync(nodePath.dirname(target), { recursive: true });
+				fs.writeFileSync(target, wanted);
+			}
+			this.rectoCompanionsWritten.add(name);
+			return folder;
+		} catch { return ""; }
+	}
+
+	getPaperIntakeSkillFolder() {
+		return this.ensureRectoCompanion("recto-paper-intake");
+	}
+
+	getPaperIntakeExtensionFolder() {
+		return this.ensureRectoCompanion("recto-browser-extension");
+	}
+
+	// 「复制设置引导」：一段填好路径的话，用户粘给任意 AI 助手即可装好 skill、听一遍用法、跑一次示例。
+	buildPaperIntakeAgentGuideText() {
+		const skill = this.getPaperIntakeSkillFolder();
+		const extension = this.getPaperIntakeExtensionFolder();
+		const intake = this.getPaperIntakeAgentFolderPath();
+		if (!skill || !intake) return "";
+		return buildPaperIntakeAgentGuide({ skillPath: skill, extensionPath: extension, intakePath: intake });
+	}
+
+	// T101：Zotero 本地 API 写入。只连 127.0.0.1:23119，不经过代理；测试可注入 this.zoteroIntakeHttp。
+	zoteroIntakeRequest(method, fullPath, options = {}) {
+		if (typeof this.zoteroIntakeHttp === "function") return this.zoteroIntakeHttp(method, fullPath, options);
+		return new Promise((resolve, reject) => {
+			const body = options.body == null ? null : Buffer.isBuffer(options.body) ? options.body : Buffer.from(String(options.body));
+			const request = require("node:http").request({
+				hostname: "127.0.0.1", port: 23119, path: fullPath, method, agent: false,
+				headers: { "Zotero-API-Version": "3", "Zotero-Allowed-Request": "1", ...(options.headers || {}), ...(body ? { "Content-Length": body.length } : {}) },
+			}, response => {
+				const chunks = [];
+				let size = 0;
+				response.on("data", chunk => {
+					size += chunk.length;
+					if (size > 32 * 1024 * 1024) { request.destroy(new Error("Zotero response too large")); return; }
+					chunks.push(chunk);
+				});
+				response.on("end", () => { clearTimeout(timer); resolve({ status: response.statusCode, headers: response.headers, text: Buffer.concat(chunks).toString("utf8") }); });
+				response.on("error", error => { clearTimeout(timer); reject(error); });
+			});
+			const timer = setTimeout(() => request.destroy(new Error("Zotero request timed out")), options.timeout || 30000);
+			request.on("error", error => { clearTimeout(timer); reject(error); });
+			if (body) request.write(body);
+			request.end();
+		});
+	}
+
+	async getZoteroIntakeContext() {
+		let response;
+		try { response = await this.zoteroIntakeRequest("GET", "/api/", { timeout: 5000 }); } catch { response = null; }
+		const serverId = response && response.status === 200 ? String(response.headers["zotero-server-id"] || "") : "";
+		if (!serverId) throw createRectoUiError("paperIntake.zoteroNotRunning");
+		return { serverId, fields: new Map() };
+	}
+
+	getZoteroIntakeSecretId(serverId) {
+		return `recto-zotero-local-${documentContentHash(String(serverId)).slice(0, 12)}`;
+	}
+
+	// 授权：内存 → Obsidian 钥匙串（app.secretStorage，1.11.4+）→ 让 Zotero 弹授权框。用户选「始终允许」才记住。
+	async ensureZoteroIntakeKey(context, force = false) {
+		if (!this.zoteroIntakeKeys) this.zoteroIntakeKeys = new Map();
+		const storage = this.app && this.app.secretStorage;
+		const secretId = this.getZoteroIntakeSecretId(context.serverId);
+		if (!force) {
+			if (this.zoteroIntakeKeys.has(context.serverId)) return this.zoteroIntakeKeys.get(context.serverId);
+			const stored = storage && typeof storage.getSecret === "function" ? storage.getSecret(secretId) : null;
+			if (stored) { this.zoteroIntakeKeys.set(context.serverId, stored); return stored; }
+		}
+		showRectoNotice(rectoUiText("paperIntake.zoteroAuthorize"), { tone: "attention", timeout: 20000 });
+		const response = await this.zoteroIntakeRequest("POST", "/api/local/authorize", {
+			body: JSON.stringify({ appName: ZOTERO_INTAKE_APP_NAME }), headers: { "Content-Type": "application/json", "Zotero-Server-ID": context.serverId }, timeout: 10 * 60 * 1000,
+		});
+		if (response.status === 404 || response.status === 501) throw createRectoUiError("paperIntake.zoteroUnsupported");
+		let data = null;
+		try { data = JSON.parse(response.text); } catch { data = null; }
+		if (response.status !== 200 || !data || !data.key) throw createRectoUiError("paperIntake.zoteroDenied");
+		this.zoteroIntakeKeys.set(context.serverId, data.key);
+		if (data.remember && storage && typeof storage.setSecret === "function") {
+			try { storage.setSecret(secretId, data.key); } catch { /* 只在本次会话有效 */ }
+		}
+		return data.key;
+	}
+
+	async zoteroIntakeApi(context, method, route, options = {}) {
+		const headers = { "Zotero-Server-ID": context.serverId, ...(options.headers || {}) };
+		if (!options.write) return await this.zoteroIntakeRequest(method, `/api${route}`, { ...options, headers });
+		for (let attempt = 0; attempt < 2; attempt++) {
+			const key = await this.ensureZoteroIntakeKey(context, attempt > 0);
+			const response = await this.zoteroIntakeRequest(method, `/api${route}`, { ...options, headers: { ...headers, "Zotero-API-Key": key } });
+			if (response.status !== 401) return response;
+			// 被拒的密钥不可能写进去任何东西：只清掉本地记住的这一份，重新申请一次。
+			this.zoteroIntakeKeys.delete(context.serverId);
+			const storage = this.app && this.app.secretStorage;
+			if (storage && typeof storage.setSecret === "function") { try { storage.setSecret(this.getZoteroIntakeSecretId(context.serverId), ""); } catch { /* ignore */ } }
+		}
+		throw createRectoUiError("paperIntake.zoteroDenied");
+	}
+
+	async zoteroIntakeJson(context, method, route, options = {}) {
+		const response = await this.zoteroIntakeApi(context, method, route, options);
+		if (response.status < 200 || response.status >= 300) throw new Error(`Zotero HTTP ${response.status}`);
+		return response.text ? JSON.parse(response.text) : null;
+	}
+
+	async getZoteroIntakeValidFields(context, itemType) {
+		if (context.fields.has(itemType)) return context.fields.get(itemType);
+		let fields = null;
+		try {
+			const list = await this.zoteroIntakeJson(context, "GET", `/itemTypeFields?itemType=${encodeURIComponent(itemType)}`);
+			fields = Array.isArray(list) ? ["title", "extra", ...list.map(item => item && item.field).filter(Boolean)] : null;
+		} catch { fields = null; }
+		context.fields.set(itemType, fields);
+		return fields;
+	}
+
+	async ensureZoteroIntakeCollection(context, parts) {
+		if (!parts || !parts.length) return "";
+		const collections = [];
+		for (let start = 0; start < 20000; start += 100) {
+			const page = await this.zoteroIntakeJson(context, "GET", `/users/0/collections?limit=100&start=${start}`);
+			collections.push(...(page || []));
+			if (!page || page.length < 100) break;
+		}
+		const { key, missing } = resolveZoteroIntakeCollection(collections, parts);
+		let parent = key;
+		for (const name of missing) {
+			const result = await this.zoteroIntakeJson(context, "POST", "/users/0/collections", {
+				write: true, body: JSON.stringify([{ name, parentCollection: parent || false }]),
+				headers: { "Content-Type": "application/json", "Zotero-Write-Token": crypto.randomBytes(16).toString("hex") },
+			});
+			const created = result && result.successful && result.successful["0"];
+			if (!created || !created.key) throw new Error("Zotero collection create failed");
+			parent = created.key;
+		}
+		return parent;
+	}
+
+	async findZoteroIntakeExisting(context, target) {
+		const query = normalizePaperIntakeDoi(target.doi) || String(target.title || "").slice(0, 120);
+		if (!query) return null;
+		const items = await this.zoteroIntakeJson(context, "GET", `/users/0/items/top?limit=25&qmode=everything&q=${encodeURIComponent(query)}`);
+		const parent = findZoteroIntakeDuplicate(items, target);
+		if (!parent) return null;
+		const children = await this.zoteroIntakeJson(context, "GET", `/users/0/items/${encodeURIComponent(parent.key)}/children`);
+		const pdf = (children || []).find(child => child && child.data && child.data.contentType === "application/pdf"
+			&& ["imported_file", "imported_url"].includes(child.data.linkMode));
+		return { parentKey: parent.key, attachmentKey: pdf ? pdf.key : "" };
+	}
+
+	// 写一篇：已有带 PDF 的同一篇就直接用；已有父条目没 PDF 就补附件；都没有就新建父条目。
+	// 附件按 Zotero 文件上传三步走，最后核对 storage 里那份的 sha256。
+	async addPaperToZotero(context, input) {
+		const metadata = normalizeZoteroItemMetadata(input.metadata);
+		const title = getZoteroMetadataField(metadata, "title") || input.title || "";
+		const existing = await this.findZoteroIntakeExisting(context, { doi: getZoteroMetadataField(metadata, "DOI") || input.doi, title });
+		if (existing && existing.attachmentKey) return { parentKey: existing.parentKey, attachmentKey: existing.attachmentKey, reused: true };
+		let parentKey = existing ? existing.parentKey : "";
+		if (!parentKey) {
+			const collectionKey = await this.ensureZoteroIntakeCollection(context, input.collectionParts && input.collectionParts[0]);
+			const validFields = await this.getZoteroIntakeValidFields(context, (metadata && metadata.itemType) || "journalArticle");
+			const item = buildZoteroIntakeItem(metadata, { collectionKeys: collectionKey ? [collectionKey] : [], quickNote: input.quickNote, validFields });
+			const result = await this.zoteroIntakeJson(context, "POST", "/users/0/items", {
+				write: true, body: JSON.stringify([item]),
+				headers: { "Content-Type": "application/json", "Zotero-Write-Token": crypto.randomBytes(16).toString("hex") },
+			});
+			const created = result && result.successful && result.successful["0"];
+			if (!created || !created.key) throw new Error(`Zotero item create failed: ${JSON.stringify(result && result.failed || {}).slice(0, 200)}`);
+			parentKey = created.key;
+		}
+		const bytes = await fs.promises.readFile(input.pdfPath);
+		const sha256 = crypto.createHash("sha256").update(bytes).digest("hex");
+		const attachmentResult = await this.zoteroIntakeJson(context, "POST", "/users/0/items", {
+			write: true, body: JSON.stringify([{ itemType: "attachment", parentItem: parentKey, linkMode: "imported_file", title: "Full Text PDF",
+				contentType: "application/pdf", filename: input.fileName, url: input.sourceUrl || "", tags: [], relations: {} }]),
+			headers: { "Content-Type": "application/json", "Zotero-Write-Token": crypto.randomBytes(16).toString("hex") },
+		});
+		const attachment = attachmentResult && attachmentResult.successful && attachmentResult.successful["0"];
+		if (!attachment || !attachment.key) throw new Error("Zotero attachment create failed");
+		const attachmentKey = attachment.key;
+		const form = new URLSearchParams({ md5: crypto.createHash("md5").update(bytes).digest("hex"), filename: input.fileName,
+			filesize: String(bytes.length), mtime: String(Date.now()) }).toString();
+		const fileRoute = `/users/0/items/${encodeURIComponent(attachmentKey)}/file`;
+		const formHeaders = { "Content-Type": "application/x-www-form-urlencoded", "If-None-Match": "*" };
+		const info = await this.zoteroIntakeJson(context, "POST", fileRoute, { write: true, body: form, headers: formHeaders });
+		if (!info || !info.exists) {
+			const uploadUrl = new URL(String(info && info.url || ""), "http://127.0.0.1:23119");
+			if (!["127.0.0.1", "localhost"].includes(uploadUrl.hostname) || String(uploadUrl.port || "80") !== "23119") throw new Error("Upload URL is not local Zotero");
+			const upload = await this.zoteroIntakeRequest("POST", uploadUrl.pathname + uploadUrl.search, { body: bytes, headers: { "Content-Type": info.contentType || "application/pdf" }, timeout: 120000 });
+			if (upload.status < 200 || upload.status >= 300) throw new Error(`Zotero upload HTTP ${upload.status}`);
+			const registered = await this.zoteroIntakeApi(context, "POST", fileRoute, { write: true, body: new URLSearchParams({ upload: info.uploadKey }).toString(), headers: formHeaders });
+			if (registered.status < 200 || registered.status >= 300) throw new Error(`Zotero register HTTP ${registered.status}`);
+		}
+		const child = await this.zoteroIntakeJson(context, "GET", `/users/0/items/${encodeURIComponent(attachmentKey)}`);
+		const stored = nodePath.join(this.getZoteroStoragePath(), attachmentKey, String(child && child.data && child.data.filename || input.fileName));
+		if ((await hashFileSha256(stored)) !== sha256) throw new Error("Zotero stored file hash mismatch");
+		return { parentKey, attachmentKey, reused: false };
+	}
+
+	// T100-S：入库后清理。只动收件箱里扩展写的 recto-<任务号>.pdf/.json；论文对象已保存、论文库副本与源文件
+	// sha256 一致才清理，名为 Recto 的空文件夹随之删除。
+	// 2026-11-16 用户决定：这一步**直接删除**。论文库里已有逐字节相同的一份，回收站里的只是重复件，用户会定期清空，
+	// 起不到备份作用，反而让人困惑。没有副本的文件（「丢弃」核验未过的、「清理收件箱」的孤儿）仍然只移到回收站。
+	async cleanupPaperIntakeAfterImport(report) {
+		// T104：固定开启。只删已逐字节核验进论文库的扩展下载文件，论文库里留有同样一份。
+		if (!report || !Array.isArray(report.added)) return { cleaned: 0 };
+		let cleaned = 0;
+		for (const item of report.added) {
+			const row = item.row || {};
+			if (!Array.isArray(row.cleanupFiles) || !row.cleanupFiles.length || !row.localPath) continue;
+			const result = await this.cleanupPaperIntakeFiles(item.recordId, row.cleanupFiles, row.localPath);
+			cleaned += result.cleaned;
+		}
+		await this.removePaperIntakeInboxIfEmpty();
+		return { cleaned };
+	}
+
+	async cleanupPaperIntakeFiles(recordId, files, sourcePdf) {
+		const info = this.folderMap && this.folderMap[recordId];
+		if (!info || !info.localPdfPath || info.zoteroPdfImportPending) return { cleaned: 0, reason: "not-imported" };
+		const vaultBasePath = this.app && this.app.vault && this.app.vault.adapter ? this.app.vault.adapter.basePath : "";
+		const vaultPdf = vaultBasePath ? resolveVaultRelativeAbsolutePath(vaultBasePath, info.localPdfPath) : "";
+		if (!vaultPdf) return { cleaned: 0, reason: "not-imported" };
+		try {
+			const [kept, source] = await Promise.all([hashFileSha256(vaultPdf), hashFileSha256(sourcePdf)]);
+			if (!kept || kept !== source) return { cleaned: 0, reason: "hash" };
+		} catch { return { cleaned: 0, reason: "hash" }; }
+		let cleaned = 0;
+		for (const filePath of files) {
+			if (!this.isPaperIntakeInboxBrowserFile(filePath) || !fs.existsSync(filePath)) continue;
+			try { await fs.promises.unlink(filePath); cleaned++; } catch { /* 被占用就留着，下次「清理收件箱」再处理 */ }
+		}
+		return { cleaned };
+	}
+
+	isPaperIntakeInboxBrowserFile(filePath) {
+		const folder = this.getPaperIntakeInboxFolder();
+		return !!folder && !!parsePaperIntakeBrowserFile(nodePath.basename(String(filePath || "")))
+			&& nodePath.resolve(nodePath.dirname(String(filePath))) === nodePath.resolve(folder);
+	}
+
+	async trashPaperIntakeInboxFile(filePath) {
+		if (!this.isPaperIntakeInboxBrowserFile(filePath)) return "skipped";
+		if (!fs.existsSync(filePath)) return "skipped";
+		if (typeof this.paperIntakeTrash === "function") return (await this.paperIntakeTrash(filePath)) ? "trashed" : "unavailable";
+		// 真机实测：渲染进程里的 shell.trashItem 在 Windows 上报「Failed to create FileOperation instance」，
+		// 主进程（remote）可用；所以先走 remote，再退回渲染进程。两条都不行就不清理，绝不退化为永久删除。
+		const electron = typeof window !== "undefined" && window.require ? window.require("electron") : null;
+		const shells = [electron && electron.remote && electron.remote.shell, electron && electron.shell].filter(shell => shell && typeof shell.trashItem === "function");
+		for (const shell of shells) {
+			try { await shell.trashItem(filePath); if (!fs.existsSync(filePath)) return "trashed"; } catch { /* 换下一条 */ }
+		}
+		return "unavailable";
+	}
+
+	async removePaperIntakeInboxIfEmpty() {
+		const folder = this.getPaperIntakeInboxFolder();
+		// 只删 Recto 自己的那层文件夹；用户若把收件箱设成别的目录（比如整个下载目录），绝不删。
+		if (!folder || nodePath.basename(folder).toLowerCase() !== "recto") return false;
+		try {
+			const entries = await fs.promises.readdir(folder);
+			// 系统自动生成的元数据文件（macOS .DS_Store、Windows Thumbs.db / desktop.ini）不算内容。
+			if (entries.some(name => !PAPER_INTAKE_SYSTEM_FILES.includes(name.toLowerCase()))) return false;
+			for (const name of entries) await fs.promises.unlink(nodePath.join(folder, name));
+			await fs.promises.rmdir(folder);
+			return true;
+		} catch { return false; }
+	}
+
+	async usePaperIntakeRejectedFile(id) {
+		const item = this.getPaperIntakePending().find(entry => entry.id === id);
+		if (!item || !item.rejectedFile || !fs.existsSync(item.rejectedFile)) return null;
+		const metadata = item.metadata || (buildPaperIntakeMetadata({ row: item }) || {}).metadata || null;
+		const title = getZoteroMetadataField(metadata, "title") || item.title;
+		const report = await this.addPapersFromIntake([{
+			pendingId: item.id, destination: item.destination, kind: "file", doi: item.doi, arxivId: item.arxivId, title, raw: item.title, metadata, fieldSources: item.fieldSources,
+			collectionParts: item.collectionParts, quickNote: item.quickNote, localPath: item.rejectedFile,
+			cleanupFiles: [item.rejectedFile], edition: "manual_download", sourceUrl: "",
+		}], { fromInbox: true });
+		if (report) await this.cleanupPaperIntakeAfterImport(report);
+		return report;
+	}
+
+	async discardPaperIntakeRejectedFile(id) {
+		const item = this.getPaperIntakePending().find(entry => entry.id === id);
+		if (!item || !item.rejectedFile) return false;
+		const outcome = await this.trashPaperIntakeInboxFile(item.rejectedFile);
+		if (outcome === "unavailable") {
+			showRectoNotice(rectoUiText("paperIntake.trashUnavailable"), { tone: "attention" });
+			return false;
+		}
+		this.settings.paperIntakePending = normalizePaperIntakePending(this.getPaperIntakePending().map(entry => {
+			if (entry.id !== id) return entry;
+			const next = { ...entry };
+			delete next.rejectedFile;
+			return next;
+		}));
+		await this.save();
+		this.notifyPaperIntakeChanged();
+		await this.removePaperIntakeInboxIfEmpty();
+		return true;
+	}
+
+	// 设置页「清理收件箱」：只清理对不上任何待补任务、也没被记为待人工确认的 recto-* 文件。
+	async cleanPaperIntakeInbox() {
+		const folder = this.getPaperIntakeInboxFolder();
+		if (!folder) return { cleaned: 0 };
+		const pending = this.getPaperIntakePending();
+		const live = new Set(pending.map(item => paperIntakeBrowserToken(item.id, item.browserNonce)));
+		const keep = new Set(pending.map(item => item.rejectedFile).filter(Boolean).map(file => nodePath.resolve(file)));
+		let entries = [];
+		try { entries = await fs.promises.readdir(folder, { withFileTypes: true }); } catch { return { cleaned: 0 }; }
+		let cleaned = 0;
+		for (const entry of entries) {
+			const parsed = entry.isFile() ? parsePaperIntakeBrowserFile(entry.name) : null;
+			const filePath = nodePath.join(folder, entry.name);
+			if (!parsed || live.has(parsed.token) || keep.has(nodePath.resolve(filePath))) continue;
+			const outcome = await this.trashPaperIntakeInboxFile(filePath);
+			if (outcome === "unavailable") {
+				showRectoNotice(rectoUiText("paperIntake.trashUnavailable"), { tone: "attention" });
+				return { cleaned };
+			}
+			if (outcome === "trashed") cleaned++;
+		}
+		await this.removePaperIntakeInboxIfEmpty();
+		return { cleaned };
+	}
+
+	maybeWarnPaperIntakeNoFile(now = Date.now()) {
+		const watch = this.paperIntakeBrowserWatch;
+		if (!watch || watch.warned || watch.seen || now - watch.at < PAPER_INTAKE_NO_FILE_HINT_MS) return false;
+		const stillPending = this.getPaperIntakePending().some(item => watch.tokens.has(paperIntakeBrowserToken(item.id, item.browserNonce)));
+		if (!stillPending) return false;
+		watch.warned = true;
+		const folder = this.getPaperIntakeInboxFolder();
+		showRectoNotice(folder ? rectoUiText("paperIntake.noFileYet", { folder }) : rectoUiText("paperIntake.noFileYetAuto"), { tone: "attention", timeout: 15000 });
+		return true;
+	}
+
+	// 这一篇在本次「在浏览器中取件」里、取件还没结束：待补行显示「正在浏览器中取件」，而不是它当初进待补的原因。
+	isPaperIntakeFetchingInBrowser(item, now = Date.now()) {
+		const watch = this.paperIntakeBrowserWatch;
+		if (!item || !watch || !(Number(this.paperIntakeInboxFastUntil) > now)) return false;
+		return watch.tokens.has(paperIntakeBrowserToken(item.id, item.browserNonce));
+	}
+
+	// 本次取件开始前 5 秒起出现的文件才算本批（留一点余量给时钟与文件系统时间戳）。
+	getPaperIntakeWatchSince() {
+		const watch = this.paperIntakeBrowserWatch;
+		return watch ? watch.at - 5000 : 0;
+	}
+
+	// T125：只在取件进行中重新识别；已配置的文件夹若已收到本批文件（watch.seen）就不再找别处。
+	shouldRedetectPaperIntakeInbox(now = Date.now()) {
+		if (!(Number(this.paperIntakeInboxFastUntil) > now)) return false;
+		if (!this.getPaperIntakeInboxFolder()) return true;
+		const watch = this.paperIntakeBrowserWatch;
+		return !!watch && !watch.seen && now - watch.at >= PAPER_INTAKE_REDETECT_MS;
+	}
+
+	startPaperIntakeInboxWatcher() {
+		if (this.paperIntakeInboxTimer || typeof window === "undefined") return;
+		let tick = 0;
+		// 平时每 60 秒看一次；刚点过「在浏览器中取件」的 20 分钟内每 10 秒看一次，下载完很快就能进库。
+		this.paperIntakeInboxTimer = window.setInterval(() => {
+			tick++;
+			if (!(Number(this.paperIntakeInboxFastUntil) > Date.now()) && tick % 6 !== 0) return;
+			if (!this.getPaperIntakePending().length) return;
+			if (!this.shouldRedetectPaperIntakeInbox()) {
+				if (!this.getPaperIntakeInboxFolder()) return;
+				void this.checkPaperIntakeInbox({ quiet: true }).then(() => this.maybeWarnPaperIntakeNoFile()).catch(() => {});
+				return;
+			}
+			// 取件进行中：没有中转文件夹，或已配置的文件夹 15 秒还没收到本批文件，就去候选位置认，认到了当场配对。
+			void this.detectPaperIntakeInbox(undefined, { since: this.getPaperIntakeWatchSince() })
+				.then(() => this.getPaperIntakeInboxFolder() ? this.checkPaperIntakeInbox({ quiet: true }) : null)
+				.then(() => this.maybeWarnPaperIntakeNoFile()).catch(() => {});
+		}, 10 * 1000);
+		if (typeof this.registerInterval === "function") this.registerInterval(this.paperIntakeInboxTimer);
+	}
+
+	async openSystemPath(target) {
+		try {
+			const shell = typeof window !== "undefined" && window.require ? window.require("electron").shell : null;
+			if (!shell || typeof shell.openPath !== "function") return false;
+			return (await shell.openPath(target)) === "";
+		} catch { return false; }
+	}
+
+	// T105：添加论文在 Hub 里完成：打开（或切到）论文库，再展开工具栏的快速添加。
+	async openPaperIntakeQuickAdd() {
+		await this.activateRectoHub();
+		const leaf = this.app.workspace.getLeavesOfType(RECTO_HUB_VIEW_TYPE)[0];
+		if (leaf && leaf.view && typeof leaf.view.openQuickAdd === "function") leaf.view.openQuickAdd();
+	}
+
+	isPaperIntakeZoteroReady() {
+		return !!String(this.settings && this.settings.sourceFolder || "").trim();
+	}
+
+	getPaperIntakeCollectionOptions() {
+		const paths = new Set();
+		for (const info of Object.values(this.folderMap || {})) {
+			if (!info || info.zoteroSyncState === "orphaned") continue;
+			for (const parts of resolveRectoCollectionParts(info, this.rectoCollections)) paths.add(parts.join(" / "));
+		}
+		for (const parts of this.rectoCollections?.paths || []) paths.add(parts.join(" / "));
+		return [...paths].sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+	}
+
+	buildLocalPaperReimportSource(recordId) {
+		const info = this.folderMap && this.folderMap[recordId];
+		if (!info || !info.stem) return null;
+		const vaultBasePath = this.app.vault.adapter && this.app.vault.adapter.basePath;
+		const pdfPath = vaultBasePath ? findImportedPdfVaultPath(vaultBasePath, this.getValidatedBaseFolder(), info) : "";
+		const absolute = pdfPath ? resolveVaultRelativeAbsolutePath(vaultBasePath, pdfPath) : "";
+		if (!absolute) return null;
+		return {
+			...this.getZoteroFieldsFromTask(info),
+			recordId, folder: recordId, path: absolute, source: "local",
+			name: info.sourceFileName || info.originalName || `${info.stem}.pdf`,
+		};
+	}
+
 	// T82-D-S：启动延迟 / 打开 Hub / 设置页「立即同步」共用。自动路径静默降级，不弹错。
 	// T83-A：未点过「一键导入」不开静默导入；路径探测与冷却判定仍可走，但这里直接跳过整轮。
 	async maybeRunZoteroAutoCheck(options = {}) {
@@ -16719,7 +20112,8 @@ class RectoPlugin extends obsidian.Plugin {
 			catch { projectionFailed = true; this.zoteroImportProjectionPending = true; }
 			this.throwIfUnloaded(operation);
 			const degraded = incomplete || projectionFailed
-				|| Object.values(this.folderMap || {}).some(info => info && info.zoteroSyncState !== "orphaned" && info.zoteroPdfImportPending);
+				|| Object.entries(this.folderMap || {}).some(([recordId, info]) => info && !isLocalPaperRecord(info, recordId)
+					&& info.zoteroSyncState !== "orphaned" && info.zoteroPdfImportPending);
 			this.persistZoteroAutoCheckState({
 				lastCheckAt: Date.now(),
 				mtimeMs: degraded ? null : mtimeMs,
@@ -16950,7 +20344,9 @@ class RectoPlugin extends obsidian.Plugin {
 				: "";
 			const pdfPath = vaultBasePath ? findImportedPdfVaultPath(vaultBasePath, base, info) : "";
 			const fm = summaryPath ? this.readSummaryMeta(summaryPath) : {};
-			const collections = normalizeZoteroCollectionFields(info).zoteroCollectionPaths;
+			// T106：分类以 Recto 自有字段为准，没有时用 Zotero 原型（套改名规则）。
+			const collectionFields = describeRectoCollectionParts(resolveRectoCollectionParts(info, this.rectoCollections, folder));
+			const collections = collectionFields.paths;
 			const readingKey = this.getReadingStateKey(info, folder);
 			const zoteroMetadata = normalizeZoteroItemMetadata(info.zoteroMetadata);
 			const zoteroAuthors = getZoteroMetadataAuthors(zoteroMetadata);
@@ -16972,7 +20368,8 @@ class RectoPlugin extends obsidian.Plugin {
 				zoteroTitle: info.zoteroTitle || "",
 				frontmatterTitle: fm.title || "",
 				collections,
-				zoteroCollectionPathParts: normalizeZoteroCollectionFields(info).zoteroCollectionPathParts,
+				zoteroCollectionPathParts: collectionFields.parts,
+				rectoCollectionOverride: hasRectoCollectionOverride(info) && !isLocalPaperRecord(info, folder),
 				readingKey,
 				readingStatus: this.getReadingStatus(readingKey),
 				paperFlags: normalizeHubPaperFlags(this.paperFlags?.[folder]),
@@ -17006,6 +20403,8 @@ class RectoPlugin extends obsidian.Plugin {
 		const plan = { matched: [], missingPdfs: [], orphaned: [] };
 		for (const [recordId, info] of Object.entries(this.folderMap || {})) {
 			if (!info || !info.stem) continue;
+			// T100：本地论文没有 Zotero 附件可对账，绝不能因为「Zotero 里找不到」被标成 orphaned。
+			if (isLocalPaperRecord(info, recordId)) continue;
 			const attachmentKey = info.zoteroAttachmentKey || String(recordId).split("::")[0];
 			const zotero = metadata.byAttachment[attachmentKey];
 			if (!zotero) {
@@ -17285,6 +20684,162 @@ class RectoPlugin extends obsidian.Plugin {
 		showRectoNotice(message + (result.missing ? rectoUiText("hub.context.skipped", { count: result.missing }) : ""), { tone: "success" });
 	}
 
+	// T124：复制链接 `[[论文库/…/src-…|称呼]]`（选中多篇时一行一条）与复制引用 `(Smith 2020; Jones 2021)`。
+	// 称呼与原文 aliases、papers.jsonl 的 cite_label 同源；没有作者时退回题名。
+	getHubPaperCitationLabel(entry) {
+		const info = this.folderMap?.[entry.recordId] || {};
+		return getPaperCitationLabel(info, info.stem, this.settings?.paperNaming) || stripHubTitleMarkup(info.zoteroTitle) || info.stem || "";
+	}
+
+	async copyHubPaperReferences(entries, kind) {
+		const electron = require("electron");
+		if (!electron.clipboard?.writeText) throw new Error("clipboard-unavailable");
+		let text = "";
+		if (kind === "citation") {
+			const labels = entries.map(entry => this.getHubPaperCitationLabel(entry)).filter(Boolean);
+			if (!labels.length) throw new Error("no-citation");
+			text = `(${labels.join("; ")})`;
+		} else {
+			const lines = this.getHubPaperLinkLines(entries);
+			if (!lines.length) throw new Error("no-files");
+			text = lines.join("\n");
+		}
+		electron.clipboard.writeText(text);
+		showRectoNotice(rectoUiText("hub.context.referenceCopied", { text: text.length > 80 ? `${text.slice(0, 77)}…` : text }), { tone: "success", brief: true });
+	}
+
+	// T129：参考文献（format = gb7714 / apa / ieee / mla / default）或导出（bibtex / ris / csl-json）。
+	// 参考文献同时写纯文本与带斜体的 HTML，粘进 Word 保留期刊名斜体，粘进 Markdown 是纯文本。
+	getHubPaperCslItems(entries) {
+		return entries.map(entry => buildPaperCslItem({ ...(this.folderMap?.[entry.recordId] || {}) }, entry.recordId));
+	}
+
+	getHubCitationStyle() {
+		return resolvePaperCitationStyle(this.settings?.citationStyle, activeRectoUiLocale);
+	}
+
+	// T130：详情栏「引用信息」一行与右键「补全引用信息」。missing 为空就不显示；预印本不补（免得混进正式发表版的期刊信息）。
+	// Zotero 论文同样可补（用户拍板 2026-11-22）：补来的字段只存 Recto 的 citationSupplement，不写回 Zotero。
+	getHubCitationCheck(entry) {
+		const info = this.folderMap?.[entry.recordId];
+		if (!info) return { missing: [], canFill: false };
+		const item = buildPaperCslItem(info, entry.recordId);
+		const missing = checkPaperCitationMetadata(item);
+		return { missing, canFill: item.type !== "article" && !!(item.DOI || item.title) };
+	}
+
+	// 有 DOI 按 DOI 查 Crossref，没有就按题名检索并核对年份。只查不写，返回 found / nothing / not_found / network。
+	async lookupPaperCitationSupplement(recordId) {
+		const info = this.folderMap?.[recordId];
+		const item = buildPaperCslItem(info, recordId);
+		const missing = checkPaperCitationMetadata(item);
+		const doi = item.DOI && !/^10\.48550\//i.test(item.DOI) ? item.DOI : "";
+		let result;
+		let message = null;
+		if (doi) {
+			result = await this.paperIntakeJson(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
+			message = result.data && result.data.message || null;
+		} else {
+			result = await this.paperIntakeJson(`https://api.crossref.org/works?rows=5&query.bibliographic=${encodeURIComponent(item.title)}`);
+			message = pickPaperCitationCrossrefMatch(result.data && result.data.message && result.data.message.items, item);
+		}
+		if (!message) {
+			const offline = result.status === "error" || result.status === 429 || Number(result.status) >= 500;
+			return { status: offline ? "network" : "not_found", missing };
+		}
+		const supplement = buildPaperCitationSupplement(info, message);
+		return supplement ? { status: "found", missing, supplement } : { status: "nothing", missing };
+	}
+
+	// 逐篇查询（篇间稍停，对 Crossref 客气些），最后一次落盘：写进 citationSupplement（不动原型字段），
+	// 保存失败整批回滚。每篇结果 filled / partial / nothing / not_found / network，由调用方汇总提示。
+	async fillPaperCitationMetadata(recordIds) {
+		const ids = [...new Set(recordIds)].filter(id => {
+			const check = this.getHubCitationCheck({ recordId: id });
+			return check.canFill && check.missing.length;
+		});
+		const results = [];
+		for (const [index, recordId] of ids.entries()) {
+			if (index) await sleep(PAPER_CITATION_FILL_GAP_MS);
+			results.push({ recordId, ...await this.lookupPaperCitationSupplement(recordId) });
+		}
+		const found = results.filter(result => result.supplement);
+		if (found.length) {
+			const snapshot = this.folderMap;
+			const checkedAt = new Date().toISOString();
+			this.folderMap = { ...this.folderMap };
+			for (const result of found) {
+				this.folderMap[result.recordId] = { ...this.folderMap[result.recordId], citationSupplement: { ...result.supplement, checkedAt } };
+			}
+			try { await this.save(); } catch (error) {
+				this.folderMap = snapshot;
+				throw error;
+			}
+			try { await this.writePaperJsonlIndex(); } catch (error) {
+				console.warn("Recto: papers.jsonl refresh failed", getSanitizedErrorMessage(error));
+			}
+			this.refreshHubViews();
+		}
+		return results.map(({ supplement, ...result }) => {
+			if (!supplement) return result;
+			const missing = checkPaperCitationMetadata(buildPaperCslItem(this.folderMap[result.recordId], result.recordId));
+			return { ...result, status: missing.length ? "partial" : "filled", missing };
+		});
+	}
+
+	async copyHubPaperCitations(entries, format) {
+		const electron = require("electron");
+		if (!electron.clipboard?.writeText) throw new Error("clipboard-unavailable");
+		const items = this.getHubPaperCslItems(entries);
+		if (!items.length) throw new Error("record-missing");
+		let text;
+		if (PAPER_CITATION_EXPORTS.includes(format)) {
+			text = formatPaperCitationExport(items, format);
+			electron.clipboard.writeText(text);
+		} else {
+			const result = formatPaperBibliography(items, PAPER_CITATION_STYLES.includes(format) ? format : this.getHubCitationStyle());
+			text = result.text;
+			if (typeof electron.clipboard.write === "function") electron.clipboard.write({ text, html: result.html });
+			else electron.clipboard.writeText(text);
+		}
+		const preview = text.replace(/\s+/g, " ");
+		showRectoNotice(rectoUiText("hub.context.referenceCopied", { text: preview.length > 80 ? `${preview.slice(0, 77)}…` : preview }), { tone: "success", brief: true });
+	}
+
+	getHubPaperLinkLines(entries) {
+		return entries.map(entry => {
+			const target = entry.sourcePath || entry.pdfPath;
+			if (!target) return "";
+			const label = this.getHubPaperCitationLabel(entry).replace(/[[\]|]/g, " ").trim();
+			return `[[${target.replace(/\.md$/i, "")}${label ? `|${label}` : ""}]]`;
+		}).filter(Boolean);
+	}
+
+	// T126：拖拽退回文本时用的内容——有文件就是 `[[…|称呼]]`，否则是称呼；永远不露 recordId。
+	getHubPaperDragText(entries) {
+		const links = this.getHubPaperLinkLines(entries);
+		return (links.length ? links : entries.map(entry => this.getHubPaperCitationLabel(entry)).filter(Boolean)).join("\n");
+	}
+
+	// T126：Hub 里的论文拖出去就是库里的文件。交给 Obsidian 自己的拖拽管理器，Canvas 建文件卡、
+	// 笔记里插链接、标签栏打开都由宿主完成（Obsidian 1.15.1 的 dragFile/dragFiles/onDragStart，Canvas 认 file/files）。
+	// dragManager 不是公开 API：缺方法或这些路径都不是库内文件时返回 false，由调用方退回文本。
+	startHubFileDrag(event, paths) {
+		const manager = this.app?.dragManager;
+		if (!event?.dataTransfer || !manager || !["dragFile", "dragFiles", "onDragStart"].every(name => typeof manager[name] === "function")) return false;
+		const files = uniqueStrings(paths).map(path => this.app.vault.getAbstractFileByPath(path)).filter(file => file instanceof obsidian.TFile);
+		if (!files.length) return false;
+		const draggable = files.length === 1 ? manager.dragFile(event, files[0]) : manager.dragFiles(event, files);
+		if (!draggable) return false;
+		manager.onDragStart(event, draggable);
+		return true;
+	}
+
+	openPaperRenameModal(recordIds, options = {}) {
+		if (!this.getValidatedBaseFolderOrNotice()) return;
+		new RectoPaperRenameModal(this, uniqueStrings(recordIds), options).open();
+	}
+
 	async revealHubPaperFolder(entries, system = false) {
 		if (entries.length !== 1) return;
 		const result = this.getHubContextFiles(entries, "folder", true);
@@ -17294,6 +20849,11 @@ class RectoPlugin extends obsidian.Plugin {
 			if (!await openHubSystemFolder(result.paths[0], shell)) showRectoNotice(rectoUiText("hub.context.folderNotFocused"), { tone: "neutral" });
 			return;
 		}
+		await this.revealVaultItemInExplorer(result.files[0]);
+	}
+
+	// 在 Obsidian 文件浏览器里展开并选中一个文件或文件夹（Hub 右键「在库中显示」、设置页论文库文件夹共用）。
+	async revealVaultItemInExplorer(file) {
 		const workspace = this.app.workspace;
 		let leaf = workspace.getLeavesOfType("file-explorer")[0];
 		if (!leaf) {
@@ -17304,7 +20864,7 @@ class RectoPlugin extends obsidian.Plugin {
 		// Host 1.13.7 app.js FileExplorerView.revealInFolder expands ancestors and selects the item.
 		if (typeof leaf.view?.revealInFolder !== "function") throw new Error("explorer-unavailable");
 		await workspace.revealLeaf(leaf);
-		leaf.view.revealInFolder(result.files[0]);
+		leaf.view.revealInFolder(file);
 	}
 
 	async setHubPaperFlags(entries, flag, enabled) {
@@ -17328,6 +20888,138 @@ class RectoPlugin extends obsidian.Plugin {
 			throw error;
 		}
 		this.refreshHubViews({ paperFlags: ids });
+	}
+
+	// ── T106 分类管理 ───────────────────────────────────────────────
+	// 只写 Recto：论文写 rectoCollectionPathParts，分类写 rectoCollections；Zotero 不动。
+
+	listRectoCollectionPaths() {
+		const lists = [this.rectoCollections?.paths || []];
+		for (const [recordId, info] of Object.entries(this.folderMap || {})) {
+			if (!info || !info.stem || info.zoteroSyncState === "orphaned") continue;
+			lists.push(resolveRectoCollectionParts(info, this.rectoCollections, recordId));
+		}
+		return collectRectoCollectionPaths(lists);
+	}
+
+	hasRectoCollection(parts) {
+		const key = JSON.stringify(parts);
+		return this.listRectoCollectionPaths().some(path => JSON.stringify(path) === key);
+	}
+
+	// 保存失败时把这次改动原样退回，与阅读状态、标记的写法一致。
+	async commitRectoCollectionChange(mutate) {
+		const snapshot = { folderMap: this.folderMap, store: this.rectoCollections };
+		this.folderMap = { ...this.folderMap };
+		this.rectoCollections = normalizeRectoCollectionStore(this.rectoCollections);
+		const result = mutate();
+		try { await this.save(); } catch (error) {
+			this.folderMap = snapshot.folderMap;
+			this.rectoCollections = snapshot.store;
+			throw error;
+		}
+		try { await this.writePaperJsonlIndex(); } catch (error) {
+			console.warn("Recto: papers.jsonl refresh failed", getSanitizedErrorMessage(error));
+		}
+		this.refreshHubViews();
+		return result;
+	}
+
+	// change：{ mode: move|add|remove|set, target, source, includeSubcollections }。
+	// 返回 { changed, undo }；undo 是各篇改动前的 rectoCollectionPathParts（undefined＝原先跟随 Zotero）。
+	async changePaperCollections(recordIds, change) {
+		const ids = [...new Set(recordIds)];
+		if (ids.some(id => !this.folderMap?.[id]?.stem || this.folderMap[id].zoteroSyncState === "orphaned")) throw new Error("record-missing");
+		return await this.commitRectoCollectionChange(() => {
+			const undo = new Map();
+			for (const id of ids) {
+				const info = this.folderMap[id];
+				const current = resolveRectoCollectionParts(info, this.rectoCollections, id);
+				const next = applyRectoPaperCollectionChange(current, change);
+				if (sameRectoCollectionParts(current, next)) continue;
+				undo.set(id, hasRectoCollectionOverride(info) ? info.rectoCollectionPathParts : undefined);
+				this.folderMap[id] = { ...info, rectoCollectionPathParts: next };
+			}
+			// 移出后来源分类仍留在左栏（与 Zotero 一致），空了可以再删。
+			const source = normalizeRectoCollectionParts([change.source])[0];
+			if (undo.size && source && ["move", "remove"].includes(change.mode)) {
+				this.rectoCollections.paths = normalizeRectoCollectionParts([...this.rectoCollections.paths, source]);
+			}
+			return { changed: undo.size, undo };
+		});
+	}
+
+	async restorePaperCollections(undo) {
+		return await this.commitRectoCollectionChange(() => {
+			let changed = 0;
+			for (const [id, previous] of undo) {
+				const info = this.folderMap[id];
+				if (!info) continue;
+				const next = { ...info };
+				if (previous === undefined) delete next.rectoCollectionPathParts; else next.rectoCollectionPathParts = previous;
+				this.folderMap[id] = next;
+				changed++;
+			}
+			return { changed };
+		});
+	}
+
+	async resetPaperCollectionsToZotero(recordIds) {
+		const undo = new Map();
+		for (const id of new Set(recordIds)) {
+			const info = this.folderMap?.[id];
+			if (info && hasRectoCollectionOverride(info) && !isLocalPaperRecord(info, id)) undo.set(id, undefined);
+		}
+		return undo.size ? await this.restorePaperCollections(undo) : { changed: 0 };
+	}
+
+	async createRectoCollection(parentParts, name) {
+		const checked = validateRectoCollectionName(name);
+		if (checked.error) throw createRectoUiError(checked.error);
+		const parts = [...normalizeRectoCollectionParts([parentParts])[0] || [], checked.name];
+		if (this.hasRectoCollection(parts)) throw createRectoUiError("collections.exists");
+		return await this.commitRectoCollectionChange(() => {
+			this.rectoCollections.paths = normalizeRectoCollectionParts([...this.rectoCollections.paths, parts]);
+			return parts;
+		});
+	}
+
+	// 重命名与移动分类是同一件事：把路径前缀 from 换成 to。
+	async relocateRectoCollection(from, to) {
+		from = normalizeRectoCollectionParts([from])[0];
+		to = normalizeRectoCollectionParts([to])[0];
+		if (!from || !to || sameRectoCollectionParts([from], [to])) return null;
+		if (isRectoCollectionWithin(to, from)) throw createRectoUiError("collections.intoSelf");
+		if (this.hasRectoCollection(to)) throw createRectoUiError("collections.exists");
+		return await this.commitRectoCollectionChange(() => {
+			let needsRule = false;
+			for (const [id, info] of Object.entries(this.folderMap)) {
+				if (!info || !info.stem) continue;
+				const current = resolveRectoCollectionParts(info, this.rectoCollections, id);
+				if (!current.some(parts => isRectoCollectionWithin(parts, from))) continue;
+				// Zotero 论文没改过分类的交给规则（之后同步进来的同分类新论文也跟着走）；
+				// 其余（改过分类的、本地论文）直接改写自己的字段。
+				if (!hasRectoCollectionOverride(info) && !isLocalPaperRecord(info, id)) { needsRule = true; continue; }
+				this.folderMap[id] = { ...info, rectoCollectionPathParts: current.map(parts => replaceRectoCollectionPrefix(parts, from, to)) };
+			}
+			this.rectoCollections.paths = normalizeRectoCollectionParts(this.rectoCollections.paths.map(parts => replaceRectoCollectionPrefix(parts, from, to)));
+			if (!this.rectoCollections.paths.some(parts => isRectoCollectionWithin(parts, to))) this.rectoCollections.paths.push(to);
+			if (needsRule) this.rectoCollections.renames.push({ from, to });
+			return to;
+		});
+	}
+
+	// 只删空分类（含子分类都没有论文）。
+	async deleteRectoCollection(parts) {
+		parts = normalizeRectoCollectionParts([parts])[0];
+		if (!parts) return false;
+		const occupied = Object.entries(this.folderMap || {}).some(([id, info]) => info && info.stem && info.zoteroSyncState !== "orphaned"
+			&& resolveRectoCollectionParts(info, this.rectoCollections, id).some(path => isRectoCollectionWithin(path, parts)));
+		if (occupied) throw createRectoUiError("collections.notEmpty");
+		return await this.commitRectoCollectionChange(() => {
+			this.rectoCollections.paths = this.rectoCollections.paths.filter(path => !isRectoCollectionWithin(path, parts));
+			return true;
+		});
 	}
 
 	async setHubReadingStatus(entries, status) {
@@ -17555,56 +21247,6 @@ class RectoPlugin extends obsidian.Plugin {
 	}
 
 
-	async writeOutputText(absPath, content, operation = this.operationScope?.getStore()) {
-		this.throwIfUnloaded(operation);
-		const vaultPath = this.getVaultRelativePath(absPath);
-		if (vaultPath !== null) {
-			const parent = vaultPath.includes("/") ? vaultPath.substring(0, vaultPath.lastIndexOf("/")) : "";
-			if (parent) await this.ensureFolder(parent, { operation });
-			this.throwIfUnloaded(operation);
-			if (this.app.vault.getAbstractFileByPath(vaultPath)) throw Object.assign(new Error(`输出文件已存在: ${vaultPath}`), { code: "OUTPUT_ALREADY_EXISTS" });
-			await this.app.vault.create(vaultPath, content);
-			return;
-		}
-		fs.mkdirSync(nodePath.dirname(absPath), { recursive: true });
-		if (fs.existsSync(absPath)) throw Object.assign(new Error(`输出文件已存在: ${absPath}`), { code: "OUTPUT_ALREADY_EXISTS" });
-		fs.writeFileSync(absPath, content, "utf8");
-	}
-
-	async writeOutputBinary(absPath, content) {
-		this.throwIfUnloaded();
-		const buf = Buffer.isBuffer(content) ? content : Buffer.from(content);
-		const vaultPath = this.getVaultRelativePath(absPath);
-		if (vaultPath !== null) {
-			const parent = vaultPath.includes("/") ? vaultPath.substring(0, vaultPath.lastIndexOf("/")) : "";
-			if (parent) await this.ensureFolder(parent);
-			this.throwIfUnloaded();
-			if (this.app.vault.getAbstractFileByPath(vaultPath)) throw Object.assign(new Error(`输出文件已存在: ${vaultPath}`), { code: "OUTPUT_ALREADY_EXISTS" });
-			await this.app.vault.createBinary(vaultPath, bufferToArrayBuffer(buf));
-			return;
-		}
-		fs.mkdirSync(nodePath.dirname(absPath), { recursive: true });
-		if (fs.existsSync(absPath)) throw Object.assign(new Error(`输出文件已存在: ${absPath}`), { code: "OUTPUT_ALREADY_EXISTS" });
-		fs.writeFileSync(absPath, buf);
-	}
-
-	outputPathExists(absPath) {
-		const vaultPath = this.getVaultRelativePath(absPath);
-		if (vaultPath !== null) return !!this.app.vault.getAbstractFileByPath(vaultPath);
-		return fs.existsSync(absPath);
-	}
-
-	async readOutputTextIfExists(absPath) {
-		const vaultPath = this.getVaultRelativePath(absPath);
-		if (vaultPath !== null) {
-			const file = this.app.vault.getAbstractFileByPath(vaultPath);
-			if (!file || file.children) return null;
-			return await this.app.vault.read(file);
-		}
-		if (!fs.existsSync(absPath)) return null;
-		return await fs.promises.readFile(absPath, "utf8");
-	}
-
 	getPaperNotePath(recordId) {
 		const info = this.folderMap?.[recordId];
 		if (!info?.stem) throw new Error(rectoUiText("hub.fileMissing"));
@@ -17789,8 +21431,12 @@ class RectoPlugin extends obsidian.Plugin {
 
 	async createBackendHostedTaskUnlocked(task, operation = this.operationScope?.getStore()) {
 		if (task.namingVersion === 1) {
-			const desired = task.stem || sanitizeStem(task.zoteroTitle || String(task.name || "paper").replace(/\.pdf$/i, ""));
-			if (!task.localIntentId) task.stem = isRectoExternalTask(task) ? this.allocateExternalTaskStem(task, desired, { operation }) : this.allocateUniquePaperStem(desired, task.recordId, undefined, { operation });
+			const external = isRectoExternalTask(task);
+			const legacy = sanitizeStem(task.zoteroTitle || String(task.name || "paper").replace(/\.pdf$/i, ""));
+			// T124：库内论文没有 stem 时按命名规则定；有 stem（建档时已定）一律沿用。
+			const naming = task.stem || external ? null : this.getPaperStemRequest(task, legacy);
+			const desired = task.stem || (naming ? naming.desiredStem : legacy);
+			if (!task.localIntentId) task.stem = external ? this.allocateExternalTaskStem(task, desired, { operation }) : this.allocateUniquePaperStem(desired, task.recordId, undefined, { operation, candidates: naming?.candidates });
 			task.sourcePath = documentArtifactPath(this.resolveTaskPaperFolder(task, task.stem), task.stem, "src");
 			if (this.app.vault.getAbstractFileByPath(task.sourcePath)) throw new Error(documentLanguageText("原文路径已存在，未提交转换。", "The source path already exists. Conversion was not submitted."));
 		}
@@ -18727,9 +22373,12 @@ class RectoPlugin extends obsidian.Plugin {
 		const subFolderExisted = !!this.app.vault.getAbstractFileByPath(subFolder);
 		const rewriteImageLinks = text => text.replace(/!\[([^\]]*)\]\(images\/([^)]+)\)/g,
 			(_, alt, f) => `![[${subFolder}/images/${f}]]`);
+		// T124：称呼（Harvard Author Year）写进原文 aliases，`[[` 搜作者年份即可链到，选别名时
+		// Obsidian 插入 `[[src-…|称呼]]`。写在算 sourceContentHash 之前，哈希照常覆盖它。
+		const citationLabel = external ? "" : getPaperCitationLabel({ ...(this.folderMap?.[recordId] || {}), ...task }, stem, this.settings?.paperNaming);
 		const mdText = task.namingVersion === 1 ? withDocumentArtifactMetadata(rewriteImageLinks(sourceMarkdownRaw), {
 			"recto-artifact-role": "source", "recto-source-language": sourceLanguage, "recto-source-language-evidence": task.languageContract.sourceEvidence,
-			"recto-naming-version": 1,
+			"recto-naming-version": 1, ...(citationLabel ? { aliases: [citationLabel] } : {}),
 		}) : rewriteImageLinks(sourceMarkdownRaw);
 		const mdPath = task.namingVersion === 1 ? documentArtifactPath(subFolder, stem, "src") : this.getSourceMarkdownPath(stem, subFolder, sourceLanguage);
 		if (task.namingVersion === 1) {
@@ -18875,7 +22524,7 @@ class RectoPlugin extends obsidian.Plugin {
 			intro: rectoUiText("batch.convertIntro", { count }),
 			details: [
 				rectoUiText("batch.content", { content }),
-				...(describeBackendAccountView(this.settings).creditPackMode ? [rectoUiText(wantsTranslation ? "batch.freeTranslate" : "batch.freeConvert")] : []),
+				rectoUiText(wantsTranslation ? "batch.freeTranslate" : "batch.freeConvert"),
 				rectoUiText("batch.rights"),
 			],
 			actions: [
@@ -19124,8 +22773,11 @@ class RectoPlugin extends obsidian.Plugin {
 				// Freeze both the directory choice and final document paths. Allocation
 				// only reserves names; it creates no vault files and no backend task.
 				if (!task.translateOnly && task.namingVersion === 1) {
-					const desired = task.stem || this.folderMap?.[task.recordId]?.stem || sanitizeStem(task.zoteroTitle || String(task.name || "paper").replace(/\.pdf$/i, ""));
-					task.stem = isRectoExternalTask(task) ? this.allocateExternalTaskStem(task, desired, { operation }) : this.allocateUniquePaperStem(desired, task.recordId, this.folderMap, { operation });
+					const known = task.stem || this.folderMap?.[task.recordId]?.stem;
+					const legacy = sanitizeStem(task.zoteroTitle || String(task.name || "paper").replace(/\.pdf$/i, ""));
+					const naming = known || isRectoExternalTask(task) ? null : this.getPaperStemRequest(task, legacy);
+					const desired = known || (naming ? naming.desiredStem : legacy);
+					task.stem = isRectoExternalTask(task) ? this.allocateExternalTaskStem(task, desired, { operation }) : this.allocateUniquePaperStem(desired, task.recordId, this.folderMap, { operation, candidates: naming?.candidates });
 					task.sourcePath = documentArtifactPath(this.resolveTaskPaperFolder(task, task.stem), task.stem, "src");
 				}
 				this.claimTaskResources(task, operation);
@@ -19901,28 +23553,37 @@ class RectoPlugin extends obsidian.Plugin {
 		const operation = options.operation || this.operationScope?.getStore();
 		const existingRecord = folderMap && folderMap[recordId];
 		if (existingRecord && existingRecord.stem) return existingRecord.stem;
-		const base = sanitizeStem(desiredStem);
+		// T124：命名规则给出有序候选（基础名 → 展开作者 → 2022b…）；没有时与旧版完全一样。
+		const named = Array.isArray(options.candidates) && options.candidates.length > 0;
+		const base = named ? options.candidates[0] : sanitizeStem(desiredStem);
+		// 新命名按不分大小写判占用：Windows / macOS 的文件系统里 Chen 2022 与 chen 2022 是同一个目录。
+		const sameStem = (a, b) => named ? String(a).toLowerCase() === String(b).toLowerCase() : a === b;
 		const isAvailable = (candidate) => {
 			for (const [otherId, info] of Object.entries(folderMap || {})) {
-				if (otherId !== recordId && info && info.stem === candidate) return false;
+				if (otherId !== recordId && info && sameStem(info.stem, candidate)) return false;
 			}
 			const reservedBy = this.stemReservations && this.stemReservations.get(candidate);
 			if (reservedBy && reservedBy !== recordId) return false;
+			if (named && this.stemReservations) {
+				for (const [reserved, owner] of this.stemReservations) if (owner !== recordId && sameStem(reserved, candidate)) return false;
+			}
 			const keys = [`path:${rectoResourcePath(this.getPaperSubFolder(candidate))}`];
 			if (this.isLocalTaskResourceBusy({ sourcePath: this.getPaperSubFolder(candidate) }, operation)) return false;
 			if (this.operationResources?.conflicts(operation, keys)) return false;
 			const paper = this.app.vault.getAbstractFileByPath(this.getPaperSubFolder(candidate));
 			const summary = this.app.vault.getAbstractFileByPath(this.getSummaryPath(candidate))
 				|| this.app.vault.getAbstractFileByPath(getLegacySummaryVaultPath(this.getValidatedBaseFolder(), candidate));
-			if (!paper && !summary) return true;
+			const caseTwin = named && !paper && this.findPaperFolderCaseInsensitive(candidate);
+			if (!paper && !summary && !caseTwin) return true;
 			return typeof options.canReclaimFolder === "function" && options.canReclaimFolder(candidate);
 		};
-		let candidate = base;
-		if (!isAvailable(candidate)) {
+		let candidate = named ? options.candidates.find(isAvailable) : (isAvailable(base) ? base : null);
+		if (!candidate) {
+			const suffixOptions = named ? PAPER_NAMING_STEM_OPTIONS : {};
 			const marker = shortStableId(recordId || desiredStem, 6);
-			candidate = appendStemSuffix(base, marker);
+			candidate = appendStemSuffix(base, marker, suffixOptions);
 			for (let i = 2; !isAvailable(candidate) && i < 1000; i++) {
-				candidate = appendStemSuffix(base, `${marker}-${i}`);
+				candidate = appendStemSuffix(base, `${marker}-${i}`, suffixOptions);
 			}
 			if (!isAvailable(candidate)) throw new Error(`无法为同名论文分配唯一目录: ${base}`);
 		}
@@ -19933,6 +23594,22 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 		this.stemReservations.set(candidate, recordId);
 		return candidate;
+	}
+
+	findPaperFolderCaseInsensitive(stem) {
+		const root = this.app.vault.getAbstractFileByPath(this.getValidatedBaseFolder());
+		const wanted = String(stem).toLowerCase();
+		return (root?.children || []).find(child => String(child.name).toLowerCase() === wanted) || null;
+	}
+
+	// T124：库内论文建档定 stem 的唯一入口。「题名」预设（老用户默认）返回旧的 desiredStem、
+	// 不带候选，allocateUniquePaperStem 走与之前逐字节相同的路径。
+	getPaperStemRequest(source, fallbackTitle) {
+		const name = String(source?.name || "未命名论文");
+		const legacy = fallbackTitle !== undefined ? fallbackTitle
+			: (stripHubTitleMarkup(source?.zoteroTitle) || nodePath.basename(name, nodePath.extname(name)));
+		const candidates = buildPaperStemCandidates(source, this.settings?.paperNaming).map(item => item.stem);
+		return candidates.length ? { desiredStem: candidates[0], candidates } : { desiredStem: legacy };
 	}
 
 	getTranslationLink(stem) {
@@ -19954,7 +23631,7 @@ class RectoPlugin extends obsidian.Plugin {
 		return files[0];
 	}
 
-	// T88-G-T：保留 Hub 的统一桥名，动作改为清空旧产物后立即重新导入。
+	// T88-G-T：保留 Hub 的统一桥名，动作改为清空旧产物后立即重新导入。T132 起它是删除确认框里的「只清空转换结果」。
 	async deletePaperRecords(recordIds) {
 		if (!this.getValidatedBaseFolderOrNotice()) return;
 		const candidates = uniqueStrings(recordIds).map(recordId => {
@@ -20002,13 +23679,17 @@ class RectoPlugin extends obsidian.Plugin {
 		try {
 			// 等正在查询的恢复器退出，之后 operation 锁保证旧结果不会跨替换写入。
 			if (this.pendingBackendRecoveryPromise) await this.pendingBackendRecoveryPromise;
-			const plan = await this.getPdfScanPlan({ requireMetadata: true, quiet: true, signal: operation.controller.signal });
+			// T100：本地论文用论文库里的 PDF 副本重新导入；全是本地论文时不去扫 Zotero（用户可能根本没装）。
+			const needsZotero = recordIds.some(recordId => !isLocalPaperRecord(this.folderMap[recordId], recordId));
+			const plan = needsZotero ? await this.getPdfScanPlan({ requireMetadata: true, quiet: true, signal: operation.controller.signal })
+				: { tasks: [], ambiguousGroups: [] };
 			const sources = [...plan.tasks, ...plan.ambiguousGroups.flatMap(group => group.files)];
 			for (const recordId of recordIds) {
 				if (this.shouldStopBeforeNextItem()) break;
 				try {
 					const info = this.folderMap[recordId];
-					let source = sources.find(task => task.recordId === recordId);
+					let source = isLocalPaperRecord(info, recordId) ? this.buildLocalPaperReimportSource(recordId)
+						: sources.find(task => task.recordId === recordId);
 					if (!source) {
 						const matches = sources.filter(task => task.zoteroAttachmentKey === (info.zoteroAttachmentKey || recordId.split("::")[0]));
 						if (matches.length === 1) source = matches[0];
@@ -20026,7 +23707,7 @@ class RectoPlugin extends obsidian.Plugin {
 			}
 			await this.writePaperJsonlIndex();
 			setRectoInlineFeedback(this, "results", errors.join("\n"));
-			showRectoNotice(failed ? rectoUiText("delete.done", { success: imported, failed }) : documentLanguageText(`已重新导入 ${imported} 篇`, `Reimported ${imported} papers`), { tone: failed ? "attention" : "success" });
+			showRectoNotice(failed ? rectoUiText("delete.done", { success: imported, failed }) : rectoUiText("reset.done", { count: imported }), { tone: failed ? "attention" : "success" });
 			this.safeRefreshHubViews();
 			return { status: "completed", imported, failed };
 		} catch (error) {
@@ -20120,9 +23801,8 @@ class RectoPlugin extends obsidian.Plugin {
 		return await this.withTaskResources({ recordId }, () => this.reimportPaperRecordUnlocked(recordId, source));
 	}
 
-	async reimportPaperRecordUnlocked(recordId, source) {
-		const old = this.folderMap[recordId];
-		documentArtifactPath(this.getValidatedBaseFolder(), old.stem, "src");
+	// 这篇论文在后端还有没跑完的任务就抛错（重置与删除共用）；返回识别本篇任务的判定函数。
+	async assertPaperBackendTasksSettled(recordId, old) {
 		const pendingForPaper = entry => entry.recordId === recordId || entry.task?.recordId === recordId
 			|| (old.documentId && entry.task?.documentId === old.documentId);
 		for (const entry of (this.pendingBackendTasks || []).filter(pendingForPaper)) {
@@ -20133,11 +23813,19 @@ class RectoPlugin extends obsidian.Plugin {
 			catch (error) { if (isBackendTaskNotFoundError(error)) continue; throw error; }
 			if (!["ready", "terminal"].includes(classifyRecoveredBackendTaskStatus(remote?.status))) throw new Error(rectoUiText("reimport.taskRunning"));
 		}
+		return pendingForPaper;
+	}
+
+	async reimportPaperRecordUnlocked(recordId, source) {
+		const old = this.folderMap[recordId];
+		documentArtifactPath(this.getValidatedBaseFolder(), old.stem, "src");
+		const pendingForPaper = await this.assertPaperBackendTasksSettled(recordId, old);
 		if (this.hubNotesStore && !this.hubNotesStore.flush(recordId)) throw new Error(rectoUiText("reimport.noteUnsaved"));
 		const otherRecords = { ...this.folderMap };
 		delete otherRecords[recordId];
-		const stem = this.allocateUniquePaperStem(stripHubTitleMarkup(source.zoteroTitle) || nodePath.basename(source.name, ".pdf"), recordId, otherRecords,
-			{ canReclaimFolder: candidate => candidate === old.stem });
+		const naming = this.getPaperStemRequest(source, stripHubTitleMarkup(source.zoteroTitle) || nodePath.basename(source.name, ".pdf"));
+		const stem = this.allocateUniquePaperStem(naming.desiredStem, recordId, otherRecords,
+			{ candidates: naming.candidates, canReclaimFolder: candidate => candidate === old.stem });
 		const journal = { id: crypto.randomBytes(12).toString("hex"), recordId, oldStem: old.stem, newStem: stem, newDocumentId: createRectoDocumentId(), preserveNotes: true };
 		const root = this.getPaperSubFolder(`recto-reimport-${journal.id}`);
 		const vault = this.app.vault;
@@ -20168,7 +23856,10 @@ class RectoPlugin extends obsidian.Plugin {
 					originalName: source.name, sourceFileName: source.name, documentId: journal.newDocumentId,
 					conversionStatus: "unconverted", zoteroSyncState: "active", zoteroImportedAt: now, localPdfImportedAt: now,
 					localPdfPath: this.getImportedPdfVaultPath(stem), zoteroPdfContentHash: contentHash, zoteroPdfImportPending: false,
-					...(old.zoteroPdfChoice ? { zoteroPdfChoice: old.zoteroPdfChoice } : {}) } };
+					...(old.zoteroPdfChoice ? { zoteroPdfChoice: old.zoteroPdfChoice } : {}),
+					...(hasRectoCollectionOverride(old) ? { rectoCollectionPathParts: old.rectoCollectionPathParts } : {}),
+					...(isLocalPaperRecord(old, recordId) ? { source: "local", ...(old.paperIntakeEdition ? { paperIntakeEdition: old.paperIntakeEdition } : {}),
+						...(old.paperIntakeSourceUrl ? { paperIntakeSourceUrl: old.paperIntakeSourceUrl } : {}) } : {}) } };
 				this.convertedFolders = (this.convertedFolders || []).filter(id => id !== recordId);
 				this.pendingBackendTasks = (this.pendingBackendTasks || []).filter(entry => !pendingForPaper(entry));
 				this.settings.documentArtifacts = Object.fromEntries(Object.entries(this.settings.documentArtifacts || {}).filter(([path, value]) =>
@@ -20213,11 +23904,137 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
-	async removeFolderRecursive(vaultPath) {
-		const af = this.app.vault.getAbstractFileByPath(vaultPath);
-		if (!af) return;
-		if (!this.app.vault.trash) throw new Error("当前 Obsidian 运行时不支持移入系统回收站");
-		await this.app.vault.trash(af, true);
+	// T132：删除论文（取代「重新导入」成为 Hub 的删除入口；原重新导入保留为确认框里的「只清空转换结果」）。
+	// 整个论文文件夹（原文、译文、摘要、笔记与速记）移入回收站，记录及阅读状态、标记、对照登记一并移除；
+	// Zotero 论文记进 settings.removedZoteroPapers（按附件键），之后同步不再导入，Zotero 里的条目不动，设置页可恢复。
+	async removePaperRecords(recordIds) {
+		if (!this.getValidatedBaseFolderOrNotice()) return;
+		return await this.withOperationContext("removePaperRecords", () => this.removePaperRecordsScoped(uniqueStrings(recordIds)));
+	}
+
+	async removePaperRecordsScoped(recordIds) {
+		const ids = recordIds.filter(id => this.folderMap?.[id]?.stem);
+		if (!ids.length) {
+			showRectoNotice(rectoUiText("delete.missing"), { tone: "attention" });
+			return;
+		}
+		if (this.activeOperation || this.paperReimportRecoveryPromise) {
+			showRectoNotice(rectoUiText("reimport.taskRunning"), { tone: "attention" });
+			return;
+		}
+		await this.recoverPaperReimport();
+		const operation = this.beginOperation(rectoUiText("hub.context.delete"));
+		if (!operation) return;
+		let removed = 0;
+		const errors = [];
+		this.suspendPaperJsonlRefresh();
+		try {
+			if (this.pendingBackendRecoveryPromise) await this.pendingBackendRecoveryPromise;
+			for (const recordId of ids) {
+				if (this.shouldStopBeforeNextItem()) break;
+				const title = this.folderMap[recordId]?.zoteroTitle || this.folderMap[recordId]?.stem || "";
+				try {
+					await this.withTaskResources({ recordId }, () => this.removePaperRecordUnlocked(recordId, ids));
+					removed++;
+				} catch (error) {
+					errors.push(`${title}: ${getUserFacingErrorMessage(error, rectoUiText("remove.failed"))}`);
+				}
+			}
+			await this.writePaperJsonlIndex();
+			setRectoInlineFeedback(this, "results", errors.join("\n"));
+			showRectoNotice(errors.length ? rectoUiText("remove.partial", { success: removed, failed: errors.length })
+				: rectoUiText("remove.done", { count: removed }), { tone: errors.length ? "attention" : "success" });
+			this.safeRefreshHubViews();
+			return { status: "completed", removed, failed: errors.length };
+		} catch (error) {
+			const reason = getUserFacingErrorMessage(error, rectoUiText("remove.failed"));
+			showRectoNotice(rectoUiText("remove.failedWithReason", { error: reason }), { tone: "error" });
+			return { status: "error", removed, failed: errors.length, reason };
+		} finally {
+			await this.resumePaperJsonlRefresh({ flush: true });
+			this.finishOperation(operation);
+		}
+	}
+
+	async removePaperRecordUnlocked(recordId, batchIds = [recordId]) {
+		const old = this.folderMap[recordId];
+		const base = this.getValidatedBaseFolder();
+		documentArtifactPath(base, old.stem, "src");
+		// 共用同一文件夹的另一篇不在这次删除里：整夹进回收站会连带删掉它，拒绝。
+		if (Object.entries(this.folderMap).some(([id, info]) => id !== recordId && info?.stem === old.stem && !batchIds.includes(id))) {
+			throw new Error(rectoUiText("remove.sharedFolder"));
+		}
+		const pendingForPaper = await this.assertPaperBackendTasksSettled(recordId, old);
+		// 速记草稿先落进论文文件夹，再随文件夹一起进回收站（找回时连笔记一起回来）。
+		if (this.hubNotesStore && !this.hubNotesStore.flush(recordId)) throw new Error(rectoUiText("reimport.noteUnsaved"));
+		const paperPath = this.getPaperSubFolder(old.stem);
+		const legacyPath = getLegacyPaperFolderVaultPath(base, old.stem);
+		// 论文文件夹 + 旧版布局的目录与摘要（不存在就跳过；trashVaultPath 走系统回收站）。
+		const trashPaths = uniqueStrings([paperPath, legacyPath, getLegacySummaryVaultPath(base, old.stem), this.getSummaryPathForStem(old.stem)]);
+		for (const path of trashPaths) {
+			if (path === paperPath || !path.startsWith(`${paperPath}/`)) await this.trashVaultPath(path);
+		}
+		const otherRecords = { ...this.folderMap };
+		delete otherRecords[recordId];
+		const local = isLocalPaperRecord(old, recordId);
+		let snapshot;
+		await this.save(() => {
+			snapshot = { folderMap: this.folderMap, convertedFolders: this.convertedFolders, pendingBackendTasks: this.pendingBackendTasks,
+				readingStates: this.readingStates, readingTouchedAt: this.readingTouchedAt, paperFlags: this.paperFlags,
+				compareSessions: this.compareSessions, artifacts: this.settings.documentArtifacts, removedZoteroPapers: this.settings.removedZoteroPapers };
+			this.folderMap = otherRecords;
+			this.convertedFolders = (this.convertedFolders || []).filter(id => id !== recordId);
+			this.pendingBackendTasks = (this.pendingBackendTasks || []).filter(entry => !pendingForPaper(entry));
+			this.settings.documentArtifacts = Object.fromEntries(Object.entries(this.settings.documentArtifacts || {}).filter(([path, value]) =>
+				!path.startsWith(`${paperPath}/`) && !path.startsWith(`${legacyPath}/`) && !(old.documentId && value.documentId === old.documentId)));
+			this.readingStates = { ...this.readingStates }; this.readingTouchedAt = { ...this.readingTouchedAt }; this.paperFlags = { ...this.paperFlags };
+			const readingKey = this.getReadingStateKey(old, recordId);
+			// 同 Zotero 条目的另一份 PDF 共用阅读状态时保留它的记录。
+			if (!Object.entries(otherRecords).some(([id, info]) => this.getReadingStateKey(info, id) === readingKey)) {
+				delete this.readingStates[readingKey]; delete this.readingTouchedAt[readingKey];
+			}
+			delete this.paperFlags[recordId];
+			this.compareSessions = { ...this.compareSessions };
+			for (const [kind, pair] of Object.entries(this.compareSessions)) {
+				if (pair && Object.values(pair).some(path => String(path).startsWith(`${paperPath}/`))) this.compareSessions[kind] = null;
+			}
+			if (!local) {
+				const attachmentKey = String(old.zoteroAttachmentKey || recordId.split("::")[0]);
+				this.settings.removedZoteroPapers = { ...normalizeRemovedZoteroPapers(this.settings.removedZoteroPapers),
+					[attachmentKey]: { title: stripHubTitleMarkup(old.zoteroTitle) || old.stem, removedAt: new Date().toISOString() } };
+			}
+			const applied = { folderMap: { ...this.folderMap }, readingStates: { ...this.readingStates }, readingTouchedAt: { ...this.readingTouchedAt },
+				paperFlags: { ...this.paperFlags }, compareSessions: { ...this.compareSessions }, artifacts: { ...this.settings.documentArtifacts },
+				pendingBackendTasks: this.pendingBackendTasks };
+			return () => {
+				for (const field of ["folderMap", "readingStates", "readingTouchedAt", "paperFlags", "compareSessions"]) {
+					this[field] = rollbackObjectChanges(this[field], snapshot[field], applied[field]);
+				}
+				this.settings.documentArtifacts = rollbackObjectChanges(this.settings.documentArtifacts, snapshot.artifacts, applied.artifacts);
+				this.settings.removedZoteroPapers = snapshot.removedZoteroPapers;
+				if ((snapshot.convertedFolders || []).includes(recordId) && !this.convertedFolders.includes(recordId)) {
+					this.convertedFolders.splice(Math.min(snapshot.convertedFolders.indexOf(recordId), this.convertedFolders.length), 0, recordId);
+				}
+				const taskIds = (snapshot.pendingBackendTasks || []).filter(pendingForPaper).map(entry => entry.taskId);
+				this.pendingBackendTasks = rollbackPendingBackendTaskChanges(this.pendingBackendTasks, snapshot.pendingBackendTasks, applied.pendingBackendTasks, taskIds);
+			};
+		});
+		this.hubNotesStore?.forget?.(recordId);
+		if (snapshot.compareSessions?.dualPane && !this.compareSessions.dualPane) this.stopRectoDualPane(false);
+		if (snapshot.compareSessions?.pdfCompare && !this.compareSessions.pdfCompare) this.stopRectoPdfCompare(false);
+		this.alignmentSectionCache = null;
+		this.imageWidthMapCache?.clear();
+		this.notifyTaskQueueChanged();
+	}
+
+	// 设置页「恢复同步」：清掉这些附件键（不给就全部），下次 Zotero 同步重新导入。
+	async restoreRemovedZoteroPapers(attachmentKeys = null) {
+		const previous = this.settings.removedZoteroPapers;
+		const next = { ...normalizeRemovedZoteroPapers(previous) };
+		for (const key of attachmentKeys || Object.keys(next)) delete next[key];
+		this.settings.removedZoteroPapers = next;
+		try { await this.save(); }
+		catch (error) { this.settings.removedZoteroPapers = previous; throw error; }
 	}
 
 	async repairPdfs() {
@@ -20327,15 +24144,379 @@ class RectoPlugin extends obsidian.Plugin {
 		await this.app.vault.createBinary(targetPath, bufferToArrayBuffer(buf));
 	}
 
-	createSanitizedDistributionPackage() {
-		try {
-			const zipPath = createSanitizedDistributionZip(this.getPluginDirectoryPath());
-			showRectoNotice(rectoUiText("distribution.done", { file: nodePath.basename(zipPath) }), { tone: "success" });
-			return zipPath;
-		} catch (e) {
-			showRectoNotice(getUserFacingErrorMessage(e, rectoUiText("distribution.failed")), { tone: "error" });
-			throw e;
+	// ═══════════════════════════════════════════════════════════════
+	// T124 已有论文改名事务。规格：archive/specs/T124-PAPER-NAMING.md §5
+	//
+	// 为什么不用 fileManager.renameFile：它在 vault.rename 外包了一层全库链接重写
+	// （Obsidian 1.15.1 app.js `renameFile(t,e){… runAsyncLinkUpdate(()=>this.vault.rename(t,e))}`），
+	// 每篇论文 src/zh 各有约 20 处全路径图片嵌入，几百篇一起改就是卡顿的来源；而且它不知道
+	// 译文 frontmatter 的 recto-source-path / recto-source-hash，改完对照阅读照样坏。
+	// 所以：目录与文件用 vault.rename 搬，Recto 自己的文件由 Recto 精确改写，
+	// 用户自己指向这篇的链接（笔记、Canvas）只改那几处。
+	//
+	// 一批一张恢复单（settings.paperRename：整批计划 + 游标），每篇的提交点 = 内存里 folderMap 的 stem 换成新名，
+	// 攒批落盘。中断后 recoverPaperRename：游标之后磁盘上已经动过的那篇正向做完，没动过的跳过。
+	// 所有改写都是幂等的（rewritePaperPathReferences 对已改过的文本是空操作），所以重跑安全。
+	// ═══════════════════════════════════════════════════════════════
+
+	describePaperRenameBlocker(recordId, info = this.folderMap?.[recordId]) {
+		if (!info || !info.stem) return "missing";
+		if (this.settings?.paperReimport?.recordId === recordId) return "busy";
+		if (this.hasPendingBackendTaskForRecord?.(recordId) || this.isTaskResourceBusy({ recordId, stem: info.stem })) return "busy";
+		const base = this.getValidatedBaseFolder();
+		// 旧版目录布局（转换产物在「已转换」子目录、摘要在「摘要」目录）不在改名范围内。
+		if (this.app.vault.getAbstractFileByPath(getLegacyPaperFolderVaultPath(base, info.stem))
+			|| this.app.vault.getAbstractFileByPath(getLegacySummaryVaultPath(base, info.stem))) return "legacy";
+		return "";
+	}
+
+	// 按当前命名规则（或单篇手填的名字）算出每篇的新名；只读，不碰磁盘。
+	// 已经符合规则的（当前名就是候选之一）不列出，不为了「更好看的后缀」去动老论文。
+	planPaperRenames(recordIds, overrides = {}) {
+		const naming = normalizePaperNamingSettings(this.settings?.paperNaming);
+		// 同一个文件夹可能被几条记录共用（同一篇的两个附件、orphaned + 现行）：它们必须一起改名。
+		const owners = new Map();
+		for (const [id, info] of Object.entries(this.folderMap || {})) {
+			if (!info?.stem) continue;
+			const key = info.stem.toLowerCase();
+			if (!owners.has(key)) owners.set(key, []);
+			owners.get(key).push(id);
 		}
+		const taken = new Map([...owners].map(([key, ids]) => [key, ids[0]]));
+		const rows = [], seenGroups = new Set();
+		for (const recordId of uniqueStrings(recordIds)) {
+			const info = this.folderMap?.[recordId];
+			if (!info || !info.stem) continue;
+			const group = owners.get(info.stem.toLowerCase()) || [recordId];
+			if (seenGroups.has(info.stem.toLowerCase())) continue;
+			seenGroups.add(info.stem.toLowerCase());
+			const override = typeof overrides[recordId] === "string" ? overrides[recordId].trim() : "";
+			let candidates;
+			if (override) candidates = [sanitizeStem(override, PAPER_NAMING_STEM_OPTIONS)];
+			else {
+				candidates = buildPaperStemCandidates(info, naming).map(item => item.stem);
+				if (!candidates.length) {
+					const name = String(info.originalName || info.sourceFileName || "未命名论文");
+					candidates = [sanitizeStem(stripHubTitleMarkup(info.zoteroTitle) || nodePath.basename(name, nodePath.extname(name)))];
+				}
+			}
+			const row = { recordId, recordIds: group, oldStem: info.stem, newStem: "", title: info.zoteroTitle || info.stem, blocker: "" };
+			if (!override && candidates.includes(info.stem)) continue;
+			const ownKey = info.stem.toLowerCase();
+			const available = stem => {
+				const key = stem.toLowerCase();
+				const owner = taken.get(key);
+				if (owner && !group.includes(owner)) return false;
+				if (key === ownKey) return true;
+				return !this.findPaperFolderCaseInsensitive(stem);
+			};
+			let next = candidates.find(available);
+			if (!next) {
+				const marker = shortStableId(recordId, 6);
+				next = appendStemSuffix(candidates[0], marker, PAPER_NAMING_STEM_OPTIONS);
+				for (let i = 2; !available(next) && i < 1000; i++) next = appendStemSuffix(candidates[0], `${marker}-${i}`, PAPER_NAMING_STEM_OPTIONS);
+				if (!available(next)) row.blocker = "occupied";
+			}
+			if (next === info.stem) continue;
+			row.newStem = next;
+			row.blocker = row.blocker || group.map(id => this.describePaperRenameBlocker(id)).find(Boolean) || "";
+			if (!row.blocker) {
+				// 同一批里先到先得：后面的论文不能再拿这个名字。
+				taken.set(next.toLowerCase(), recordId);
+			}
+			rows.push(row);
+		}
+		return rows;
+	}
+
+
+	// 批量执行（单篇也走这里）。
+	// 1. 先把整批的计划算好（读原文算哈希、找反向链接），一次写进 settings.paperRename 恢复单；
+	// 2. 逐篇串行改磁盘，成功后只在内存里提交 folderMap 等状态，并推进恢复单游标；
+	// 3. 每隔约 1.5 秒才整份落盘一次——data.json 可能有好几 MB，逐篇保存本身就是卡顿来源。
+	// 某篇失败就把这篇的磁盘改动退回去、跳过它；退不回去才停下，交给启动恢复。
+	async renamePapers(rows, options = {}) {
+		await this.recoverPaperRename();
+		return await this.withOperationContext("renamePapers", async () => {
+			const results = [];
+			this.suspendPaperJsonlRefresh();
+			try {
+				const pending = (rows || []).filter(row => row && row.recordId && row.newStem && !row.blocker);
+				const referrers = this.collectPaperRenameReferrers(pending.map(row => this.folderMap?.[row.recordId]?.stem).filter(Boolean));
+				const entries = [];
+				for (let index = 0; index < pending.length; index++) {
+					const row = pending[index];
+					try { entries.push(await this.preparePaperRenameEntry(row.recordId, row.newStem, referrers, row.recordIds)); }
+					catch (error) { results.push({ ...row, status: "failed", error: getSanitizedErrorMessage(error) }); }
+					if (index % 20 === 19) await sleep(0);
+				}
+				if (!entries.length) return results;
+				const journal = { version: 2, id: crypto.randomBytes(12).toString("hex"), cursor: 0, entries };
+				this.settings.paperRename = journal;
+				try { await this.save(); } catch (error) { delete this.settings.paperRename; throw error; }
+				let lastSave = Date.now(), stuck = false;
+				for (let index = 0; index < entries.length; index++) {
+					if (options.signal?.aborted) break;
+					const entry = entries[index];
+					const row = { recordId: entry.recordId, oldStem: entry.oldStem, newStem: entry.newStem };
+					try {
+						await this.withTaskResources({ recordId: entry.recordId, stem: entry.oldStem }, async operation => {
+							for (const id of paperRenameEntryIds(entry)) {
+								this.claimTaskResources({ recordId: id, stem: entry.newStem }, operation);
+								const blocker = this.describePaperRenameBlocker(id);
+								if (blocker) throw new Error(rectoUiText(`rename.blocker.${blocker}`));
+								if (this.hubNotesStore && !this.hubNotesStore.flush(id)) throw new Error(rectoUiText("reimport.noteUnsaved"));
+							}
+							let hashMap;
+							try { hashMap = await this.runPaperRenameSteps(entry, 1); }
+							catch (error) {
+								try { await this.runPaperRenameSteps(entry, -1); }
+								catch (rollbackError) { console.warn("Recto: paper rename rollback failed", rollbackError); stuck = true; }
+								throw error;
+							}
+							this.applyPaperRenameState(entry, hashMap);
+						});
+						results.push({ ...row, status: "renamed" });
+					} catch (error) {
+						results.push({ ...row, status: "failed", error: getSanitizedErrorMessage(error) });
+					}
+					if (stuck) { journal.cursor = index; break; }
+					journal.cursor = index + 1;
+					options.onProgress?.(index + 1, entries.length);
+					if (Date.now() - lastSave > 1500) { await this.save(); lastSave = Date.now(); }
+					// 每篇搬目录时 Obsidian 自己要处理一次约 0.1 秒（逐个后代发 rename 事件、更新文件列表），
+					// 篇与篇之间让出一帧，界面在两次短停顿之间照常响应。
+					await sleep(16);
+				}
+				// 游标之后的论文一篇都没动过（取消时）；恢复单只在退不回去、卡住时留下。
+				if (!stuck) delete this.settings.paperRename;
+				await this.save();
+			} finally {
+				this.paperRenameCanvasCache?.clear();
+				await this.resumePaperJsonlRefresh({ flush: true });
+				this.alignmentSectionCache = null;
+				this.imageWidthMapCache?.clear();
+				this.refreshHubViews();
+			}
+			return results;
+		});
+	}
+
+	// 一次性建「旧论文目录 → 指向它的外部文件」索引：md 走 metadataCache.resolvedLinks，
+	// Canvas 读一遍文本（resolvedLinks 不保证收录 .canvas）。目录内部的引用不在这里。
+	collectPaperRenameReferrers(stems) {
+		const base = this.getValidatedBaseFolder();
+		const folders = new Set(stems.map(stem => getPaperFolderVaultPath(base, stem)));
+		const byFolder = new Map();
+		const prefix = toVaultFolderPrefix(base);
+		const resolved = this.app.metadataCache?.resolvedLinks || {};
+		for (const [source, targets] of Object.entries(resolved)) {
+			for (const target of Object.keys(targets || {})) {
+				if (!String(target).startsWith(prefix)) continue;
+				const first = String(target).slice(prefix.length).split("/")[0];
+				const folder = first ? obsidian.normalizePath(`${prefix}${first}`) : "";
+				if (!folder || !folders.has(folder) || source.startsWith(`${folder}/`)) continue;
+				if (!byFolder.has(folder)) byFolder.set(folder, new Set());
+				byFolder.get(folder).add(source);
+			}
+		}
+		this.paperRenameCanvasCache = new Map();
+		return { byFolder };
+	}
+
+	async findPaperRenameCanvasReferrers(oldFolder, oldStem) {
+		const out = [];
+		const files = (this.app.vault.getFiles?.() || []).filter(file => file.extension === "canvas");
+		if (!this.paperRenameCanvasCache) this.paperRenameCanvasCache = new Map();
+		for (const file of files) {
+			let text = this.paperRenameCanvasCache.get(file.path);
+			if (text === undefined) {
+				try { text = await this.app.vault.cachedRead(file); } catch { text = ""; }
+				this.paperRenameCanvasCache.set(file.path, text);
+			}
+			if (text.includes(`${oldFolder}/`) || text.includes(oldStem)) out.push(file.path);
+		}
+		return out;
+	}
+
+	// 只读：校验新名、算目录内要改名的文件、原文改写前后的哈希、称呼与反向链接。
+	async preparePaperRenameEntry(recordId, newStem, referrers, recordIds = [recordId]) {
+		const info = this.folderMap?.[recordId];
+		const oldStem = info?.stem;
+		if (!oldStem) throw new Error(rectoUiText("rename.missing"));
+		const ids = uniqueStrings([recordId, ...recordIds]).filter(id => this.folderMap?.[id]?.stem?.toLowerCase() === oldStem.toLowerCase());
+		const blocker = ids.map(id => this.describePaperRenameBlocker(id)).find(Boolean);
+		if (blocker) throw new Error(rectoUiText(`rename.blocker.${blocker}`));
+		const base = this.getValidatedBaseFolder();
+		documentArtifactPath(base, newStem, "src"); // 非法名在这里就抛
+		const vault = this.app.vault;
+		const oldFolder = getPaperFolderVaultPath(base, oldStem);
+		const newFolder = getPaperFolderVaultPath(base, newStem);
+		const caseOnly = oldFolder.toLowerCase() === newFolder.toLowerCase();
+		if (!caseOnly && (await vault.adapter.exists(newFolder) || this.findPaperFolderCaseInsensitive(newStem))) {
+			throw new Error(rectoUiText("rename.blocker.occupied"));
+		}
+		const folder = vault.getAbstractFileByPath(oldFolder);
+		const names = (folder?.children || []).filter(child => !child.children).map(child => child.name);
+		const files = planPaperRenameFileMoves(names, oldStem, newStem).map(([from, to]) => [`${oldFolder}/${from}`, `${newFolder}/${to}`]);
+		const naming = this.settings?.paperNaming;
+		const oldLabel = getPaperCitationLabel(info, oldStem, naming);
+		const newLabel = getPaperCitationLabel(info, newStem, naming);
+		const sourcePath = this.findPaperRenameSourcePath(info, oldFolder, folder);
+		let hashes = [], hadOldLabel = false, hadAliases = false;
+		if (sourcePath) {
+			const text = await vault.read(vault.getAbstractFileByPath(sourcePath));
+			const aliases = readPaperRenameAliases(text);
+			hadAliases = aliases !== null;
+			hadOldLabel = !!oldLabel && (aliases || []).includes(oldLabel);
+			const next = this.transformPaperRenameSource(text, { oldFolder, newFolder, files }, { remove: oldLabel, add: newLabel });
+			hashes = [documentContentHash(text), documentContentHash(next)];
+		}
+		const refs = [...(referrers?.byFolder?.get(oldFolder) || [])];
+		for (const path of await this.findPaperRenameCanvasReferrers(oldFolder, oldStem)) if (!refs.includes(path)) refs.push(path);
+		return { recordId, recordIds: ids, oldStem, newStem, oldFolder, newFolder, files,
+			sourcePath: sourcePath ? (files.find(([from]) => from === sourcePath)?.[1] || `${newFolder}/${sourcePath.slice(oldFolder.length + 1)}`) : "",
+			oldSourcePath: sourcePath || "", hashes, labels: { old: oldLabel, new: newLabel, hadOld: hadOldLabel, hadAliases }, referrers: refs };
+	}
+
+	findPaperRenameSourcePath(info, folderPath, folder) {
+		const vault = this.app.vault;
+		if (info?.sourcePath && info.sourcePath.startsWith(`${folderPath}/`) && vault.getAbstractFileByPath(info.sourcePath)) return info.sourcePath;
+		return this.findOriginalMarkdownInPaperFolder(folder)?.path || "";
+	}
+
+	// 原文 = 路径改写 + aliases 更新（只动 Recto 生成的原文：frontmatter 里 recto-artifact-role=source）。
+	transformPaperRenameSource(text, mapping, labels) {
+		let out = rewritePaperPathReferences(text, mapping);
+		if (parseSimpleFrontmatter(out)["recto-artifact-role"] === "source") out = updatePaperRenameAliases(out, labels);
+		return out;
+	}
+
+	async rewritePaperRenameFile(path, transform) {
+		const file = this.app.vault.getAbstractFileByPath(path);
+		if (!file || file.children) return false;
+		const before = await this.app.vault.read(file);
+		const after = transform(before);
+		if (after === before) return false;
+		await this.app.vault.modify(file, after);
+		return true;
+	}
+
+	async movePaperRenamePath(from, to) {
+		const vault = this.app.vault;
+		if (from === to) return;
+		// 只改大小写：Windows / macOS 上直接改会被当成「目标已存在」，绕一个固定的临时名；
+		// 临时名固定，中断在两步之间时重跑能认出来接着搬。
+		const temp = `${to}.recto-rename`;
+		const parked = vault.getAbstractFileByPath(temp);
+		if (parked && !vault.getAbstractFileByPath(to)) { await vault.rename(parked, to); return; }
+		const source = vault.getAbstractFileByPath(from);
+		if (!source) return; // 已经搬过（重跑）
+		if (from.toLowerCase() === to.toLowerCase()) {
+			await vault.rename(source, temp);
+			await vault.rename(vault.getAbstractFileByPath(temp), to);
+			return;
+		}
+		if (vault.getAbstractFileByPath(to) || await vault.adapter.exists(to)) throw new Error(rectoUiText("rename.blocker.occupied"));
+		await vault.rename(source, to);
+	}
+
+	// direction = 1 正向（旧 → 新），-1 反向（失败当场退回）。两个方向共用同一套幂等步骤，只动磁盘；
+	// 插件状态由 applyPaperRenameState 在正向成功后改。返回「旧哈希 → 当前原文哈希」映射。
+	async runPaperRenameSteps(entry, direction) {
+		const forward = direction > 0;
+		const fromFolder = forward ? entry.oldFolder : entry.newFolder;
+		const toFolder = forward ? entry.newFolder : entry.oldFolder;
+		const files = entry.files.map(([a, b]) => forward ? [a, b] : [b, a]);
+		const mapping = { oldFolder: fromFolder, newFolder: toFolder, files };
+		const labels = forward ? { remove: entry.labels.old, add: entry.labels.new }
+			: { remove: entry.labels.new, add: entry.labels.hadOld ? entry.labels.old : "", dropIfEmpty: !entry.labels.hadAliases };
+		const vault = this.app.vault;
+		// 回滚先撤外部链接再搬回磁盘；正向先搬磁盘、最后改链接——外部链接始终指向真实存在的路径。
+		if (!forward) for (const path of entry.referrers || []) await this.rewritePaperRenameFile(path, text => rewritePaperPathReferences(text, mapping));
+		// 1. 搬目录，再在新目录里给按 stem 命名的文件改名。
+		const otherCase = fromFolder.toLowerCase() !== toFolder.toLowerCase();
+		if (!(otherCase && vault.getAbstractFileByPath(toFolder))) await this.movePaperRenamePath(fromFolder, toFolder);
+		for (const [from, to] of files) await this.movePaperRenamePath(`${toFolder}/${from.slice(fromFolder.length + 1)}`, to);
+		// 2. 原文：路径 + aliases；然后以它的新内容为准，把记着旧哈希的地方对齐过去。
+		const sourcePath = forward ? entry.sourcePath : entry.oldSourcePath;
+		let hashMap = new Map();
+		if (sourcePath && vault.getAbstractFileByPath(sourcePath)) {
+			await this.rewritePaperRenameFile(sourcePath, text => this.transformPaperRenameSource(text, mapping, labels));
+			const current = documentContentHash(await vault.read(vault.getAbstractFileByPath(sourcePath)));
+			// 只替换「与原文同步」的那两个哈希；用户改过原文、本来就对不上的，保持对不上。
+			hashMap = new Map((entry.hashes || []).filter(hash => hash && hash !== current).map(hash => [hash, current]));
+		}
+		const swap = text => swapPaperRenameHashes(text, hashMap);
+		// 3. 目录里其余文本（译文、摘要、笔记、sidecar）。递归：旧库有 archive/ 之类的子目录；images/ 只有图片。
+		const targets = [];
+		const collect = node => {
+			for (const child of node?.children || []) {
+				if (child.children) { if (child.name !== "images") collect(child); }
+				else if (/\.(md|json|canvas)$/i.test(child.name) && child.path !== sourcePath) targets.push(child.path);
+			}
+		};
+		collect(vault.getAbstractFileByPath(toFolder));
+		for (const path of targets) await this.rewritePaperRenameFile(path, text => swap(rewritePaperPathReferences(text, mapping)));
+		// 4. 正向最后改外部链接（此时新路径已存在）。
+		if (forward) for (const path of entry.referrers || []) await this.rewritePaperRenameFile(path, text => rewritePaperPathReferences(text, mapping));
+		return hashMap;
+	}
+
+	// 内存里提交：folderMap 的 stem 换成新名就是这一篇的提交点；落盘由调用方攒批。
+	applyPaperRenameState(entry, hashMap) {
+		const mapping = { oldFolder: entry.oldFolder, newFolder: entry.newFolder, files: entry.files };
+		const mapValue = value => JSON.parse(swapPaperRenameHashes(rewritePaperPathReferences(JSON.stringify(value), mapping), hashMap));
+		const nextMap = { ...this.folderMap };
+		for (const id of paperRenameEntryIds(entry)) if (nextMap[id]) nextMap[id] = { ...mapValue(nextMap[id]), stem: entry.newStem };
+		this.folderMap = nextMap;
+		const prefix = `${entry.oldFolder}/`;
+		const artifacts = this.settings.documentArtifacts || {};
+		if (Object.keys(artifacts).some(key => key.startsWith(prefix))) {
+			const next = {};
+			for (const [key, value] of Object.entries(artifacts)) {
+				if (key.startsWith(prefix)) next[rewritePaperPathReferences(key, mapping)] = mapValue(value);
+				else next[key] = value;
+			}
+			this.settings.documentArtifacts = next;
+		}
+		// 内存里的对照会话还拿着旧路径：涉及这篇的关掉（登记的路径照样改成新的，下次能恢复）。
+		const touches = pair => !!pair && Object.values(pair).some(path => String(path || "").startsWith(prefix));
+		if (touches(this.compareSessions?.dualPane)) this.stopRectoDualPane?.(false);
+		if (touches(this.compareSessions?.pdfCompare)) this.stopRectoPdfCompare?.(false);
+		if (JSON.stringify(this.compareSessions || {}).includes(prefix)) this.compareSessions = mapValue(this.compareSessions);
+		if (paperRenameEntryIds(entry).includes(this.stemReservations?.get(entry.oldStem))) this.stemReservations.delete(entry.oldStem);
+	}
+
+	// 磁盘上已经开始搬了吗：folderMap 已是新名、新目录已在、或旧目录已不在（没有目录的论文只改状态，重做无害）。
+	isPaperRenameEntryStarted(entry) {
+		if (this.folderMap?.[entry.recordId]?.stem === entry.newStem) return true;
+		const vault = this.app.vault;
+		return !!vault.getAbstractFileByPath(entry.newFolder) || !vault.getAbstractFileByPath(entry.oldFolder);
+	}
+
+	// 启动恢复：游标之前的都已随状态落盘；从游标起，磁盘上已经动过的那篇做完，没动过的跳过。
+	async recoverPaperRename() {
+		const journal = this.settings?.paperRename;
+		if (!journal) return;
+		if (this.paperRenameRecoveryPromise) return this.paperRenameRecoveryPromise;
+		this.paperRenameRecoveryPromise = this.withOperationContext("renamePapers", async () => {
+			const entries = Array.isArray(journal.entries) ? journal.entries : [];
+			for (let index = Math.max(0, Number(journal.cursor) || 0); index < entries.length; index++) {
+				const entry = entries[index];
+				if (!entry || !this.folderMap?.[entry.recordId] || !this.isPaperRenameEntryStarted(entry)) continue;
+				await this.withTaskResources({ recordId: entry.recordId, stem: entry.oldStem }, async operation => {
+					for (const id of paperRenameEntryIds(entry)) this.claimTaskResources({ recordId: id, stem: entry.newStem }, operation);
+					this.applyPaperRenameState(entry, await this.runPaperRenameSteps(entry, 1));
+				});
+			}
+			delete this.settings.paperRename;
+			try { await this.save(); }
+			catch (error) { this.settings.paperRename = journal; throw error; }
+			this.refreshHubViews?.();
+		});
+		try { return await this.paperRenameRecoveryPromise; }
+		finally { this.paperRenameRecoveryPromise = null; }
 	}
 
 	getPluginDirectoryPath() {
@@ -20739,6 +24920,61 @@ function getRectoHubViewClass() {
 	return rectoHubViewClass;
 }
 
+// T106：分类选择框。可搜索；允许新建时，输入的路径不存在就多一项「新建分类」。
+// 用 SuggestModal 而不是层层子菜单：分类多时子菜单找不到东西。
+let rectoCollectionPickerClass = null;
+function openRectoCollectionPicker(app, options) {
+	const api = obsidian;
+	if (typeof api.SuggestModal !== "function") return null;
+	if (!rectoCollectionPickerClass) {
+		rectoCollectionPickerClass = class RectoCollectionPicker extends api.SuggestModal {
+			constructor(appRef, opts) {
+				super(appRef);
+				this.opts = opts;
+				this.modalEl.addClass("recto-ui", "recto-collection-picker");
+				this.setPlaceholder(opts.placeholder || rectoUiText("collections.pickerPlaceholder"));
+				if (typeof this.setInstructions === "function") {
+					this.setInstructions([
+						{ command: "↑↓", purpose: rectoUiText("collections.pickerSelect") },
+						{ command: "↵", purpose: opts.actionLabel },
+						{ command: "esc", purpose: rectoUiText("collections.pickerCancel") },
+					]);
+				}
+			}
+			getSuggestions(query) {
+				const text = String(query || "").trim();
+				const needle = text.toLowerCase();
+				const items = [];
+				if (this.opts.allowTop && !needle) items.push({ kind: "top", parts: [] });
+				for (const parts of this.opts.paths) {
+					if (!needle || parts.join(" / ").toLowerCase().includes(needle)) items.push({ kind: "path", parts });
+				}
+				if (this.opts.allowCreate && text) {
+					const parts = text.split(/\s+\/\s+/).map(part => part.trim()).filter(Boolean);
+					const valid = parts.length && parts.every(part => !validateRectoCollectionName(part).error);
+					if (valid && !this.opts.paths.some(path => sameRectoCollectionParts([path], [parts]))) items.push({ kind: "create", parts });
+				}
+				return items;
+			}
+			renderSuggestion(item, el) {
+				el.addClass("recto-collection-picker-item");
+				if (item.kind === "create") el.addClass("is-create");
+				setChromeIcon(el.createSpan({ cls: "recto-collection-picker-icon", attr: { "aria-hidden": "true" } }),
+					item.kind === "create" ? "folder-plus" : item.kind === "top" ? "folder-root" : "folder");
+				const text = item.kind === "create" ? rectoUiText("collections.createNamed", { name: item.parts.join(" / ") })
+					: item.kind === "top" ? rectoUiText("collections.topLevel") : item.parts.join(" / ");
+				el.createSpan({ cls: "recto-collection-picker-text", text });
+			}
+			onChooseSuggestion(item) {
+				this.opts.onChoose(item.parts, item.kind === "create");
+			}
+		};
+	}
+	const modal = new rectoCollectionPickerClass(app, options);
+	modal.open();
+	return modal;
+}
+
 function createRectoHubViewClass(api) {
 	return class RectoHubView extends api.ItemView {
 		constructor(leaf, plugin) {
@@ -20760,6 +24996,7 @@ function createRectoHubViewClass(api) {
 			this.anchorRecordId = "";
 			this.titleMode = "original"; // "original" | "translated"
 			this.authorsExpanded = false;
+			this.abstractExpanded = false;
 			this.queueExpanded = false;
 			this.renderedCount = 0;
 			this.searchTimer = null;
@@ -20775,6 +25012,8 @@ function createRectoHubViewClass(api) {
 			this.navOpen = false;
 			this.navCollapsed = false;
 			this.navHoverTimer = null;
+			// T121：左栏右键菜单与菜单引出的输入框还在时按住抽屉——菜单挂在 body 上，不在抽屉里。
+			this.navHeld = false;
 		}
 
 		getViewType() { return RECTO_HUB_VIEW_TYPE; }
@@ -20797,6 +25036,21 @@ function createRectoHubViewClass(api) {
 			// 宽档由 CSS 收起，所以它在那边既点不到也不占位。
 			this.paneJumpEl = main.createEl("button", { cls: "recto-hub-pane-jump" });
 			this.listEl = main.createDiv({ cls: "recto-hub-list" });
+			// T105：左栏「待补 PDF」时主区换成待补面板；快速添加框浮在工具栏下方。
+			this.pendingEl = main.createDiv({ cls: "recto-hub-pending" });
+			this.quickAddEl = main.createDiv({ cls: "recto-hub-quick-add is-hidden", attr: { role: "dialog", "aria-label": rectoUiText("paperIntake.open") } });
+			// T106：分类改动后的撤销条。Recto 的通知不放操作按钮，撤销就留在 Hub 自己里面。
+			this.undoEl = main.createDiv({ cls: "recto-hub-undo is-hidden", attr: { role: "status", "aria-live": "polite" } });
+			// T107：从系统拖 PDF 进列表区时的松开提示。
+			this.mainEl = main;
+			this.dropEl = main.createDiv({ cls: "recto-hub-drop is-hidden", attr: { "aria-hidden": "true" } });
+			setChromeIcon(this.dropEl.createSpan({ cls: "recto-hub-drop-icon" }), "file-up");
+			this.dropTextEl = this.dropEl.createSpan({ cls: "recto-hub-drop-text" });
+			this.undoTextEl = this.undoEl.createSpan({ cls: "recto-hub-undo-text" });
+			const undoButton = this.undoEl.createEl("button", { cls: "recto-hub-undo-button", text: rectoUiText("collections.undo"), attr: { type: "button" } });
+			undoButton.addEventListener("click", () => void this.undoCollectionChange());
+			this.pendingMode = false;
+			this.quickAddOpen = false;
 			// 列头在滚动容器**里面**、sticky 在顶部（T86-A 第四轮）。放外面的话行的内容盒比列头窄
 			// 一个滚动条宽度，差额全被 1fr 吃掉——列头的「作者」「年份」会比下面的数据整体右移；
 			// 列宽改成百分比之后这个偏差还会再放大。同一个内容盒里就没有这回事，顺带得到常驻表头。
@@ -20818,6 +25072,17 @@ function createRectoHubViewClass(api) {
 			this.registerDomEvent(this.listEl, "contextmenu", (event) => this.handleListContextMenu(event));
 			this.registerDomEvent(this.listEl, "keydown", (event) => this.handleListKeydown(event));
 			this.registerDomEvent(this.navEl, "click", (event) => this.handleNavClick(event));
+			this.registerDomEvent(this.navEl, "contextmenu", (event) => this.handleNavContextMenu(event));
+			// T106：论文行拖到左栏分类。默认移动，按住 Ctrl（Mac 为 ⌥）为添加。
+			this.registerDomEvent(this.listEl, "dragstart", (event) => this.handlePaperDragStart(event));
+			this.registerDomEvent(this.listEl, "dragend", () => this.endPaperDrag());
+			this.registerDomEvent(this.detailEl, "dragstart", (event) => this.handleDetailDragStart(event));
+			this.registerDomEvent(this.navEl, "dragover", (event) => this.handleNavDragOver(event));
+			this.registerDomEvent(this.navEl, "dragleave", (event) => this.handleNavDragLeave(event));
+			this.registerDomEvent(this.navEl, "drop", (event) => this.handleNavDrop(event));
+			this.registerDomEvent(this.mainEl, "dragover", (event) => this.handleMainDragOver(event));
+			this.registerDomEvent(this.mainEl, "dragleave", (event) => this.handleMainDragLeave(event));
+			this.registerDomEvent(this.mainEl, "drop", (event) => this.handleMainDrop(event));
 			this.registerDomEvent(this.crumbsEl, "click", (event) => this.handleCrumbClick(event));
 			this.registerDomEvent(this.chipsEl, "click", (event) => this.handleChipClick(event));
 			this.registerDomEvent(this.headEl, "click", (event) => this.handleHeadClick(event));
@@ -20835,27 +25100,47 @@ function createRectoHubViewClass(api) {
 				this.registerDomEvent(el, "keydown", (event) => {
 					if (event.key !== "Enter" && event.key !== " ") return;
 					// Native buttons activate themselves; forwarding would toggle the scope twice.
-					if (event.target.closest && event.target.closest("button")) return;
+					if (event.target.closest && event.target.closest("button, input")) return;
 					event.preventDefault();
 					handler(event);
 				});
 			}
 			this.registerDomEvent(this.detailEl, "click", (event) => this.handleDetailClick(event));
+			this.registerDomEvent(this.detailEl, "contextmenu", (event) => this.handleDetailContextMenu(event));
 			this.registerDomEvent(this.queueEl, "click", (event) => this.handleQueueClick(event));
 			this.registerDomEvent(this.paneJumpEl, "click", () => this.setActivePane("detail"));
 			// 详情栏里按 Esc 回列表。宽档下它只是把 activePane 写回 "list"，没有对应 CSS 规则，
 			// 看不出任何变化——列表那条 Esc（收回多选）在 handleListKeydown 里，两者互不相干。
 			this.registerDomEvent(this.detailEl, "keydown", (event) => {
 				if (event.target && event.target.closest && event.target.closest(".recto-hub-note")) return;
+				const goto = event.key === "Enter" && event.target && event.target.closest ? event.target.closest("[data-hub-goto-collection]") : null;
+				if (goto) {
+					event.preventDefault();
+					this.gotoCollection(goto.dataset.hubGotoCollection);
+					return;
+				}
 				if (event.key !== "Escape" && event.key !== "ArrowLeft") return;
 				event.preventDefault();
 				this.setActivePane("list", { focus: true });
 			});
+			// 快速添加框：点框与「添加」按钮以外的地方或按 Esc 收起，后台处理照常进行。
+			this.registerDomEvent(document, "click", (event) => {
+				// 打开它的那一下点击（侧边栏按钮、命令面板）稍后才冒泡到这里，不能把刚打开的框又关掉。
+				if (!this.quickAddOpen || event.timeStamp <= this.quickAddOpenedAt) return;
+				const inside = event.target && event.target.closest ? event.target.closest(".recto-hub-quick-add, .recto-hub-add-button") : null;
+				if (!inside) this.closeQuickAdd();
+			});
+			this.registerDomEvent(this.quickAddEl, "keydown", (event) => {
+				if (event.key !== "Escape") return;
+				event.preventDefault();
+				event.stopPropagation();
+				this.closeQuickAdd(true);
+			});
 			// 分类抽屉：点抽屉与开关以外的任何地方就关掉。宽档下 navOpen 无 CSS 对应，翻它没有副作用。
 			this.registerDomEvent(document, "click", (event) => {
-				if (!this.navOpen) return;
+				if (!this.navOpen || this.navHeld) return;
 				const inside = event.target && event.target.closest
-					? event.target.closest(".recto-hub-nav, .recto-hub-nav-toggle")
+					? event.target.closest(".recto-hub-nav, .recto-hub-nav-toggle, .menu")
 					: null;
 				if (!inside) this.setNavOpen(false);
 			});
@@ -20889,6 +25174,8 @@ function createRectoHubViewClass(api) {
 			this.cancelNavHoverClose();
 			if (this.unsubscribeTaskQueue) this.unsubscribeTaskQueue();
 			this.unsubscribeTaskQueue = null;
+			if (this.unsubscribePaperIntake) this.unsubscribePaperIntake();
+			this.unsubscribePaperIntake = null;
 		}
 
 		buildToolbar() {
@@ -20923,8 +25210,20 @@ function createRectoHubViewClass(api) {
 					this.applyFilters();
 				}, 120);
 			});
+			// T105：「添加」是论文库最常用的操作之一，用带文字的按钮，紧挨搜索框。
+			const addButton = this.toolbarEl.createEl("button", { cls: "recto-hub-add-button", attr: { type: "button", "aria-haspopup": "dialog", "aria-expanded": "false" } });
+			this.addButtonEl = addButton;
+			setChromeIcon(addButton.createSpan({ cls: "recto-hub-add-icon", attr: { "aria-hidden": "true" } }), "plus");
+			this.addButtonLabelEl = addButton.createSpan({ cls: "recto-hub-add-label", text: rectoUiText("hub.add") });
+			addButton.setAttribute("title", rectoUiText("paperIntake.open"));
+			this.registerDomEvent(addButton, "click", () => this.toggleQuickAdd());
+			if (typeof this.plugin.onPaperIntakeChanged === "function") {
+				this.unsubscribePaperIntake = this.plugin.onPaperIntakeChanged(() => this.handlePaperIntakeChanged());
+			}
 			// 额度常驻在工具栏（T59）：未登录时它就是登录入口，点开的是同一个账号弹窗。
 			// 列表刷新靠任务收尾 / 导入 / 删除等路径主动调 reload，不再放手动「刷新」按钮。
+			// T107-B：与品牌右侧那根对称的分隔线，把工具栏读成「品牌 | 搜索+添加 | 账号+设置」三组。
+			this.toolbarEl.createSpan({ cls: "recto-hub-toolbar-sep", attr: { "aria-hidden": "true" } });
 			this.creditsEl = this.toolbarEl.createEl("button", { cls: "recto-hub-credits" });
 			this.registerDomEvent(this.creditsEl, "click", () => {
 				this.plugin.openAccountModal({ onChange: () => this.refreshCreditsBadge() });
@@ -20939,6 +25238,87 @@ function createRectoHubViewClass(api) {
 			this.registerDomEvent(settingsButton, "click", () => this.plugin.openRectoSettings());
 		}
 
+		getPaperIntakePendingCount() {
+			return typeof this.plugin.getPaperIntakePending === "function" ? this.plugin.getPaperIntakePending().length : 0;
+		}
+
+		// T105：快速添加加到当前选中的分类；看待补 PDF 或没选分类时加到「未分类」。
+		getQuickAddTarget() {
+			return this.pendingMode ? [] : hubCollectionPathToParts(this.filters.collectionPath);
+		}
+
+		openQuickAdd() {
+			if (!this.quickAddEl) return;
+			if (!this.quickAdd) {
+				this.quickAdd = new RectoPaperIntakeQuickAdd(this.plugin, {
+					getTarget: () => this.getQuickAddTarget(),
+					onRequestClose: (focus) => this.closeQuickAdd(focus),
+				});
+			}
+			this.quickAddOpen = true;
+			this.quickAddOpenedAt = typeof performance !== "undefined" ? performance.now() : 0;
+			this.quickAddEl.removeClass("is-hidden");
+			this.addButtonEl.addClass("is-active");
+			this.addButtonEl.setAttribute("aria-expanded", "true");
+			this.quickAdd.render(this.quickAddEl);
+			this.quickAdd.focus();
+		}
+
+		closeQuickAdd(focus = false) {
+			if (!this.quickAddOpen) return;
+			this.quickAddOpen = false;
+			this.quickAddEl.addClass("is-hidden");
+			this.addButtonEl.removeClass("is-active");
+			this.addButtonEl.setAttribute("aria-expanded", "false");
+			if (focus && typeof this.addButtonEl.focus === "function") this.addButtonEl.focus();
+		}
+
+		toggleQuickAdd() {
+			if (this.quickAddOpen) this.closeQuickAdd();
+			else this.openQuickAdd();
+		}
+
+		// 进出「待补 PDF」：主区在论文列表与待补面板之间切换，筛选条件原样保留。
+		setPendingMode(on) {
+			this.pendingMode = !!on && this.getPaperIntakePendingCount() > 0;
+			this.rootEl.toggleClass("is-pending-view", this.pendingMode);
+			if (this.pendingMode) {
+				this.setActivePane("list");
+				if (!this.pendingPanel) this.pendingPanel = new RectoPaperIntakePendingPanel(this.plugin, { onBack: () => this.setPendingMode(false) });
+				this.pendingPanel.render(this.pendingEl);
+			} else {
+				this.pendingEl.empty();
+			}
+			this.syncNavState();
+			if (this.quickAdd) this.quickAdd.renderTarget();
+		}
+
+		// T105-R：有待补时，列表第一行（紧挨列头）是一条特殊条目「N 篇论文待补 PDF · 查看」，点它进待补视图。
+		// 用户在左栏、添加框、提示条三案中选了提示条，又定下放在列头下、取代第一篇的位置。
+		renderPendingRow() {
+			if (this.pendingRowEl) this.pendingRowEl.remove();
+			this.pendingRowEl = null;
+			const count = this.getPaperIntakePendingCount();
+			if (!count || !this.listEl || !this.headEl) return;
+			const row = this.listEl.createDiv({ cls: "recto-hub-pending-row", attr: { role: "button", tabindex: "0" } });
+			row.dataset.hubPendingRow = "1";
+			setChromeIcon(row.createSpan({ cls: "recto-hub-pending-row-icon", attr: { "aria-hidden": "true" } }), "file-warning");
+			row.createSpan({ cls: "recto-hub-pending-row-text", text: rectoUiText("hub.pendingBanner", { count }) });
+			row.createSpan({ cls: "recto-hub-pending-row-link", text: rectoUiText("hub.pendingView") });
+			this.headEl.after(row);
+			this.pendingRowEl = row;
+		}
+
+		handlePaperIntakeChanged() {
+			const count = this.getPaperIntakePendingCount();
+			this.renderPendingRow();
+			if (this.pendingMode) {
+				if (!count) this.setPendingMode(false);
+				else if (this.pendingPanel && !this.pendingPanel.running) this.pendingPanel.render(this.pendingEl);
+			}
+			if (this.quickAdd) this.quickAdd.reconcile();
+		}
+
 		refreshCreditsBadge() {
 			if (!this.creditsEl) return;
 			const badge = describeHubCreditsBadge(this.plugin.settings);
@@ -20947,20 +25327,20 @@ function createRectoHubViewClass(api) {
 			this.creditsEl.setAttribute("aria-label", badge.text);
 			this.creditsEl.dataset.hubCredits = badge.tone;
 			this.creditsEl.dataset.hubCreditsMode = badge.mode || "meter";
+			// T107-B：账号按钮去掉描边后，靠前置小图标（与「添加」的加号同尺寸）表明它是可点的按钮。
+			// T122：中间栏很窄时文字收起、只留图标（CSS 容器断点，JS 不量宽度）。页数模式两枚图标
+			// 叠放：宽时是文档，收起后交叉换成账号头像——单独一个文档图标看不出是账号入口；
+			// 余额偏低或用完时头像右上角亮一个点，数字仍在悬停提示里。
+			const glyph = this.creditsEl.createSpan({ cls: "recto-hub-credits-glyph", attr: { "aria-hidden": "true" } });
 			if (badge.tone === "signed-out") {
-				this.creditsEl.setText(badge.text);
+				setChromeIcon(glyph.createSpan({ cls: "recto-hub-credits-icon" }), "user");
+				this.creditsEl.createSpan({ cls: "recto-hub-credits-label", text: badge.text });
 				return;
 			}
-			if (badge.mode === "pages") {
-				this.creditsEl.createSpan({ cls: "recto-hub-credits-pages", text: badge.text });
-				return;
-			}
-			const ring = this.creditsEl.createSpan({ cls: "recto-hub-credits-ring" });
-			ring.innerHTML = buildHubCreditsRingMarkup(badge.percent, badge.heldPercent);
-			// 百分比常在 DOM 里，窄栏由 CSS 收起（JS 不判宽度）。没读到分母时没有 short，只剩圆环。
-			if (badge.short) {
-				this.creditsEl.createSpan({ cls: "recto-hub-credits-percent", text: badge.short });
-			}
+			setChromeIcon(glyph.createSpan({ cls: "recto-hub-credits-icon is-pages" }), "file-text");
+			setChromeIcon(glyph.createSpan({ cls: "recto-hub-credits-icon is-account" }), "circle-user");
+			glyph.createSpan({ cls: "recto-hub-credits-dot" });
+			this.creditsEl.createSpan({ cls: "recto-hub-credits-label recto-hub-credits-pages", text: badge.text });
 		}
 
 		reload(options = {}) {
@@ -20973,7 +25353,7 @@ function createRectoHubViewClass(api) {
 				this.entries = [];
 				this.loadError = getUserFacingErrorMessage(error, "论文库暂时无法读取，请稍后重试。");
 			}
-			this.tree = buildZoteroCollectionTree(this.entries);
+			this.tree = buildZoteroCollectionTree(this.entries, this.plugin.rectoCollections?.paths);
 			if (this.filters.collectionPath && !findZoteroCollectionTreeNode(this.tree, this.filters.collectionPath)) {
 				this.filters.collectionPath = "";
 			}
@@ -20994,6 +25374,11 @@ function createRectoHubViewClass(api) {
 				this.settingsButtonEl.setAttribute("aria-label", rectoUiText("hub.settings"));
 				this.settingsButtonEl.setAttribute("title", rectoUiText("hub.settings"));
 			}
+			if (this.addButtonLabelEl) this.addButtonLabelEl.setText(rectoUiText("hub.add"));
+			if (this.addButtonEl) this.addButtonEl.setAttribute("title", rectoUiText("paperIntake.open"));
+			if (this.quickAddEl) this.quickAddEl.setAttribute("aria-label", rectoUiText("paperIntake.open"));
+			if (this.quickAdd && this.quickAddOpen) this.quickAdd.render(this.quickAddEl);
+			if (this.pendingMode && this.pendingPanel) this.pendingPanel.render(this.pendingEl);
 			this.renderNav();
 			this.applyFilters({ quiet: true });
 			this.renderQueue();
@@ -21050,6 +25435,7 @@ function createRectoHubViewClass(api) {
 			}
 			if (!options.preserveDetail || previousDetailKey !== detailKey()) this.renderDetail();
 			this.renderPaneJump();
+			if (this.quickAdd && this.quickAddOpen) this.quickAdd.renderTarget();
 		}
 
 		// applyFilters 与分类树开合共用持久化。只有值真的变了才落盘——
@@ -21116,6 +25502,7 @@ function createRectoHubViewClass(api) {
 
 		setNavOpen(open) {
 			this.navOpen = !!open;
+			if (!this.navOpen) this.navHeld = false;
 			this.cancelNavHoverClose();
 			if (this.rootEl) this.rootEl.toggleClass("is-nav-open", this.navOpen);
 			this.syncNavToggle();
@@ -21145,10 +25532,26 @@ function createRectoHubViewClass(api) {
 		// 开关与卡片共用这一个计时器：从一个移到另一个时，后到的 mouseenter 会在它到点前把它清掉。
 		closeNavAfterHover() {
 			this.cancelNavHoverClose();
+			if (this.navHeld) return;
 			this.navHoverTimer = setTimeout(() => {
 				this.navHoverTimer = null;
 				this.setNavOpen(false);
 			}, HUB_NAV_HOVER_CLOSE_MS);
+		}
+
+		// T121：Obsidian 的 Menu 挂在 body 上，鼠标移进菜单就是离开抽屉、点菜单项就是点抽屉外，
+		// 两条都会把抽屉收掉，菜单引出的「新建/改名」输入框随之画在看不见的地方。
+		holdNavOpen() {
+			this.navHeld = true;
+			this.cancelNavHoverClose();
+		}
+
+		// 放开后照常处理：指针已不在抽屉上就按悬停离开的节奏收起。
+		releaseNavHold() {
+			if (!this.navHeld) return;
+			this.navHeld = false;
+			const hovered = this.navEl && typeof this.navEl.matches === "function" && this.navEl.matches(":hover");
+			if (this.navOpen && !hovered) this.closeNavAfterHover();
 		}
 
 		syncNavToggle() {
@@ -21283,10 +25686,11 @@ function createRectoHubViewClass(api) {
 			// **它和下面四行不是一种东西**：那四行是可以和分类叠加的筛选，它是一个独立分类模式
 			// ——进它就清掉分类与转换筛选，点任何分类又会退出它。图标与分隔线就是在点破这件事，
 			// 让人在点之前就有预感，而不是点完发现列表行为不一样。
+			// T120：原「全部论文」行删掉——它只清阅读状态、不退出分类，名字与效果对不上。
+			// 阅读状态改成再点一次取消；看全库由分类树的根「我的文库」负责。
 			const quick = [
 				{ label: rectoUiText("hub.recent"), count: summary.recent, status: "recent", icon: "clock", separate: true,
 					title: rectoUiText("hub.recentHint") },
-				{ label: rectoUiText("hub.allPapers"), count: summary.total, status: "all" },
 				{ label: rectoUiText("hub.reading"), count: summary.reading, status: "reading", symbol: READING_STATUS_SYMBOLS.reading },
 				{ label: rectoUiText("hub.read"), count: summary.read, status: "read", symbol: READING_STATUS_SYMBOLS.read },
 				{ label: rectoUiText("hub.unread"), count: summary.unread, status: "unread", symbol: READING_STATUS_SYMBOLS.unread },
@@ -21295,7 +25699,7 @@ function createRectoHubViewClass(api) {
 				const row = this.navEl.createDiv({ cls: "recto-hub-nav-row" });
 				row.dataset.hubStatus = item.status;
 				this.markAsButton(row);
-				row.toggleClass("is-active", this.filters.status === item.status);
+				row.toggleClass("is-active", !this.pendingMode && this.filters.status === item.status);
 				row.toggleClass("is-standalone", !!item.separate);
 				if (item.title) row.setAttribute("title", item.title);
 				const icon = row.createSpan({ cls: "recto-hub-nav-icon", attr: { "aria-hidden": "true" } });
@@ -21304,12 +25708,20 @@ function createRectoHubViewClass(api) {
 				row.createSpan({ cls: "recto-hub-nav-name", text: item.label });
 				row.createSpan({ cls: "recto-hub-nav-count", text: String(item.count) });
 			}
-			if (!this.tree.length) return;
-			const heading = this.navEl.createDiv({ cls: "recto-hub-nav-section" });
-			const scope = heading.createEl("button", { cls: "recto-hub-collection-scope", attr: { type: "button", "data-hub-collection-scope": "" } });
-			setChromeIcon(scope.createSpan({ cls: "recto-hub-scope-back", attr: { "aria-hidden": "true" } }), "folder");
-			setChromeIcon(scope.createSpan({ cls: "recto-hub-scope-front", attr: { "aria-hidden": "true" } }), "folder");
-			heading.createSpan({ cls: "recto-hub-nav-name", text: rectoUiText("hub.zoteroCollections") });
+			// T105-R：待补 PDF 不进左栏（它不是阅读状态筛选），入口是列表第一行的特殊条目。
+			if (this.pendingMode && !this.getPaperIntakePendingCount()) {
+				this.pendingMode = false;
+				this.rootEl.toggleClass("is-pending-view", false);
+				this.pendingEl.empty();
+			}
+			// T120：分类树的根「我的文库」（照 Zotero），点它即退出分类、看全库；计数是全库篇数。
+			// 原「分类」标题上的「包含子分类」开关挪进它的右键菜单；新建顶层分类也在那里。
+			const library = this.navEl.createDiv({ cls: "recto-hub-nav-row is-library" });
+			library.dataset.hubLibrary = "";
+			this.markAsButton(library);
+			setChromeIcon(library.createSpan({ cls: "recto-hub-nav-icon", attr: { "aria-hidden": "true" } }), "library");
+			library.createSpan({ cls: "recto-hub-nav-name", text: rectoUiText("hub.myLibrary") });
+			library.createSpan({ cls: "recto-hub-nav-count", text: String(this.entries.length) });
 			this.renderNavTree(this.tree, 0);
 			this.syncNavState();
 		}
@@ -21321,19 +25733,23 @@ function createRectoHubViewClass(api) {
 				hubEntryInCollection(entry, this.filters.collectionPath, include)));
 			for (const row of this.navEl.querySelectorAll("[data-hub-status], [data-hub-collection]")) {
 				const status = row.dataset.hubStatus;
-				row.toggleClass("is-active", status !== undefined ? this.filters.status === status : this.filters.collectionPath === row.dataset.hubCollection);
+				row.toggleClass("is-active", !this.pendingMode && (status !== undefined ? this.filters.status === status : this.filters.collectionPath === row.dataset.hubCollection));
 				const count = status !== undefined ? summary[status === "all" ? "total" : status]
 					: row.dataset[include ? "hubTotalCount" : "hubDirectCount"];
 				row.querySelector(".recto-hub-nav-count").setText(String(count));
 			}
-			const scope = this.navEl.querySelector("[data-hub-collection-scope]");
-			if (!scope) return;
-			scope.setAttribute("aria-pressed", String(include));
-			scope.setAttribute("aria-label", rectoUiText("hub.includeSubcollections"));
-			scope.setAttribute("title", rectoUiText("hub.collectionScopeHint", {
-				current: rectoUiText(include ? "hub.includeSubcollections" : "hub.currentCollectionOnly"),
-				next: rectoUiText(include ? "hub.currentCollectionOnly" : "hub.includeSubcollections"),
-			}));
+			// 「最近」是独立分类模式（进它会清掉分类），那时全库根不算选中。
+			const library = this.navEl.querySelector("[data-hub-library]");
+			if (library) {
+				library.toggleClass("is-active", !this.pendingMode && !this.filters.collectionPath && this.filters.status !== "recent");
+				library.querySelector(".recto-hub-nav-count").setText(String(this.entries.length));
+			}
+		}
+
+		toggleIncludeSubcollections() {
+			this.filters.includeSubcollections = this.filters.includeSubcollections === false;
+			this.syncNavState();
+			this.applyFilters({ preserveDetail: true, preserveScroll: true });
 		}
 
 		// 生效中的筛选逐条列出、逐条可清；分类与阅读状态同时生效时用「×」连起来，明确是且的关系。
@@ -21347,7 +25763,9 @@ function createRectoHubViewClass(api) {
 				if (index > 0) this.crumbsEl.createSpan({ cls: "recto-hub-crumb-join", text: "×" });
 				const label = crumb.key === "status" ? rectoUiText(`hub.${this.filters.status}`)
 					: crumb.key === "conversion" ? rectoUiText(`hub.conversion.${this.filters.conversion}`) : crumb.label;
-				const el = this.crumbsEl.createSpan({ cls: "recto-hub-crumb", text: label });
+				// 文字单独一格省略，关闭按钮不随长路径一起被截掉。
+				const el = this.crumbsEl.createSpan({ cls: "recto-hub-crumb", attr: { title: label } });
+				el.createSpan({ cls: "recto-hub-crumb-text", text: label });
 				const close = el.createSpan({ cls: "recto-hub-crumb-close", text: "×" });
 				close.dataset.hubCrumbClear = crumb.key;
 				close.setAttribute("title", rectoUiText("hub.clearFilter", { label }));
@@ -21387,24 +25805,22 @@ function createRectoHubViewClass(api) {
 				row.dataset.hubTotalCount = String(node.count);
 				row.dataset.hubDirectCount = String(node.items.length);
 				row.style.setProperty("--rc-nav-depth", String(depth));
-				row.toggleClass("is-active", this.filters.collectionPath === node.path);
+				row.toggleClass("is-active", !this.pendingMode && this.filters.collectionPath === node.path);
 				const collapsed = this.collapsedPaths.has(node.path);
 				this.markAsButton(row);
-				const toggle = row.createSpan({ cls: depth ? "recto-hub-nav-caret" : "recto-hub-nav-folder" });
+				// 每一层都带文件夹图标（T106-S）；有子分类的图标兼作折叠开关。T109：收起时画成叠层文件夹，
+				// 展开时前盖向前倒下（见 HUB_NAV_FOLDER_ART）。
+				const toggle = row.createSpan({ cls: "recto-hub-nav-folder" });
 				if (node.children.length) {
-					if (depth) setChromeIcon(toggle, "chevron-right");
-					else {
-						toggle.addClass("is-toggle");
-						setChromeIcon(toggle.createSpan({ cls: "recto-hub-folder-closed", attr: { "aria-hidden": "true" } }), "folder");
-						setChromeIcon(toggle.createSpan({ cls: "recto-hub-folder-open", attr: { "aria-hidden": "true" } }), "folder-open");
-					}
+					toggle.addClass("is-toggle");
+					buildHubNavFolderArt(toggle, { stacked: true, expanded: !collapsed });
 					toggle.dataset.hubToggle = node.path;
 					toggle.dataset.hubCollectionName = node.name;
 					toggle.setAttribute("aria-expanded", String(!collapsed));
 					this.markAsButton(toggle, rectoUiText(collapsed ? "hub.expandCollection" : "hub.collapseCollection", { name: node.name }));
-				} else if (!depth) {
+				} else {
 					toggle.setAttribute("aria-hidden", "true");
-					setChromeIcon(toggle, "folder");
+					buildHubNavFolderArt(toggle);
 				}
 				row.createSpan({ cls: "recto-hub-nav-name", text: node.name });
 				row.createSpan({ cls: "recto-hub-nav-count", text: String(this.filters.includeSubcollections !== false ? node.count : node.items.length) });
@@ -21447,6 +25863,7 @@ function createRectoHubViewClass(api) {
 			// 列头是 listEl 的孩子，empty() 会把它一起摘掉；元素本身还在（内容由 renderHead 填好），
 			// 重新挂回去即可。**必须排在所有分支之前**——空态那两条会提前 return。
 			this.listEl.appendChild(this.headEl);
+			this.renderPendingRow();
 			this.listEl.scrollTop = 0;
 			this.listEl.toggleClass("is-multi", this.isBatchMode());
 			this.renderedCount = 0;
@@ -21476,6 +25893,8 @@ function createRectoHubViewClass(api) {
 				// 空态早就有按钮了，同一个位置两种待遇。
 				const importBtn = empty.createEl("button", { cls: "mod-cta", text: rectoUiText("command.importZotero") });
 				importBtn.dataset.hubEmptyImport = "1";
+				const intakeBtn = empty.createEl("button", { text: rectoUiText("paperIntake.open") });
+				intakeBtn.dataset.hubEmptyIntake = "1";
 				return;
 			}
 			if (!this.visible.length) {
@@ -21527,6 +25946,7 @@ function createRectoHubViewClass(api) {
 			const unconverted = entry.conversionStatus !== "converted";
 			const row = this.listEl.createDiv({ cls: "recto-hub-row" });
 			row.dataset.hubRecord = entry.recordId;
+			row.draggable = true;
 			row.toggleClass("is-active", entry.recordId === this.selectedRecordId);
 			row.toggleClass("is-selected", this.selectedIds.has(entry.recordId));
 			// Shift 范围选的锚点此前只活在逻辑里，界面上零表达——用户按住 Shift 点下去才知道
@@ -21661,10 +26081,9 @@ function createRectoHubViewClass(api) {
 					link.dataset.hubOpenUrl = identifier.url;
 					link.setAttribute("title", rectoUiText("hub.openUrl", { url: identifier.url }));
 				}
-				const copy = cell.createSpan({ cls: "recto-hub-detail-copy", text: rectoUiText("hub.copy") });
-				copy.dataset.hubCopy = identifier.text;
 			}
-			addRow(rectoUiText("hub.collection"), (entry.collections || []).join("；"));
+			this.renderCitationCheckRow(kv, entry);
+			this.renderCollectionRow(kv, entry);
 			// T83-O：状态行只说「读到哪 + 转没转」。译文完整度与未识别符号计数都撤了——
 			// 中文源论文的正文就写在 ch-<stem>.md，Hub 判「有没有译文」看的正是这个路径，
 			// 于是中文论文一律被判成「有译文（完整度未知）」，那条提示对它们永远是假的。
@@ -21676,6 +26095,7 @@ function createRectoHubViewClass(api) {
 			// ——写「未知」等于给每一篇旧论文加一行噪音，而它们本来就该沉在列表最后。
 			const activity = describeHubActivity(entry, Date.now());
 			if (activity) addRow(rectoUiText("hub.recent"), activity);
+			if (entry.abstract) this.renderAbstractRow(kv, entry.abstract);
 			const brief = this.plugin.readHubSummaryBrief(entry);
 			if (brief) this.detailEl.createDiv({ cls: "recto-hub-detail-brief", text: brief });
 			this.renderHubNote(entry);
@@ -21778,6 +26198,7 @@ function createRectoHubViewClass(api) {
 				const label = rectoUiText(`hub.read.${state.primary}`);
 				primary.createSpan({ cls: "recto-hub-read-label", text: label });
 				primary.dataset.hubAction = state.primary;
+				markHubDragFile(primary, entry[`${state.primary}Path`]);
 				primary.setAttribute("title", label);
 				primary.setAttribute("aria-label", label);
 				const toggle = split.createEl("button", { cls: "mod-cta recto-hub-read-toggle", attr: { "aria-label": rectoUiText("hub.chooseReadAction"), "aria-haspopup": "menu", "aria-expanded": "false", title: rectoUiText("hub.chooseReadAction") } });
@@ -21801,6 +26222,7 @@ function createRectoHubViewClass(api) {
 				button.dataset.hubAction = action;
 				button.setAttribute("title", title);
 				button.setAttribute("aria-label", title);
+				if (HUB_READ_ACTIONS.includes(action) || action === "summary") markHubDragFile(button, entry[`${action}Path`]);
 			};
 			const separator = () => { if (icons.children.length) icons.createSpan({ cls: "recto-hub-action-separator", attr: { "aria-hidden": "true" } }); };
 			for (const action of state.secondary) addIcon(action, HUB_READ_ICONS[action], rectoUiText(`hub.read.${action}`), true);
@@ -21809,11 +26231,14 @@ function createRectoHubViewClass(api) {
 			addIcon("dual-pane", "columns-2", rectoUiText("hub.dualPane"), !!(entry.translationPath && entry.sourcePath));
 			addIcon("pdf-compare", "recto-pdf-compare", rectoUiText("hub.pdfCompare"), !!(entry.translationPath && entry.pdfPath));
 			separator();
+			// T129：点一下按默认格式复制参考文献，右键选其他格式与导出。
 			const cite = icons.createEl("button");
 			setChromeIcon(cite.createSpan({ cls: "rc-icon" }), "quote");
-			cite.dataset.hubCopy = this.formatCitation(entry);
-			cite.setAttribute("title", rectoUiText("hub.copyCitation"));
-			cite.setAttribute("aria-label", rectoUiText("hub.copyCitation"));
+			cite.dataset.hubCite = entry.recordId;
+			const citeTitle = rectoUiText("hub.copyCitation", { style: rectoUiText(`hub.cite.${resolvePaperCitationStyle(this.plugin.settings?.citationStyle, activeRectoUiLocale)}`) });
+			cite.setAttribute("title", citeTitle);
+			cite.setAttribute("aria-label", citeTitle);
+			cite.setAttribute("aria-haspopup", "menu");
 			this.renderDeleteIcon(icons);
 		}
 
@@ -21855,6 +26280,7 @@ function createRectoHubViewClass(api) {
 			}
 			const { split, primary } = controls, revision = ++controls.revision;
 			split.toggleClass("has-note", exists);
+			markHubDragFile(primary, exists ? path : "");
 			const label = rectoUiText(exists ? "hub.paperNote.open" : style === "outline" ? "hub.paperNote.createOutline" : "hub.paperNote.createBlank");
 			if (controls.text.textContent !== label) controls.text.setText(label);
 			primary.setAttribute("aria-label", label);
@@ -22013,12 +26439,63 @@ function createRectoHubViewClass(api) {
 		// 多选面板不用这个图标，它在那儿有一整行（见 renderBatchDetail）。
 		renderDeleteIcon(icons) {
 			const remove = icons.createEl("button", { cls: "recto-hub-detail-danger" });
-			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "refresh-cw");
+			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "trash-2");
 			remove.dataset.hubProcess = "delete";
 			remove.disabled = !!this.processActionRunning;
 			const title = rectoUiText("hub.deletePaper");
 			remove.setAttribute("title", title);
 			remove.setAttribute("aria-label", title);
+		}
+
+		// T130：引用信息缺字段才出现这一行，可补时给「从 Crossref 补全」（本地与 Zotero 论文都可，不写回 Zotero）。
+		renderCitationCheckRow(kv, entry) {
+			const check = this.plugin.getHubCitationCheck ? this.plugin.getHubCitationCheck(entry) : null;
+			if (!check || !check.missing.length) return;
+			const fields = this.describeCitationFields(check.missing);
+			kv.createSpan({ cls: "recto-hub-detail-key", text: rectoUiText("hub.citeCheck") });
+			const cell = kv.createSpan();
+			cell.appendText(rectoUiText("hub.citeCheck.missing", { fields }));
+			if (!check.canFill) return;
+			const filling = !!this.citationFilling?.has(entry.recordId);
+			const action = cell.createSpan({ cls: "recto-hub-detail-more", text: rectoUiText(filling ? "hub.citeCheck.filling" : "hub.citeCheck.fill") });
+			if (filling) return;
+			action.dataset.hubCiteFill = entry.recordId;
+			action.setAttribute("title", rectoUiText("hub.citeCheck.fillHint"));
+		}
+
+		describeCitationFields(keys) {
+			return keys.map(key => rectoUiText(`hub.citeField.${key}`)).join(/^zh/i.test(activeRectoUiLocale) ? "、" : ", ");
+		}
+
+		// 单篇（详情栏）与批量（右键）共用：查询中详情栏显示「正在查询…」，结束后单篇按结果提示、批量给一条汇总。
+		async fillCitationMetadata(recordIds) {
+			const filling = this.citationFilling ||= new Set();
+			for (const id of recordIds) filling.add(id);
+			this.renderDetail();
+			if (recordIds.length > 1) showRectoNotice(rectoUiText("hub.citeCheck.batchStart", { count: recordIds.length }), { tone: "neutral", brief: true });
+			try {
+				const results = await this.plugin.fillPaperCitationMetadata(recordIds);
+				if (recordIds.length === 1 && results.length === 1) {
+					const result = results[0];
+					const fields = this.describeCitationFields(result.missing || []);
+					if (result.status === "filled") showRectoNotice(rectoUiText("hub.citeCheck.filled"), { tone: "success" });
+					else if (result.status === "partial") showRectoNotice(rectoUiText("hub.citeCheck.partial", { fields }), { tone: "success" });
+					else if (result.status === "nothing") showRectoNotice(rectoUiText("hub.citeCheck.nothing", { fields }), { tone: "neutral" });
+					else showRectoNotice(rectoUiText(result.status === "network" ? "hub.citeCheck.network" : "hub.citeCheck.notFound"), { tone: "attention" });
+					return;
+				}
+				const counts = {};
+				for (const result of results) counts[result.status] = (counts[result.status] || 0) + 1;
+				const summary = ["filled", "partial", "nothing", "not_found", "network"].filter(status => counts[status])
+					.map(status => rectoUiText(`hub.citeCheck.batch.${status}`, { count: counts[status] }))
+					.join(/^zh/i.test(activeRectoUiLocale) ? "，" : ", ");
+				showRectoNotice(rectoUiText("hub.citeCheck.batchDone", { summary }), { tone: counts.filled || counts.partial ? "success" : "attention" });
+			} catch {
+				showRectoNotice(rectoUiText("hub.citeCheck.failed"), { tone: "error" });
+			} finally {
+				for (const id of recordIds) filling.delete(id);
+				this.renderDetail();
+			}
 		}
 
 		// 作者按人数收起：长作者表在 300px 栏里能铺十几行，后面的作者信息量很低。
@@ -22043,17 +26520,21 @@ function createRectoHubViewClass(api) {
 				: rectoUiText("hub.expandAuthorsHint", { count: lines.total }));
 		}
 
-		formatCitation(entry) {
-			const authors = (entry.authors || []).slice(0, 3).join(", ");
-			const more = (entry.authors || []).length > 3 ? " et al." : "";
-			const doi = describeHubIdentifier("doi", entry.doi);
-			return [
-				authors ? `${authors}${more}` : "",
-				entry.year ? `(${entry.year})` : "",
-				entry.titleOriginal,
-				entry.venue,
-				doi ? `https://doi.org/${doi.text}` : "",
-			].filter(Boolean).join(". ");
+		// T105-R：摘要默认显示前三行，「展开 / 收起」与作者行同一种做法；三行放得下就不出现开关。
+		renderAbstractRow(kv, abstract) {
+			kv.createSpan({ cls: "recto-hub-detail-key", text: rectoUiText("hub.abstract") });
+			const cell = kv.createDiv({ cls: "recto-hub-detail-abstract" });
+			cell.toggleClass("is-expanded", !!this.abstractExpanded);
+			const text = cell.createDiv({ cls: "recto-hub-detail-abstract-text", text: abstract });
+			const toggle = cell.createSpan({
+				cls: "recto-hub-detail-more",
+				text: rectoUiText(this.abstractExpanded ? "hub.collapseAuthors" : "hub.expandAbstract"),
+			});
+			toggle.dataset.hubAbstractToggle = "1";
+			if (this.abstractExpanded || typeof requestAnimationFrame !== "function") return;
+			requestAnimationFrame(() => {
+				if (text.scrollHeight <= text.clientHeight + 1) toggle.remove();
+			});
 		}
 
 		// 转换/翻译按钮。单选和多选共用，篇数由传进来的 entries 决定。
@@ -22109,7 +26590,7 @@ function createRectoHubViewClass(api) {
 			// 删除接手这个位置，也就不必在多选时另摆一个孤零零的图标按钮。
 			const actions = this.detailEl.createDiv({ cls: "recto-hub-detail-actions" });
 			const remove = actions.createEl("button", { cls: "recto-hub-detail-danger" });
-			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "refresh-cw");
+			setChromeIcon(remove.createSpan({ cls: "rc-icon" }), "trash-2");
 			remove.createSpan({ text: rectoUiText("hub.deleteSelected", { count: summary.total }) });
 			remove.dataset.hubProcess = "delete";
 			remove.disabled = !!this.processActionRunning;
@@ -22259,6 +26740,11 @@ function createRectoHubViewClass(api) {
 		// 四种手势沿用资源管理器/Obsidian 惯例：单击选一条并设锚点，Shift 范围选，
 		// Ctrl/Cmd 加减单条，Ctrl/Cmd+A 全选当前可见。用户不需要学新东西。
 		handleListClick(event) {
+			if (event.target && event.target.closest && event.target.closest("[data-hub-pending-row]")) {
+				event.preventDefault();
+				this.setPendingMode(true);
+				return;
+			}
 			const clearFilters = event.target && event.target.closest
 				? event.target.closest("[data-hub-clear-filters]")
 				: null;
@@ -22274,6 +26760,13 @@ function createRectoHubViewClass(api) {
 			if (emptyImport) {
 				event.preventDefault();
 				void this.plugin.importZoteroLibrary();
+				return;
+			}
+			const emptyIntake = event.target && event.target.closest ? event.target.closest("[data-hub-empty-intake]") : null;
+			if (emptyIntake) {
+				event.preventDefault();
+				event.stopPropagation();
+				this.openQuickAdd();
 				return;
 			}
 			const toggle = event.target && event.target.closest ? event.target.closest("[data-hub-status-toggle]") : null;
@@ -22385,6 +26878,34 @@ function createRectoHubViewClass(api) {
 			(enabled[0] || menu).focus({ preventScroll: true });
 		}
 
+		appendCitationFormatItems(menu, add) {
+			const current = resolvePaperCitationStyle(this.plugin.settings?.citationStyle, activeRectoUiLocale);
+			for (const style of PAPER_CITATION_STYLES) add(menu, rectoUiText(`hub.cite.${style}`), "quote", `copy:bib:${style}`, false, style === current);
+			menu.addSeparator();
+			for (const format of PAPER_CITATION_EXPORTS) add(menu, rectoUiText(`hub.cite.${format}`), "braces", `copy:export:${format}`);
+		}
+
+		// T129：详情栏引用按钮的右键菜单——各种参考文献格式、正文引用与导出。
+		handleDetailContextMenu(event) {
+			const cite = event.target && event.target.closest ? event.target.closest("[data-hub-cite]") : null;
+			if (!cite || typeof api.Menu !== "function") return;
+			event.preventDefault();
+			event.stopPropagation();
+			this.closeContextMenu();
+			const ids = [cite.dataset.hubCite];
+			const menu = new api.Menu();
+			const add = (parent, title, icon, action, disabled = false, checked = false) => parent.addItem(item => {
+				item.setTitle(title).setIcon(icon).setDisabled(disabled || this.isContextActionBusy(ids, action)).onClick(() => this.runContextAction(ids, action));
+				if (checked && typeof item.setChecked === "function") item.setChecked(true);
+			});
+			this.appendCitationFormatItems(menu, add);
+			menu.addSeparator();
+			add(menu, rectoUiText("hub.context.copyCitation"), "quote", "copy:citation");
+			this.contextMenu = menu;
+			menu.onHide(() => { if (this.contextMenu === menu) this.contextMenu = null; });
+			showHubContextMenu(menu, event, cite);
+		}
+
 		closeContextMenu() {
 			const menu = this.contextMenu;
 			this.contextMenu = null;
@@ -22412,8 +26933,9 @@ function createRectoHubViewClass(api) {
 				const label = rectoUiText(key);
 				return entries.length > 1 ? rectoUiText(count < entries.length ? "hub.context.available" : "hub.context.count", { label, count, total: entries.length }) : label;
 			};
-			const add = (parent, title, icon, action, disabled = false) => parent.addItem(item => {
+			const add = (parent, title, icon, action, disabled = false, checked = false) => parent.addItem(item => {
 				item.setTitle(title).setIcon(icon).setDisabled(disabled || busy(action)).onClick(() => this.runContextAction(ids, action));
+				if (checked && typeof item.setChecked === "function") item.setChecked(true);
 				if (action === "delete" && typeof item.setWarning === "function") item.setWarning(true);
 			});
 			const submenu = (title, icon, build) => menu.addItem(item => {
@@ -22435,6 +26957,18 @@ function createRectoHubViewClass(api) {
 						!files.paths.length || !["win32", "darwin"].includes(process.platform));
 				}
 			});
+			// T124：链接与引用用论文的称呼（Harvard 作者 年份），给 Canvas / 正文直接粘贴。
+			add(menu, countLabel("hub.context.copyLink"), "link", "copy:link", !entries.some(entry => entry.sourcePath || entry.pdfPath));
+			add(menu, countLabel("hub.context.copyCitation"), "quote", "copy:citation");
+			// T129：参考文献（GB/T 7714 / APA / IEEE / MLA，默认格式打勾）与 BibTeX / RIS / CSL-JSON。
+			submenu(countLabel("hub.context.copyBibliography"), "book-open-text", child => this.appendCitationFormatItems(child, add));
+			// T130：只有选中论文里真有可补的缺字段才出现，不占菜单。
+			const fillable = this.plugin.getHubCitationCheck ? ids.filter(id => {
+				const check = this.plugin.getHubCitationCheck({ recordId: id });
+				return check.canFill && check.missing.length;
+			}) : [];
+			if (fillable.length) menu.addItem(item => item.setTitle(countLabel("hub.context.fillCitation", fillable.length)).setIcon("search-check")
+				.setDisabled(this.isContextActionBusy(fillable, "cite:fill")).onClick(() => this.runContextAction(fillable, "cite:fill")));
 			menu.addSeparator();
 			add(menu, rectoUiText("hub.context.revealVault"), "folder-tree", "reveal:vault", entries.length !== 1 || !folders.paths.length);
 			add(menu, rectoUiText(process.platform === "darwin" ? "hub.context.revealFinder" : "hub.context.revealSystem"), "folder-open", "reveal:system", entries.length !== 1 || !folders.paths.length);
@@ -22458,16 +26992,440 @@ function createRectoHubViewClass(api) {
 				child.addSeparator();
 				add(child, rectoUiText("hub.flags.clear"), "", "flag:clear", !entries.some(entry => normalizeHubPaperFlags(entry.paperFlags).length));
 			});
+			menu.addSeparator();
+			this.addCollectionMenuItems(menu, entries);
+			menu.addSeparator();
 			const summary = summarizeHubSelection(entries);
 			const target = this.plugin.settings?.documentLanguages?.translationTarget?.id;
 			const translatable = target ? entries.filter(entry => !entry.translations?.some(record => record.targetLanguage.id === target)).length : summary.unconverted + summary.convertedWithoutTranslation;
 			add(menu, countLabel("hub.context.convert", summary.unconverted), "file-cog", "convert", !summary.unconverted);
 			add(menu, countLabel("hub.context.translate", translatable), "languages", "translate", !translatable);
 			menu.addSeparator();
-			add(menu, countLabel("hub.context.delete"), "refresh-cw", "delete");
+			add(menu, countLabel("hub.context.rename"), "pencil", "rename");
+			add(menu, countLabel("hub.context.delete"), "trash-2", "delete");
 			this.contextMenu = menu;
 			menu.onHide(() => { if (this.contextMenu === menu) this.contextMenu = null; });
 			showHubContextMenu(menu, event, this.findRowEl(targetId) || this.listEl);
+		}
+
+		// ── T106 分类管理 ─────────────────────────────────────────────
+		// 当前所在的具体分类（「全部」「未分类」与待补视图里没有来源分类，移动等同添加）。
+		getCollectionSource() {
+			if (this.pendingMode) return null;
+			const parts = hubCollectionPathToParts(this.filters?.collectionPath);
+			return parts.length ? parts : null;
+		}
+
+		addCollectionMenuItems(menu, entries) {
+			const ids = entries.map(entry => entry.recordId);
+			const source = this.getCollectionSource();
+			const label = key => rectoUiText(key);
+			if (source) {
+				menu.addItem(item => item.setTitle(label("hub.context.moveTo")).setIcon("folder-input")
+					.onClick(() => this.pickCollectionFor(ids, "move")));
+			}
+			menu.addItem(item => item.setTitle(label("hub.context.addTo")).setIcon("folder-plus")
+				.onClick(() => this.pickCollectionFor(ids, "add")));
+			if (source) {
+				menu.addItem(item => item.setTitle(rectoUiText("hub.context.removeFrom", { name: source[source.length - 1] })).setIcon("folder-minus")
+					.onClick(() => void this.runCollectionChange(ids, { mode: "remove", source, includeSubcollections: this.filters.includeSubcollections !== false },
+						count => rectoUiText("collections.removed", { count, name: source[source.length - 1] }))));
+			}
+			const overridden = entries.filter(entry => entry.collectionOverride).map(entry => entry.recordId);
+			if (overridden.length) {
+				menu.addItem(item => item.setTitle(rectoUiText("hub.context.resetCollections")).setIcon("rotate-ccw")
+					.onClick(() => void this.resetCollections(overridden)));
+			}
+		}
+
+		pickCollectionFor(ids, mode) {
+			const source = this.getCollectionSource();
+			const paths = this.plugin.listRectoCollectionPaths().filter(parts => !(mode === "move" && source && sameRectoCollectionParts([parts], [source])));
+			openRectoCollectionPicker(this.app, {
+				paths, allowCreate: true,
+				placeholder: rectoUiText(mode === "move" ? "collections.pickerMove" : "collections.pickerAdd"),
+				actionLabel: rectoUiText(mode === "move" ? "collections.actionMove" : "collections.actionAdd"),
+				onChoose: (target) => void this.runCollectionChange(ids, {
+					mode: mode === "move" && source ? "move" : "add", target, source,
+					includeSubcollections: this.filters.includeSubcollections !== false,
+				}, count => rectoUiText(mode === "move" && source ? "collections.moved" : "collections.added", { count, name: target[target.length - 1] })),
+			});
+		}
+
+		async runCollectionChange(ids, change, describe) {
+			try {
+				const result = await this.plugin.changePaperCollections(ids, change);
+				if (!result.changed) {
+					showRectoNotice(rectoUiText("collections.unchanged"), { brief: true });
+					return;
+				}
+				this.showCollectionUndo(describe(result.changed), () => this.plugin.restorePaperCollections(result.undo));
+			} catch (error) {
+				showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("collections.failed")), { tone: "error" });
+			}
+		}
+
+		async resetCollections(ids) {
+			try {
+				const result = await this.plugin.resetPaperCollectionsToZotero(ids);
+				if (result.changed) showRectoNotice(rectoUiText("collections.reset", { count: result.changed }), { tone: "success", brief: true });
+			} catch (error) {
+				showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("collections.failed")), { tone: "error" });
+			}
+		}
+
+		showCollectionUndo(text, undo) {
+			this.showHubBar(text, { undo });
+		}
+
+		// 列表底部的提示条：分类改动带「撤销」；拖入 PDF 的进度（timeout 为 0 时常驻）与结果不带按钮。
+		showHubBar(text, options = {}) {
+			this.collectionUndo = options.undo || null;
+			window.clearTimeout(this.collectionUndoTimer);
+			this.undoTextEl.setText(text);
+			const button = this.undoEl.querySelector(".recto-hub-undo-button");
+			if (button) button.toggleClass("is-hidden", !this.collectionUndo);
+			this.undoEl.toggleClass("is-hidden", false);
+			const timeout = options.timeout === undefined ? 10000 : options.timeout;
+			if (timeout) this.collectionUndoTimer = window.setTimeout(() => this.hideCollectionUndo(), timeout);
+		}
+
+		hideCollectionUndo() {
+			window.clearTimeout(this.collectionUndoTimer);
+			this.collectionUndo = null;
+			if (this.undoEl) this.undoEl.toggleClass("is-hidden", true);
+		}
+
+		async undoCollectionChange() {
+			const undo = this.collectionUndo;
+			this.hideCollectionUndo();
+			if (!undo) return;
+			try {
+				await undo();
+				showRectoNotice(rectoUiText("collections.undone"), { brief: true });
+			} catch (error) {
+				showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("collections.failed")), { tone: "error" });
+			}
+		}
+
+		// 拖动：拖的是已选中的行就带上整组，否则只带这一行。拖到左栏分类认 this.dragIds；
+		// T126 起同时把论文文件交给 Obsidian（类型跟「阅读 ▾」偏好），拖进 Canvas 是文件卡、拖进笔记是链接。
+		// 宿主缺 dragManager 或这几篇都没有文件时退回 `[[…|称呼]]` 文本，不再露出 recordId。
+		handlePaperDragStart(event) {
+			const id = this.findRecordId(event.target);
+			if (!id || !event.dataTransfer) return;
+			const ids = this.selectedIds.has(id) ? [...this.selectedIds] : [id];
+			this.dragIds = ids;
+			const entries = ids.map(recordId => this.entries.find(entry => entry.recordId === recordId)).filter(Boolean);
+			if (this.plugin.startHubFileDrag(event, resolveHubDragPaths(entries, this.plugin.settings.hubReadAction).paths)) return;
+			event.dataTransfer.effectAllowed = "copyMove";
+			event.dataTransfer.setData("text/plain", this.plugin.getHubPaperDragText(entries) || rectoUiText("collections.dragCount", { count: ids.length }));
+			const ghost = document.body.createDiv({ cls: "recto-ui recto-hub-drag-ghost", text: rectoUiText("collections.dragCount", { count: ids.length }) });
+			if (typeof event.dataTransfer.setDragImage === "function") event.dataTransfer.setDragImage(ghost, -12, -8);
+			window.setTimeout(() => ghost.remove(), 0);
+		}
+
+		// T126：详情栏的阅读/摘要/笔记按钮可以直接拖出对应文件，偶尔想拖别的类型时不用改偏好。
+		handleDetailDragStart(event) {
+			const button = event.target && event.target.closest ? event.target.closest("[data-hub-drag-path]") : null;
+			if (!button || !event.dataTransfer) return;
+			if (!this.plugin.startHubFileDrag(event, [button.dataset.hubDragPath])) event.preventDefault();
+		}
+
+		endPaperDrag() {
+			this.dragIds = null;
+			for (const row of this.navEl.querySelectorAll(".is-drop-target")) row.removeClass("is-drop-target");
+		}
+
+		getDropRow(event) {
+			if (!this.dragIds && !isRectoFileDrag(event)) return null;
+			const row = event.target && event.target.closest ? event.target.closest("[data-hub-collection]") : null;
+			if (!row) return null;
+			return row;
+		}
+
+		dropMode(event, targetPath) {
+			if (targetPath === UNFILED_COLLECTION) return "set";
+			return this.getCollectionSource() && !(event.ctrlKey || event.altKey || event.metaKey) ? "move" : "add";
+		}
+
+		handleNavDragOver(event) {
+			const row = this.getDropRow(event);
+			if (!row) return;
+			event.preventDefault();
+			if (!this.dragIds) {
+				// T107：从系统拖进来的 PDF 放到某个分类上（未分类条目＝不放进任何分类）。
+				event.stopPropagation();
+				if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+				for (const other of this.navEl.querySelectorAll(".is-drop-target")) if (other !== row) other.removeClass("is-drop-target");
+				row.addClass("is-drop-target");
+				return;
+			}
+			const mode = this.dropMode(event, row.dataset.hubCollection);
+			if (event.dataTransfer) event.dataTransfer.dropEffect = mode === "add" ? "copy" : "move";
+			for (const other of this.navEl.querySelectorAll(".is-drop-target")) if (other !== row) other.removeClass("is-drop-target");
+			row.addClass("is-drop-target");
+		}
+
+		handleNavDragLeave(event) {
+			const row = this.getDropRow(event);
+			if (row && !(event.relatedTarget && row.contains(event.relatedTarget))) row.removeClass("is-drop-target");
+		}
+
+		handleNavDrop(event) {
+			const row = this.getDropRow(event);
+			const ids = this.dragIds;
+			this.endPaperDrag();
+			if (row && !ids && isRectoFileDrag(event)) {
+				event.preventDefault();
+				event.stopPropagation();
+				void this.addDroppedFiles(event.dataTransfer.files, hubCollectionPathToParts(row.dataset.hubCollection));
+				return;
+			}
+			if (!row || !ids) return;
+			event.preventDefault();
+			const path = row.dataset.hubCollection;
+			const mode = this.dropMode(event, path);
+			const target = mode === "set" ? null : hubCollectionPathToParts(path);
+			const source = this.getCollectionSource();
+			if (target && source && sameRectoCollectionParts([target], [source])) return;
+			void this.runCollectionChange(ids, { mode, target, source, includeSubcollections: this.filters.includeSubcollections !== false },
+				count => mode === "set" ? rectoUiText("collections.unfiledDone", { count })
+					: rectoUiText(mode === "move" ? "collections.moved" : "collections.added", { count, name: target[target.length - 1] }));
+		}
+
+		// 左栏右键：分类行给新建子分类 / 重命名 / 移动到 / 删除；标题行与空白处给新建分类。
+		handleNavContextMenu(event) {
+			if (event.target && event.target.closest && event.target.closest("input")) return;
+			const row = event.target && event.target.closest ? event.target.closest("[data-hub-collection]") : null;
+			const path = row ? row.dataset.hubCollection : "";
+			if (row && path === UNFILED_COLLECTION) return;
+			if (!row && event.target.closest && event.target.closest("[data-hub-status]")) return;
+			if (typeof api.Menu !== "function") return;
+			event.preventDefault();
+			event.stopPropagation();
+			const menu = new api.Menu();
+			if (!row) {
+				menu.addItem(item => item.setTitle(rectoUiText("collections.newRoot")).setIcon("folder-plus").onClick(() => this.beginCollectionCreate([])));
+				// T120：原挂在「分类」标题上的范围开关；空白处与「我的文库」右键都能找到。
+				menu.addSeparator();
+				menu.addItem(item => {
+					item.setTitle(rectoUiText("hub.includeSubcollections")).setIcon("folder-tree")
+						.onClick(() => this.toggleIncludeSubcollections());
+					if (typeof item.setChecked === "function") item.setChecked(this.filters.includeSubcollections !== false);
+				});
+			} else {
+				const parts = hubCollectionPathToParts(path);
+				const node = findZoteroCollectionTreeNode(this.tree, path);
+				menu.addItem(item => item.setTitle(rectoUiText("collections.newChild")).setIcon("folder-plus").onClick(() => this.beginCollectionCreate(parts)));
+				menu.addItem(item => item.setTitle(rectoUiText("collections.rename")).setIcon("pencil").onClick(() => this.beginCollectionRename(row, parts)));
+				menu.addItem(item => item.setTitle(rectoUiText("collections.moveTo")).setIcon("folder-input").onClick(() => this.pickCollectionParent(parts)));
+				menu.addSeparator();
+				menu.addItem(item => {
+					item.setTitle(rectoUiText("collections.delete")).setIcon("trash-2").setDisabled(!!node && node.count > 0)
+						.onClick(() => void this.deleteCollection(parts));
+					if (typeof item.setWarning === "function") item.setWarning(true);
+				});
+			}
+			this.holdNavOpen();
+			// 菜单项回调与收起在同一次点击里跑完；推到下一轮再看，输入框若已出现就由它收尾时放开。
+			if (typeof menu.onHide === "function") menu.onHide(() => setTimeout(() => {
+				if (!this.navEl.querySelector(".recto-hub-nav-input")) this.releaseNavHold();
+			}, 0));
+			menu.showAtMouseEvent(event);
+		}
+
+		// 在左栏原处放一个输入框：回车确认，Esc 取消，失焦时有内容就确认。
+		editNavName(host, initial, commit) {
+			const input = host.createEl("input", { cls: "recto-hub-nav-input", attr: { type: "text", value: initial, placeholder: rectoUiText("collections.namePlaceholder"), spellcheck: "false" } });
+			input.value = initial;
+			let done = false;
+			const finish = async (accept) => {
+				if (done) return;
+				done = true;
+				const value = input.value.trim();
+				if (accept && value && value !== initial) {
+					try { await commit(value); } catch (error) {
+						showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("collections.failed")), { tone: "error" });
+					}
+				}
+				this.renderNav();
+				this.releaseNavHold();
+			};
+			input.addEventListener("keydown", (event) => {
+				event.stopPropagation();
+				if (event.key === "Enter") { event.preventDefault(); void finish(true); }
+				else if (event.key === "Escape") { event.preventDefault(); void finish(false); }
+			});
+			input.addEventListener("blur", () => void finish(true));
+			input.focus();
+			input.select();
+			return input;
+		}
+
+		beginCollectionCreate(parentParts) {
+			if (parentParts.length) {
+				for (let depth = 1; depth <= parentParts.length; depth++) this.collapsedPaths.delete(getZoteroCollectionPathKey(parentParts.slice(0, depth)));
+				this.renderNav();
+			}
+			const parentRow = parentParts.length ? this.navEl.querySelector(`[data-hub-collection="${CSS.escape(getZoteroCollectionPathKey(parentParts))}"]`) : null;
+			const depth = parentParts.length;
+			let container = this.navEl;
+			let before = null;
+			if (parentRow) {
+				const branch = parentRow.closest(".recto-hub-nav-branch");
+				const inner = branch && branch.querySelector(":scope > .recto-hub-nav-children > .recto-hub-nav-children-inner");
+				if (inner) container = inner; else { container = branch; }
+			} else {
+				before = this.navEl.querySelector("[data-hub-collection=\"" + UNFILED_COLLECTION + "\"]");
+				before = before ? before.closest(".recto-hub-nav-branch") : null;
+			}
+			const row = container.createDiv({ cls: `recto-hub-nav-row recto-hub-nav-editing ${depth ? "is-nested" : "is-root"}` });
+			if (before) container.insertBefore(row, before);
+			row.style.setProperty("--rc-nav-depth", String(depth));
+			setChromeIcon(row.createSpan({ cls: "recto-hub-nav-folder", attr: { "aria-hidden": "true" } }), "folder");
+			this.editNavName(row, "", async (name) => {
+				const parts = await this.plugin.createRectoCollection(parentParts, name);
+				if (parts) this.revealCollection(parts);
+			});
+		}
+
+		beginCollectionRename(row, parts) {
+			const name = row.querySelector(".recto-hub-nav-name");
+			if (!name) return;
+			name.empty();
+			row.addClass("recto-hub-nav-editing");
+			this.editNavName(name, parts[parts.length - 1], async (value) => {
+				const checked = validateRectoCollectionName(value);
+				if (checked.error) throw createRectoUiError(checked.error);
+				await this.relocateCollection(parts, [...parts.slice(0, -1), checked.name]);
+			});
+		}
+
+		pickCollectionParent(parts) {
+			const paths = this.plugin.listRectoCollectionPaths().filter(path => !isRectoCollectionWithin(path, parts)
+				&& !sameRectoCollectionParts([path], [parts.slice(0, -1)]));
+			openRectoCollectionPicker(this.app, {
+				paths, allowTop: parts.length > 1,
+				placeholder: rectoUiText("collections.pickerParent"),
+				actionLabel: rectoUiText("collections.actionMove"),
+				onChoose: (target) => void this.relocateCollection(parts, [...target, parts[parts.length - 1]])
+					.catch(error => showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("collections.failed")), { tone: "error" })),
+			});
+		}
+
+		// 重命名/移动后，当前选中的分类与折叠状态跟着换到新路径。
+		async relocateCollection(from, to) {
+			const mapKey = key => {
+				const parts = hubCollectionPathToParts(key);
+				return parts.length && isRectoCollectionWithin(parts, from) ? getZoteroCollectionPathKey(replaceRectoCollectionPrefix(parts, from, to)) : key;
+			};
+			const selected = this.filters.collectionPath;
+			const collapsed = [...this.collapsedPaths];
+			const result = await this.plugin.relocateRectoCollection(from, to);
+			if (!result) return;
+			this.collapsedPaths = new Set(collapsed.map(mapKey));
+			if (selected) this.filters.collectionPath = mapKey(selected);
+			this.persistViewState();
+			this.reload();
+			this.revealCollection(to);
+		}
+
+		async deleteCollection(parts) {
+			try {
+				await this.plugin.deleteRectoCollection(parts);
+				if (isRectoCollectionWithin(hubCollectionPathToParts(this.filters.collectionPath), parts)) {
+					this.filters.collectionPath = "";
+					this.reload();
+				}
+			} catch (error) {
+				showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("collections.failed")), { tone: "error" });
+			}
+		}
+
+		revealCollection(parts) {
+			for (let depth = 1; depth < parts.length; depth++) this.collapsedPaths.delete(getZoteroCollectionPathKey(parts.slice(0, depth)));
+			this.renderNav();
+			const row = this.navEl.querySelector(`[data-hub-collection="${CSS.escape(getZoteroCollectionPathKey(parts))}"]`);
+			if (row && typeof row.scrollIntoView === "function") row.scrollIntoView({ block: "nearest" });
+		}
+
+		// 详情栏的分类：每条可点，跳到左栏对应分类，当前论文保持选中。
+		renderCollectionRow(kv, entry) {
+			kv.createSpan({ cls: "recto-hub-detail-key", text: rectoUiText("hub.collection") });
+			const cell = kv.createSpan({ cls: "recto-hub-detail-collections" });
+			const paths = (entry.zoteroCollectionPathParts || []).length ? entry.zoteroCollectionPathParts : [];
+			const targets = paths.length ? paths.map(parts => ({ key: getZoteroCollectionPathKey(parts), text: parts.join(" / ") }))
+				: [{ key: UNFILED_COLLECTION, text: UNFILED_COLLECTION }];
+			targets.forEach((target, index) => {
+				if (index) cell.createSpan({ text: "；" });
+				const link = cell.createSpan({ cls: "recto-hub-detail-link-text", text: target.text, attr: { role: "link", tabindex: "0" } });
+				link.dataset.hubGotoCollection = target.key;
+			});
+		}
+
+		gotoCollection(path) {
+			if (this.pendingMode) this.setPendingMode(false);
+			this.filters.collectionPath = path;
+			if (this.filters.status === "recent") this.filters.status = "all";
+			const parts = hubCollectionPathToParts(path);
+			if (parts.length) this.revealCollection(parts); else this.renderNav();
+			this.persistViewState();
+			this.applyFilters({ preserveDetail: true });
+		}
+
+		// ── T107 拖入 PDF ────────────────────────────────────────────
+		// 拖到列表区加入当前分类；拖到左栏分类的那一支在 handleNavDrop 里。
+		handleMainDragOver(event) {
+			if (this.dragIds || !isRectoFileDrag(event)) return;
+			event.preventDefault();
+			event.stopPropagation();
+			if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+			const parts = this.getQuickAddTarget();
+			const count = [...(event.dataTransfer && event.dataTransfer.items || [])].filter(item => item.kind === "file").length;
+			this.dropTextEl.setText(rectoUiText(count > 1 ? "paperIntake.dropHintMany" : "paperIntake.dropHint", {
+				target: parts.length ? parts[parts.length - 1] : rectoUiText("paperIntake.unfiled"), count }));
+			this.dropEl.toggleClass("is-hidden", false);
+		}
+
+		handleMainDragLeave(event) {
+			if (!this.dropEl || this.dropEl.hasClass("is-hidden")) return;
+			const next = event.relatedTarget;
+			if (next && this.mainEl && this.mainEl.contains(next)) return;
+			this.dropEl.toggleClass("is-hidden", true);
+		}
+
+		handleMainDrop(event) {
+			if (this.dropEl) this.dropEl.toggleClass("is-hidden", true);
+			if (this.dragIds || !isRectoFileDrag(event)) return;
+			event.preventDefault();
+			event.stopPropagation();
+			void this.addDroppedFiles(event.dataTransfer.files, this.getQuickAddTarget());
+		}
+
+		async addDroppedFiles(fileList, parts) {
+			const files = [];
+			for (const file of [...(fileList || [])]) {
+				try { files.push({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) }); }
+				catch { files.push({ name: file.name, bytes: null }); }
+			}
+			if (!files.length) return;
+			const target = parts.length ? parts[parts.length - 1] : rectoUiText("paperIntake.unfiled");
+			const destination = this.plugin.isPaperIntakeZoteroReady() && this.plugin.settings.paperIntakeDestination === "zotero" ? "zotero" : "local";
+			let total = files.length;
+			this.showHubBar(rectoUiText("paperIntake.dropProgress", { done: 0, total }), { timeout: 0 });
+			try {
+				const report = await this.plugin.addPaperIntakeFiles(files, {
+					collectionParts: parts.length ? [parts] : [], destination,
+					onRows: rows => { total = rows.length; },
+					onProgress: event => this.showHubBar(rectoUiText("paperIntake.dropProgress", { done: Math.min(event.index + 1, total), total }), { timeout: 0 }),
+				});
+				if (!report) { this.hideCollectionUndo(); return; }
+				this.showHubBar(describePaperIntakeDropReport(report, target), { timeout: 8000 });
+			} catch (error) {
+				this.hideCollectionUndo();
+				showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("paperIntake.failed")), { tone: "error" });
+			}
 		}
 
 		isContextActionBusy(recordIds, action) {
@@ -22508,7 +27466,11 @@ function createRectoHubViewClass(api) {
 				const current = new Map((options.cachedEntries ? this.entries : this.plugin.getHubEntries(recordIds)).map(entry => [entry.recordId, entry]));
 				const entries = recordIds.map(id => current.get(id)).filter(Boolean);
 				if (entries.length !== recordIds.length) throw new Error("record-missing");
-				if (action.startsWith("copy:")) await this.plugin.copyHubContextFiles(entries, action.slice(5));
+				if (action === "copy:link" || action === "copy:citation") await this.plugin.copyHubPaperReferences(entries, action.slice(5));
+				else if (action.startsWith("copy:bib:") || action.startsWith("copy:export:")) await this.plugin.copyHubPaperCitations(entries, action.split(":")[2]);
+				else if (action === "cite:fill") await this.fillCitationMetadata(recordIds);
+				else if (action === "rename") this.plugin.openPaperRenameModal(entries.map(entry => entry.recordId), { single: entries.length === 1 });
+				else if (action.startsWith("copy:")) await this.plugin.copyHubContextFiles(entries, action.slice(5));
 				else if (action.startsWith("reveal:")) await this.plugin.revealHubPaperFolder(entries, action === "reveal:system");
 				else if (action.startsWith("status:")) await this.plugin.setHubReadingStatus(entries, action.slice(7));
 				else if (action.startsWith("flag:")) {
@@ -22542,6 +27504,12 @@ function createRectoHubViewClass(api) {
 			// 列头从 listEl 的**兄弟**变成了它的**孩子**（T86-A 第四轮），键盘事件因此会往这儿冒泡。
 			// 列头单元格挂着 tabindex=0，不挡的话在排序列头上按 Enter 会既排序又打开当前选中的论文。
 			if (event.target && event.target.closest && event.target.closest(".recto-hub-head")) return;
+			if (event.target && event.target.closest && event.target.closest("[data-hub-pending-row]")) {
+				if (event.key !== "Enter" && event.key !== " ") return;
+				event.preventDefault();
+				this.setPendingMode(true);
+				return;
+			}
 			if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
 				if (event.target?.closest?.("input, textarea, [contenteditable=true], .recto-hub-empty")) return;
 				this.handleListContextMenu(event);
@@ -22569,6 +27537,11 @@ function createRectoHubViewClass(api) {
 			if ((event.ctrlKey || event.metaKey) && (event.key === "a" || event.key === "A")) {
 				event.preventDefault();
 				this.setSelection(this.visible.map(entry => entry.recordId), this.selectedRecordId);
+				return;
+			}
+			if ((event.ctrlKey || event.metaKey) && !event.shiftKey && (event.key === "z" || event.key === "Z") && this.collectionUndo) {
+				event.preventDefault();
+				void this.undoCollectionChange();
 				return;
 			}
 			if (event.key === "Escape") {
@@ -22653,14 +27626,7 @@ function createRectoHubViewClass(api) {
 		}
 
 		handleNavClick(event) {
-			const scope = event.target && event.target.closest ? event.target.closest("[data-hub-collection-scope]") : null;
-			if (scope) {
-				event.stopPropagation();
-				this.filters.includeSubcollections = this.filters.includeSubcollections === false;
-				this.syncNavState();
-				this.applyFilters({ preserveDetail: true, preserveScroll: true });
-				return;
-			}
+			if (event.target && event.target.closest && event.target.closest("input")) return;
 			const toggle = event.target && event.target.closest ? event.target.closest("[data-hub-toggle]") : null;
 			if (toggle) {
 				event.stopPropagation();
@@ -22669,6 +27635,7 @@ function createRectoHubViewClass(api) {
 				else this.collapsedPaths.add(path);
 				const expanded = !this.collapsedPaths.has(path);
 				toggle.setAttribute("aria-expanded", String(expanded));
+				syncHubNavFolderArt(toggle, expanded);
 				toggle.setAttribute("aria-label", rectoUiText(expanded ? "hub.collapseCollection" : "hub.expandCollection", { name: toggle.dataset.hubCollectionName }));
 				const children = toggle.closest(".recto-hub-nav-branch").querySelector(".recto-hub-nav-children");
 				children.toggleClass("is-collapsed", !expanded);
@@ -22678,18 +27645,27 @@ function createRectoHubViewClass(api) {
 			}
 			const row = event.target && event.target.closest ? event.target.closest(".recto-hub-nav-row") : null;
 			if (!row || !row.dataset) return;
+			// 从待补 PDF 点回分类：直接进那个分类，不按「再点一次取消」处理。
+			const leavingPending = !!this.pendingMode;
+			if (leavingPending) this.setPendingMode(false);
 			// 两个维度互不清除（AND）：点文件夹不动阅读状态，点阅读状态也不跳出文件夹。
 			// 生效中的条件全部摆在面包屑里，用户不会再以为「只有高亮那个在筛」。
 			if (row.dataset.hubCollection !== undefined) {
-				this.filters.collectionPath = this.filters.collectionPath === row.dataset.hubCollection
+				this.filters.collectionPath = !leavingPending && this.filters.collectionPath === row.dataset.hubCollection
 					? ""
 					: row.dataset.hubCollection;
 				// 点分类即退出「最近」（T86-C 第四轮）。它是独立分类模式，不和分类叠加——
 				// 不退的话点完分类看到的是「最近 ∩ 这个分类」，通常是空的，而用户以为自己在看分类。
 				if (this.filters.status === "recent") this.filters.status = "all";
+			} else if (row.dataset.hubLibrary !== undefined) {
+				// T120：全库根只退出分类（同样退出「最近」），不动阅读状态与转换筛选。
+				this.filters.collectionPath = "";
+				if (this.filters.status === "recent") this.filters.status = "all";
 			} else if (row.dataset.hubStatus !== undefined) {
 				// 只动阅读状态这一维，转换状态归 chips 行——两个控件各管一件事。
-				this.filters.status = row.dataset.hubStatus || "all";
+				// T120：没有「全部论文」行了，再点一次已选中的状态即取消，与分类行同一规矩。
+				const next = row.dataset.hubStatus || "all";
+				this.filters.status = !leavingPending && this.filters.status === next ? "all" : next;
 				// 「最近」不是这一列里的第五个筛选项，是一个**独立分类模式**（T86-C 第四轮，
 				// 用户拍板从「可叠加」改过来）：进它就把分类、转换筛选、搜索词一并清空，只留
 				// 「我操作过的，从新到旧」。理由是这一档通常只剩十几篇，而分类与转换筛选都是
@@ -22754,15 +27730,30 @@ function createRectoHubViewClass(api) {
 				this.setActivePane(pane.dataset.hubPane);
 				return;
 			}
+			if (closest("[data-hub-abstract-toggle]")) {
+				this.abstractExpanded = !this.abstractExpanded;
+				this.renderDetail();
+				return;
+			}
 			const authorsToggle = closest("[data-hub-authors-toggle]");
 			if (authorsToggle) {
 				this.authorsExpanded = !this.authorsExpanded;
 				this.renderDetail();
 				return;
 			}
-			const copy = closest("[data-hub-copy]");
-			if (copy) {
-				void this.copyToClipboard(copy.dataset.hubCopy);
+			const citeFill = closest("[data-hub-cite-fill]");
+			if (citeFill) {
+				void this.runContextAction([citeFill.dataset.hubCiteFill], "cite:fill");
+				return;
+			}
+			const cite = closest("[data-hub-cite]");
+			if (cite) {
+				void this.runContextAction([cite.dataset.hubCite], "copy:bib:default");
+				return;
+			}
+			const gotoCollection = closest("[data-hub-goto-collection]");
+			if (gotoCollection) {
+				this.gotoCollection(gotoCollection.dataset.hubGotoCollection);
 				return;
 			}
 			const openUrl = closest("[data-hub-open-url]");
@@ -22809,30 +27800,35 @@ function createRectoHubViewClass(api) {
 		return this.plugin.runHubTaskIntake("translate", pending, (ids, operation, options) => this.plugin.runHubTranslateForRecords(ids, { ...options, operation }));
 	}
 
-		// T88-G-T：重新导入沿用所有入口，单篇直接执行、多篇一次确认。
+		// T132：Hub 的删除入口（详情栏、批量面板、右键、Delete 键）。单篇、多篇都确认一次，二选一：
+		// 删除论文（整夹进回收站，Zotero 论文不再同步）或只清空转换结果（原 T88-G-T「重新导入」）。
+		// 取代 T84-F「单篇删除零确认」：删除现在会连笔记一起移走，必须让用户看一眼。
 		async deleteSelectedRecords(entries = this.getSelectedEntries()) {
 			if (!entries.length) return;
 			if (entries.some(entry => this.plugin.hubTaskRequests?.has(entry.recordId))) {
 				showRectoNotice(rectoUiText("reimport.taskRunning"), { tone: "attention" }); return;
 			}
 			return this.withProcessButtonsDisabled(async () => {
-				if (entries.length > 1) {
-					const accepted = await this.plugin.openDecision(() => ({
-						title: rectoUiText("batch.deleteTitle"),
-						intro: rectoUiText("batch.deleteIntro", { count: entries.length }),
-						details: [
-							...entries.slice(0, 5).map(entry => localizeHubTitle(entry.titleOriginal)),
-							entries.length > 5 ? rectoUiText("batch.deleteMore", { count: entries.length - 5 }) : "",
-							rectoUiText("batch.deleteDesc"),
-						],
-						actions: [
-							{ label: rectoUiText("dialog.cancel"), value: false },
-							{ label: rectoUiText("batch.deleteAction", { count: entries.length }), value: true, warning: true },
-						],
-					}));
-					if (accepted !== true) return;
-				}
-				await this.plugin.deletePaperRecords(entries.map(entry => entry.recordId));
+				const count = entries.length;
+				const fromZotero = entries.filter(entry => !isLocalPaperRecord(this.plugin.folderMap?.[entry.recordId], entry.recordId)).length;
+				const choice = await this.plugin.openDecision(() => ({
+					title: rectoUiText(count > 1 ? "batch.deleteTitle" : "hub.deleteTitle", { count }),
+					intro: count > 1 ? rectoUiText("batch.deleteIntro", { count }) : localizeHubTitle(entries[0].titleOriginal),
+					// 说明只留一句（用户 2026-11-22：确认框文字从简）；按钮名本身说明了两种做法。
+					details: count > 1 ? [
+						...entries.slice(0, 5).map(entry => localizeHubTitle(entry.titleOriginal)),
+						count > 5 ? rectoUiText("batch.deleteMore", { count: count - 5 }) : "",
+					] : [],
+					note: rectoUiText(fromZotero ? "batch.deleteDescZotero" : "batch.deleteDesc"),
+					actions: [
+						{ label: rectoUiText("dialog.cancel"), value: false },
+						{ label: rectoUiText("batch.resetAction"), value: "reset" },
+						{ label: rectoUiText(count > 1 ? "batch.deleteAction" : "hub.deleteAction", { count }), value: "remove", warning: true },
+					],
+				}));
+				const ids = entries.map(entry => entry.recordId);
+				if (choice === "remove") await this.plugin.removePaperRecords(ids);
+				else if (choice === "reset") await this.plugin.deletePaperRecords(ids);
 			}, { action: "delete", recordIds: entries.map(entry => entry.recordId) });
 		}
 
@@ -22861,24 +27857,6 @@ function createRectoHubViewClass(api) {
 				sync();
 			});
 	}
-
-		async copyToClipboard(text) {
-			const value = String(text || "");
-			if (!value) return;
-			const locks = this.plugin.hubContextActionLocks ||= new Set();
-			if (locks.has("clipboard")) return;
-			locks.add("clipboard");
-			try {
-				if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
-					await navigator.clipboard.writeText(value);
-					showRectoNotice(rectoUiText("hub.copied"), { tone: "success", brief: true });
-					return;
-				}
-				showRectoNotice(rectoUiText("hub.copyUnavailable"), { tone: "attention" });
-			} catch {
-				showRectoNotice(rectoUiText("hub.copyFailed"), { tone: "error" });
-			} finally { locks.delete("clipboard"); }
-		}
 
 		async cycleStatus(recordId) {
 			const entry = this.entries.find(item => item.recordId === recordId);
@@ -22935,6 +27913,376 @@ function refreshRectoModalPreservingInteraction(modal, render) {
 	if (typeof next.focus === "function") next.focus();
 	if (selectionStart !== null && selectionEnd !== null && typeof next.setSelectionRange === "function") {
 		next.setSelectionRange(selectionStart, selectionEnd);
+	}
+}
+
+// T100：「添加论文」弹窗。输入 → 逐篇进度 → 结果；下方常驻待补队列（打开链接 / 重试 / 移除 / 检查收件箱）。
+// T105：Hub 工具栏「添加」展开的快速添加。论文加到 Hub 当前选中的分类；回车开始，进度逐行显示在框内。
+// 框关掉不影响后台处理；重新打开时接着显示这一批的进度。
+class RectoPaperIntakeQuickAdd {
+	constructor(plugin, options = {}) {
+		this.plugin = plugin;
+		this.getTarget = typeof options.getTarget === "function" ? options.getTarget : () => [];
+		this.onRequestClose = typeof options.onRequestClose === "function" ? options.onRequestClose : () => {};
+		this.inputText = "";
+		this.running = false;
+		this.progressRows = [];
+		this.error = "";
+	}
+
+	render(container) {
+		this.el = container;
+		container.empty();
+		this.labelEl = container.createDiv({ cls: "recto-intake-quick-label" });
+		this.renderTarget();
+		this.inputEl = container.createEl("textarea", { cls: "recto-intake-quick-input" });
+		this.inputEl.rows = 1;
+		this.inputEl.placeholder = rectoUiText("paperIntake.quickAddPlaceholder");
+		this.inputEl.value = this.inputText;
+		this.inputEl.readOnly = this.running;
+		this.inputEl.setAttribute("aria-label", rectoUiText("paperIntake.open"));
+		this.inputEl.addEventListener("input", () => { this.inputText = this.inputEl.value; this.error = ""; });
+		this.inputEl.addEventListener("keydown", event => {
+			if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+			event.preventDefault();
+			void this.submit();
+		});
+		const footer = container.createDiv({ cls: "recto-intake-quick-footer" });
+		if (this.plugin.isPaperIntakeZoteroReady()) {
+			const row = footer.createEl("label", { cls: "recto-intake-quick-zotero" });
+			const box = row.createEl("input");
+			box.type = "checkbox";
+			box.checked = this.plugin.settings.paperIntakeDestination === "zotero";
+			box.addEventListener("change", () => {
+				this.plugin.settings.paperIntakeDestination = box.checked ? "zotero" : "local";
+				void this.plugin.save();
+			});
+			row.createSpan({ text: rectoUiText("paperIntake.alsoZotero") });
+		}
+		// T107：不习惯拖动时从这里选本地 PDF，和拖入走同一条路。
+		const pick = footer.createEl("button", { cls: "recto-intake-quick-pick", text: rectoUiText("paperIntake.pickPdf") });
+		pick.setAttr("type", "button");
+		pick.disabled = this.running;
+		pick.addEventListener("click", () => { void this.submitFiles(); });
+		this.submitEl = footer.createEl("button", { cls: "mod-cta recto-intake-quick-submit", text: rectoUiText("paperIntake.add") });
+		this.submitEl.setAttr("type", "button");
+		this.submitEl.disabled = this.running;
+		this.submitEl.addEventListener("click", () => { void this.submit(); });
+		this.progressEl = container.createDiv({ cls: "recto-intake-progress" });
+		this.renderProgress();
+	}
+
+	renderTarget() {
+		if (!this.labelEl) return;
+		const parts = this.getTarget();
+		const target = parts.length ? parts[parts.length - 1] : rectoUiText("paperIntake.unfiled");
+		this.labelEl.setText(rectoUiText("paperIntake.quickAddLabel", { target }));
+		this.labelEl.setAttribute("title", parts.length ? parts.join(" / ") : target);
+	}
+
+	focus() {
+		if (this.inputEl && typeof this.inputEl.focus === "function") this.inputEl.focus();
+	}
+
+	async submit() {
+		if (this.running) return;
+		const rows = parsePaperIntakeInput(this.inputText);
+		if (!rows.length) return;
+		const parts = this.getTarget();
+		const collectionParts = parts.length ? [parts] : [];
+		const destination = this.plugin.isPaperIntakeZoteroReady() && this.plugin.settings.paperIntakeDestination === "zotero" ? "zotero" : "local";
+		this.running = true;
+		this.error = "";
+		this.progressRows = rows.map(row => ({ key: paperIntakeRowKey(row), doi: row.doi, title: row.title,
+			label: row.doi || (row.arxivId ? `arXiv:${row.arxivId}` : row.url || row.title), state: "queued" }));
+		if (this.inputEl) this.inputEl.readOnly = true;
+		if (this.submitEl) this.submitEl.disabled = true;
+		this.renderProgress();
+		try {
+			const report = await this.plugin.addPapersFromIntake(rows.map(row => ({ ...row, collectionParts, destination })), {
+				onProgress: event => {
+					const item = this.progressRows[event.index];
+					if (!item) return;
+					item.state = event.state;
+					if (event.title) item.label = event.title;
+					if (event.reason) item.reason = event.reason;
+					this.renderProgress();
+				},
+			});
+			if (report) {
+				// 记下待补条目的题名与 DOI，之后它被加入时才认得出来。
+				const waitingById = new Map(report.waiting.map(item => [item.id, item]));
+				const failedKeys = new Set(report.failed.map(item => paperIntakeRowKey(item.row)));
+				for (const row of this.progressRows) {
+					const item = waitingById.get(row.key);
+					if (item) Object.assign(row, { state: "waiting", reason: item.reason, title: item.title, doi: item.doi || row.doi, label: item.title || row.label });
+					else if (failedKeys.has(row.key)) row.state = "failed";
+				}
+				// 待补的已记进左栏「待补 PDF」，留在框里只会被重复提交；只有失败的才留着让用户改。
+				if (!report.failed.length) {
+					this.inputText = "";
+					if (this.inputEl) this.inputEl.value = "";
+				}
+			}
+		} catch (error) {
+			this.error = getUserFacingErrorMessage(error, rectoUiText("paperIntake.failed"));
+		} finally {
+			this.running = false;
+			if (this.inputEl) this.inputEl.readOnly = false;
+			if (this.submitEl) this.submitEl.disabled = false;
+			this.renderProgress();
+		}
+	}
+
+	async submitFiles() {
+		if (this.running) return;
+		const picked = await this.plugin.pickExternalPdfFiles();
+		if (!picked.length) return;
+		const parts = this.getTarget();
+		const destination = this.plugin.isPaperIntakeZoteroReady() && this.plugin.settings.paperIntakeDestination === "zotero" ? "zotero" : "local";
+		this.running = true;
+		this.error = "";
+		this.progressRows = [];
+		this.renderProgress();
+		try {
+			const report = await this.plugin.addPaperIntakeFiles(picked, {
+				collectionParts: parts.length ? [parts] : [], destination,
+				onRows: rows => {
+					this.progressRows = rows.map(row => ({ key: row.pendingId, label: row.fileName, state: "queued", isFile: true }));
+					this.renderProgress();
+				},
+				onProgress: event => {
+					const item = this.progressRows[event.index];
+					if (!item) return;
+					item.state = event.state;
+					if (event.title) item.label = event.title;
+					if (event.reason) item.reason = event.reason;
+					this.renderProgress();
+				},
+			});
+			if (report) {
+				const waitingById = new Map(report.waiting.map(item => [item.id, item]));
+				for (const row of this.progressRows) {
+					const item = waitingById.get(row.key);
+					if (item) Object.assign(row, { state: "waiting", reason: item.reason, title: item.title, label: item.title || row.label });
+				}
+				if ((report.notPdf || []).length) this.error = rectoUiText("paperIntake.dropNotPdf", { count: report.notPdf.length });
+			}
+		} catch (error) {
+			this.error = getUserFacingErrorMessage(error, rectoUiText("paperIntake.failed"));
+		} finally {
+			this.running = false;
+			this.renderProgress();
+		}
+	}
+
+	// 待补条目在别处被补齐（中转文件夹、浏览器取件）时，框里对应的行跟着改成「已加入」。
+	reconcile() {
+		if (this.running || !this.progressRows.length) return;
+		this.progressRows = reconcilePaperIntakeProgress(this.progressRows, this.plugin.getPaperIntakePending(), this.plugin.folderMap);
+		this.renderProgress();
+	}
+
+	renderProgress() {
+		if (!this.progressEl) return;
+		this.progressEl.empty();
+		if (this.progressRows.length) {
+			const list = this.progressEl.createEl("ul", { cls: "recto-intake-rows" });
+			for (const row of this.progressRows) {
+				const item = list.createEl("li", { cls: `recto-intake-row is-${row.state}` });
+				item.createSpan({ cls: "recto-intake-row-label", text: row.label });
+				const stateKey = row.isFile && ["resolving", "ready"].includes(row.state) ? `file_${row.state}` : row.state;
+				const state = item.createSpan({ cls: "recto-intake-row-state", text: rectoUiText(`paperIntake.state.${stateKey}`) });
+				if (row.state === "waiting" && row.reason) state.setAttribute("title", rectoUiText(`paperIntake.reason.${row.reason}`));
+			}
+		}
+		if (!this.error) return;
+		const box = this.progressEl.createDiv({ cls: "recto-intake-error" });
+		setChromeIcon(box.createSpan({ cls: "rc-icon" }), "triangle-alert");
+		box.createSpan({ text: this.error });
+	}
+}
+
+// T105：Hub 左栏「待补 PDF」对应的主区面板：取件、重试与逐条处理。
+class RectoPaperIntakePendingPanel {
+	constructor(plugin, options = {}) {
+		this.plugin = plugin;
+		this.onBack = typeof options.onBack === "function" ? options.onBack : null;
+		this.running = false;
+		this.busyIds = new Set();
+		this.drafts = new Map();
+		// T128：只有链接的待补，输入框默认收起；用户点「填写 DOI 或题名」展开的条目记在这里。
+		this.editOpen = new Set();
+	}
+
+	render(container) {
+		this.el = container;
+		container.empty();
+		const pending = this.plugin.getPaperIntakePending();
+		const head = container.createDiv({ cls: "recto-intake-pending-head" });
+		if (this.onBack) {
+			const back = head.createEl("button", { cls: "recto-intake-icon-button recto-intake-pending-back", attr: { type: "button", "aria-label": rectoUiText("paperIntake.back"), title: rectoUiText("paperIntake.back") } });
+			setChromeIcon(back, "arrow-left");
+			back.addEventListener("click", () => this.onBack());
+		}
+		head.createDiv({ cls: "recto-intake-pending-title", text: rectoUiText("paperIntake.pendingTitle", { count: pending.length }) });
+		const actions = head.createDiv({ cls: "recto-intake-pending-actions" });
+		const browserFetch = actions.createEl("button", { cls: "mod-cta", text: rectoUiText("paperIntake.browserFetch") });
+		browserFetch.setAttr("type", "button");
+		browserFetch.setAttr("title", rectoUiText("paperIntake.browserFetchHint"));
+		browserFetch.disabled = this.running;
+		browserFetch.addEventListener("click", () => this.runAction(browserFetch, () => this.plugin.fetchPaperIntakeInBrowser()));
+		const retryAll = this.iconButton(actions, "refresh-cw", rectoUiText("paperIntake.retryAll"));
+		retryAll.addEventListener("click", () => this.runAction(retryAll, () => this.plugin.retryPaperIntakePending()));
+		const more = this.iconButton(actions, "more-horizontal", rectoUiText("paperIntake.more"));
+		more.addEventListener("click", event => this.openMoreMenu(event, more));
+		const list = container.createEl("ul", { cls: "recto-intake-pending-list" });
+		for (const item of pending) this.renderItem(list, item);
+	}
+
+	iconButton(parent, icon, label, id = "") {
+		const button = parent.createEl("button", { cls: "recto-intake-icon-button", attr: { type: "button", "aria-label": label, title: label } });
+		setChromeIcon(button, icon);
+		button.disabled = this.running || (!!id && this.busyIds.has(id));
+		return button;
+	}
+
+	describeCollection(item) {
+		const parts = (item.collectionParts || [])[0] || [];
+		return parts.length ? parts[parts.length - 1] : rectoUiText("paperIntake.unfiled");
+	}
+
+	renderItem(list, item) {
+		const row = list.createEl("li", { cls: "recto-intake-pending-row" });
+		const copy = row.createDiv({ cls: "recto-intake-pending-copy" });
+		// 题名没找到、拖入的 PDF 认不出：没有链接可开，只能原地填题名或 DOI 再查，输入框常驻。
+		// T128：只有链接的待补和其他待补一样能浏览器取件、选本地 PDF、重查；输入框退成备用，默认收起，
+		// 浏览器取回的文件认不出（rejectedFile）或用户点「填写 DOI 或题名」时才展开。
+		const editable = item.reason === "title_unresolved" || !!item.localFile;
+		const linkOnly = item.reason === "link_unresolved" && !item.localFile;
+		const showEdit = editable || (linkOnly && (!!item.rejectedFile || this.editOpen.has(item.id)));
+		if (item.reason !== "title_unresolved") copy.createDiv({ cls: "recto-intake-pending-name", text: item.title || item.doi || item.arxivId });
+		// T125：正在浏览器中取件的那几篇，显示取件状态而不是当初进待补的原因（「网站拦截了自动下载」说的是 Recto 自己下载那一次）。
+		const fetching = typeof this.plugin.isPaperIntakeFetchingInBrowser === "function" && this.plugin.isPaperIntakeFetchingInBrowser(item);
+		const status = fetching ? rectoUiText("paperIntake.fetchingInBrowser") : rectoUiText(`paperIntake.reason.${item.reason}`);
+		const reason = copy.createDiv({ cls: "recto-intake-pending-reason", text: `${status} · ${this.describeCollection(item)}` });
+		const hint = fetching ? [rectoUiText("paperIntake.fetchingInBrowserHint")]
+			: [rectoUiText(`paperIntake.action.${item.reason}`), item.incompleteSources.length ? rectoUiText("paperIntake.incomplete") : ""].filter(Boolean);
+		reason.setAttribute("title", hint.join("\n"));
+		// 有展开内容（输入框或未通过核验的文件）的行，右侧按钮贴顶，不悬在中间。
+		if (showEdit || item.rejectedFile) row.addClass("has-extra");
+		if (item.rejectedFile) {
+			const rejectedRow = copy.createDiv({ cls: "recto-intake-pending-rejected" });
+			rejectedRow.createSpan({ text: rectoUiText("paperIntake.rejectedFile", { file: item.rejectedFile.split(/[\\/]/).pop() }) });
+			// 「仍然加入」「丢弃」一起换行，不被拆到两行。
+			const rejectedActions = rejectedRow.createDiv({ cls: "recto-intake-pending-rejected-actions" });
+			const useButton = rejectedActions.createEl("button", { text: rectoUiText("paperIntake.useRejected") });
+			useButton.setAttr("type", "button");
+			useButton.disabled = this.running || this.busyIds.has(item.id);
+			useButton.addEventListener("click", () => this.runAction(useButton, () => this.plugin.usePaperIntakeRejectedFile(item.id), item.id));
+			const discardButton = rejectedActions.createEl("button", { text: rectoUiText("paperIntake.discardRejected") });
+			discardButton.setAttr("type", "button");
+			discardButton.disabled = this.running || this.busyIds.has(item.id);
+			discardButton.addEventListener("click", () => this.runAction(discardButton, () => this.plugin.discardPaperIntakeRejectedFile(item.id), item.id));
+		}
+		if (showEdit) this.renderEdit(copy, item);
+		const buttons = row.createDiv({ cls: "recto-intake-pending-buttons" });
+		if (item.localFile) {
+			// T107：拖入的 PDF 已在手，不需要浏览器取件或另选文件；认不出也可以按文件直接加入。
+			const asFile = buttons.createEl("button", { cls: "recto-intake-pending-asfile", text: rectoUiText("paperIntake.addAsFile") });
+			asFile.setAttr("type", "button");
+			asFile.setAttr("title", rectoUiText("paperIntake.addAsFileHint"));
+			asFile.disabled = this.running || this.busyIds.has(item.id);
+			asFile.addEventListener("click", () => this.runAction(asFile, () => this.plugin.addPaperIntakeFileAsIs(item.id), item.id));
+			const retry = this.iconButton(buttons, "refresh-cw", rectoUiText("paperIntake.retry"), item.id);
+			retry.addEventListener("click", () => this.runAction(retry, () => this.plugin.retryPaperIntakePending([item.id]), item.id));
+		} else if (!editable) {
+			// 编辑按钮放最前：右对齐时其余图标与上下行对齐。
+			if (linkOnly && !item.rejectedFile) {
+				const label = rectoUiText(showEdit ? "paperIntake.editClose" : "paperIntake.editOpen");
+				const edit = this.iconButton(buttons, "pencil", label, item.id);
+				edit.setAttribute("aria-pressed", showEdit ? "true" : "false");
+				edit.toggleClass && edit.toggleClass("is-active", showEdit);
+				edit.addEventListener("click", () => {
+					if (this.editOpen.has(item.id)) this.editOpen.delete(item.id);
+					else { this.editOpen.add(item.id); this.focusEditId = item.id; }
+					if (this.el) this.render(this.el);
+				});
+			}
+			if (buildPaperIntakeBrowserUrl(item)) {
+				const open = this.iconButton(buttons, "external-link", rectoUiText("paperIntake.openLink"), item.id);
+				open.setAttribute("title", rectoUiText("paperIntake.openLinkHint"));
+				open.addEventListener("click", () => {
+					try { void this.plugin.fetchPaperIntakeInBrowser([item.id]); }
+					catch (error) { showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("paperIntake.failed")), { tone: "error" }); }
+				});
+			}
+			const attach = this.iconButton(buttons, "file-up", rectoUiText("paperIntake.attach"), item.id);
+			attach.addEventListener("click", () => this.runAction(attach, () => this.plugin.attachPaperIntakePdf(item.id), item.id));
+			const retry = this.iconButton(buttons, "refresh-cw", rectoUiText("paperIntake.retry"), item.id);
+			retry.addEventListener("click", () => this.runAction(retry, () => this.plugin.retryPaperIntakePending([item.id]), item.id));
+		}
+		const remove = this.iconButton(buttons, "x", rectoUiText("paperIntake.remove"), item.id);
+		remove.addEventListener("click", () => this.runAction(remove, () => this.plugin.removePaperIntakePending([item.id]), item.id));
+	}
+
+	renderEdit(copy, item) {
+		const form = copy.createDiv({ cls: "recto-intake-pending-edit" });
+		const input = form.createEl("input", { cls: "recto-intake-pending-input" });
+		input.type = "text";
+		input.value = this.drafts.has(item.id) ? this.drafts.get(item.id) : item.reason === "title_unresolved" && !item.localFile ? item.title : "";
+		input.placeholder = rectoUiText("paperIntake.editPlaceholder");
+		input.setAttribute("aria-label", rectoUiText("paperIntake.editPlaceholder"));
+		input.disabled = this.running || this.busyIds.has(item.id);
+		input.addEventListener("input", () => this.drafts.set(item.id, input.value));
+		if (this.focusEditId === item.id) {
+			this.focusEditId = "";
+			setTimeout(() => { if (typeof input.focus === "function") input.focus(); }, 0);
+		}
+		const retry = form.createEl("button", { text: rectoUiText("paperIntake.retryEdited") });
+		retry.setAttr("type", "button");
+		retry.disabled = this.running || this.busyIds.has(item.id);
+		const go = () => {
+			const text = String(input.value || "").trim();
+			if (!text) return;
+			this.drafts.delete(item.id);
+			this.runAction(retry, () => this.plugin.editPaperIntakePending(item.id, text), item.id);
+		};
+		retry.addEventListener("click", go);
+		input.addEventListener("keydown", event => {
+			if (event.key !== "Enter" || event.isComposing) return;
+			event.preventDefault();
+			go();
+		});
+	}
+
+	openMoreMenu(event, anchor) {
+		const menu = new obsidian.Menu();
+		menu.addItem(item => item.setTitle(rectoUiText("paperIntake.checkInbox")).setIcon("folder-search").onClick(() => this.runAction(null, async () => {
+			// T125：已配置的文件夹里没有本批文件而别处有时，也会改到那里。
+			await this.plugin.detectPaperIntakeInbox();
+			const result = await this.plugin.checkPaperIntakeInbox({ force: true });
+			if (result && !result.skipped && !result.matched) showRectoNotice(rectoUiText("paperIntake.inboxNone"), { tone: "attention" });
+		})));
+		menu.addItem(item => item.setTitle(rectoUiText("paperIntake.cleanInbox")).setIcon("trash-2").onClick(() => this.runAction(null, async () => {
+			const result = await this.plugin.cleanPaperIntakeInbox();
+			showRectoNotice(rectoUiText("paperIntake.inboxCleaned", { count: result.cleaned }), { tone: "success" });
+		})));
+		showHubContextMenu(menu, event && event.detail === 0 ? null : event, anchor);
+	}
+
+	async runAction(button, action, id = "") {
+		if (this.running) return;
+		this.running = true;
+		if (id) this.busyIds.add(id);
+		if (button) button.disabled = true;
+		try { await action(); }
+		catch (error) { showRectoNotice(getUserFacingErrorMessage(error, rectoUiText("paperIntake.failed")), { tone: "error" }); }
+		finally {
+			this.running = false;
+			if (id) this.busyIds.delete(id);
+			if (this.el && this.plugin.getPaperIntakePending().length) this.render(this.el);
+		}
 	}
 }
 
@@ -23674,8 +29022,6 @@ class RectoAccountModal extends obsidian.Modal {
 		this.checkoutTimer = null;
 		this.checkoutAttempt = 0;
 		this.checkoutPolling = false;
-		// 月付/年付只是这一次看的视角，不值得进 data.json；关掉弹窗回到默认即可。
-		this.planCycle = "monthly";
 	}
 
 	onOpen() {
@@ -23863,20 +29209,22 @@ class RectoAccountModal extends obsidian.Modal {
 	// 登录、注册、找回密码全在浏览器的账号网页上完成，密码与一次性凭据从不进插件。
 	renderSignedOut(container, view) {
 		const waiting = this.describeBrowserLoginWaiting();
-		const box = container.createDiv({ cls: "recto-account-browser" });
+		const box = container.createDiv({ cls: `recto-account-browser${waiting.active ? " is-waiting" : ""}` });
 		const intro = box.createDiv({ cls: "recto-account-browser-intro" });
 		// 全中文界面里不留英文 kicker（品牌字 Recto 除外，它是名字不是文案）。
-		intro.createDiv({ cls: "recto-account-kicker", text: rectoUiText(waiting.active ? "account.browserWaitingTitle" : "account.browserAccountTitle") });
+		intro.createDiv({ cls: "recto-account-kicker", text: rectoUiText("account.browserAccountTitle") });
 		intro.createEl("h3", {
 			cls: "recto-account-browser-title",
 			text: rectoUiText(waiting.active ? "account.browserReturn" : "account.browserIntro"),
 		});
-		intro.createDiv({
-			cls: "recto-account-browser-copy",
-			text: waiting.active
-				? rectoUiText("account.browserWaitingDesc")
-				: rectoUiText("account.browserDesc"),
-		});
+		// 等待态只留一行状态（带脉冲点），不再重复「正在等待浏览器」的说明段与页脚（T110）。
+		if (waiting.active) {
+			const status = intro.createDiv({ cls: "recto-account-browser-status" });
+			status.createSpan({ cls: "recto-account-browser-pulse" });
+			status.createSpan({ text: rectoUiText("account.browserWaiting") });
+		} else {
+			intro.createDiv({ cls: "recto-account-browser-copy", text: rectoUiText("account.browserDesc") });
+		}
 		const folio = box.createDiv({ cls: "recto-account-folio", attr: { "aria-hidden": "true" } });
 		const source = folio.createDiv({ cls: "recto-account-folio-page is-source" });
 		source.createSpan({ text: "SOURCE" });
@@ -23888,11 +29236,6 @@ class RectoAccountModal extends obsidian.Modal {
 		sense.createDiv({ cls: "recto-account-folio-line is-long" });
 		sense.createDiv({ cls: "recto-account-folio-line" });
 		sense.createDiv({ cls: "recto-account-folio-mark" });
-		if (waiting.active) {
-			const status = box.createDiv({ cls: "recto-account-browser-status" });
-			status.createSpan({ cls: "recto-account-browser-pulse" });
-			status.createSpan({ text: rectoUiText("account.browserWaiting") });
-		}
 		// 过期与从没登录过长得一样，不说一句用户会以为自己被莫名其妙登出了。
 		if (view.sessionExpired) {
 			box.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.sessionExpiredDesc") });
@@ -23909,8 +29252,11 @@ class RectoAccountModal extends obsidian.Modal {
 			});
 		}, "mod-cta");
 		if (waiting.active) {
+			// 等待态的兜底操作（手动接管、复制链接、取消）降为一组文字链接，只留一个主按钮（T110）。
+			// DOM 上排在主按钮之后，打开面板时焦点落在主按钮；视觉上由 CSS order 摆到左侧。
+			const fallbacks = actions.createDiv({ cls: "recto-account-quiet-actions" });
 			// 深链没注册（Linux、便携安装、沙盒）时，用户手点这个也能把登录接管过来。
-			this.createButton(actions, rectoUiText("account.browserLoggedIn"), () => {
+			this.createButton(fallbacks, rectoUiText("account.browserLoggedIn"), () => {
 				// 手动检查同时解封轮询：网络恢复后不该还要用户关掉弹窗重开。
 				this.loginAttempt = 0;
 				this.loginBlocked = false;
@@ -23931,7 +29277,12 @@ class RectoAccountModal extends obsidian.Modal {
 					return false;
 				});
 			});
-			this.createButton(actions, rectoUiText("account.cancel"), () => {
+			if (waiting.loginUrl) {
+				// 浏览器打不开时的最后一条路：把地址复制到别的设备上打开，轮询照样能接管。
+				this.createButton(fallbacks, rectoUiText("account.copyLoginLink"), () =>
+					this.copyAccountText(waiting.loginUrl, rectoUiText("account.loginLinkCopied"), rectoUiText("account.loginLinkCopyFailed")), "", { independent: true });
+			}
+			this.createButton(fallbacks, rectoUiText("account.cancel"), () => {
 				this.plugin.clearPendingBrowserLogin();
 				this.loginAttempt = 0;
 				this.loginBlocked = false;
@@ -23939,17 +29290,6 @@ class RectoAccountModal extends obsidian.Modal {
 				this.render();
 			});
 		}
-		if (waiting.active && waiting.loginUrl) {
-			// 浏览器打不开时的最后一条路：把地址复制到别的设备上打开，轮询照样能接管。
-			this.createButton(actions, rectoUiText("account.copyLoginLink"), () =>
-				this.copyAccountText(waiting.loginUrl, rectoUiText("account.loginLinkCopied"), rectoUiText("account.loginLinkCopyFailed")), "", { independent: true });
-		}
-		box.createDiv({
-			cls: "recto-account-browser-foot",
-			text: waiting.active
-				? rectoUiText("account.browserReturnHint")
-				: rectoUiText("account.browserOnlyHint"),
-		});
 		if (this.loginNote) box.createDiv({ cls: "recto-account-hint", text: this.loginNote });
 	}
 
@@ -24089,11 +29429,8 @@ class RectoAccountModal extends obsidian.Modal {
 	}
 
 	renderSignedIn(container, view) {
-		// T87-1-A：两个模式的余额区分开渲染——额度制不包卡片盒（整页去盒中盒），
-		// 返回的宿主承接其后的验证行与错误行。
-		const creditHost = view.creditPackMode
-			? this.renderCreditPackBalance(container, view)
-			: this.renderMembershipBalance(container, view);
+		// T87-1-A：额度制余额不包卡片盒（整页去盒中盒），返回的宿主承接其后的验证行与错误行。
+		const creditHost = this.renderCreditPackBalance(container, view);
 		if (!view.emailVerified) {
 			const row = creditHost.createDiv({ cls: "recto-account-verify-row" });
 			row.createSpan({ cls: "recto-account-hint", text: rectoUiText("account.emailUnverified") });
@@ -24112,19 +29449,7 @@ class RectoAccountModal extends obsidian.Modal {
 		const support = supportHost.createEl("button", { cls: "recto-account-support-link", text: rectoUiText("settings.feedback") });
 		support.setAttr("type", "button");
 		support.addEventListener("click", () => this.plugin.openHelpFeedbackModal());
-		if (view.inviteCode) {
-			const invite = footer.createDiv({ cls: "recto-account-invite" });
-			invite.createSpan({ cls: "recto-account-invite-label", text: rectoUiText("account.inviteCode") });
-			invite.createSpan({ cls: "recto-account-invite-code", text: view.inviteCode });
-			const copyBtn = this.createButton(invite, rectoUiText("hub.copy"), () =>
-				this.copyAccountText(view.inviteCode, rectoUiText("account.inviteCopied"), rectoUiText("account.clipboardUnavailable")),
-				"recto-account-invite-copy", { independent: true });
-			copyBtn.setAttr("title", view.creditPackMode
-				? rectoUiText("account.invitePagesHint")
-				: rectoUiText("account.inviteTrialHint"));
-		} else {
-			footer.createDiv({ cls: "recto-account-invite is-empty" });
-		}
+		// T123：邀请码从页脚中格搬到余额条右上角的邀请角标里，页脚只剩左右两格。
 		const logout = footer.createDiv({ cls: "recto-account-footer-end" });
 		this.createButton(logout, rectoUiText("account.signOut"), () => {
 			void this.runAction(rectoUiText("account.signOut"), async () => {
@@ -24139,16 +29464,21 @@ class RectoAccountModal extends obsidian.Modal {
 	// （一行，2026-09-03 拍板），不包卡片盒、不加内边框。
 	// 冻结格已删除：预扣只体现在可用页数下降，失败退回时数字自然回升。
 	// 说明（卖点 + 计价规则）全部收进标签旁「?」的悬浮（三轮拍板），页面不留说明行。
+	// T109（2026-11-20 用户选定方案 A）：余额做成淡染信息条——左边标签 + 大数字。
+	// 「长期有效，可叠加」用户看过后删掉（同日），卖点与计价规则只在「?」悬浮里。
+	// T123 第二轮（2026-11-21 用户删）：右侧「约 N 篇普通论文」去掉，右上角只留邀请角标。
 	renderCreditPackBalance(container, view) {
 		const credits = container.createDiv({ cls: "recto-account-credits" });
 		const pages = view.translationPages || { known: false, availableText: "—", tone: "unknown" };
-		const available = credits.createDiv({ cls: "recto-account-page-balance-item" });
+		const banner = credits.createDiv({ cls: "recto-account-balance-banner" });
+		const available = banner.createDiv({ cls: "recto-account-page-balance-item" });
 		const label = available.createDiv({ cls: "recto-account-page-label" });
 		label.createSpan({ cls: "recto-account-meter-label", text: rectoUiText("account.availablePagesLabel") });
 		const help = label.createSpan({ cls: "recto-account-pack-help rc-icon" });
 		setChromeIcon(help, "circle-help");
 		help.setAttr("title", rectoUiText("account.packHelp"));
 		available.createEl("strong", { cls: `recto-account-page-value is-${pages.tone}`, text: rectoUiText("account.pagesCount", { count: pages.availableText }) });
+		if (view.inviteCode) this.renderInviteBadge(banner, view.inviteCode);
 		if (!pages.known) {
 			credits.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.pagesReadFailed") });
 		} else if (view.creditsEmpty) {
@@ -24157,38 +29487,24 @@ class RectoAccountModal extends obsidian.Modal {
 		return credits;
 	}
 
-	// 旧会员模式继续诚实显示本期百分比；切换后不会进入这一支。
-	renderMembershipBalance(container, view) {
-		const card = container.createDiv({ cls: "recto-account-card" });
-		const credits = card.createDiv({ cls: "recto-account-credits" });
-		const meter = view.meter || { known: false, percent: 0, heldPercent: 0, text: "—", tone: "unknown" };
-		const top = credits.createDiv({ cls: "recto-account-meter-top" });
-		top.createSpan({ cls: "recto-account-meter-label", text: rectoUiText("account.remainingCreditsLabel") });
-		top.createSpan({ cls: `recto-account-meter-value is-${meter.tone}`, text: meter.text });
-		const track = credits.createDiv({ cls: `recto-account-meter-track${meter.known ? "" : " is-unknown"}` });
-		const fill = track.createDiv({ cls: `recto-account-meter-fill is-${meter.tone}` });
-		fill.style.width = `${meter.known ? meter.percent : 0}%`;
-		if (meter.known && meter.heldPercent > 0) {
-			const held = track.createDiv({ cls: "recto-account-meter-held" });
-			held.style.width = `${Math.min(100 - meter.percent, meter.heldPercent)}%`;
-			held.style.insetInlineStart = `${meter.percent}%`;
+	// T123（2026-11-21 用户选定方案 A）：邀请入口做成余额条右上角的角标。静息写「免费领 60 页」，
+	// 悬停或键盘聚焦时这行上滑离场、「邀请好友」从下方滑入（两面叠在同一格，CSS 过渡）。
+	// 第二轮（同日用户改）：点击直接复制邀请码并弹提示，不再展开邀请卡、不提供邀请语。
+	renderInviteBadge(host, code) {
+		// 不走 createButton：它按文字认「进行中」，空文字会误配；复制本就独立于账号请求，忙时也可点。
+		const badge = host.createEl("button", { cls: "recto-account-invite-badge", attr: { type: "button" } });
+		badge.addEventListener("click", () =>
+			this.copyAccountText(code, rectoUiText("account.inviteCopied"), rectoUiText("account.clipboardUnavailable")));
+		badge.setAttr("aria-label", rectoUiText("account.copyInvite"));
+		badge.setAttr("title", rectoUiText("account.invitePagesHint"));
+		for (const [face, icon, key] of [["is-offer", "gift", "account.inviteOffer"], ["is-refer", "user-plus", "account.inviteRefer"]]) {
+			const el = badge.createSpan({ cls: `recto-account-invite-face ${face}`, attr: { "aria-hidden": "true" } });
+			setChromeIcon(el.createSpan({ cls: "recto-account-invite-icon rc-icon" }), icon);
+			el.createSpan({ text: rectoUiText(key) });
 		}
-		if (view.membershipLine) {
-			credits.createDiv({
-				cls: `recto-account-membership${view.membership && !view.membership.active ? " is-lapsed" : ""}`,
-				text: view.membershipLine,
-			});
-		}
-		const footNote = meter.known
-			? (meter.heldPercent > 0 ? rectoUiText("account.heldProcessing", { percent: meter.heldPercent }) : "")
-			: rectoUiText("account.creditsReadFailed");
-		if (footNote) credits.createDiv({ cls: "recto-account-hint", text: footNote });
-		if (view.creditsEmpty) card.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.creditsDepleted") });
-		return card;
 	}
 
-	// T82-A-A：三档横排（Basic / Pro / Max）+ 月付年付切换。选中只是本地状态，
-	// 真正的下单在网页上完成——插件这边只负责把用户和正确的套餐一起送过去。
+	// T87-1-A：三档额度包卡片。真正的下单在网页上完成——插件这边只负责把用户和正确的套餐一起送过去。
 	renderPlans(container, view) {
 		const box = container.createDiv({ cls: "recto-account-purchase" });
 		if (!view.plans.length) {
@@ -24202,108 +29518,39 @@ class RectoAccountModal extends obsidian.Modal {
 			return;
 		}
 
-		const cards = buildBackendPlanCatalog(view.plans, this.planCycle, view.creditsPerPaper, view.billingMode);
+		const cards = buildBackendCreditPackCatalog(view.plans);
 		if (!cards.length) {
 			// 后端返回的套餐一个都认不出来（code 约定对不上）时，宁可说清楚，也不要画一片空白。
 			box.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.plansUnavailable") });
 			return;
 		}
 
-		// 下过单就留一行，直到付到账、超时、或关掉弹窗。
-		// 不轮询订单（认领密钥在网页 fragment 里，插件从不持有，T82-A 决策 2 仍成立）；
-		// 只反复读 /api/v1/me，和「关掉再打开」是同一条取数链路。
-		// 付到账之后不另写一句「已生效」——进度条和套餐角标自己会变，那就是刷新。
-		if (this.checkoutStarted && !this.checkoutPaid) {
-			const waiting = decideCheckoutBillingPoll(true, this.checkoutAttempt).poll;
-			box.createDiv({
-				cls: "recto-account-hint",
-				text: waiting
-					? rectoUiText("account.paymentWaiting")
-					: rectoUiText("account.paymentTimeout"),
-			});
+		// 下过单后在后台反复读 /api/v1/me，付到账余额自己会变。等待期间不再写「正在等待浏览器完成付款」
+		// （T109，用户删掉）；只有刷新次数用完仍没到账时留一行超时说明。
+		// 不轮询订单（认领密钥在网页 fragment 里，插件从不持有，T82-A 决策 2 仍成立）。
+		if (this.checkoutStarted && !this.checkoutPaid && !decideCheckoutBillingPoll(true, this.checkoutAttempt).poll) {
+			box.createDiv({ cls: "recto-account-hint", text: rectoUiText("account.paymentTimeout") });
 		}
 
-		// 目录里真有年付档才给切换器——只有免费档时摆一个月/年开关是假的。
-		// 额度包的卖点与计价规则全部收进余额标签旁的「?」悬浮（T87-1-A），购买区直接是卡片。
-		if (!view.creditPackMode && view.plans.some(plan => resolveBackendPlanCycle(plan.code) === "yearly")) {
-			this.renderPlanCycleSwitch(box, view);
-		}
-
-		// 额度包走精简卡片（T87-1-A 方案 B）：复用会员网格的等宽三列与窄屏纵排规则，
-		// 卡内没有图标、kicker、特性列表与分割线。
-		if (view.creditPackMode) {
-			const grid = box.createDiv({ cls: "recto-account-plans" });
-			grid.style.gridTemplateColumns = `repeat(${Math.min(cards.length, 3)}, minmax(0, 1fr))`;
-			for (const card of cards) this.renderPackCard(grid, card);
-			return;
-		}
-
-		const grid = box.createDiv({ cls: "recto-account-plans" });
+		// 额度包的卖点与计价规则全部收进余额标签旁的「?」悬浮（T87-1-A），购买区直接是卡片：
+		// 精简卡片（方案 B）等宽三列、窄屏纵排，卡内没有图标、kicker、特性列表与分割线。
+		// T109：标题行 + 三张卡（推荐角标骑在卡片上沿）。原来每张卡各写一遍的「税费在结账时计算」
+		// 先收成底部一行，用户看过后整行删掉（2026-11-20）——税费由付款页自己说明。
+		box.addClass("is-pack");
+		box.createDiv({ cls: "recto-account-pack-heading", text: rectoUiText("account.topUp") });
+		const grid = box.createDiv({ cls: "recto-account-plans is-pack" });
 		// 列数跟着真实档数走。写死三列的话，后端只返回一档时那一档会缩在左边 1/3、右边空两格。
 		grid.style.gridTemplateColumns = `repeat(${Math.min(cards.length, 3)}, minmax(0, 1fr))`;
-		for (const card of cards) {
-			this.renderPlanCard(grid, card, view.membership);
-		}
-	}
-
-	// 一张套餐卡。结构照定价页的通行顺序：图标 → 档名 → 定位 → 价格 → 按钮 → 分隔线 → 特性。
-	// 按钮直接就在卡片里，不再是「先选中卡片、再点底下一个购买按钮」那两步。
-	// T82-A-R：按钮文案与角标由 describeBackendPlanAction 定，这里只负责画。
-	renderPlanCard(grid, card, membership) {
-		const action = describeBackendPlanAction(card, membership);
-		const owned = !!action.badge && card.kind !== "credit-pack";
-		const cell = grid.createDiv({
-			cls: `recto-account-plan is-${card.tier}${owned ? " is-owned" : ""}`,
-		});
-		cell.dataset.accountPlan = card.code;
-		// 角标挂在卡片右上角，不占内容位——「当前套餐」是状态标注，不该把价格或按钮挤走。
-		if (action.badge) cell.createDiv({ cls: "recto-account-plan-badge", text: action.badge });
-
-		const mark = cell.createDiv({ cls: "recto-account-plan-mark" });
-		mark.innerHTML = card.icon;
-		cell.createDiv({ cls: "recto-account-plan-name", text: card.label });
-		cell.createDiv({ cls: "recto-account-plan-kicker", text: card.kicker });
-
-		const price = cell.createDiv({ cls: "recto-account-plan-price" });
-		price.createSpan({ cls: "recto-account-plan-amount", text: card.price });
-		if (card.period) price.createSpan({ cls: "recto-account-plan-period", text: card.period });
-
-		// 请求期间所有卡片一起置灰，看不出是哪张在请求（下单超时 30 秒）。这里复用 createButton
-		// 那套 pendingLabel + is-pending，让正在请求的那一张自己显示「…」。
-		const pending = this.pendingLabel === action.label;
-		const cta = cell.createEl("button", {
-			cls: `recto-account-plan-cta${action.disabled ? "" : " mod-cta"}`,
-			text: pending ? `${action.label}…` : action.label,
-		});
-		cta.setAttr("type", "button");
-		if (pending) cta.addClass("is-pending");
-		// T84-A-A：买不了的档把原因挂 title，按钮上只留一句短的。理由比「不能买」有用得多。
-		if (action.hint) cta.setAttr("title", action.hint);
-		if (action.disabled || this.busy) {
-			cta.disabled = true;
-		} else {
-			cta.addEventListener("click", () => { void this.startPlanCheckout(card, action); });
-		}
-
-		cell.createDiv({ cls: "recto-account-plan-rule" });
-		// 「约」字在文案里，完整口径挂 title——底下那行灰色小字太占观感，但估算的前提不能不交代。
-		const quota = cell.createDiv({ cls: "recto-account-plan-quota", text: card.papersText });
-		quota.setAttr("title", card.kind === "credit-pack"
-			? rectoUiText("account.packEstimateHint")
-			: rectoUiText("account.planEstimateHint"));
-		const list = cell.createEl("ul", { cls: "recto-account-plan-feats" });
-		for (const feature of card.features) list.createEl("li", { text: feature });
+		for (const card of cards) this.renderPackCard(grid, card);
 	}
 
 	// T82-A：支付页地址由后端现给（它自己知道账号网页域名），插件不再拼 URL、
 	// 也不再缓存域名。地址的 fragment 里带一次性认领密钥，打开即用完，绝不落盘。
-	// 续期与换档走的是同一个下单接口，语义差异（顺延 / 折算）由后端按档位判定。
 	// 不轮询订单（T82-A 决策 2）：认领密钥在网页 fragment 里，插件从不持有。
 	// 付完款网页自己会显示「已到账」；插件这边反复读 /api/v1/me，
-	// 会员或额度一变就停表重画——不必再关开一次面板。
-	// T87-1-A 起会员卡片与额度包行共用这一个动作。
-	startPlanCheckout(card, action) {
-		return this.runAction(action.label, async () => {
+	// 额度一变就停表重画——不必再关开一次面板。
+	startPlanCheckout(card, label) {
+		return this.runAction(label, async () => {
 			this.plugin.settings.backendSelectedPlanCode = card.code;
 			const url = await this.plugin.startBackendCheckout(card.code, { timeout: 30000, paymentProvider: card.paymentProvider || "" });
 			this.plugin.openExternalUrl(url);
@@ -24316,54 +29563,33 @@ class RectoAccountModal extends obsidian.Modal {
 
 	// T87-1-A 方案 B：一张额度包卡片——页数、价格、「约 N 篇」、按钮，仅此四件；推荐档带
 	// 角标与品牌色描边。请求中的那张卡按钮自己变「购买…」——runAction 的标签仍用
-	// describeBackendPlanAction 的唯一文案（「购买 400 页」）区分是哪张卡在请求。
+	// 每张卡唯一的文案（「购买 400 页」）区分是哪张卡在请求。
 	renderPackCard(grid, card) {
-		const action = describeBackendPlanAction(card, null);
+		const label = rectoUiText("plan.buy", { plan: card.label });
 		const cell = grid.createDiv({ cls: `recto-account-pack-card${card.featured ? " is-featured" : ""}` });
-		if (card.badge) cell.createDiv({ cls: "recto-account-plan-badge", text: card.badge });
+		// T109：角标骑在卡片上沿正中，不占内容位，卡片再窄也压不到页数。
+		if (card.badge) cell.createDiv({ cls: "recto-account-pack-ribbon", text: card.badge });
 		cell.createDiv({ cls: "recto-account-pack-pages", text: card.label });
 		cell.createSpan({ cls: "recto-account-pack-price", text: card.price });
-		if (card.taxNote) cell.createSpan({ cls: "recto-account-pack-tax", text: card.taxNote });
+		// 单价与「省 X%」各自不断行，卡片窄（英文、三卡并排）时「省 X%」整体折到下一行，不溢出卡片。
+		if (card.unitPriceText) {
+			const unit = cell.createDiv({ cls: "recto-account-pack-unit" });
+			unit.createSpan({ text: card.unitPriceText });
+			if (card.savingText) unit.createSpan({ cls: "recto-account-pack-save", text: card.savingText });
+		}
 		cell.createSpan({ cls: "recto-account-pack-papers", text: card.papersText });
-		const pending = this.pendingLabel === action.label;
+		const pending = this.pendingLabel === label;
+		// 只有推荐档是实心主按钮，另两档用普通按钮，三个一样的红按钮看不出主次。
 		const cta = cell.createEl("button", {
-			cls: `recto-account-pack-cta${action.disabled ? "" : " mod-cta"}`,
+			cls: `recto-account-pack-cta${card.featured ? " mod-cta" : ""}`,
 			text: rectoUiText(pending ? "account.buyPending" : "account.buy"),
 		});
 		cta.setAttr("type", "button");
 		if (pending) cta.addClass("is-pending");
-		if (action.hint) cta.setAttr("title", action.hint);
-		if (action.disabled || this.busy) {
+		if (this.busy) {
 			cta.disabled = true;
 		} else {
-			cta.addEventListener("click", () => { void this.startPlanCheckout(card, action); });
-		}
-	}
-
-	// 胶囊分段控件：选中的一段浮起来，年付那段挂一枚由真实价差算出的省钱徽章。
-	renderPlanCycleSwitch(box, view) {
-		const saving = describeBackendPlanYearlySaving(view.plans, "pro");
-		const wrap = box.createDiv({ cls: "recto-account-cycle-wrap" });
-		const group = wrap.createDiv({ cls: "recto-account-cycle" });
-		group.setAttr("role", "group");
-		group.setAttr("aria-label", rectoUiText("account.billingCycle"));
-		const options = [
-			{ id: "monthly", label: rectoUiText("account.monthly"), badge: "" },
-			{ id: "yearly", label: rectoUiText("account.yearly"), badge: saving && saving.months >= 1 ? rectoUiText("account.saveMonths", { count: saving.months }) : "" },
-		];
-		for (const option of options) {
-			const active = this.planCycle === option.id;
-			const button = group.createEl("button", { cls: "recto-account-cycle-option" });
-			button.setAttr("type", "button");
-			button.setAttr("aria-pressed", String(active));
-			button.toggleClass("is-active", active);
-			button.createSpan({ text: option.label });
-			if (option.badge) button.createSpan({ cls: "recto-account-cycle-badge", text: option.badge });
-			button.addEventListener("click", () => {
-				if (this.planCycle === option.id) return;
-				this.planCycle = option.id;
-				this.render();
-			});
+			cta.addEventListener("click", () => { void this.startPlanCheckout(card, label); });
 		}
 	}
 }
@@ -24614,6 +29840,172 @@ class MultiPdfChoiceModal extends obsidian.Modal {
 }
 
 
+// T124：论文改名预览与执行。批量（设置「应用到已有论文」/ Hub 多选）只列名字会变的论文；
+// 单篇（Hub 右键一篇）总列出这一篇，名字可手改。执行时弹窗不关，显示进度、可停止。
+class RectoPaperRenameModal extends obsidian.Modal {
+	constructor(plugin, recordIds, options = {}) {
+		super(plugin.app);
+		this.plugin = plugin;
+		this.recordIds = recordIds;
+		this.single = options.single === true && recordIds.length === 1;
+		this.rows = [];
+		this.edits = new Map();
+		this.unchecked = new Set();
+		this.running = false;
+		this.finished = null;
+	}
+
+	onOpen() {
+		this.plugin.trackUiModal?.(this);
+		this.modalEl?.addClass?.("recto-ui");
+		this.modalEl?.addClass?.("recto-rename-modal");
+		if (typeof this.setTitle === "function") this.setTitle(rectoUiText("rename.title"));
+		this.plan();
+		this.render();
+	}
+
+	onClose() {
+		this.abort?.abort();
+		this.contentEl.empty();
+	}
+
+	plan() {
+		const overrides = Object.fromEntries(this.edits);
+		this.rows = this.plugin.planPaperRenames(this.recordIds, overrides);
+		if (this.single && !this.rows.length) {
+			const info = this.plugin.folderMap?.[this.recordIds[0]];
+			if (info?.stem) this.rows = [{ recordId: this.recordIds[0], oldStem: info.stem, newStem: info.stem, title: info.zoteroTitle || info.stem, blocker: "" }];
+		}
+	}
+
+	selectedRows() {
+		return this.rows.filter(row => !row.blocker && row.newStem && row.newStem !== row.oldStem && !this.unchecked.has(row.recordId));
+	}
+
+	render() {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("recto-ui");
+		contentEl.addClass("recto-rename-content");
+		const ready = this.rows.filter(row => !row.blocker);
+		const blocked = this.rows.filter(row => row.blocker);
+		if (!this.rows.length) {
+			contentEl.createEl("p", { cls: "recto-rename-intro", text: rectoUiText("rename.none") });
+			this.renderActions(contentEl, false);
+			return;
+		}
+		contentEl.createEl("p", { cls: "recto-rename-intro",
+			text: this.single ? rectoUiText("rename.introSingle") : rectoUiText("rename.intro", { count: ready.length }) });
+		const list = contentEl.createDiv({ cls: "recto-rename-list" });
+		for (const row of [...ready, ...blocked]) this.renderRow(list, row);
+		this.statusEl = contentEl.createDiv({ cls: "recto-rename-status" });
+		if (blocked.length && !this.single) this.statusEl.setText(rectoUiText("rename.skipped", { count: blocked.length }));
+		this.renderActions(contentEl, true);
+	}
+
+	renderRow(list, row) {
+		const item = list.createDiv({ cls: "recto-rename-row" });
+		if (row.blocker) item.addClass("is-blocked");
+		if (!this.single) {
+			const check = item.createEl("input", { type: "checkbox", cls: "recto-rename-check" });
+			check.checked = !row.blocker && !this.unchecked.has(row.recordId);
+			check.disabled = !!row.blocker || this.running;
+			check.setAttr("aria-label", row.title);
+			check.addEventListener("change", () => {
+				if (check.checked) this.unchecked.delete(row.recordId); else this.unchecked.add(row.recordId);
+				this.updateStartButton();
+			});
+		}
+		const names = item.createDiv({ cls: "recto-rename-names" });
+		names.createDiv({ cls: "recto-rename-old", text: row.oldStem });
+		const target = names.createDiv({ cls: "recto-rename-target" });
+		const arrow = target.createSpan({ cls: "rc-icon recto-rename-arrow" });
+		setChromeIcon(arrow, "corner-down-right");
+		if (row.blocker) {
+			target.createSpan({ cls: "recto-rename-blocker", text: rectoUiText(`rename.blocker.${row.blocker}`) });
+			return;
+		}
+		const input = target.createEl("input", { type: "text", cls: "recto-rename-input" });
+		input.value = row.newStem;
+		input.maxLength = PAPER_NAMING_MAX_LENGTH;
+		input.disabled = this.running;
+		input.setAttr("aria-label", rectoUiText("rename.newName"));
+		input.addEventListener("change", () => {
+			const value = input.value.trim();
+			if (!value) { input.value = row.newStem; return; }
+			this.edits.set(row.recordId, value);
+			this.plan();
+			this.render();
+		});
+		row.inputEl = input;
+	}
+
+	renderActions(contentEl, canRun) {
+		const actions = contentEl.createDiv({ cls: "recto-rename-actions" });
+		const cancel = actions.createEl("button", { text: rectoUiText(this.finished ? "rename.done" : "dialog.cancel") });
+		cancel.setAttr("type", "button");
+		cancel.addEventListener("click", () => {
+			if (this.running) { this.abort?.abort(); cancel.disabled = true; return; }
+			this.close();
+		});
+		this.cancelButton = cancel;
+		if (!canRun || this.finished) return;
+		const start = actions.createEl("button", { cls: "mod-cta" });
+		start.setAttr("type", "button");
+		start.addEventListener("click", () => void this.run());
+		this.startButton = start;
+		this.updateStartButton();
+		if (!this.single) start.focus();
+	}
+
+	updateStartButton() {
+		if (!this.startButton) return;
+		const count = this.selectedRows().length;
+		this.startButton.setText(this.single ? rectoUiText("rename.start") : rectoUiText("rename.startCount", { count }));
+		this.startButton.disabled = this.running || count === 0;
+	}
+
+	async run() {
+		const rows = this.selectedRows();
+		if (!rows.length || this.running) return;
+		this.running = true;
+		this.abort = new AbortController();
+		for (const el of this.contentEl.querySelectorAll("input")) el.disabled = true;
+		this.updateStartButton();
+		this.startButton?.addClass("is-loading");
+		this.cancelButton?.setText(rectoUiText("rename.stop"));
+		this.statusEl?.setText(rectoUiText("rename.progress", { done: 0, total: rows.length }));
+		let results = [];
+		try {
+			results = await this.plugin.renamePapers(rows, {
+				signal: this.abort.signal,
+				onProgress: (done, total) => this.statusEl?.setText(rectoUiText("rename.progress", { done, total })),
+			});
+		} catch (error) {
+			results = rows.map(row => ({ ...row, status: "failed", error: getSanitizedErrorMessage(error) }));
+		}
+		this.running = false;
+		this.finished = results;
+		const renamed = results.filter(item => item.status === "renamed").length;
+		const failed = results.filter(item => item.status === "failed");
+		const message = rectoUiText("rename.result", { renamed })
+			+ (failed.length ? rectoUiText("rename.resultFailed", { count: failed.length, error: failed[0].error || "" }) : "");
+		showRectoNotice(message, { tone: failed.length ? "attention" : "success" });
+		if (!failed.length && this.single) { this.close(); return; }
+		this.contentEl.empty();
+		this.contentEl.createEl("p", { cls: "recto-rename-intro", text: message });
+		if (failed.length) {
+			const list = this.contentEl.createEl("ul", { cls: "recto-rename-failures" });
+			for (const item of failed.slice(0, 20)) list.createEl("li", { text: `${item.oldStem}：${item.error || ""}` });
+		}
+		this.renderActions(this.contentEl, false);
+	}
+
+	refreshUiLanguage() {
+		if (this.running) return;
+		refreshRectoModalPreservingInteraction(this, () => this.render());
+	}
+}
 // ═══════════════════════════════════════════════════════════════════
 // Status Bar Progress (non-blocking)
 // ═══════════════════════════════════════════════════════════════════
@@ -25394,7 +30786,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 	/**
 	 * 「论文库文件夹」那一行的定点刷新（不重绘整页，理由同「待确认」那一行）。
 	 *
-	 * **配好且指得对时收成只读**：改名一律去 Obsidian 文件浏览器做——它会连正文里的图片
+	 * **配好且指得对时收成文件夹按钮**（T131；原先是只读输入框）：改名一律去 Obsidian 文件浏览器做——它会连正文里的图片
 	 * wikilink 一起更新（`![[<base>/<stem>/images/x.png]]` 带着基础目录名），插件这边由
 	 * `trackBaseFolderRename` 跟着改设置，用户不用两头跑。
 	 *
@@ -25410,8 +30802,12 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		const configured = !!String(this.plugin.settings.baseFolder || "").trim();
 		const locked = configured && !mismatch;
 		text.setValue(this.plugin.settings.baseFolder || "");
-		text.inputEl.readOnly = locked;
-		text.inputEl.toggleClass("is-locked", locked);
+		// 锁定时只显示文件夹按钮，输入框藏起来（不再是「看着能改、其实只读」的框）。
+		text.inputEl.toggleClass("is-hidden", locked);
+		if (this.baseFolderChip) {
+			this.baseFolderChip.toggleClass("is-hidden", !locked);
+			this.baseFolderChipLabel.setText(this.plugin.settings.baseFolder || "");
+		}
 		if (setting.settingEl && setting.settingEl.toggleClass) {
 			setting.settingEl.toggleClass("is-error", !!mismatch);
 		}
@@ -25475,6 +30871,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		);
 		this.renderReaderTheme(this.openFoldableSection(c, rectoUiText("settings.readingExperience"), null, "readerOpen", true), s);
 		this.renderRibbonButtons(this.openFoldableSection(c, rectoUiText("settings.sidebarButtons"), null, "ribbonOpen", true), s);
+		// T104：「添加论文」排在「库外文件」前面：它是论文库的主入口之一，比库外转换常用。
+		this.renderPaperIntakeSettings(this.openFoldableSection(c, rectoUiText("settings.paperIntake"), null, "paperIntakeOpen", true), s);
 		// T86-D-B：库外 PDF 与翻译 Markdown 合成一节。不塞进高级设置——
 		// 那是 Hub 之外仅有的转换入口，和「侧边栏 / 后处理」不是一类东西。
 		// 排在侧边栏后面：先看到自己常用的入口，再用得到时才打开这一节。
@@ -25679,6 +31077,177 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				.onChange(async value => { s.markdownTranslationWriteAnchors = value; await this.plugin.save(); }));
 	}
 
+	// T100：添加论文。隐私说明放在第一行——这一节的两个设置都关乎「把什么发给谁、读哪里的文件」。
+	// T104：AI 助手入库、浏览器插件（安装说明按需展开）、取件浏览器、收件箱。入库后清理与 Unpaywall 联系邮箱固定，不给开关。
+	// 查询去向的披露留在「添加论文」弹窗里（真正发出查询的地方），设置页不重复。
+	renderPaperIntakeSettings(container, s) {
+		const t = key => rectoUiText(key);
+
+		const agentSetting = new obsidian.Setting(container).setName(t("settings.paperIntakeAgent")).setDesc(t("settings.paperIntakeAgentDesc"));
+		bindRectoInlineFeedback(this, "paper-intake-agent", agentSetting.descEl);
+		const setAgentEnabled = async value => {
+			if (s.paperIntakeAgentEnabled === value) return;
+			s.paperIntakeAgentEnabled = value;
+			await this.plugin.save();
+			if (value && typeof this.plugin.writePaperIntakeAgentContext === "function") {
+				await this.plugin.writePaperIntakeAgentContext().catch(() => false);
+				this.plugin.schedulePaperIntakeAgentRun?.(500);
+			}
+		};
+		let agentToggle = null;
+		agentSetting.addToggle(toggle => {
+			agentToggle = toggle;
+			return toggle.setValue(s.paperIntakeAgentEnabled === true).onChange(setAgentEnabled);
+		});
+		agentSetting.addButton(b => b.setButtonText(t("settings.paperIntakeAgentGuideCopy")).onClick(async () => {
+			setRectoInlineFeedback(this, "paper-intake-agent", "");
+			if (!this.plugin.getPaperIntakeAgentFolderPath()) {
+				setRectoInlineFeedback(this, "paper-intake-agent", t("settings.paperIntakeAgentGuideUnavailable"));
+				return;
+			}
+			// 复制引导即表示要用：顺手打开开关，交接文件夹和 context.json 随之就绪。
+			if (!s.paperIntakeAgentEnabled) {
+				await setAgentEnabled(true);
+				if (agentToggle) agentToggle.setValue(true);
+			}
+			const text = this.plugin.buildPaperIntakeAgentGuideText();
+			if (!text) {
+				setRectoInlineFeedback(this, "paper-intake-agent", rectoUiText("settings.paperIntakeCompanionFailed", { path: this.plugin.getRectoCompanionPath("recto-paper-intake") }));
+				return;
+			}
+			try {
+				await navigator.clipboard.writeText(text);
+				showRectoNotice(t("settings.paperIntakeAgentGuideCopied"), { tone: "success" });
+			} catch {
+				setRectoInlineFeedback(this, "paper-intake-agent", text);
+			}
+		}));
+
+		const extensionSetting = new obsidian.Setting(container).setName(t("settings.paperIntakeExtension")).setDesc(t("settings.paperIntakeExtensionDesc"));
+		bindRectoInlineFeedback(this, "paper-intake-extension", extensionSetting.descEl);
+		const guide = extensionSetting.descEl.createDiv({ cls: "recto-settings-intake-guide is-collapsed" });
+		const steps = guide.createEl("ol");
+		// 浏览器内部地址不能从外部打开：写成可点击复制的代码样式，点一下即复制。
+		const copyable = (parent, link) => {
+			const code = parent.createEl("code", { cls: "recto-settings-copyable", text: link });
+			code.setAttr("role", "button");
+			code.setAttr("tabindex", "0");
+			code.setAttr("aria-label", rectoUiText("settings.paperIntakeCopyLink", { link }));
+			const copy = async () => {
+				try {
+					await navigator.clipboard.writeText(link);
+					showRectoNotice(rectoUiText("settings.paperIntakeLinkCopied", { link }), { tone: "success" });
+				} catch { /* 剪贴板不可用：地址仍可手动选中复制 */ }
+			};
+			code.addEventListener("click", copy);
+			code.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault?.(); void copy(); } });
+		};
+		for (const key of ["settings.paperIntakeExtensionStep1", "settings.paperIntakeExtensionStep2", "settings.paperIntakeExtensionStep3"]) {
+			const item = steps.createEl("li");
+			const parts = rectoUiText(key, { edge: "{edge}", chrome: "{chrome}" }).split(/(\{edge\}|\{chrome\})/);
+			for (const part of parts) {
+				if (part === "{edge}") copyable(item, "edge://extensions");
+				else if (part === "{chrome}") copyable(item, "chrome://extensions");
+				else if (part) item.createSpan({ text: part });
+			}
+		}
+		// 打开扩展文件夹：与「导入 Zotero 论文库」那一行同款的文件夹图标按钮，常驻在右侧。
+		extensionSetting.addButton(button => {
+			const label = t("settings.paperIntakeExtensionOpen");
+			button.buttonEl.addClass("recto-zotero-icon-button");
+			button.buttonEl.addClass("clickable-icon");
+			button.buttonEl.setAttr("aria-label", label);
+			setChromeIcon(button.buttonEl.createSpan({ cls: "rc-icon" }), "folder-open");
+			button.onClick(() => openExtensionFolder());
+		});
+		const openExtensionFolder = async () => {
+			setRectoInlineFeedback(this, "paper-intake-extension", "");
+			const dir = this.plugin.getPaperIntakeExtensionFolder();
+			if (!dir) {
+				setRectoInlineFeedback(this, "paper-intake-extension", rectoUiText("settings.paperIntakeCompanionFailed", { path: this.plugin.getRectoCompanionPath("recto-browser-extension") }));
+				return;
+			}
+			// 资源管理器窗口可能被系统挡在后面（Windows 的前台限制）；同时复制路径，在「加载解压缩的扩展」的
+			// 选择框里直接粘贴即可，不依赖那个窗口是否弹到最前。
+			let copied = false;
+			try { await navigator.clipboard.writeText(dir); copied = true; } catch { copied = false; }
+			const opened = await this.plugin.openSystemPath(dir);
+			if (copied) showRectoNotice(t("settings.paperIntakeExtensionPathCopied"), { tone: "success" });
+			if (!opened && !copied) setRectoInlineFeedback(this, "paper-intake-extension", dir);
+		};
+		extensionSetting.addButton(b => b.setButtonText(t("settings.paperIntakeExtensionGuide")).onClick(() => {
+			guide.toggleClass("is-collapsed", !guide.hasClass("is-collapsed"));
+		}));
+
+		const browserSetting = new obsidian.Setting(container).setName(t("settings.paperIntakeBrowser")).setDesc(t("settings.paperIntakeBrowserDesc"));
+		bindRectoInlineFeedback(this, "paper-intake-browser", browserSetting.descEl);
+		const browserModes = ["win32", "darwin"].includes(process.platform) ? ["default", "edge", "custom"] : ["default", "custom"];
+		browserSetting.addDropdown(d => {
+			for (const mode of browserModes) d.addOption(mode, t(`settings.paperIntakeBrowser.${mode}`));
+			return d.setValue(browserModes.includes(s.paperIntakeBrowser) ? s.paperIntakeBrowser : "default").onChange(async value => {
+				s.paperIntakeBrowser = value;
+				await this.plugin.save();
+				if (pathSetting && pathSetting.settingEl) pathSetting.settingEl.toggleClass("recto-settings-hidden", value !== "custom");
+			});
+		});
+		const pathSetting = new obsidian.Setting(container).setName(t("settings.paperIntakeBrowserPath"));
+		bindRectoInlineFeedback(this, "paper-intake-browser-path", pathSetting.descEl);
+		pathSetting.addText(text => {
+			text.setPlaceholder("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe").setValue(s.paperIntakeBrowserPath || "");
+			text.inputEl.addEventListener("blur", async () => {
+				const value = String(text.getValue() || "").trim().replace(/^"|"$/g, "");
+				const ok = !value || !!describePaperIntakeBrowserProgram(value);
+				setRectoInlineFeedback(this, "paper-intake-browser-path", ok ? "" : t("settings.paperIntakeBrowserPathInvalid"));
+				if (!ok || value === (s.paperIntakeBrowserPath || "")) return;
+				s.paperIntakeBrowserPath = value;
+				await this.plugin.save();
+			});
+			return text;
+		});
+		if (pathSetting.settingEl && pathSetting.settingEl.toggleClass) pathSetting.settingEl.toggleClass("recto-settings-hidden", s.paperIntakeBrowser !== "custom");
+
+		const inboxSetting = new obsidian.Setting(container).setName(t("settings.paperIntakeInbox")).setDesc(t("settings.paperIntakeInboxDesc"));
+		bindRectoInlineFeedback(this, "paper-intake-inbox", inboxSetting.descEl);
+		// T125：手动设置时告诉用户去哪看下载位置（浏览器内部地址，点一下复制）。
+		const inboxHint = inboxSetting.descEl.createDiv({ cls: "recto-settings-intake-hint" });
+		for (const part of t("settings.paperIntakeInboxHint", { edge: "{edge}", chrome: "{chrome}" }).split(/(\{edge\}|\{chrome\})/)) {
+			if (part === "{edge}") copyable(inboxHint, "edge://settings/downloads");
+			else if (part === "{chrome}") copyable(inboxHint, "chrome://settings/downloads");
+			else if (part) inboxHint.createSpan({ text: part });
+		}
+		const pathLine = inboxSetting.descEl.createDiv({ cls: "recto-settings-path-line" });
+		const valueEl = pathLine.createEl("code", { cls: "recto-settings-path-value", text: s.paperIntakeInboxFolder || t("settings.paperIntakeInboxAuto") });
+		let resetButton = null;
+		const showInboxValue = value => {
+			const text = value || t("settings.paperIntakeInboxAuto");
+			if (valueEl.setText) valueEl.setText(text); else valueEl.text = text;
+			if (resetButton && resetButton.buttonEl && resetButton.buttonEl.toggleClass) resetButton.buttonEl.toggleClass("recto-settings-hidden", !value);
+		};
+		// 已保存的位置不对（换了浏览器、改了下载位置）时清掉，下次取件重新自动识别。
+		inboxSetting.addButton(b => {
+			resetButton = b;
+			b.setButtonText(t("settings.paperIntakeInboxReset")).onClick(async () => {
+				setRectoInlineFeedback(this, "paper-intake-inbox", "");
+				s.paperIntakeInboxFolder = "";
+				await this.plugin.save();
+				showInboxValue("");
+			});
+		});
+		showInboxValue(s.paperIntakeInboxFolder);
+		inboxSetting.addButton(b => b.setButtonText(t("settings.chooseFolder")).onClick(async () => {
+			setRectoInlineFeedback(this, "paper-intake-inbox", "");
+			// 选浏览器的下载位置即可；Recto 文件夹由扩展下载时自动建，这里补上路径。
+			const chosen = await this.plugin.pickDirectory(t("settings.paperIntakeInboxTitle"), s.paperIntakeInboxFolder || this.plugin.getPaperIntakeDefaultDownloads(), this, "paper-intake-inbox");
+			if (!chosen) return;
+			const picked = nodePath.basename(chosen).toLowerCase() === "recto" ? chosen : nodePath.join(chosen, "Recto");
+			s.paperIntakeInboxFolder = picked;
+			await this.plugin.save();
+			showInboxValue(picked);
+			this.plugin.startPaperIntakeInboxWatcher();
+		}));
+
+	}
+
 	renderExternalPdf(container, s) {
 		const folderSetting = new obsidian.Setting(container).setName(rectoUiText("settings.outputLocation"))
 			.setDesc(rectoUiText("settings.outputLocationDesc"));
@@ -25801,6 +31370,20 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				});
 				return t;
 			});
+		// T131：配好且指得对时不再显示一个改不了的输入框，换成「文件夹图标 + 名称」按钮，
+		// 点了在文件浏览器里定位到它（改名就在那里做）。指错了时 refreshBaseFolderRow 换回输入框。
+		const chip = this.baseFolderSetting.controlEl.createEl("button", { cls: "recto-settings-folder-chip" });
+		setChromeIcon(chip.createSpan({ cls: "rc-icon" }), "folder");
+		this.baseFolderChipLabel = chip.createSpan();
+		chip.setAttribute("title", rectoUiText("settings.libraryFolderReveal"));
+		chip.addEventListener("click", () => {
+			const folder = this.plugin.app.vault.getAbstractFileByPath(this.plugin.settings.baseFolder);
+			if (!folder) return;
+			void this.plugin.revealVaultItemInExplorer(folder).catch(() => {
+				showRectoNotice(rectoUiText("hub.context.failed"), { tone: "error" });
+			});
+		});
+		this.baseFolderChip = chip;
 		this.refreshBaseFolderRow();
 		bindRectoInlineFeedback(this, "library", this.baseFolderSetting.descEl);
 		bindRectoInlineFeedback(this, "library-location", this.baseFolderSetting.descEl);
@@ -25845,6 +31428,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					this.refreshAllSetupStatus();
 				})));
 		this.refreshZoteroPendingRow({ animate: false });
+		this.renderRemovedZoteroPapers(container);
 
 		// 这一句留着：转换入口只在 Hub，不说清楚用户会在设置页里找按钮。
 		// 「打开论文库」也占步骤号（T86-D-B）；「待确认」不给号——它是异常态提示，不是步骤。
@@ -25853,6 +31437,24 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			.addButton(b => b.setButtonText(rectoUiText("settings.open")).setCta().onClick(() => { void this.plugin.activateRectoHub(); }))
 			.addButton(b => b.setButtonText(rectoUiText("settings.replayOnboarding")).onClick(() => this.plugin.openOnboardingReplay()));
 		this.renderBackendPreferences(container, s, stepName(documentLanguageText("输出语言", "Output language")));
+	}
+
+	// T132：在 Hub 里删除过的 Zotero 论文，同步不再导入。没有就不出现这一行；「恢复同步」清空名单，下次同步重新导入。
+	renderRemovedZoteroPapers(container) {
+		const removed = normalizeRemovedZoteroPapers(this.plugin.settings.removedZoteroPapers);
+		const titles = Object.values(removed).map(item => item.title).filter(Boolean);
+		const count = Object.keys(removed).length;
+		if (!count) return;
+		const shown = titles.slice(0, 3).map(title => `「${title}」`).join(/^zh/i.test(activeRectoUiLocale) ? "、" : ", ");
+		const row = new obsidian.Setting(container).setName(rectoUiText("settings.removedZotero"))
+			.setDesc(rectoUiText("settings.removedZoteroDesc", { count, titles: `${shown}${titles.length > 3 ? " …" : ""}` }))
+			.addButton(b => b.setButtonText(rectoUiText("settings.removedZoteroRestore"))
+				.onClick(() => this.runSettingButton(b, rectoUiText("settings.removedZoteroRestore"), rectoUiText("settings.processing"), async () => {
+					try { await this.plugin.restoreRemovedZoteroPapers(); }
+					catch { showRectoNotice(rectoUiText("queue.saveFailed"), { tone: "error" }); return; }
+					showRectoNotice(rectoUiText("settings.removedZoteroRestored", { count }), { tone: "success" });
+					row.settingEl?.toggleClass?.("is-hidden", true);
+				})));
 	}
 
 	renderZoteroSourceSetting(container, s, autoDetectedZoteroSource, name) {
@@ -25923,7 +31525,6 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			button.buttonEl.addClass("recto-zotero-icon-button");
 			button.buttonEl.addClass("clickable-icon");
 			button.buttonEl.setAttr("aria-label", label);
-			button.buttonEl.setAttr("title", label);
 			if (icon === "folder-open") button.buttonEl.setAttr("aria-expanded", "false");
 			setChromeIcon(button.buttonEl.createSpan({ cls: "rc-icon" }), icon);
 			button.onClick(() => action(button));
@@ -26236,6 +31837,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 		if (setting.settingEl && setting.settingEl.addClass) setting.settingEl.addClass("recto-reader-presets");
 		const chips = {
 			hub: rectoUiText("settings.ribbonHub"),
+			addPapers: rectoUiText("settings.ribbonAddPapers"),
 			dualPane: rectoUiText("settings.ribbonDualPane"),
 			pdfCompare: rectoUiText("settings.ribbonPdfCompare"),
 			externalPdf: rectoUiText("settings.ribbonExternalPdf"),
@@ -26245,7 +31847,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			setting.addButton(button => {
 				buttons.push({ button, key: btn.key });
 				button.setButtonText(chips[btn.key] || btn.name);
-				if (typeof button.setTooltip === "function") button.setTooltip(rectoUiText({ hub: "hub.viewTitle", dualPane: "command.toggleDualPane", pdfCompare: "command.togglePdfCompare", externalPdf: "command.convertExternalPdf" }[btn.key]));
+				if (typeof button.setTooltip === "function") button.setTooltip(rectoUiText({ hub: "hub.viewTitle", addPapers: "paperIntake.open", dualPane: "command.toggleDualPane", pdfCompare: "command.togglePdfCompare", externalPdf: "command.convertExternalPdf" }[btn.key]));
 				if (s.ribbonButtons[btn.key]) button.setCta();
 				button.onClick(async () => {
 					s.ribbonButtons[btn.key] = !s.ribbonButtons[btn.key];
@@ -26260,6 +31862,88 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				});
 			});
 		}
+	}
+
+	// T124：论文命名。改命名方式只影响之后入库的论文；已有论文走「预览改名…」弹窗。
+	// 定点更新示例与模板行，不调 display()（会把高级设置重新折叠、滚动甩回页首）。
+	renderPaperNamingSettings(container, s) {
+		container.createEl("h4", { text: rectoUiText("settings.paperNaming") });
+		const naming = () => normalizePaperNamingSettings(s.paperNaming);
+		const sample = Object.values(this.plugin.folderMap || {}).find(info => info?.zoteroMetadata?.creators?.length && info.zoteroTitle)
+			|| { zoteroTitle: "Attention Is All You Need", zoteroMetadata: { fields: { date: "2017" },
+				creators: ["Vaswani", "Shazeer", "Parmar"].map(lastName => ({ creatorType: "author", lastName, name: lastName })) } };
+		const describe = () => {
+			const current = naming();
+			const first = buildPaperStemCandidates(sample, current)[0];
+			const example = first ? first.stem : sanitizeStem(stripHubTitleMarkup(sample.zoteroTitle));
+			return rectoUiText("settings.paperNamingPresetDesc", { example });
+		};
+		let templateRow;
+		const presetRow = new obsidian.Setting(container)
+			.setName(rectoUiText("settings.paperNamingPreset"))
+			.setDesc(describe())
+			.addDropdown(dropdown => {
+				for (const preset of PAPER_NAMING_PRESETS) dropdown.addOption(preset, rectoUiText(`settings.paperNaming.${preset}`));
+				dropdown.setValue(naming().preset);
+				dropdown.onChange(async value => {
+					const previous = s.paperNaming;
+					s.paperNaming = { ...naming(), preset: value };
+					try { await this.plugin.save(); }
+					catch {
+						s.paperNaming = previous;
+						dropdown.setValue(naming().preset);
+						showRectoNotice(rectoUiText("queue.saveFailed"), { tone: "error" });
+						return;
+					}
+					presetRow.setDesc(describe());
+					templateRow?.settingEl?.toggleClass?.("is-hidden", value !== "custom");
+				});
+			});
+		templateRow = new obsidian.Setting(container)
+			.setName(rectoUiText("settings.paperNamingTemplate"))
+			.setDesc(rectoUiText("settings.paperNamingTemplateDesc", { author: "{author}", year: "{year}", title: "{title}", shortTitle: "{shortTitle}", citekey: "{citekey}" }))
+			.addText(text => {
+				text.setPlaceholder(PAPER_NAMING_TEMPLATES["author-year-title"]);
+				text.setValue(naming().template);
+				// 失焦才落盘：逐键保存会在敲到一半时用半截模板给新论文命名。
+				text.inputEl.addEventListener("blur", async () => {
+					const value = text.getValue();
+					if (value === naming().template) return;
+					s.paperNaming = { ...naming(), template: value };
+					await this.plugin.save();
+					presetRow.setDesc(describe());
+				});
+			});
+		templateRow.settingEl?.toggleClass?.("is-hidden", naming().preset !== "custom");
+		new obsidian.Setting(container)
+			.setName(rectoUiText("settings.paperNamingApply"))
+			.setDesc(rectoUiText("settings.paperNamingApplyDesc"))
+			.addButton(button => button.setButtonText(rectoUiText("settings.paperNamingApplyButton"))
+				.onClick(() => this.plugin.openPaperRenameModal(Object.keys(this.plugin.folderMap || {}))));
+		// T129：参考文献默认格式，示例用同一篇样例论文现排。
+		const describeCitation = () => rectoUiText("settings.citationStyleDesc", {
+			example: formatPaperBibliography([buildPaperCslItem(sample)], resolvePaperCitationStyle(s.citationStyle, activeRectoUiLocale)).text });
+		const citationRow = new obsidian.Setting(container)
+			.setName(rectoUiText("settings.citationStyle"))
+			.setDesc(describeCitation())
+			.addDropdown(dropdown => {
+				dropdown.addOption("auto", rectoUiText("settings.citationStyle.auto"));
+				for (const style of PAPER_CITATION_STYLES) dropdown.addOption(style, rectoUiText(`hub.cite.${style}`));
+				dropdown.setValue(normalizePaperCitationStyle(s.citationStyle));
+				dropdown.onChange(async value => {
+					const previous = s.citationStyle;
+					s.citationStyle = value;
+					try { await this.plugin.save(); }
+					catch {
+						s.citationStyle = previous;
+						dropdown.setValue(normalizePaperCitationStyle(previous));
+						showRectoNotice(rectoUiText("queue.saveFailed"), { tone: "error" });
+						return;
+					}
+					citationRow.setDesc(describeCitation());
+					this.plugin.refreshHubViews?.();
+				});
+			});
 	}
 
 	renderAdvancedSettings(container, s, autoDetectedZoteroSource = null) {
@@ -26278,7 +31962,7 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 			.setName(rectoUiText("settings.interfaceAccent"))
 			.setDesc(rectoUiText("settings.interfaceAccentDesc"))
 			.addDropdown(dropdown => {
-				for (const key of ["red", "blue", "green"]) dropdown.addOption(key, rectoUiText(`settings.interfaceAccent.${key}`));
+				for (const key of RECTO_INTERFACE_ACCENTS) dropdown.addOption(key, rectoUiText(`settings.interfaceAccent.${key}`));
 				dropdown.setValue(s.interfaceAccent || "red");
 				dropdown.onChange(async value => {
 					const previous = s.interfaceAccent;
@@ -26295,6 +31979,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					this.plugin.applyInterfaceAccent(container.ownerDocument);
 				});
 			});
+
+		this.renderPaperNamingSettings(container, s);
 
 		// T83-N-R：后处理只有这一个入口。它默认开着，绝大多数人不必看见；关掉是排错与效果对比用的，
 		// 所以放高级设置而不是「处理偏好」——但改了之后必须在上传确认弹窗里如实告知当前档位。
@@ -26383,6 +32069,18 @@ function sleep(ms, signal) {
 if (process.env.NODE_ENV === "test") {
 	RectoPlugin.__test = {
 		createRectoContextScope,
+		normalizePaperNamingSettings, buildPaperStemCandidates, getPaperCitationLabel, formatPaperNamingAuthor, cleanPaperNamingTitle, getPaperNamingCitekey, PAPER_NAMING_NEW_INSTALL_PRESET,
+		buildPaperCslItem, formatPaperBibliography, formatPaperCitationExport, buildPaperCitationKey, checkPaperCitationMetadata, pickPaperCitationCrossrefMatch, buildPaperCitationSupplement, resolvePaperCitationStyle, normalizePaperCitationStyle, PAPER_CITATION_STYLES, PAPER_CITATION_EXPORTS,
+		rewritePaperPathReferences, planPaperRenameFileMoves, updatePaperRenameAliases, readPaperRenameAliases, sanitizeStem,
+		normalizePaperIntakeDoi, normalizePaperIntakeArxivId, parsePaperIntakeInput, paperIntakeWords, paperIntakeSimilarity, paperIntakeRowKey,
+		addPaperIntakeCandidate, collectOpenAlexPaperIntake, collectUnpaywallPaperIntake, collectSemanticScholarPaperIntake,
+		collectCrossrefPaperIntake, paperIntakePublisherRuleUrls, parseArxivAtomPaperIntake, rankPaperIntakeCandidates,
+		classifyPaperIntakeResponse, extractPaperIntakeCitationPdfUrl, isPaperIntakePdfBytes, checkPaperIntakePdfIdentity,
+		resolvePaperIntakeReason, buildPaperIntakeMetadata, createPaperIntakeRecordId, isLocalPaperRecord, buildLocalPaperImportTask,
+		findPaperIntakeDuplicate, fingerprintPaperIntakePdfText, matchPaperIntakeInbox, normalizePaperIntakePending,
+		RectoPaperIntakeQuickAdd, RectoPaperIntakePendingPanel, extractPaperIntakeLandingIdentity, hubCollectionPathToParts, PAPER_INTAKE_REASONS, paperIntakeBrowserToken, buildPaperIntakeBrowserUrl, paperIntakeTokenFromFileName,
+		reconcilePaperIntakeProgress, parsePaperIntakeRequest, buildPaperIntakeResult, buildPaperIntakeContext, buildPaperIntakeAgentGuide, RECTO_COMPANIONS, RECTO_INTAKE_SKILL_VERSION, PAPER_INTAKE_UNPAYWALL_EMAIL, buildZoteroIntakeItem, resolveZoteroIntakeCollection, findZoteroIntakeDuplicate, parsePaperIntakeBrowserFile, describePaperIntakeBrowserProgram, cleanPaperIntakeAbstract, rebuildOpenAlexAbstract, cleanPaperIntakeKeywords, applyPaperIntakeFieldEnrichment,
+		parsePaperIntakePageMetadata,
 		showRectoNotice, rectoNoticeHistory, bindRectoInlineFeedback, setRectoInlineFeedback, rectoTaskResultText, RectoNotificationBatches,
 		RectoOperationResources,
 		normalizeLocalTaskIntents,
@@ -26441,22 +32139,17 @@ if (process.env.NODE_ENV === "test") {
 		isBackendSessionExpired,
 		describeBackendAccountView,
 		describeHubCreditsBadge,
-		buildHubCreditsRingMarkup,
-		describeCreditsMeter,
 		describeTranslationPageBalance,
 		describeTranslationQuote,
 		formatTranslationPages,
 		projectTranslationPagesFromCredits,
-		resolveBackendBillingMode,
 		describeSetupStatusLights,
-		isSettingsQuickStartComplete,
 		describeOnboardingFlow,
 		resolveRectoSignUpUrl,
 		describeBaseFolderMismatch,
 		describeBaseFolderMismatchText,
 		describeZoteroSyncPreviewRow,
 		shouldRunZoteroAutoCheck,
-		shouldSkipZoteroScanByMtime,
 		isZoteroAutoCheckTransientError,
 		classifyZoteroAutoImportCandidates,
 		countPendingAmbiguousGroups,
@@ -26464,19 +32157,8 @@ if (process.env.NODE_ENV === "test") {
 		formatZoteroSyncRelativeTime,
 		ZOTERO_AUTO_CHECK_COOLDOWN_MS,
 		ZOTERO_AUTO_CHECK_STARTUP_DELAY_MS,
-		buildBackendPlanCatalog,
 		buildBackendCreditPackCatalog,
-		describeBackendPlanYearlySaving,
-		describeBackendPlanAction,
-		describeBackendMembership,
-		describeBackendMembershipLine,
-		applyBackendMembershipToSettings,
-		formatBackendLocalDate,
-		resolveBackendPlanTier,
-		resolveBackendPlanCycle,
-		estimatePapersFromCredits,
 		backendTaskUsedTailExemption,
-		RECTO_CREDITS_PER_PAPER,
 		decideBrowserLoginPoll,
 		matchesPendingHandoff,
 		BROWSER_LOGIN_POLL_MAX_ATTEMPTS,
@@ -26504,7 +32186,7 @@ if (process.env.NODE_ENV === "test") {
 		createRectoHubViewClass,
 		RectoHubNotesStore,
 		parseHubNotesFile,
-		buildImportedPdfTasks,
+		buildImportedPdfTasks, normalizeRemovedZoteroPapers, filterRemovedZoteroCandidates,
 		// T84 库外 PDF 纯核
 		sanitizeExternalOutputFolder,
 		resolveExternalOutputRoot,
@@ -26532,7 +32214,6 @@ if (process.env.NODE_ENV === "test") {
 		describeHubAuthorLines,
 		describeHubFilterCrumbs,
 		describeHubIdentifier,
-		countRectoUnknownGlyphs,
 		findRectoUnknownGlyphOffsets,
 		buildRectoUnknownGlyphSkipRanges,
 		isRectoUnknownGlyphSkipped,
@@ -26551,6 +32232,8 @@ if (process.env.NODE_ENV === "test") {
 		normalizeHubPaperFlagStore,
 		normalizeHubTranslationQuality,
 		normalizeHubViewState,
+		markHubDragFile,
+		resolveHubDragPaths,
 		resolveHubReadActions,
 		resolveHubRangeSelection,
 		sortHubEntries,
@@ -26569,6 +32252,10 @@ if (process.env.NODE_ENV === "test") {
 		buildZoteroPdfSelectionPlan,
 		dedupeZoteroPdfCandidates,
 		buildZoteroCollectionTree,
+		isPaperIntakeInfoTitle, pickPaperIntakeTitleLine, collectPaperIntakeFileHints, guessPaperIntakeFileTitle, findPaperIntakeFileDuplicate,
+		describePaperIntakeDropReport,
+		normalizeRectoCollectionParts, normalizeRectoCollectionStore, resolveRectoCollectionParts, applyRectoPaperCollectionChange,
+		describeRectoCollectionParts, collectRectoCollectionPaths, validateRectoCollectionName, hasRectoCollectionOverride,
 		buildZoteroDefaultPathCandidates,
 		normalizeZoteroLocalPath,
 		parseZoteroDirectoryPrefs,
@@ -26580,7 +32267,6 @@ if (process.env.NODE_ENV === "test") {
 		createReaderCaretLayerExtension,
 		matchesReaderSelectionRect,
 		isReaderSelectionColorVisible,
-		createSanitizedDistributionZip,
 		extractMarkdownHeadingOutline,
 		extractRectoTranslatedTitle,
 		extractSummaryBrief,
@@ -26610,7 +32296,6 @@ if (process.env.NODE_ENV === "test") {
 		getChineseMarkdownFileName,
 		getEnglishMarkdownFileName,
 		getNoteFileName,
-		getPaperSelectionSubtitle,
 		getPollIntervalMs,
 		getReaderFontScale,
 		getReaderLineHeight,
@@ -26623,12 +32308,9 @@ if (process.env.NODE_ENV === "test") {
 		getSummaryFileName,
 		getTaskRecordId,
 		hashFileSha256,
-		groupItemsByZoteroCollection,
-		isBackendAdmin,
 		buildMultipartFilenameParams,
 		buildMultipartBody,
 		truncateNameKeepingExtension,
-		describeBackendErrorBody,
 		getUserFacingErrorMessage,
 		createBackendHttpError,
 		backendPublicErrorText,
@@ -26661,7 +32343,6 @@ if (process.env.NODE_ENV === "test") {
 		computeRectoAlignAnchor,
 		normalizeRectoCompareSessions,
 		isRectoDualPaneIntact,
-		resolveRectoAlignmentPartner,
 		resolveRectoAlignmentScroll,
 		scanRectoAlignmentBlocks,
 		resolveRectoPaperStem,
@@ -26695,7 +32376,6 @@ if (process.env.NODE_ENV === "test") {
 		buildRectoSidecarFromMarkdown,
 		buildRectoAnchoredMarkdown,
 		withRectoTranslationSourcePath,
-		readRectoTranslationSourcePath,
 		splitRectoMarkdownBlocks,
 		stripRectoMarkdownFrontMatter,
 		RECTO_MD_PROJECTION_ANCHORED,
