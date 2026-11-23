@@ -102,7 +102,9 @@ Adding papers by DOI, arXiv ID, title, or link queries OpenAlex, Unpaywall, Cros
 
 ## Development
 
-This repository is the Community plugin release surface. It contains the English and Chinese READMEs, privacy notice, license, media assets, and the three plugin distribution files, with installable assets attached to Releases. Development takes place in a separate private repository.
+This repository is the Community plugin release surface. It contains the English and Chinese READMEs, privacy notice, license, developer contract, media assets, and the three plugin distribution files, with installable assets attached to Releases. Development takes place in a separate private repository.
+
+To build plugins, scripts, Dataview/Bases views, or AI-agent workflows on top of Recto, see [Extending Recto](docs/EXTENDING.md): the library layout, the `papers.jsonl` schema, the frontmatter keys, and the read-only plugin API with its `library-changed` event.
 
 ## Third-party fonts
 

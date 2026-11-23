@@ -668,14 +668,8 @@
 	padding-left: 1.4em;
 }
 
-/* T125：中转文件夹的手动设置提示（同样带可复制的浏览器地址）。 */
-.recto-settings-intake-hint {
-	margin-top: var(--rc-gap-1);
-}
-
 /* T104：浏览器内部地址点一下即复制。 */
-.recto-settings-intake-guide code.recto-settings-copyable,
-.recto-settings-intake-hint code.recto-settings-copyable {
+.recto-settings-intake-guide code.recto-settings-copyable {
 	padding: 0 4px;
 	border-radius: var(--rc-radius-s);
 	background: var(--background-modifier-hover);
@@ -684,9 +678,7 @@
 }
 
 .recto-settings-intake-guide code.recto-settings-copyable:hover,
-.recto-settings-intake-guide code.recto-settings-copyable:focus-visible,
-.recto-settings-intake-hint code.recto-settings-copyable:hover,
-.recto-settings-intake-hint code.recto-settings-copyable:focus-visible {
+.recto-settings-intake-guide code.recto-settings-copyable:focus-visible {
 	color: var(--rc-accent);
 	outline: none;
 }
@@ -3874,7 +3866,17 @@ label.recto-sync-preview-row {
 	margin: calc(var(--rc-gap-4) + var(--rc-gap-1)) 0;
 	min-width: 0;
 }
-.recto-hub-note-heading {
+/* T142 扩展详情区块：标题沿用速记标题的样式；出错提示只占自己那一块。 */
+.recto-hub-extension {
+	margin: calc(var(--rc-gap-4) + var(--rc-gap-1)) 0;
+	min-width: 0;
+}
+.recto-hub-extension-error {
+	color: var(--rc-danger);
+	font-size: var(--font-ui-smaller);
+}
+.recto-hub-note-heading,
+.recto-hub-extension-title {
 	display: flex;
 	align-items: center;
 	gap: var(--rc-gap-3);
@@ -3883,7 +3885,8 @@ label.recto-sync-preview-row {
 	font-weight: 600;
 	color: var(--text-muted);
 }
-.recto-hub-note-heading::after {
+.recto-hub-note-heading::after,
+.recto-hub-extension-title::after {
 	content: "";
 	flex: 1;
 	height: 1px;

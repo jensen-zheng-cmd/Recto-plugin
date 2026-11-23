@@ -475,6 +475,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.status": "状态",
 		"hub.notePlaceholder": "记录阅读要点",
 		"hub.quickNote": "速记",
+		"hub.extension.failed": "扩展「{name}」出错，详情见开发者工具。",
 		"hub.paperNote.createBlank": "创建空白笔记",
 		"hub.paperNote.createOutline": "创建大纲笔记",
 		"hub.paperNote.open": "打开笔记",
@@ -1272,8 +1273,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"paperIntake.action.no_candidates": "在浏览器从 DOI 页面找全文",
 		"settings.paperIntake": "添加论文",
 		"settings.paperIntakeInbox": "PDF 中转文件夹",
-		"settings.paperIntakeInboxDesc": "即浏览器下载位置中的 Recto 文件夹：扩展将 PDF 暂存于此，Recto 加入论文库后自动删除。通常无需设置：取件时自动识别；下载位置不在「下载」或「桌面」时，扩展会把实际位置交给 Recto。",
-		"settings.paperIntakeInboxHint": "手动设置：在浏览器打开 {edge}（Chrome 为 {chrome}）查看下载位置，再点「选择文件夹」选中它，不必自己新建 Recto 文件夹。",
+		"settings.paperIntakeInboxDesc": "浏览器扩展暂存 PDF 的地方，取件时自动在「下载」「桌面」中识别；识别不到再选择浏览器的下载文件夹。",
 		"settings.paperIntakeInboxReset": "恢复自动",
 		"settings.paperIntakeInboxTitle": "选择浏览器的下载位置",
 		"settings.paperIntakeCopyLink": "复制 {link}",
@@ -1692,6 +1692,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.status": "Status",
 		"hub.notePlaceholder": "Record reading notes",
 		"hub.quickNote": "Quick note",
+		"hub.extension.failed": "Extension “{name}” failed. See the developer console for details.",
 		"hub.paperNote.createBlank": "Create blank note",
 		"hub.paperNote.createOutline": "Create outline note",
 		"hub.paperNote.open": "Open note",
@@ -2489,8 +2490,7 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"paperIntake.action.no_candidates": "Find the full text from the DOI page",
 		"settings.paperIntake": "Add papers",
 		"settings.paperIntakeInbox": "PDF transfer folder",
-		"settings.paperIntakeInboxDesc": "The Recto folder in your browser's download location: the extension saves PDFs here briefly, and Recto deletes them once they are in your library. Usually nothing to set: Recto finds it when fetching, and if your downloads go somewhere other than Downloads or Desktop, the extension tells Recto where.",
-		"settings.paperIntakeInboxHint": "To set it yourself: open {edge} in your browser ({chrome} in Chrome) to see the download location, then click \"Choose folder\" and pick it. No need to create a Recto folder.",
+		"settings.paperIntakeInboxDesc": "Where the browser extension drops PDFs. Found automatically in Downloads or Desktop; if not, choose your browser's download folder.",
 		"settings.paperIntakeInboxReset": "Detect automatically",
 		"settings.paperIntakeInboxTitle": "Choose your browser's download location",
 		"settings.paperIntakeCopyLink": "Copy {link}",
@@ -9786,6 +9786,231 @@ function restoreReadingScrollPosition(snapshot) {
 	}
 }
 
+// ── T139 公开插件 API（只读）与事件 ──────────────────────────────────────
+// 给依赖 Recto 的其他插件与脚本用：`app.plugins.plugins.recto.api`。契约全文在 docs/EXTENDING.md。
+// 这是插件里**唯一承诺稳定的代码面**：内部 src/ 可以随便重构，这一层的名字、参数与返回形状在同一
+// 主版本内只增不改，破坏性变更才升主版本（tests/public-contract.test.js 守着）。
+// 论文条目与 papers.jsonl 是同一份数据（getPaperJsonlEntries），文件与 API 不会各说各话。
+// 不写入：只有读取、打开已有文件 / 在 Hub 定位、选中事件与扩展点（T142，1.1.0）；不提供任何写入、转换、
+// 翻译或账号相关的入口，也不暴露会话凭据。扩展点只让外部代码画自己的东西，不额外开放 Recto 的能力。
+const RECTO_PUBLIC_API_VERSION = "1.1.0";
+const RECTO_PAPER_SCHEMA_VERSION = 1;
+const RECTO_PUBLIC_EVENTS = Object.freeze(["library-changed", "hub-selection-changed"]);
+// T142：openPaper 能打开的文件；都只打开已存在的文件，不创建任何东西（笔记缺失时返回 false）。
+const RECTO_PUBLIC_OPEN_TARGETS = Object.freeze(["source", "translation", "pdf", "summary", "note"]);
+const RECTO_EXTENSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/;
+// 生命周期事件只走 workspace：拿到 api 之前、或旧 api 失效之后也能听到。
+const RECTO_API_READY_EVENT = "recto:api-ready";
+const RECTO_API_UNLOAD_EVENT = "recto:api-unload";
+
+// 交给外部的一律是新拷贝：调用方改了返回值，不能顺带改到插件内部状态。
+function cloneRectoPublicValue(value) {
+	return value === undefined || value === null ? value : JSON.parse(JSON.stringify(value));
+}
+
+// 纯核：旧的 papers.jsonl 文本 → 新条目，得出新增 / 移除 / 改了哪些字段。
+// 旧文本里解析不了的行当作不存在；字段按 JSON 值比较，键的顺序不算变化。
+function diffPaperJsonlEntries(previousText, nextEntries) {
+	const before = new Map();
+	for (const line of String(previousText || "").split("\n")) {
+		if (!line.trim()) continue;
+		try {
+			const entry = JSON.parse(line);
+			if (entry && typeof entry.record_id === "string") before.set(entry.record_id, entry);
+		} catch {}
+	}
+	const added = [];
+	const changed = [];
+	const seen = new Set();
+	for (const entry of Array.isArray(nextEntries) ? nextEntries : []) {
+		const recordId = entry && typeof entry.record_id === "string" ? entry.record_id : "";
+		if (!recordId || seen.has(recordId)) continue;
+		seen.add(recordId);
+		const old = before.get(recordId);
+		if (!old) {
+			added.push(recordId);
+			continue;
+		}
+		const keys = new Set([...Object.keys(old), ...Object.keys(entry)]);
+		const fields = [...keys].filter(key => JSON.stringify(old[key]) !== JSON.stringify(entry[key])).sort();
+		if (fields.length) changed.push({ recordId, fields });
+	}
+	const removed = [...before.keys()].filter(recordId => !seen.has(recordId));
+	return { added, removed, changed };
+}
+
+// 返回 { api, dispose }。api 挂到插件实例上，dispose 只给插件自己在卸载时调用。
+function createRectoPublicApi(plugin) {
+	let active = true;
+	const assertActive = () => {
+		if (!active) throw new Error("Recto API is no longer active (Recto was unloaded or reloaded). Get a fresh reference from app.plugins.plugins.recto.api.");
+	};
+	// 论文库文件夹设置不合法时（例如被改成绝对路径），只读接口返回空，不抛设置校验错误。
+	const libraryFolder = () => {
+		try { return validateVaultRelativeFolder(plugin.settings && plugin.settings.baseFolder); }
+		catch { return null; }
+	};
+	const entries = () => (libraryFolder() === null ? [] : plugin.getPaperJsonlEntries());
+	// T142 扩展点注册表：Hub 读它画菜单项与详情区块；dispose 时整表清空，扩展要在下一次 api-ready 重新注册。
+	const registry = { menuItems: [], detailSections: [] };
+	plugin.publicExtensions = registry;
+	const refreshDetails = () => {
+		try { for (const view of plugin.getOpenHubViews ? plugin.getOpenHubViews() : []) view.renderDetail?.(); }
+		catch (error) { console.warn("Recto: extension refresh failed", getSanitizedErrorMessage(error)); }
+	};
+	const register = (list, spec, kind, fields, onChange) => {
+		assertActive();
+		if (!spec || typeof spec !== "object") throw new TypeError(`Recto API: ${kind} needs an options object`);
+		const id = typeof spec.id === "string" ? spec.id : "";
+		if (!RECTO_EXTENSION_ID_PATTERN.test(id)) throw new TypeError(`Recto API: ${kind} id must match ${RECTO_EXTENSION_ID_PATTERN} (use "<your-plugin-id>.<name>")`);
+		if (list.some(item => item.id === id)) throw new Error(`Recto API: ${kind} "${id}" is already registered`);
+		const item = Object.freeze({ id, ...fields(spec) });
+		list.push(item);
+		onChange();
+		let removed = false;
+		return () => {
+			if (removed) return;
+			removed = true;
+			const index = list.indexOf(item);
+			if (index >= 0) { list.splice(index, 1); onChange(); }
+		};
+	};
+	const optionalText = (value, name) => {
+		if (value === undefined || value === null || value === "") return "";
+		if (typeof value !== "string") throw new TypeError(`Recto API: ${name} must be a string`);
+		return value;
+	};
+	const optionalFunction = (value, name) => {
+		if (value === undefined || value === null) return null;
+		if (typeof value !== "function") throw new TypeError(`Recto API: ${name} must be a function`);
+		return value;
+	};
+	const api = {
+		version: RECTO_PUBLIC_API_VERSION,
+		schemaVersion: RECTO_PAPER_SCHEMA_VERSION,
+		events: RECTO_PUBLIC_EVENTS,
+		isActive() {
+			return active;
+		},
+		getLibraryFolder() {
+			assertActive();
+			return libraryFolder();
+		},
+		getPapers() {
+			assertActive();
+			return cloneRectoPublicValue(entries());
+		},
+		getPaper(recordId) {
+			assertActive();
+			const id = String(recordId || "");
+			const hit = id ? entries().find(entry => entry.record_id === id) : null;
+			return hit ? cloneRectoPublicValue(hit) : null;
+		},
+		// 条目里的 *_path 相对于论文库文件夹；转成 vault 路径后可交给 app.vault.getAbstractFileByPath。
+		resolveLibraryPath(relativePath) {
+			assertActive();
+			const folder = libraryFolder();
+			const text = String(relativePath || "").trim().replace(/\\/g, "/");
+			if (!folder || !text || text.startsWith("/") || /^[A-Za-z]:/.test(text)) return null;
+			if (text.split("/").some(part => part === ".." || part === ".")) return null;
+			return obsidian.normalizePath(`${folder}/${text}`);
+		},
+		on(event, callback) {
+			assertActive();
+			if (!RECTO_PUBLIC_EVENTS.includes(event)) throw new Error(`Unknown Recto event: ${event}`);
+			if (typeof callback !== "function") throw new TypeError("Recto API: callback must be a function");
+			const ref = plugin.app.workspace.on(`recto:${event}`, callback);
+			return () => plugin.app.workspace.offref(ref);
+		},
+		// ── 1.1.0：打开、定位与扩展点 ──
+		// 论文文件夹里的任何文件（原文、译文、PDF、笔记、图片……）→ 所属论文；不在论文文件夹里返回 null。
+		getPaperForPath(vaultPath) {
+			assertActive();
+			if (libraryFolder() === null) return null;
+			const recordId = plugin.findRecordIdForVaultPath(vaultPath);
+			return recordId ? api.getPaper(recordId) : null;
+		},
+		async openPaper(recordId, target) {
+			assertActive();
+			if (!RECTO_PUBLIC_OPEN_TARGETS.includes(target)) throw new TypeError(`Recto API: openPaper target must be one of ${RECTO_PUBLIC_OPEN_TARGETS.join(", ")}`);
+			if (libraryFolder() === null) return false;
+			return await plugin.openPaperForPublicApi(String(recordId || ""), target);
+		},
+		async revealInHub(recordId) {
+			assertActive();
+			if (libraryFolder() === null) return false;
+			return await plugin.revealPaperInHub(String(recordId || ""));
+		},
+		getHubSelection() {
+			assertActive();
+			return [...plugin.getPublicHubSelection()];
+		},
+		registerPaperMenuItem(spec) {
+			return register(registry.menuItems, spec, "paper menu item", options => {
+				const title = optionalText(options.title, "title");
+				if (!title) throw new TypeError("Recto API: paper menu item needs a title");
+				const onClick = optionalFunction(options.onClick, "onClick");
+				if (!onClick) throw new TypeError("Recto API: paper menu item needs onClick");
+				return { title, icon: optionalText(options.icon, "icon"), when: optionalFunction(options.when, "when"), onClick };
+			}, () => {});
+		},
+		registerPaperDetailSection(spec) {
+			return register(registry.detailSections, spec, "paper detail section", options => {
+				const render = optionalFunction(options.render, "render");
+				if (!render) throw new TypeError("Recto API: paper detail section needs render");
+				return { title: optionalText(options.title, "title"), render };
+			}, refreshDetails);
+		},
+	};
+	return {
+		api: Object.freeze(api),
+		dispose() {
+			active = false;
+			const hadSections = registry.detailSections.length > 0;
+			registry.menuItems.length = 0;
+			registry.detailSections.length = 0;
+			if (plugin.publicExtensions === registry) plugin.publicExtensions = null;
+			if (hadSections) refreshDetails();
+		},
+	};
+}
+
+// 扩展回调的统一外壳：同步抛错与异步 reject 都在这里兜住，返回 false 让调用方降级显示；
+// 扩展出错只影响它自己那一项，Hub 其余部分照常工作。
+function runRectoExtensionCallback(id, callback, onError) {
+	const fail = error => {
+		console.warn(`Recto: extension "${id}" failed`, getSanitizedErrorMessage(error));
+		if (typeof onError === "function") {
+			try { onError(error); } catch {}
+		}
+	};
+	try {
+		const result = callback();
+		if (result && typeof result.then === "function") result.then(undefined, fail);
+		return true;
+	} catch (error) {
+		fail(error);
+		return false;
+	}
+}
+
+// 选中变化通知：同一份选中只发一次；监听方抛错不影响 Hub。
+function emitRectoHubSelectionChanged(workspace, recordIds) {
+	if (!workspace || typeof workspace.trigger !== "function") return;
+	try { workspace.trigger("recto:hub-selection-changed", { recordIds: [...recordIds] }); }
+	catch (error) { console.warn("Recto: hub-selection-changed listener failed", getSanitizedErrorMessage(error)); }
+}
+
+// 论文库变化通知：只在 papers.jsonl 内容真的变了时发；监听方抛错不能影响写盘流程。
+function emitRectoLibraryChanged(workspace, previousText, nextEntries, path) {
+	const diff = diffPaperJsonlEntries(previousText, nextEntries);
+	if (!diff.added.length && !diff.removed.length && !diff.changed.length) return null;
+	const payload = { ...diff, path };
+	if (!workspace || typeof workspace.trigger !== "function") return payload;
+	try { workspace.trigger("recto:library-changed", payload); }
+	catch (error) { console.warn("Recto: library-changed listener failed", getSanitizedErrorMessage(error)); }
+	return payload;
+}
 // ═══════════════════════════════════════════════════════════════════
 // T124 论文命名规则：纯函数，只读论文对象 / 导入任务上的 Zotero 原型字段，不碰 vault。
 // 规格：archive/specs/T124-PAPER-NAMING.md
@@ -12087,16 +12312,16 @@ const RECTO_COMPANIONS = {
 		"SKILL.md": "---\nname: recto-paper-intake\ndescription: Add papers to the user's Recto paper library in Obsidian (optionally also Zotero) by DOI, arXiv ID or title, with reading-order quick notes. Use when the user asks to add/import papers into Recto or Obsidian, \"\u6dfb\u52a0\u8bba\u6587\", \"\u8bba\u6587\u5165\u5e93\", \"\u52a0\u5230\u8bba\u6587\u5e93\", \"\u6574\u7406\u901f\u8bb0\", or wants found papers saved with their PDFs. Works through Recto's file hand-off folder; no plugin internals, no network ports.\n---\n\n# Recto paper intake\n\nSkill version: 2\n\nRecto (an Obsidian plugin) does the mechanical work \u2014 finding legal open-access PDFs, verifying them, filing them, queueing the rest for the user's browser. Your job is the judgment: choosing papers, checking metadata, writing quick notes, and reporting honestly.\n\nProtocol details and JSON schemas: [references/protocol.md](references/protocol.md).\n\n## Before you start\n\n1. Find the hand-off folder: `<vault>/<paper library>/_recto-intake/` containing `context.json`. Ask the user for the vault path if you don't know it, then search for `_recto-intake/context.json`.\n   - Missing folder \u2192 the user must turn on **Recto settings \u2192 \u6dfb\u52a0\u8bba\u6587 \u2192 AI \u52a9\u624b\u5165\u5e93**. Tell them; don't create the folder yourself.\n2. Read `context.json`: protocol version (must be `1`), existing papers (`papers[].doi` / `title`), collections, pending papers, whether Zotero is available.\n   - If `context.skill_version` is higher than this file's `Skill version`, Recto has a newer copy of this skill at `context.skill_path`. Replace your installed copy with it (tell the user), then re-read it.\n3. **Never read** `.obsidian/plugins/recto/data.json` or anything else in the plugin folder. It holds account data. `context.json` and `papers.jsonl` in the library are all you need.\n\n## Workflow\n\n1. **Select papers.** Search with your own tools (OpenAlex, Crossref, arXiv, Semantic Scholar\u2026). Skip anything already in `context.json \u2192 papers` (match DOI, else exact title). Present candidates to the user when they asked for a search rather than specific papers.\n2. **Verify identity and metadata.** DOI and title must belong to the same work; prefer the DOI. Give `title` and `creators` when you know them \u2014 Recto uses them to check that a downloaded PDF really is this paper. Give a full `metadata` object only if it is verified (itemType, title, creators); otherwise leave it out and Recto fills metadata from Crossref/OpenAlex.\n3. **Write quick notes** (optional, `quick_note`): three short lines \u2014 `<topic>-<NN>` reading number, what problem and method the paper is about (from the abstract or text you actually read, not guessed), `\u8bfb\u6cd5\uff1a` how to read it. Separate the paper's claims from your reading advice. If you only read the abstract, say so. Never include `[Recto Quick Note v1]` markers.\n4. **Write one request file** per batch (\u2264 50 items) into `_recto-intake/`: write `<id>.request.json.tmp` first, then rename to `<id>.request.json` so Recto never reads a half-written file. `<id>`: letters, digits, `.`, `_`, `-`.\n5. **Optionally wake Recto** by opening `obsidian://recto-intake` (Recto also notices new files by itself within a few seconds while Obsidian is open).\n6. **Wait for `<id>.result.json`** (poll every few seconds, up to ~10 minutes for large batches). Obsidian must be running.\n7. **Report** to the user per item: `added`, `duplicate`, `waiting` (with the reason text and `browser_url`), `rejected` / `failed` (with reason). Say how many were added versus waiting; never call a waiting paper done.\n\n## Papers that end up waiting\n\n`waiting` means no legal open copy could be fetched automatically (paywall, bot check, no OA version). Options, in order:\n\n- Set `\"fetch_in_browser\": true` in the request (or ask the user to click \u300c\u5728\u6d4f\u89c8\u5668\u4e2d\u53d6\u4ef6\u300d in Recto). Recto opens each paper in the user's own browser; with the Recto browser extension installed, the PDF is saved using the user's existing sign-in (institution, employer or personal subscription) and added automatically. If the extension is not installed yet, `context.extension_path` holds its files and README; walk the user through it.\n- Give the user the `browser_url` list to open themselves.\n- If **you** downloaded a PDF legitimately (e.g. from the author's page), pass it as `pdf_path` with verified `title` + `creators`; Recto still checks the first two pages and rejects a mismatch.\n\nNever solve CAPTCHAs, bypass paywalls, use shadow libraries, or substitute a different paper.\n\n## Boundaries\n\n- One request = one batch the user authorized. Searching or discussing is not authorization to add.\n- `destination: \"zotero\"` writes into the user's Zotero too (Zotero must be running; first time the user clicks Allow in Zotero). Use it only when the user asked for Zotero.\n- Do not edit Recto's notes, papers or settings directly; everything goes through request files.\n",
 	},
 	"recto-browser-extension": {
-		"background.js": "// Recto Paper Fetcher \u2014 background service worker (T100-R).\n// Only tabs that Recto opened with \"#recto-intake=<task>\" become jobs; every other tab is ignored.\n// A job follows its tab through redirects, finds the PDF, saves it as Downloads/Recto/recto-<task>.pdf\n// and closes the tab. Logins, CAPTCHAs and blocks are never handled here: the tab stays open for\n// the user, marked with \"!\" on the toolbar icon; reloading the page after fixing it resumes the job.\nimportScripts(\"resolver.js\");\nconst R = self.RectoResolver;\n\nconst MAX_STEPS = 6;\nconst MAX_WAITS = 8;\nconst WAIT_MS = 4000;\nconst SETTLE_MS = 1500;\nconst JOB_TTL_MS = 45 * 60 * 1000;\n\nconst sleep = ms => new Promise(resolve => setTimeout(resolve, ms));\n\nasync function readJobs() {\n\treturn (await chrome.storage.session.get(\"jobs\")).jobs || {};\n}\n\nasync function writeJob(tabId, job) {\n\tconst jobs = await readJobs();\n\tif (job) jobs[tabId] = job;\n\telse delete jobs[tabId];\n\tawait chrome.storage.session.set({ jobs });\n}\n\nasync function badge(tabId, text, title) {\n\ttry {\n\t\tawait chrome.action.setBadgeText({ tabId, text });\n\t\tawait chrome.action.setBadgeBackgroundColor({ tabId, color: text === \"!\" ? \"#b3261e\" : \"#5f6368\" });\n\t\tif (title) await chrome.action.setTitle({ tabId, title });\n\t} catch { /* tab already closed */ }\n}\n\nconst USER_TITLES = {\n\tchallenge: \"Recto: this page needs you (sign-in, verification or a block). Fix it here, then reload the page.\",\n\taccess: \"Recto: no access to the PDF with the current sign-in. Sign in through your institution, then reload.\",\n\t\"no-pdf\": \"Recto: could not find the PDF on this page. Download it yourself into Downloads/Recto, or close the tab.\",\n\t\"not-pdf\": \"Recto: the site returned a web page instead of a PDF. Check the page, then reload.\",\n\t\"page-blocked\": \"Recto: this site is outside the extension's permissions. Download the PDF yourself.\",\n\ttimeout: \"Recto: gave up waiting. Reload the page to try again.\",\n};\n\nasync function handToUser(tabId, job, reason) {\n\tawait writeJob(tabId, { ...job, state: \"user\", reason });\n\tawait badge(tabId, \"!\", USER_TITLES[reason] || USER_TITLES.challenge);\n}\n\nasync function evaluate(tabId) {\n\tlet job = (await readJobs())[tabId];\n\tif (!job || job.state !== \"working\") return;\n\tif (Date.now() - job.startedAt > JOB_TTL_MS) return handToUser(tabId, job, \"timeout\");\n\tawait sleep(SETTLE_MS);\n\tjob = (await readJobs())[tabId];\n\tif (!job || job.state !== \"working\") return;\n\tlet info;\n\ttry {\n\t\tconst [result] = await chrome.scripting.executeScript({ target: { tabId }, func: R.collectPageInfo });\n\t\tinfo = result && result.result;\n\t} catch {\n\t\treturn handToUser(tabId, job, \"page-blocked\");\n\t}\n\t// Keep the best page metadata seen along the way (IEEE: the article page has it, the stamp page does not).\n\tconst merged = R.mergePageMetadata(job.meta, R.buildPageMetadata(info || {}));\n\tif (merged && JSON.stringify(merged) !== JSON.stringify(job.meta)) {\n\t\tjob = { ...job, meta: merged };\n\t\tawait writeJob(tabId, job);\n\t}\n\tconst decision = R.resolvePdfAction(info || {});\n\tif (decision.action === \"wait\") {\n\t\tif (job.waits >= MAX_WAITS) return handToUser(tabId, job, \"challenge\");\n\t\tawait writeJob(tabId, { ...job, waits: job.waits + 1 });\n\t\tawait sleep(WAIT_MS);\n\t\treturn evaluate(tabId);\n\t}\n\tif (decision.action === \"navigate\") {\n\t\tconst plan = R.planNavigate(job, decision.url, info || {}, MAX_STEPS);\n\t\tif (plan.handTo) return handToUser(tabId, job, plan.handTo);\n\t\tawait writeJob(tabId, plan.job);\n\t\tawait chrome.tabs.update(tabId, { url: decision.url });\n\t\treturn;\n\t}\n\tif (decision.action === \"download\") {\n\t\t// Remember whether the page offered institutional access, so a failed download is explained as an access problem.\n\t\tjob = { ...job, accessHint: R.noAccess(info || {}) };\n\t\tawait writeJob(tabId, { ...job, state: \"downloading\" });\n\t\tif (job.meta && !job.metaSaved) {\n\t\t\t// Abstract + keywords go next to the PDF as recto-<task>.json (a data: URL, no network request).\n\t\t\ttry {\n\t\t\t\tconst metaDownloadId = await chrome.downloads.download({\n\t\t\t\t\turl: `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(job.meta))}`,\n\t\t\t\t\tfilename: R.metadataName(job.token), conflictAction: \"overwrite\", saveAs: false,\n\t\t\t\t});\n\t\t\t\tjob = { ...job, metaSaved: true, metaDownloadId };\n\t\t\t\tawait writeJob(tabId, { ...job, state: \"downloading\" });\n\t\t\t} catch { /* metadata is optional */ }\n\t\t}\n\t\ttry {\n\t\t\tconst downloadId = await chrome.downloads.download({\n\t\t\t\turl: decision.url, filename: R.downloadName(job.token), conflictAction: \"overwrite\", saveAs: false,\n\t\t\t});\n\t\t\tawait writeJob(tabId, { ...job, state: \"downloading\", downloadId });\n\t\t} catch {\n\t\t\tawait handToUser(tabId, job, \"not-pdf\");\n\t\t}\n\t\treturn;\n\t}\n\treturn handToUser(tabId, job, decision.reason || \"challenge\");\n}\n\nchrome.webNavigation.onBeforeNavigate.addListener(async details => {\n\tif (details.frameId !== 0) return;\n\tconst token = R.tokenFromUrl(details.url);\n\tif (!token) return;\n\tif (!R.shouldStartJob((await readJobs())[details.tabId], token)) return;\n\tawait writeJob(details.tabId, { token, state: \"working\", steps: 0, waits: 0, tried: [], startedAt: Date.now() });\n\tawait badge(details.tabId, \"\u2026\", \"Recto: looking for the PDF\");\n});\n\nchrome.webNavigation.onCompleted.addListener(async details => {\n\tif (details.frameId !== 0) return;\n\tconst job = (await readJobs())[details.tabId];\n\tif (!job) return;\n\tif (job.state === \"user\") {\n\t\t// The user fixed something (signed in, passed a check) and reloaded: resume, and allow the same jumps again.\n\t\tawait writeJob(details.tabId, { ...job, state: \"working\", waits: 0, steps: 0, tried: [] });\n\t\tawait badge(details.tabId, \"\u2026\", \"Recto: looking for the PDF\");\n\t} else if (job.state !== \"working\") {\n\t\treturn;\n\t}\n\tawait evaluate(details.tabId);\n});\n\nchrome.downloads.onChanged.addListener(async delta => {\n\tif (!delta.state || ![\"complete\", \"interrupted\"].includes(delta.state.current)) return;\n\tconst jobs = await readJobs();\n\t// The metadata file is an internal hand-off: once written, drop it from the browser's download list\n\t// (erase removes the list entry only; Recto moves the file to the Recycle Bin after importing).\n\tif (Object.values(jobs).some(job => job.metaDownloadId === delta.id)) {\n\t\tif (delta.state.current === \"complete\") await chrome.downloads.erase({ id: delta.id }).catch(() => {});\n\t\treturn;\n\t}\n\tconst entry = Object.entries(jobs).find(([, job]) => job.downloadId === delta.id);\n\tif (!entry) return;\n\tconst tabId = Number(entry[0]);\n\tconst job = entry[1];\n\tconst [item] = await chrome.downloads.search({ id: delta.id });\n\tconst isPdf = delta.state.current === \"complete\" && item && /pdf/i.test(item.mime || \"\");\n\tif (isPdf) {\n\t\tawait writeJob(tabId, null);\n\t\tawait chrome.tabs.remove(tabId).catch(() => {});\n\t\tawait scheduleInboxCheck(delta.id, R.folderOf(item.filename));\n\t\treturn;\n\t}\n\t// A login page or block saved under a .pdf name would only confuse Recto's inbox: remove it.\n\tif (delta.state.current === \"complete\") await chrome.downloads.removeFile(delta.id).catch(() => {});\n\tawait handToUser(tabId, { ...job, state: \"working\" }, job.accessHint ? \"access\" : \"not-pdf\");\n});\n\nchrome.tabs.onRemoved.addListener(tabId => { void writeJob(tabId, null); });\n\n// T125: Recto looks for the PDFs in the usual Downloads/Desktop places. When this browser saves somewhere else\n// (D:\\Downloads, OneDrive\u2026), Recto never sees them. A minute after a PDF is saved, check whether Recto has taken\n// it (it removes the file once it is in the library). If it is still there, open inbox.html once, which asks the\n// browser to pass the folder to Obsidian (obsidian://recto-intake?inbox=\u2026). Recto only accepts the folder after\n// finding this fetch's own task file in it. Session storage only: forgotten when the browser closes.\nconst INBOX_CHECK_ALARM = \"recto-inbox-check\";\nconst INBOX_CHECK_DELAY_MIN = 1;\n\nasync function scheduleInboxCheck(downloadId, folder) {\n\tif (!folder) return;\n\tconst { inboxKnown, inboxChecks = [] } = await chrome.storage.session.get([\"inboxKnown\", \"inboxChecks\"]);\n\tif (R.sameFolder(inboxKnown, folder)) return;\n\tawait chrome.storage.session.set({ inboxChecks: [...inboxChecks, { id: downloadId, folder }].slice(-10) });\n\tawait chrome.alarms.create(INBOX_CHECK_ALARM, { delayInMinutes: INBOX_CHECK_DELAY_MIN });\n}\n\nchrome.alarms.onAlarm.addListener(async alarm => {\n\tif (alarm.name !== INBOX_CHECK_ALARM) return;\n\tconst { inboxChecks = [] } = await chrome.storage.session.get(\"inboxChecks\");\n\tawait chrome.storage.session.set({ inboxChecks: [] });\n\tif (!inboxChecks.length) return;\n\t// search() starts the browser's file-existence check; the second search reads its result.\n\tconst ids = inboxChecks.map(check => check.id);\n\tfor (const id of ids) await chrome.downloads.search({ id }).catch(() => []);\n\tawait sleep(2000);\n\tlet taken = \"\";\n\tlet left = \"\";\n\tfor (const check of inboxChecks) {\n\t\tconst [item] = await chrome.downloads.search({ id: check.id }).catch(() => []);\n\t\tif (!item) continue;\n\t\tif (item.exists === false) taken = check.folder;\n\t\telse left = check.folder;\n\t}\n\tif (taken && !left) {\n\t\t// Recto already watches this folder: nothing to report.\n\t\tawait chrome.storage.session.set({ inboxKnown: taken });\n\t\treturn;\n\t}\n\tif (!left) return;\n\tawait chrome.storage.session.set({ inboxKnown: left });\n\tawait chrome.tabs.create({ url: chrome.runtime.getURL(`inbox.html#${encodeURIComponent(left)}`), active: true });\n});\n",
+		"background.js": "// Recto Paper Fetcher \u2014 background service worker (T100-R).\n// Only tabs that Recto opened with \"#recto-intake=<task>\" become jobs; every other tab is ignored.\n// A job follows its tab through redirects, finds the PDF, saves it as Downloads/Recto/recto-<task>.pdf\n// and closes the tab. Logins, CAPTCHAs and blocks are never handled here: the tab stays open for\n// the user, marked with \"!\" on the toolbar icon; reloading the page after fixing it resumes the job.\nimportScripts(\"resolver.js\");\nconst R = self.RectoResolver;\n\nconst MAX_STEPS = 6;\nconst MAX_WAITS = 8;\nconst WAIT_MS = 4000;\nconst SETTLE_MS = 1500;\nconst JOB_TTL_MS = 45 * 60 * 1000;\nconst OPEN_WAIT_MS = 25000;\n\nconst sleep = ms => new Promise(resolve => setTimeout(resolve, ms));\n\nasync function readJobs() {\n\treturn (await chrome.storage.session.get(\"jobs\")).jobs || {};\n}\n\nasync function writeJob(tabId, job) {\n\tconst jobs = await readJobs();\n\tif (job) jobs[tabId] = job;\n\telse delete jobs[tabId];\n\tawait chrome.storage.session.set({ jobs });\n}\n\nasync function badge(tabId, text, title) {\n\ttry {\n\t\tawait chrome.action.setBadgeText({ tabId, text });\n\t\tawait chrome.action.setBadgeBackgroundColor({ tabId, color: text === \"!\" ? \"#b3261e\" : \"#5f6368\" });\n\t\tif (title) await chrome.action.setTitle({ tabId, title });\n\t} catch { /* tab already closed */ }\n}\n\nconst USER_TITLES = {\n\tchallenge: \"Recto: this page needs you (sign-in, verification or a block). Fix it here, then reload the page.\",\n\taccess: \"Recto: no access to the PDF with the current sign-in. Sign in through your institution, then reload.\",\n\t\"no-pdf\": \"Recto: could not find the PDF on this page. Download it yourself into Downloads/Recto, or close the tab.\",\n\t\"not-pdf\": \"Recto: the site returned a web page instead of a PDF. Check the page, then reload.\",\n\t\"page-blocked\": \"Recto: this site is outside the extension's permissions. Download the PDF yourself.\",\n\ttimeout: \"Recto: gave up waiting. Reload the page to try again.\",\n};\n\nasync function handToUser(tabId, job, reason) {\n\tawait writeJob(tabId, { ...job, state: \"user\", reason });\n\tawait badge(tabId, \"!\", USER_TITLES[reason] || USER_TITLES.challenge);\n}\n\nasync function evaluate(tabId) {\n\tlet job = (await readJobs())[tabId];\n\tif (!job || job.state !== \"working\") return;\n\tif (Date.now() - job.startedAt > JOB_TTL_MS) return handToUser(tabId, job, \"timeout\");\n\tawait sleep(SETTLE_MS);\n\tjob = (await readJobs())[tabId];\n\tif (!job || job.state !== \"working\") return;\n\tlet info;\n\ttry {\n\t\tconst [result] = await chrome.scripting.executeScript({ target: { tabId }, func: R.collectPageInfo });\n\t\tinfo = result && result.result;\n\t} catch {\n\t\treturn handToUser(tabId, job, \"page-blocked\");\n\t}\n\t// Keep the best page metadata seen along the way (IEEE: the article page has it, the stamp page does not).\n\tconst merged = R.mergePageMetadata(job.meta, R.buildPageMetadata(info || {}));\n\tif (merged && JSON.stringify(merged) !== JSON.stringify(job.meta)) {\n\t\tjob = { ...job, meta: merged };\n\t\tawait writeJob(tabId, job);\n\t}\n\tconst decision = R.resolvePdfAction(info || {});\n\tif (decision.action === \"wait\") {\n\t\tif (job.waits >= MAX_WAITS) return handToUser(tabId, job, \"challenge\");\n\t\tawait writeJob(tabId, { ...job, waits: job.waits + 1 });\n\t\tawait sleep(WAIT_MS);\n\t\treturn evaluate(tabId);\n\t}\n\tif (decision.action === \"navigate\") {\n\t\tconst plan = R.planNavigate(job, decision.url, info || {}, MAX_STEPS);\n\t\tif (plan.handTo) return handToUser(tabId, job, plan.handTo);\n\t\tawait writeJob(tabId, plan.job);\n\t\tawait chrome.tabs.update(tabId, { url: decision.url });\n\t\treturn;\n\t}\n\tif (decision.action === \"open\") {\n\t\t// T144 (CNKI): the page itself follows the PDF link, so the site sees its own page as the referrer. The file\n\t\t// the browser then starts is claimed in onDeterminingFilename below; a sign-in page loads in this tab instead.\n\t\tconst plan = R.planNavigate(job, decision.url, info || {}, MAX_STEPS);\n\t\tif (plan.handTo) return handToUser(tabId, job, plan.handTo);\n\t\tconst claimSince = Date.now();\n\t\tawait writeJob(tabId, { ...plan.job, claimUrl: decision.url, claimSince });\n\t\ttry {\n\t\t\tawait chrome.scripting.executeScript({ target: { tabId }, func: R.followLink, args: [decision.url] });\n\t\t} catch {\n\t\t\treturn handToUser(tabId, job, \"page-blocked\");\n\t\t}\n\t\t// Nothing happened (no file, no new page): leave the tab to the user. A file that starts later is still claimed.\n\t\tawait sleep(OPEN_WAIT_MS);\n\t\tconst later = (await readJobs())[tabId];\n\t\tif (later && later.state === \"working\" && !later.downloadId && later.claimSince === claimSince) await handToUser(tabId, later, \"no-pdf\");\n\t\treturn;\n\t}\n\tif (decision.action === \"download\") {\n\t\t// Remember whether the page offered institutional access, so a failed download is explained as an access problem.\n\t\tjob = { ...job, accessHint: R.noAccess(info || {}) };\n\t\tawait writeJob(tabId, { ...job, state: \"downloading\" });\n\t\tif (job.meta && !job.metaSaved) {\n\t\t\t// Abstract + keywords go next to the PDF as recto-<task>.json (a data: URL, no network request).\n\t\t\ttry {\n\t\t\t\tconst metaDownloadId = await chrome.downloads.download({\n\t\t\t\t\turl: `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(job.meta))}`,\n\t\t\t\t\tfilename: R.metadataName(job.token), conflictAction: \"overwrite\", saveAs: false,\n\t\t\t\t});\n\t\t\t\tjob = { ...job, metaSaved: true, metaDownloadId };\n\t\t\t\tawait writeJob(tabId, { ...job, state: \"downloading\" });\n\t\t\t} catch { /* metadata is optional */ }\n\t\t}\n\t\ttry {\n\t\t\tconst downloadId = await chrome.downloads.download({\n\t\t\t\turl: decision.url, filename: R.downloadName(job.token), conflictAction: \"overwrite\", saveAs: false,\n\t\t\t});\n\t\t\tawait writeJob(tabId, { ...job, state: \"downloading\", downloadId });\n\t\t} catch {\n\t\t\tawait handToUser(tabId, job, \"not-pdf\");\n\t\t}\n\t\treturn;\n\t}\n\treturn handToUser(tabId, job, decision.reason || \"challenge\");\n}\n\n// T144: an unpacked extension keeps running the code it was loaded with until someone presses Reload, so after\n// Recto writes a newer copy (a plugin update) fetches would still follow the old rules (2026-11-23: CNKI support\n// was on disk, the browser still ran 0.1.4). Before a Recto tab is handled, compare the version on disk with the\n// running one; when it changed, reload, and the new code restarts the Recto tabs (their address keeps the\n// #recto-intake mark). Reads only this extension's own manifest.json.\nasync function reloadIfUpdated() {\n\tlet onDisk = \"\";\n\ttry {\n\t\tonDisk = (await (await fetch(chrome.runtime.getURL(\"manifest.json\"), { cache: \"no-store\" })).json()).version || \"\";\n\t} catch { return false; }\n\tif (!R.diskCopyChanged(chrome.runtime.getManifest().version, onDisk)) return false;\n\tchrome.runtime.reload();\n\treturn true;\n}\n\nchrome.runtime.onInstalled.addListener(async details => {\n\tif (details.reason !== \"update\") return;\n\t// Only tabs on the sites listed in the manifest expose their address here; only marked ones are reloaded.\n\tfor (const tab of await chrome.tabs.query({}).catch(() => [])) {\n\t\tif (R.tokenFromUrl(tab.url)) await chrome.tabs.reload(tab.id).catch(() => {});\n\t}\n});\n\nchrome.webNavigation.onBeforeNavigate.addListener(async details => {\n\tif (details.frameId !== 0) return;\n\tconst token = R.tokenFromUrl(details.url);\n\tif (!token) return;\n\tif (await reloadIfUpdated()) return;\n\tif (!R.shouldStartJob((await readJobs())[details.tabId], token)) return;\n\tawait writeJob(details.tabId, { token, state: \"working\", steps: 0, waits: 0, tried: [], startedAt: Date.now() });\n\tawait badge(details.tabId, \"\u2026\", \"Recto: looking for the PDF\");\n});\n\nchrome.webNavigation.onCompleted.addListener(async details => {\n\tif (details.frameId !== 0) return;\n\tconst job = (await readJobs())[details.tabId];\n\tif (!job) return;\n\tif (job.state === \"user\") {\n\t\t// The user fixed something (signed in, passed a check) and reloaded: resume, and allow the same jumps again.\n\t\tawait writeJob(details.tabId, { ...job, state: \"working\", waits: 0, steps: 0, tried: [] });\n\t\tawait badge(details.tabId, \"\u2026\", \"Recto: looking for the PDF\");\n\t} else if (job.state !== \"working\") {\n\t\treturn;\n\t}\n\tawait evaluate(details.tabId);\n});\n\n// T144: name the file a job's page started (see \"open\") Recto/recto-<task>.pdf. Downloads made by this extension\n// and any download while no job waits for one are passed through untouched, without being looked at further.\nchrome.downloads.onDeterminingFilename.addListener((item, suggest) => {\n\tif (item.byExtensionId) { suggest(); return; }\n\treadJobs().then(async jobs => {\n\t\tconst tabId = R.claimDownload(jobs, item);\n\t\tif (!tabId) return suggest();\n\t\tconst job = jobs[tabId];\n\t\tawait writeJob(Number(tabId), { ...job, state: \"downloading\", downloadId: item.id, pdfByName: /\\.pdf$/i.test(item.filename || \"\") });\n\t\tsuggest({ filename: R.downloadName(job.token), conflictAction: \"overwrite\" });\n\t\tawait badge(Number(tabId), \"\u2026\", \"Recto: saving the PDF\");\n\t}).catch(() => suggest());\n\treturn true;\n});\n\nchrome.downloads.onChanged.addListener(async delta => {\n\tif (!delta.state || ![\"complete\", \"interrupted\"].includes(delta.state.current)) return;\n\tconst jobs = await readJobs();\n\t// The metadata file is an internal hand-off: once written, drop it from the browser's download list\n\t// (erase removes the list entry only; Recto moves the file to the Recycle Bin after importing).\n\tif (Object.values(jobs).some(job => job.metaDownloadId === delta.id)) {\n\t\tif (delta.state.current === \"complete\") await chrome.downloads.erase({ id: delta.id }).catch(() => {});\n\t\treturn;\n\t}\n\tconst entry = Object.entries(jobs).find(([, job]) => job.downloadId === delta.id);\n\tif (!entry) return;\n\tconst tabId = Number(entry[0]);\n\tconst job = entry[1];\n\tconst [item] = await chrome.downloads.search({ id: delta.id });\n\t// A file the site itself named *.pdf counts even when served as application/octet-stream (T144).\n\tconst isPdf = delta.state.current === \"complete\" && item && (/pdf/i.test(item.mime || \"\") || !!job.pdfByName);\n\tif (isPdf) {\n\t\tawait writeJob(tabId, null);\n\t\tawait chrome.tabs.remove(tabId).catch(() => {});\n\t\tawait scheduleInboxCheck(delta.id, R.folderOf(item.filename));\n\t\treturn;\n\t}\n\t// A login page or block saved under a .pdf name would only confuse Recto's inbox: remove it.\n\tif (delta.state.current === \"complete\") await chrome.downloads.removeFile(delta.id).catch(() => {});\n\tawait handToUser(tabId, { ...job, state: \"working\" }, job.accessHint ? \"access\" : \"not-pdf\");\n});\n\nchrome.tabs.onRemoved.addListener(tabId => { void writeJob(tabId, null); });\n\n// T125: Recto looks for the PDFs in the usual Downloads/Desktop places. When this browser saves somewhere else\n// (D:\\Downloads, OneDrive\u2026), Recto never sees them. A minute after a PDF is saved, check whether Recto has taken\n// it (it removes the file once it is in the library). If it is still there, open inbox.html once, which asks the\n// browser to pass the folder to Obsidian (obsidian://recto-intake?inbox=\u2026). Recto only accepts the folder after\n// finding this fetch's own task file in it. Session storage only: forgotten when the browser closes.\nconst INBOX_CHECK_ALARM = \"recto-inbox-check\";\nconst INBOX_CHECK_DELAY_MIN = 1;\n\nasync function scheduleInboxCheck(downloadId, folder) {\n\tif (!folder) return;\n\tconst { inboxKnown, inboxChecks = [] } = await chrome.storage.session.get([\"inboxKnown\", \"inboxChecks\"]);\n\tif (R.sameFolder(inboxKnown, folder)) return;\n\tawait chrome.storage.session.set({ inboxChecks: [...inboxChecks, { id: downloadId, folder }].slice(-10) });\n\tawait chrome.alarms.create(INBOX_CHECK_ALARM, { delayInMinutes: INBOX_CHECK_DELAY_MIN });\n}\n\nchrome.alarms.onAlarm.addListener(async alarm => {\n\tif (alarm.name !== INBOX_CHECK_ALARM) return;\n\tconst { inboxChecks = [] } = await chrome.storage.session.get(\"inboxChecks\");\n\tawait chrome.storage.session.set({ inboxChecks: [] });\n\tif (!inboxChecks.length) return;\n\t// search() starts the browser's file-existence check; the second search reads its result.\n\tconst ids = inboxChecks.map(check => check.id);\n\tfor (const id of ids) await chrome.downloads.search({ id }).catch(() => []);\n\tawait sleep(2000);\n\tlet taken = \"\";\n\tlet left = \"\";\n\tfor (const check of inboxChecks) {\n\t\tconst [item] = await chrome.downloads.search({ id: check.id }).catch(() => []);\n\t\tif (!item) continue;\n\t\tif (item.exists === false) taken = check.folder;\n\t\telse left = check.folder;\n\t}\n\tif (taken && !left) {\n\t\t// Recto already watches this folder: nothing to report.\n\t\tawait chrome.storage.session.set({ inboxKnown: taken });\n\t\treturn;\n\t}\n\tif (!left) return;\n\tawait chrome.storage.session.set({ inboxKnown: left });\n\tawait chrome.tabs.create({ url: chrome.runtime.getURL(`inbox.html#${encodeURIComponent(left)}`), active: true });\n});\n",
 		"icons/icon-128.png": { base64: "iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAC2ElEQVR42u3YIXLyQBiAYVxdHSeorKtjZkVPwKzB1dXhcJW4HqQOh6tjVW/QE9Th6nD8MBNmEP9AKJDshke8mux+D8kmvRRDT7ebTQDAJgAgAASAABAAAkAACAABIAAEgAAQALfZXYrhJcXwkWL4TjGsM2iZYlhsru09xfAIwPUapxh+Mhn6oWYboA8AXK5+9Q9bF9SqulMBcIHhfxc2/P3GbQMYbDZw1HLDapB/uf5FwcPfNWwawPag9FYdTnLaiM8Uw9MJ65h0YPjr6txy3xSA7Q99Zf5sHNVcx29HAGybNgVgXsgBaXBkHa8dGv7uVfHqAJ4L2pDFkbV8dgzAugb6swHMCtuQQ+/Ky5p3kmnLB9yXEx65k2sDKO116dBZ4GIb2tDXyeWlzgHnXMjqxgCMMvpeMc8BwBqA1poBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUBCAFQCtNc8BwPeNAZhkMvy7FMMyBwCzwgA8HFhLnQ1dVZs6arGXFMPXJcGeA+C5oOEvjqzls8AzzbEG1wZQ91nUdqsam/HaseEv687wXAD3J9yS2hr+qOY6fjsEYNoUgN2h5K3mc7TJtrf1pxPWMenI8H8q0I0B2G/Q8iFp2zDF0P/j9S86AGB4ypp7Gb3b5lC/wNfb/canrtnQ/4+gtDvBqnpF7AFwucbV8zT34c+OfOMA4MwD7vaf9ZHRo2FZ3aHeUwyP567RkG88mwCATQBAAAgAASAABIAAEAACQAAIAAGgrvYPwRFdAEWAxmAAAAAASUVORK5CYII=" },
 		"icons/icon-16.png": { base64: "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAUklEQVR42mM4EGDDQATWxoKVQXLICkLRsCVUbseBAJv/OHAfzIAfOBS4Q+nHBwJsVqHhjyA5mAG4bAiF0quweOvqqAGjBlDdAIqTMsWZiezsDACYVNtUgkhhxwAAAABJRU5ErkJggg==" },
 		"icons/icon-32.png": { base64: "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAkklEQVR42mM4EGDDMJCYYTg5QOZAgI02EZiP2g5gPxBgs/FAgM1/IvGPAwE2hbgcEHMgwGYVEbgPajFIz2ISLEfGfugOkCHRgGSovh9IYlcJ4MdIahejO0CbRAc0QPUhixGKrlAktatGHTDqgFEHjDpg1AGjDhh1wKgDRh0w6Bww4I3SAW+WD4qOyZDsmg3t3jEASKUGxMzM2JMAAAAASUVORK5CYII=" },
 		"icons/icon-48.png": { base64: "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAyUlEQVR42u3ZIQ4CMRCF4TpOwClwuE1G4HBkDJfgBEgOgltXh0POBZA4TsAlICS7yZglLYXdlPzimYqZ+ZqqTjCVUHMCAAAARm3YmMr2gyymBrwGuJjKoyAnU5nnAFamcjSVmJG2uzFfZ2Yqt8Lh+5xTAZvCRntXa/el4fs0KYBY2OTqarXu/G4qy+5JpWb95nJGAcSB85z42gcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqAAwyedu9d/r1S84/mLFxJKPPTEAAL/PExMHGKxqQpPCAAAAAElFTkSuQmCC" },
 		"inbox.html": "<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Recto</title>\n<link rel=\"icon\" type=\"image/png\" href=\"icons/icon-32.png\">\n<style>\n\t/* Same tokens as the Recto panel (styles.css .recto-ui): brand red, 4/8/12/16 gaps, 6/10/14 radii, Lucide icons. */\n\t:root {\n\t\t--rc-brand: #c0503c;\n\t\t--rc-brand-contrast: #ffffff;\n\t\t--rc-bg: #f6f5f2;\n\t\t--rc-surface: #ffffff;\n\t\t--rc-surface-2: #f1f0ec;\n\t\t--rc-border: #e3e1db;\n\t\t--rc-text: #1f1e1c;\n\t\t--rc-muted: #6b6860;\n\t\t--rc-success: #2f7d4f;\n\t\t--rc-gap-1: 4px;\n\t\t--rc-gap-2: 8px;\n\t\t--rc-gap-3: 12px;\n\t\t--rc-gap-4: 16px;\n\t\t--rc-radius-s: 6px;\n\t\t--rc-radius-m: 10px;\n\t\t--rc-radius-l: 14px;\n\t\t--rc-font-ui: \"Inter\", \"Segoe UI\", system-ui, -apple-system, \"PingFang SC\", \"Microsoft YaHei\", sans-serif;\n\t\t--rc-font-mono: ui-monospace, \"Cascadia Mono\", Consolas, monospace;\n\t\tcolor-scheme: light dark;\n\t}\n\t@media (prefers-color-scheme: dark) {\n\t\t:root {\n\t\t\t--rc-brand: #e08a77;\n\t\t\t--rc-brand-contrast: #202020;\n\t\t\t--rc-bg: #1c1c1c;\n\t\t\t--rc-surface: #262626;\n\t\t\t--rc-surface-2: #2f2f2f;\n\t\t\t--rc-border: #3a3a3a;\n\t\t\t--rc-text: #e6e4df;\n\t\t\t--rc-muted: #a19d94;\n\t\t\t--rc-success: #6cc18e;\n\t\t}\n\t}\n\t* { box-sizing: border-box; }\n\tbody { margin: 0; min-height: 100vh; background: var(--rc-bg); color: var(--rc-text); font: 14px/1.6 var(--rc-font-ui); -webkit-font-smoothing: antialiased; }\n\tmain { max-width: 520px; margin: 0 auto; padding: 12vh var(--rc-gap-4) var(--rc-gap-4); }\n\t.card { background: var(--rc-surface); border: 1px solid var(--rc-border); border-radius: var(--rc-radius-l); padding: 28px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05); }\n\t.brand { display: inline-flex; align-items: center; gap: var(--rc-gap-2); font-weight: 650; font-size: 15px; letter-spacing: -0.01em; margin-bottom: 20px; }\n\t.brand svg { width: 18px; height: 18px; color: var(--rc-brand); }\n\th1 { font-size: 18px; font-weight: 650; line-height: 1.4; margin: 0 0 var(--rc-gap-2); }\n\tp { margin: 0; }\n\t.lead { color: var(--rc-muted); margin-bottom: var(--rc-gap-3); }\n\t.path { display: flex; align-items: center; gap: var(--rc-gap-2); padding: 10px var(--rc-gap-3); margin-bottom: 20px; background: var(--rc-surface-2); border-radius: var(--rc-radius-m); font: 13px/1.5 var(--rc-font-mono); word-break: break-all; }\n\t.icon { flex: 0 0 auto; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }\n\t.path .icon { color: var(--rc-muted); }\n\tol { list-style: none; counter-reset: step; margin: 0 0 20px; padding: 0; display: grid; gap: var(--rc-gap-3); }\n\tli { counter-increment: step; display: grid; grid-template-columns: 22px 1fr; gap: var(--rc-gap-3); align-items: start; }\n\tli::before { content: counter(step); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--rc-brand); background: color-mix(in srgb, var(--rc-brand) 12%, transparent); }\n\tli b { font-weight: 600; }\n\t.actions { display: flex; flex-wrap: wrap; gap: var(--rc-gap-2); }\n\tbutton { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-weight: 500; padding: 7px 14px; border-radius: var(--rc-radius-s); border: 1px solid var(--rc-border); background: var(--rc-surface); color: var(--rc-text); cursor: pointer; transition: background-color 0.15s, border-color 0.15s, filter 0.15s; }\n\tbutton:hover { background: var(--rc-surface-2); }\n\tbutton:focus-visible { outline: 2px solid var(--rc-brand); outline-offset: 2px; }\n\tbutton:disabled { opacity: 0.5; cursor: default; filter: none; }\n\tbutton.primary { background: var(--rc-brand); border-color: var(--rc-brand); color: var(--rc-brand-contrast); }\n\tbutton.primary:hover { background: var(--rc-brand); filter: brightness(1.06); }\n\tbutton.is-done .icon { color: var(--rc-success); }\n\t.status { min-height: 1.6em; margin-top: var(--rc-gap-3); font-size: 13px; color: var(--rc-muted); }\n\t.manual { margin-top: 20px; padding-top: var(--rc-gap-4); border-top: 1px solid var(--rc-border); font-size: 13px; color: var(--rc-muted); }\n\t@media (prefers-reduced-motion: reduce) { button { transition: none; } }\n</style>\n</head>\n<body>\n<main>\n\t<div class=\"card\">\n\t\t<div class=\"brand\">\n\t\t\t<svg viewBox=\"0 0 100 100\" aria-hidden=\"true\"><rect x=\"12.5\" y=\"16.7\" width=\"33.3\" height=\"66.6\" rx=\"5\" fill=\"currentColor\"/><rect x=\"54.2\" y=\"16.7\" width=\"33.3\" height=\"66.6\" rx=\"5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"7\"/></svg>\n\t\t\t<span>Recto</span>\n\t\t</div>\n\t\t<h1 id=\"title\"></h1>\n\t\t<p class=\"lead\" id=\"lead\"></p>\n\t\t<div class=\"path\">\n\t\t\t<svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\"/></svg>\n\t\t\t<span id=\"folder\"></span>\n\t\t</div>\n\t\t<ol>\n\t\t\t<li><span id=\"step1\"></span></li>\n\t\t\t<li><span id=\"step2\"></span></li>\n\t\t\t<li><span id=\"step3\"></span></li>\n\t\t</ol>\n\t\t<div class=\"actions\">\n\t\t\t<button id=\"open\" class=\"primary\" type=\"button\">\n\t\t\t\t<svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M15 3h6v6\"/><path d=\"M10 14 21 3\"/><path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/></svg>\n\t\t\t\t<span id=\"openLabel\"></span>\n\t\t\t</button>\n\t\t\t<button id=\"copy\" type=\"button\">\n\t\t\t\t<svg class=\"icon\" id=\"copyIcon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/></svg>\n\t\t\t\t<span id=\"copyLabel\"></span>\n\t\t\t</button>\n\t\t</div>\n\t\t<p class=\"status\" id=\"status\" role=\"status\"></p>\n\t\t<p class=\"manual\" id=\"manual\"></p>\n\t</div>\n</main>\n<script src=\"resolver.js\"></script>\n<script src=\"inbox.js\"></script>\n</body>\n</html>\n",
 		"inbox.js": "// T125: shown when Recto has not picked up a saved PDF within a minute, which usually means this browser saves\n// downloads outside the Downloads/Desktop folders Recto looks in. Passes the folder to Obsidian through\n// obsidian://recto-intake?inbox=\u2026; Recto accepts it only after finding a file of the current fetch there.\n// Nothing happens until the user clicks: the browser's own \"Open Obsidian?\" prompt should follow a click they made.\n(function () {\n\t\"use strict\";\n\tconst folder = decodeURIComponent(location.hash.slice(1));\n\tconst zh = /^zh\\b/i.test(navigator.language || \"\");\n\tconst text = zh ? {\n\t\ttitle: \"\u8ba9 Recto \u627e\u5230\u4f60\u7684\u4e0b\u8f7d\u4f4d\u7f6e\",\n\t\tlead: \"\u8fd9\u4e2a\u6d4f\u89c8\u5668\u628a\u8bba\u6587 PDF \u5b58\u5728\u4e86\u4e0b\u9762\u7684\u6587\u4ef6\u5939\uff0cRecto \u8fd8\u6ca1\u5728\u8fd9\u91cc\u6536\u5230\u6587\u4ef6\uff1a\",\n\t\tstep1: \"\u70b9\u4e0b\u65b9\u7684 <b>\u4ea4\u7ed9 Obsidian</b>\u3002\",\n\t\tstep2: \"\u6d4f\u89c8\u5668\u4f1a\u8be2\u95ee\u662f\u5426\u6253\u5f00 Obsidian\uff1a\u52fe\u9009 <b>\u59cb\u7ec8\u5141\u8bb8</b>\uff0c\u518d\u70b9 <b>\u6253\u5f00</b>\u3002\",\n\t\tstep3: \"Recto \u6838\u5bf9\u8fd9\u91cc\u786e\u5b9e\u6709\u672c\u6b21\u53d6\u4ef6\u7684\u6587\u4ef6\u540e\uff0c\u4f1a\u8bb0\u4f4f\u8fd9\u4e2a\u4f4d\u7f6e\u5e76\u81ea\u52a8\u6536\u4ef6\u3002\u4e4b\u540e\u4e0d\u4f1a\u518d\u51fa\u73b0\u672c\u9875\u3002\",\n\t\topen: \"\u4ea4\u7ed9 Obsidian\",\n\t\tcopy: \"\u590d\u5236\u8def\u5f84\",\n\t\tcopied: \"\u5df2\u590d\u5236\",\n\t\tsent: \"\u5df2\u4ea4\u7ed9 Obsidian\uff0c\u8bf7\u56de\u5230 Obsidian \u67e5\u770b\u63d0\u793a\u3002\u6ca1\u6709\u5f39\u51fa\u786e\u8ba4\u65f6\uff0c\u53ef\u4ee5\u518d\u70b9\u4e00\u6b21\u3002\",\n\t\tmanual: \"\u4e5f\u53ef\u4ee5\u624b\u52a8\u8bbe\u7f6e\uff1aRecto \u8bbe\u7f6e \u2192 \u6dfb\u52a0\u8bba\u6587 \u2192 PDF \u4e2d\u8f6c\u6587\u4ef6\u5939\uff0c\u9009\u62e9\u4e0a\u9762\u8fd9\u4e2a\u6587\u4ef6\u5939\u3002\",\n\t} : {\n\t\ttitle: \"Help Recto find your downloads\",\n\t\tlead: \"This browser saved the paper PDF in the folder below, and Recto has not picked it up there yet:\",\n\t\tstep1: \"Click <b>Send to Obsidian</b> below.\",\n\t\tstep2: \"Your browser asks whether to open Obsidian: tick <b>Always allow</b>, then click <b>Open</b>.\",\n\t\tstep3: \"Once Recto finds a file from this fetch there, it remembers the folder and picks up PDFs automatically. You will not see this page again.\",\n\t\topen: \"Send to Obsidian\",\n\t\tcopy: \"Copy path\",\n\t\tcopied: \"Copied\",\n\t\tsent: \"Sent to Obsidian. Check Obsidian for a confirmation. If no prompt appeared, click again.\",\n\t\tmanual: \"Or set it yourself: Recto settings \u2192 Add papers \u2192 PDF transfer folder, and choose the folder above.\",\n\t};\n\tconst $ = id => document.getElementById(id);\n\tdocument.documentElement.lang = zh ? \"zh-CN\" : \"en\";\n\tdocument.title = `Recto \u00b7 ${text.title}`;\n\t$(\"title\").textContent = text.title;\n\t$(\"lead\").textContent = text.lead;\n\t$(\"folder\").textContent = folder;\n\t// Step texts are fixed strings from this file (only <b> markup), never page or URL input.\n\tfor (const key of [\"step1\", \"step2\", \"step3\"]) $(key).innerHTML = text[key];\n\t$(\"openLabel\").textContent = text.open;\n\t$(\"copyLabel\").textContent = text.copy;\n\t$(\"manual\").textContent = text.manual;\n\tconst url = self.RectoResolver.inboxReportUrl(folder);\n\t$(\"open\").addEventListener(\"click\", () => {\n\t\tlocation.href = url;\n\t\t$(\"status\").textContent = text.sent;\n\t});\n\t$(\"copy\").addEventListener(\"click\", async () => {\n\t\ttry {\n\t\t\tawait navigator.clipboard.writeText(folder);\n\t\t\t$(\"copyLabel\").textContent = text.copied;\n\t\t\t$(\"copy\").classList.add(\"is-done\");\n\t\t\t$(\"copyIcon\").innerHTML = '<path d=\"M20 6 9 17l-5-5\"/>';\n\t\t} catch { /* clipboard unavailable: the path stays visible on the page */ }\n\t});\n\tif (!folder) $(\"open\").disabled = true;\n})();\n",
-		"manifest.json": "{\n  \"manifest_version\": 3,\n  \"name\": \"Recto Paper Fetcher\",\n  \"version\": \"0.1.5\",\n  \"description\": \"Saves the PDF of papers that Recto opens in your browser (links marked #recto-intake only), using your own sign-in. Ignores all other tabs.\",\n  \"minimum_chrome_version\": \"116\",\n  \"permissions\": [\"downloads\", \"webNavigation\", \"scripting\", \"storage\", \"alarms\"],\n  \"host_permissions\": [\n    \"https://doi.org/*\",\n    \"https://dx.doi.org/*\",\n    \"https://ieeexplore.ieee.org/*\",\n    \"https://www.sciencedirect.com/*\",\n    \"https://linkinghub.elsevier.com/*\",\n    \"https://www.cell.com/*\",\n    \"https://cell.com/*\",\n    \"https://www.science.org/*\",\n    \"https://www.pnas.org/*\",\n    \"https://pubs.acs.org/*\",\n    \"https://pubs.rsc.org/*\",\n    \"https://academic.oup.com/*\",\n    \"https://journals.sagepub.com/*\",\n    \"https://www.cambridge.org/*\",\n    \"https://journals.aps.org/*\",\n    \"https://*.onlinelibrary.wiley.com/*\",\n    \"https://onlinelibrary.wiley.com/*\",\n    \"https://link.springer.com/*\",\n    \"https://www.tandfonline.com/*\",\n    \"https://www.mdpi.com/*\",\n    \"https://iopscience.iop.org/*\",\n    \"https://www.frontiersin.org/*\",\n    \"https://www.nature.com/*\",\n    \"https://dl.acm.org/*\",\n    \"https://pubs.aip.org/*\",\n    \"https://arxiv.org/*\"\n  ],\n  \"background\": { \"service_worker\": \"background.js\" },\n  \"icons\": { \"16\": \"icons/icon-16.png\", \"32\": \"icons/icon-32.png\", \"48\": \"icons/icon-48.png\", \"128\": \"icons/icon-128.png\" },\n  \"action\": { \"default_title\": \"Recto Paper Fetcher\", \"default_icon\": { \"16\": \"icons/icon-16.png\", \"32\": \"icons/icon-32.png\" } }\n}\n",
-		"README.md": "# Recto \u8bba\u6587\u53d6\u4ef6\uff08\u6d4f\u89c8\u5668\u6269\u5c55\uff09\n\n\u914d\u5408 Recto\u300c\u6dfb\u52a0\u8bba\u6587\u300d\u7684\u5f85\u8865\u961f\u5217\u4f7f\u7528\uff1a\u5728 Recto \u91cc\u70b9\u300c\u5728\u6d4f\u89c8\u5668\u4e2d\u53d6\u4ef6\u300d\uff0c\u8fd9\u4e2a\u6269\u5c55\u4f1a\u5728\u4f60\u81ea\u5df1\u7684\u6d4f\u89c8\u5668\u91cc\uff0c\u7528\u4f60\u5df2\u6709\u7684\u767b\u5f55\uff08\u5b66\u6821\u3001\u5355\u4f4d\u6216\u4e2a\u4eba\u8ba2\u9605\uff09\uff0c\u628a\u8bba\u6587 PDF \u5b58\u5230 `\u4e0b\u8f7d\u76ee\u5f55/Recto/`\uff0cRecto \u968f\u540e\u4ece\u8fd9\u4e2a\u4e2d\u8f6c\u6587\u4ef6\u5939\u628a\u5b83\u52a0\u5165\u8bba\u6587\u5e93\u3002\n\n## \u5b89\u88c5\uff08Edge / Chrome\uff09\n\n1. \u6253\u5f00 `edge://extensions`\uff08Chrome \u4e3a `chrome://extensions`\uff09\uff0c\u6253\u5f00\u300c\u5f00\u53d1\u4eba\u5458\u6a21\u5f0f\u300d\u3002\n2. \u70b9\u300c\u52a0\u8f7d\u89e3\u538b\u7f29\u7684\u6269\u5c55\u300d\uff0c\u9009\u4e2d\u8fd9\u4e2a\u6587\u4ef6\u5939 `recto-browser-extension`\u3002\n3. \u5728 Recto \u8bbe\u7f6e \u2192\u300c\u6dfb\u52a0\u8bba\u6587\u300d\u2192\u300c\u53d6\u4ef6\u6d4f\u89c8\u5668\u300d\u91cc\u9009\u8fd9\u4e2a\u6d4f\u89c8\u5668\uff08\u9ed8\u8ba4\u662f\u7cfb\u7edf\u9ed8\u8ba4\u6d4f\u89c8\u5668\uff09\u3002\n4. \u901a\u5e38\u4e0d\u7528\u518d\u8bbe\u7f6e\uff1a\u53d6\u4ef6\u65f6 Recto \u4f1a\u5728\u300c\u4e0b\u8f7d\u300d\u6216\u300c\u684c\u9762\u300d\u6587\u4ef6\u5939\u91cc\u81ea\u52a8\u8bc6\u522b `Recto` \u4e2d\u8f6c\u6587\u4ef6\u5939\u3002\u6d4f\u89c8\u5668\u7684\u4e0b\u8f7d\u4f4d\u7f6e\u5728\u522b\u5904\uff08\u5982 `D:Downloads`\u3001OneDrive\uff09\u65f6\uff0c\u6269\u5c55\u4f1a\u5728 PDF \u5b58\u597d\u7ea6\u4e00\u5206\u949f\u3001Recto \u4ecd\u672a\u6536\u8d70\u65f6\u6253\u5f00\u4e00\u9875\u300c\u8ba9 Recto \u627e\u5230\u4f60\u7684\u4e0b\u8f7d\u4f4d\u7f6e\u300d\uff0c\u70b9\u300c\u4ea4\u7ed9 Obsidian\u300d\u5e76\u5728\u6d4f\u89c8\u5668\u7684\u786e\u8ba4\u91cc\u5141\u8bb8\u6253\u5f00 Obsidian \u5373\u53ef\uff0c\u6bcf\u6b21\u6253\u5f00\u6d4f\u89c8\u5668\u6700\u591a\u51fa\u73b0\u4e00\u6b21\u3002\u4e5f\u53ef\u4ee5\u624b\u52a8\u8bbe\u7f6e\uff1a\u5728\u6d4f\u89c8\u5668\u6253\u5f00 `edge://settings/downloads`\uff08Chrome \u4e3a `chrome://settings/downloads`\uff09\u67e5\u770b\u4e0b\u8f7d\u4f4d\u7f6e\uff0c\u518d\u5230 Recto \u8bbe\u7f6e \u2192\u300c\u6dfb\u52a0\u8bba\u6587\u300d\u2192\u300cPDF \u4e2d\u8f6c\u6587\u4ef6\u5939\u300d\u91cc\u9009\u62e9\u8fd9\u4e2a\u4e0b\u8f7d\u4f4d\u7f6e\uff08\u4e0d\u7528\u81ea\u5df1\u5efa `Recto` \u6587\u4ef6\u5939\uff09\u3002\n\n## \u5b83\u505a\u4ec0\u4e48\uff0c\u4e0d\u505a\u4ec0\u4e48\n\n- **\u53ea\u5904\u7406 Recto \u6253\u5f00\u7684\u6807\u7b7e\u9875**\uff1a\u7f51\u5740\u672b\u5c3e\u5e26 `#recto-intake=<\u4efb\u52a1\u53f7>` \u7684\u6807\u7b7e\u9875\u624d\u4f1a\u88ab\u5904\u7406\uff0c\u5176\u4ed6\u6d4f\u89c8\u4e00\u6982\u4e0d\u8bfb\u53d6\u3001\u4e0d\u8bb0\u5f55\u3002\n- \u5728\u51fa\u7248\u5546\u9875\u9762\u4e0a\u627e\u5230 PDF \u94fe\u63a5\uff08citation_pdf_url\uff0c\u6216 IEEE\u3001ScienceDirect\u3001Wiley\u3001Taylor & Francis \u7684\u56fa\u5b9a\u89c4\u5219\uff09\uff0c\u4e0b\u8f7d\u4e3a `Recto/recto-<\u4efb\u52a1\u53f7>.pdf`\uff0c\u4e0b\u8f7d\u5b8c\u5173\u95ed\u6807\u7b7e\u9875\u3002\n- \u9047\u5230\u767b\u5f55\u9875\u3001\u9a8c\u8bc1\u7801\u3001\u300cUnusual Traffic\u300d\u6216\u6ca1\u6709\u8bbf\u95ee\u6743\u9650\u65f6\uff0c**\u4ec0\u4e48\u90fd\u4e0d\u505a**\uff1a\u6807\u7b7e\u9875\u7559\u7ed9\u4f60\uff0c\u5de5\u5177\u680f\u56fe\u6807\u663e\u793a\u300c!\u300d\u3002\u5904\u7406\u597d\u540e\u5237\u65b0\u9875\u9762\uff0c\u6269\u5c55\u4f1a\u63a5\u7740\u4e0b\u8f7d\u3002\n- \u9875\u9762\u4e0a\u6709\u6807\u51c6\u7684\u6458\u8981\u3001\u5173\u952e\u8bcd\u3001\u9898\u540d\u3001DOI\u3001\u4f5c\u8005\u6807\u7b7e\uff08`citation_abstract`\u3001`citation_keywords`\u3001`citation_title`\u3001`citation_doi`\u3001`citation_author`\u3001Dublin Core\uff1bIEEE \u4ece\u9875\u9762\u5185\u5d4c\u6570\u636e\u8bfb DOI\uff09\u65f6\uff0c\u53e6\u5b58\u4e00\u4efd `recto-<\u4efb\u52a1\u53f7>.json`\u3002\u53ea\u6709\u8bba\u6587\u9875\u94fe\u63a5\u3001Recto \u8bfb\u4e0d\u5230 DOI \u7684\u5f85\u8865\u8bba\u6587\uff0c\u9760\u8fd9\u4efd\u6587\u4ef6\u8ba4\u51fa\u662f\u54ea\u7bc7\u3002\u8fd9\u4efd\u6587\u4ef6\u7528 data: URL \u5199\u51fa\uff08\u4e0d\u53d1\u7f51\u7edc\u8bf7\u6c42\uff09\uff0c\u5199\u5b8c\u4f1a\u4ece\u6d4f\u89c8\u5668\u7684\u4e0b\u8f7d\u5217\u8868\u91cc\u62b9\u6389\u8fd9\u4e00\u6761\u3002\n- Recto \u786e\u8ba4 PDF \u5df2\u9010\u5b57\u8282\u5b8c\u6574\u590d\u5236\u8fdb\u8bba\u6587\u5e93\u540e\uff0c\u4f1a\u76f4\u63a5\u5220\u9664\u8fd9\u4e24\u4e2a\u6587\u4ef6\uff08\u8bba\u6587\u5e93\u91cc\u6709\u540c\u6837\u7684\u4e00\u4efd\uff09\uff0c\u7a7a\u7684 `Recto` \u6587\u4ef6\u5939\u968f\u4e4b\u5220\u9664\u3002\u6838\u9a8c\u6ca1\u901a\u8fc7\u3001\u6216\u5bf9\u4e0d\u4e0a\u4efb\u4f55\u4efb\u52a1\u7684\u6587\u4ef6\u4e0d\u4f1a\u81ea\u52a8\u5220\u9664\uff0c\u7531\u4f60\u5728 Recto \u91cc\u9009\u62e9\u300c\u4e22\u5f03\u300d\uff0c\u53ea\u79fb\u5230\u56de\u6536\u7ad9\u3002\n- macOS\uff1a\u652f\u6301 Chrome \u4e0e Edge\uff1bSafari \u7684\u6269\u5c55\u683c\u5f0f\u4e0d\u540c\uff0c\u6682\u4e0d\u652f\u6301\u3002\n- \u4e0d\u5bfc\u51fa cookie \u6216\u5bc6\u7801\uff0c\u4e0d\u8fde\u63a5 Recto \u670d\u52a1\u5668\u6216\u4efb\u4f55\u5176\u4ed6\u670d\u52a1\u5668\uff0c\u4e0d\u4f2a\u88c5\u6d4f\u89c8\u5668\u8eab\u4efd\uff0c\u4e0d\u7834\u89e3\u9a8c\u8bc1\u7801\u3002\n- \u4e0b\u8f7d\u56de\u6765\u7684\u4e0d\u662f PDF\uff08\u6bd4\u5982\u767b\u5f55\u9875\uff09\u65f6\uff0c\u4f1a\u5220\u9664\u8fd9\u4e2a\u6587\u4ef6\uff0c\u5e76\u628a\u6807\u7b7e\u9875\u7559\u7ed9\u4f60\u3002\n- \u53ea\u628a\u4e00\u6837\u4e1c\u897f\u4ea4\u7ed9 Recto\uff1aPDF \u5b9e\u9645\u5b58\u653e\u7684\u6587\u4ef6\u5939\u8def\u5f84\uff0c\u7ecf `obsidian://recto-intake?inbox=\u2026` \u94fe\u63a5\u4f20\u7ed9 Obsidian\uff0c\u5e76\u4e14\u53ea\u5728 Recto \u4e00\u5206\u949f\u5185\u6ca1\u6536\u8d70\u6587\u4ef6\u65f6\u624d\u4f20\u3002Recto \u8981\u5728\u8fd9\u4e2a\u6587\u4ef6\u5939\u91cc\u770b\u5230\u672c\u6b21\u53d6\u4ef6\u7684\u4efb\u52a1\u53f7\u6587\u4ef6\u624d\u4f1a\u91c7\u7528\u5b83\u3002\n\n## \u6743\u9650\n\n- `downloads`\uff1a\u4fdd\u5b58 PDF\u3002\n- `webNavigation`\uff1a\u8bc6\u522b\u54ea\u4e9b\u6807\u7b7e\u9875\u662f Recto \u6253\u5f00\u7684\uff08\u5e26 `#recto-intake` \u6807\u8bb0\uff09\u3002\n- `scripting` \u4e0e\u4e0b\u5217\u7f51\u7ad9\u7684\u8bbf\u95ee\u6743\u9650\uff1a\u5728\u8fd9\u4e9b\u9875\u9762\u4e0a\u67e5\u627e PDF \u94fe\u63a5\u3002doi.org\u3001IEEE Xplore\u3001ScienceDirect\u3001Wiley\u3001Springer\u3001Taylor & Francis\u3001MDPI\u3001IOP\u3001Frontiers\u3001Nature\u3001ACM\u3001AIP\u3001arXiv\u3002\n- `storage`\uff1a\u5728\u6d4f\u89c8\u5668\u4f1a\u8bdd\u5185\u8bb0\u4f4f\u8fdb\u884c\u4e2d\u7684\u4efb\u52a1\u548c\u5df2\u786e\u8ba4\u7684\u4e0b\u8f7d\u6587\u4ef6\u5939\uff0c\u6d4f\u89c8\u5668\u5173\u95ed\u5373\u6e05\u7a7a\u3002\n- `alarms`\uff1aPDF \u5b58\u597d\u4e00\u5206\u949f\u540e\u68c0\u67e5 Recto \u662f\u5426\u5df2\u6536\u8d70\uff08\u6269\u5c55\u540e\u53f0\u4e0d\u80fd\u957f\u65f6\u95f4\u7b49\u5f85\uff09\u3002\n\n\u901a\u8fc7 WebVPN \u4e00\u7c7b\u6539\u5199\u57df\u540d\u7684\u65b9\u5f0f\u8bbf\u95ee\u51fa\u7248\u5546\u65f6\uff0c\u9875\u9762\u4e0d\u5728\u4e0a\u8ff0\u7f51\u7ad9\u4e4b\u5185\uff0c\u6269\u5c55\u4e0d\u4f1a\u5904\u7406\uff1b\u8fd9\u65f6\u8bf7\u5728\u9875\u9762\u4e0a\u624b\u52a8\u4e0b\u8f7d PDF\uff0c\u5b58\u8fdb `\u4e0b\u8f7d\u76ee\u5f55/Recto`\u3002\n",
-		"resolver.js": "// Recto Paper Fetcher \u2014 pure decision core (T100-R). No chrome.* calls here, so Node tests can load it.\n// Given a snapshot of the current page, decide the next step: download a PDF, navigate to the PDF\n// page, wait for an automatic check to finish, or hand the tab to the user. Never solves CAPTCHAs,\n// never fakes the browser identity: anything interactive is left to the person using the browser.\n(function (root, factory) {\n\tconst api = factory();\n\tif (typeof module === \"object\" && module.exports) module.exports = api;\n\telse root.RectoResolver = api;\n})(typeof self !== \"undefined\" ? self : this, function () {\n\t\"use strict\";\n\n\tconst TOKEN_PATTERN = /#(?:.*&)?recto-intake=([a-f0-9]{8,32})(?:&|$)/i;\n\t// Interstitials that clear by themselves in a real browser (seen in T100-R spike: Wiley ~7 s).\n\tconst AUTO_CHECK = [/^just a moment/i, /^\u8bf7\u7a0d\u5019/, /checking your browser/i, /^attention required/i, /\u6b63\u5728\u8fdb\u884c\u5b89\u5168\u9a8c\u8bc1/];\n\t// Anything that needs a human, or a hard block. The tab is left to the user.\n\tconst USER_CHECK = [/are you a robot/i, /verify you are (a )?human/i, /complete the captcha/i, /captcha challenge/i,\n\t\t/unusual traffic detected/i, /error 418/i, /request unsuccessful/i, /access denied/i, /\u4eba\u673a\u9a8c\u8bc1/];\n\tconst NO_ACCESS = [/purchase (this )?(article|pdf)/i, /get access/i, /institutional (sign in|login|access)/i,\n\t\t/sign in to (view|access|download)/i, /buy (this )?article/i, /subscribe to/i];\n\n\tfunction tokenFromUrl(url) {\n\t\tconst match = String(url || \"\").match(TOKEN_PATTERN);\n\t\treturn match ? match[1].toLowerCase() : \"\";\n\t}\n\n\tfunction downloadName(token) {\n\t\treturn `Recto/recto-${String(token).toLowerCase()}.pdf`;\n\t}\n\n\tfunction metadataName(token) {\n\t\treturn `Recto/recto-${String(token).toLowerCase()}.json`;\n\t}\n\n\t// T125: the folder a finished download really landed in (DownloadItem.filename is an absolute path).\n\tfunction folderOf(filename) {\n\t\tconst value = String(filename || \"\");\n\t\tconst cut = Math.max(value.lastIndexOf(\"/\"), value.lastIndexOf(\"\\\\\"));\n\t\treturn cut > 0 ? value.slice(0, cut) : \"\";\n\t}\n\n\tfunction sameFolder(a, b) {\n\t\tconst key = value => String(value || \"\").replace(/\\\\/g, \"/\").replace(/\\/+$/, \"\").toLowerCase();\n\t\treturn !!a && !!b && key(a) === key(b);\n\t}\n\n\t// The page that asks the browser to hand the folder to Obsidian (obsidian://recto-intake?inbox=\u2026).\n\tfunction inboxReportUrl(folder) {\n\t\treturn `obsidian://recto-intake?inbox=${encodeURIComponent(String(folder || \"\"))}`;\n\t}\n\n\t// Abstract and author keywords from standard meta tags only (citation_* / Dublin Core). og:description and\n\t// generic \"description\"/\"keywords\" tags are skipped: they are often truncated or site-wide. Recto cleans\n\t// and validates again on its side; this is a best-effort hint, never required.\n\tfunction buildPageMetadata(info) {\n\t\tconst abstract = String(info && info.metaAbstract || \"\").replace(/\\s+/g, \" \").trim().slice(0, 20000);\n\t\tconst seen = new Set();\n\t\tconst keywords = [];\n\t\tfor (const raw of Array.isArray(info && info.metaKeywords) ? info.metaKeywords : []) {\n\t\t\tfor (const part of String(raw || \"\").split(/[;,]/)) {\n\t\t\t\tconst name = part.replace(/\\s+/g, \" \").trim();\n\t\t\t\tif (name.length < 2 || name.length > 120 || seen.has(name.toLowerCase())) continue;\n\t\t\t\tseen.add(name.toLowerCase());\n\t\t\t\tkeywords.push(name);\n\t\t\t\tif (keywords.length >= 40) break;\n\t\t\t}\n\t\t}\n\t\t// T128: the paper's identity from the same standard tags (plus IEEE's embedded \"doi\" field), so Recto can\n\t\t// take papers it only had a page link for. Recto looks the DOI up itself and still checks the PDF text.\n\t\tconst title = String(info && info.metaTitle || \"\").replace(/\\s+/g, \" \").trim().slice(0, 500);\n\t\tconst doi = (String(info && info.metaDoi || \"\").match(/10\\.\\d{4,9}\\/[^\\s\"<>]+/) || [\"\"])[0].replace(/[.,;]+$/, \"\").slice(0, 200);\n\t\tconst authors = [];\n\t\tfor (const raw of Array.isArray(info && info.metaAuthors) ? info.metaAuthors : []) {\n\t\t\tconst name = String(raw || \"\").replace(/\\s+/g, \" \").trim();\n\t\t\tif (name.length >= 2 && name.length <= 120 && !authors.includes(name)) authors.push(name);\n\t\t\tif (authors.length >= 50) break;\n\t\t}\n\t\tif (abstract.length < 80 && !keywords.length && !title && !doi) return null;\n\t\treturn { version: 1, abstract: abstract.length >= 80 ? abstract : \"\", keywords, title, doi, authors };\n\t}\n\n\t// Pages along one job (IEEE: article page, then the stamp page) each add what they have; the first value wins,\n\t// except that a longer keyword list replaces a shorter one.\n\tfunction mergePageMetadata(previous, next) {\n\t\tif (!next) return previous || null;\n\t\tif (!previous) return next;\n\t\treturn {\n\t\t\tversion: 1,\n\t\t\tabstract: previous.abstract || next.abstract || \"\",\n\t\t\tkeywords: (next.keywords || []).length > (previous.keywords || []).length ? next.keywords : previous.keywords || [],\n\t\t\ttitle: previous.title || next.title || \"\",\n\t\t\tdoi: previous.doi || next.doi || \"\",\n\t\t\tauthors: (previous.authors || []).length ? previous.authors : next.authors || [],\n\t\t};\n\t}\n\n\tfunction absolute(href, base) {\n\t\tconst value = String(href || \"\").trim();\n\t\t// new URL(\"\", base) returns the page itself \u2014 an empty link must stay empty.\n\t\tif (!value) return \"\";\n\t\ttry { return new URL(value.replace(/&amp;/g, \"&\"), base).href; } catch { return \"\"; }\n\t}\n\n\tfunction hostOf(url) {\n\t\ttry { return new URL(url).hostname.toLowerCase(); } catch { return \"\"; }\n\t}\n\n\tfunction pathOf(url) {\n\t\ttry { return new URL(url).pathname; } catch { return \"\"; }\n\t}\n\n\tfunction detectChallenge(info) {\n\t\tconst title = String(info && info.title || \"\").trim();\n\t\tconst text = String(info && info.text || \"\").slice(0, 3000);\n\t\tif (USER_CHECK.some(pattern => pattern.test(title) || pattern.test(text))) return \"user\";\n\t\tif (AUTO_CHECK.some(pattern => pattern.test(title) || pattern.test(text.trim()))) return \"auto\";\n\t\treturn \"\";\n\t}\n\n\tfunction looksLikePdfUrl(url) {\n\t\tconst path = pathOf(url).toLowerCase();\n\t\treturn path.endsWith(\".pdf\") || /\\/stamppdf\\/getpdf\\.jsp/i.test(path) || /\\/pdfdirect\\//.test(path);\n\t}\n\n\tfunction doiFromPath(path) {\n\t\tconst match = String(path || \"\").match(/\\/doi\\/(?:abs\\/|full\\/|epdf\\/|pdf\\/|pdfdirect\\/|reader\\/)?(10\\.\\d{4,9}\\/[^?#]+)/i);\n\t\treturn match ? decodeURIComponent(match[1]) : \"\";\n\t}\n\n\tfunction noAccess(info) {\n\t\tconst text = String(info && info.text || \"\").slice(0, 4000);\n\t\treturn NO_ACCESS.some(pattern => pattern.test(text));\n\t}\n\n\tfunction pdfLinkFrom(info) {\n\t\tconst links = Array.isArray(info && info.links) ? info.links : [];\n\t\tconst scored = links.map(link => {\n\t\t\tconst href = absolute(link && link.href, info.url);\n\t\t\tconst text = String(link && link.text || \"\");\n\t\t\tlet score = 0;\n\t\t\tif (!href || /^javascript:/i.test(href)) return null;\n\t\t\tif (/\\.pdf(\\?|$)/i.test(href)) score += 2;\n\t\t\tif (/\\/(pdf|pdfft|pdfdirect)\\b/i.test(href)) score += 2;\n\t\t\tif (/\\b(download )?pdf\\b/i.test(text)) score += 2;\n\t\t\tif (/supplement|appendix|esm|figure|slides/i.test(href + \" \" + text)) score -= 4;\n\t\t\treturn score >= 3 ? { href, score } : null;\n\t\t}).filter(Boolean).sort((a, b) => b.score - a.score);\n\t\treturn scored.length ? scored[0].href : \"\";\n\t}\n\n\t// info: { url, title, text, metaPdf, links: [{ href, text }], frames: [src] }\n\tfunction resolvePdfAction(info) {\n\t\tconst url = String(info && info.url || \"\");\n\t\tconst host = hostOf(url);\n\t\tconst path = pathOf(url);\n\t\tconst challenge = detectChallenge(info);\n\t\tif (challenge === \"user\") return { action: \"user\", reason: \"challenge\" };\n\t\tif (challenge === \"auto\") return { action: \"wait\", reason: \"challenge\" };\n\t\tif (looksLikePdfUrl(url) && !(info && info.text)) return { action: \"download\", url };\n\n\t\tif (host === \"ieeexplore.ieee.org\") {\n\t\t\tconst doc = path.match(/^\\/document\\/(\\d+)/);\n\t\t\tif (doc) return { action: \"navigate\", url: `https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=${doc[1]}` };\n\t\t\tif (/^\\/stamp\\/stamp\\.jsp/.test(path)) {\n\t\t\t\tconst frame = (info.frames || []).map(src => absolute(src, url)).find(src => /getpdf\\.jsp|\\.pdf(\\?|$)/i.test(src));\n\t\t\t\tif (frame) return { action: \"download\", url: frame };\n\t\t\t\treturn { action: \"user\", reason: \"access\" };\n\t\t\t}\n\t\t}\n\n\t\tif (/(^|\\.)sciencedirect\\.com$/.test(host) && /\\/science\\/article\\//.test(path)) {\n\t\t\tconst meta = absolute(info.metaPdf, url);\n\t\t\tif (meta) return { action: \"download\", url: meta };\n\t\t\tconst link = (info.links || []).map(item => absolute(item && item.href, url)).find(href => /\\/pdfft\\b/.test(href));\n\t\t\tif (link) return { action: \"download\", url: link };\n\t\t\treturn { action: \"user\", reason: noAccess(info) ? \"access\" : \"no-pdf\" };\n\t\t}\n\n\t\tif (/(^|\\.)onlinelibrary\\.wiley\\.com$/.test(host)) {\n\t\t\tconst doi = doiFromPath(path);\n\t\t\tif (doi && !/\\/pdfdirect\\//.test(path)) return { action: \"download\", url: `https://${host}/doi/pdfdirect/${doi}?download=true` };\n\t\t}\n\n\t\tif (host === \"www.tandfonline.com\") {\n\t\t\tconst doi = doiFromPath(path);\n\t\t\tif (doi && !/\\/doi\\/pdf\\//.test(path)) return { action: \"download\", url: `https://www.tandfonline.com/doi/pdf/${doi}?download=true` };\n\t\t}\n\n\t\tconst meta = absolute(info && info.metaPdf, url);\n\t\tif (meta) return { action: \"download\", url: meta };\n\t\tconst link = pdfLinkFrom(info || {});\n\t\tif (link) return { action: \"download\", url: link };\n\t\treturn { action: \"user\", reason: noAccess(info) ? \"access\" : \"no-pdf\" };\n\t}\n\n\t// A tagged navigation in a tab already working on the same task is the site re-navigating by itself\n\t// (IEEE adds or drops a trailing slash and keeps the fragment). Keep the counters, or the job restarts\n\t// forever; only a different task starts fresh.\n\tfunction shouldStartJob(existing, token) {\n\t\treturn !existing || existing.token !== token;\n\t}\n\n\t// Being sent back from the PDF page twice means no access (IEEE: stamp.jsp returns to the article page).\n\t// One bounce is tolerated: IEEE sometimes bounces once just to start a session (;jsessionid=\u2026) and the\n\t// second try works. Then hand the tab to the user instead of bouncing until the step limit.\n\t// Signing in and reloading starts over.\n\tfunction planNavigate(job, url, info, maxSteps) {\n\t\tconst tried = Array.isArray(job && job.tried) ? job.tried : [];\n\t\tif (tried.filter(item => item === url).length >= 2) return { handTo: \"access\" };\n\t\tconst steps = Number(job && job.steps) || 0;\n\t\tif (steps >= maxSteps) return { handTo: \"no-pdf\" };\n\t\treturn { job: { ...job, steps: steps + 1, tried: [...tried, url] } };\n\t}\n\n\t// Injected into the page with chrome.scripting.executeScript; must stay self-contained.\n\tfunction collectPageInfo() {\n\t\tconst pick = selector => Array.prototype.slice.call(document.querySelectorAll(selector));\n\t\tconst meta = document.querySelector('meta[name=\"citation_pdf_url\"]');\n\t\tconst content = selector => { const el = document.querySelector(selector); return el ? el.getAttribute(\"content\") || \"\" : \"\"; };\n\t\treturn {\n\t\t\tmetaAbstract: content('meta[name=\"citation_abstract\"]') || content('meta[name=\"dc.description\"]') || content('meta[name=\"DC.Description\"]') || content('meta[name=\"DC.description\"]'),\n\t\t\tmetaKeywords: pick('meta[name=\"citation_keywords\"], meta[name=\"dc.subject\"], meta[name=\"DC.Subject\"], meta[name=\"DC.subject\"]').map(el => el.getAttribute(\"content\") || \"\").filter(Boolean).slice(0, 60),\n\t\t\tmetaTitle: content('meta[name=\"citation_title\"]') || content('meta[name=\"dc.title\"]') || content('meta[name=\"DC.title\"]') || content('meta[name=\"DC.Title\"]'),\n\t\t\t// IEEE Xplore has no citation_doi tag; its page data carries \"doi\":\"10.\u2026\" in an inline script.\n\t\t\tmetaDoi: content('meta[name=\"citation_doi\"]') || content('meta[name=\"prism.doi\"]') || content('meta[name=\"dc.identifier\"]') || content('meta[name=\"DC.identifier\"]')\n\t\t\t\t|| ((pick(\"script:not([src])\").map(el => el.textContent || \"\").join(\"\\n\").slice(0, 600000).match(/\"doi\"\\s*:\\s*\"(10\\.\\d{4,9}\\/[^\"\\s]+)\"/i) || [])[1] || \"\"),\n\t\t\tmetaAuthors: pick('meta[name=\"citation_author\"], meta[name=\"dc.creator\"], meta[name=\"DC.creator\"], meta[name=\"DC.Creator\"]').map(el => el.getAttribute(\"content\") || \"\").filter(Boolean).slice(0, 60),\n\t\t\turl: location.href,\n\t\t\ttitle: document.title || \"\",\n\t\t\ttext: document.body ? document.body.innerText.slice(0, 4000) : \"\",\n\t\t\tmetaPdf: meta ? meta.getAttribute(\"content\") || \"\" : \"\",\n\t\t\tlinks: pick(\"a[href]\").slice(0, 600).map(a => ({ href: a.href, text: (a.innerText || a.title || a.getAttribute(\"aria-label\") || \"\").trim().slice(0, 80) })),\n\t\t\tframes: pick(\"iframe[src], embed[src], object[data]\").map(el => el.src || el.data || \"\").filter(Boolean),\n\t\t};\n\t}\n\n\treturn { tokenFromUrl, downloadName, metadataName, folderOf, sameFolder, inboxReportUrl, buildPageMetadata, mergePageMetadata, detectChallenge, resolvePdfAction, collectPageInfo, looksLikePdfUrl,\n\t\tshouldStartJob, planNavigate, noAccess };\n});\n",
+		"manifest.json": "{\n  \"manifest_version\": 3,\n  \"name\": \"Recto Paper Fetcher\",\n  \"version\": \"0.1.7\",\n  \"description\": \"Saves the PDF of papers that Recto opens in your browser (links marked #recto-intake only), using your own sign-in. Ignores all other tabs.\",\n  \"minimum_chrome_version\": \"116\",\n  \"permissions\": [\"downloads\", \"webNavigation\", \"scripting\", \"storage\", \"alarms\"],\n  \"host_permissions\": [\n    \"https://doi.org/*\",\n    \"https://dx.doi.org/*\",\n    \"https://ieeexplore.ieee.org/*\",\n    \"https://www.sciencedirect.com/*\",\n    \"https://linkinghub.elsevier.com/*\",\n    \"https://www.cell.com/*\",\n    \"https://cell.com/*\",\n    \"https://www.science.org/*\",\n    \"https://www.pnas.org/*\",\n    \"https://pubs.acs.org/*\",\n    \"https://pubs.rsc.org/*\",\n    \"https://academic.oup.com/*\",\n    \"https://journals.sagepub.com/*\",\n    \"https://www.cambridge.org/*\",\n    \"https://journals.aps.org/*\",\n    \"https://*.onlinelibrary.wiley.com/*\",\n    \"https://onlinelibrary.wiley.com/*\",\n    \"https://link.springer.com/*\",\n    \"https://www.tandfonline.com/*\",\n    \"https://www.mdpi.com/*\",\n    \"https://iopscience.iop.org/*\",\n    \"https://www.frontiersin.org/*\",\n    \"https://www.nature.com/*\",\n    \"https://dl.acm.org/*\",\n    \"https://pubs.aip.org/*\",\n    \"https://arxiv.org/*\",\n    \"https://www.chndoi.org/*\",\n    \"https://chndoi.org/*\",\n    \"https://*.cnki.net/*\"\n  ],\n  \"background\": { \"service_worker\": \"background.js\" },\n  \"icons\": { \"16\": \"icons/icon-16.png\", \"32\": \"icons/icon-32.png\", \"48\": \"icons/icon-48.png\", \"128\": \"icons/icon-128.png\" },\n  \"action\": { \"default_title\": \"Recto Paper Fetcher\", \"default_icon\": { \"16\": \"icons/icon-16.png\", \"32\": \"icons/icon-32.png\" } }\n}\n",
+		"README.md": "# Recto \u8bba\u6587\u53d6\u4ef6\uff08\u6d4f\u89c8\u5668\u6269\u5c55\uff09\n\n\u914d\u5408 Recto\u300c\u6dfb\u52a0\u8bba\u6587\u300d\u7684\u5f85\u8865\u961f\u5217\u4f7f\u7528\uff1a\u5728 Recto \u91cc\u70b9\u300c\u5728\u6d4f\u89c8\u5668\u4e2d\u53d6\u4ef6\u300d\uff0c\u8fd9\u4e2a\u6269\u5c55\u4f1a\u5728\u4f60\u81ea\u5df1\u7684\u6d4f\u89c8\u5668\u91cc\uff0c\u7528\u4f60\u5df2\u6709\u7684\u767b\u5f55\uff08\u5b66\u6821\u3001\u5355\u4f4d\u6216\u4e2a\u4eba\u8ba2\u9605\uff09\uff0c\u628a\u8bba\u6587 PDF \u5b58\u5230 `\u4e0b\u8f7d\u76ee\u5f55/Recto/`\uff0cRecto \u968f\u540e\u4ece\u8fd9\u4e2a\u4e2d\u8f6c\u6587\u4ef6\u5939\u628a\u5b83\u52a0\u5165\u8bba\u6587\u5e93\u3002\n\n## \u5b89\u88c5\uff08Edge / Chrome\uff09\n\n1. \u6253\u5f00 `edge://extensions`\uff08Chrome \u4e3a `chrome://extensions`\uff09\uff0c\u6253\u5f00\u300c\u5f00\u53d1\u4eba\u5458\u6a21\u5f0f\u300d\u3002\n2. \u70b9\u300c\u52a0\u8f7d\u89e3\u538b\u7f29\u7684\u6269\u5c55\u300d\uff0c\u9009\u4e2d\u8fd9\u4e2a\u6587\u4ef6\u5939 `recto-browser-extension`\u3002\n3. \u5728 Recto \u8bbe\u7f6e \u2192\u300c\u6dfb\u52a0\u8bba\u6587\u300d\u2192\u300c\u53d6\u4ef6\u6d4f\u89c8\u5668\u300d\u91cc\u9009\u8fd9\u4e2a\u6d4f\u89c8\u5668\uff08\u9ed8\u8ba4\u662f\u7cfb\u7edf\u9ed8\u8ba4\u6d4f\u89c8\u5668\uff09\u3002\n4. \u901a\u5e38\u4e0d\u7528\u518d\u8bbe\u7f6e\uff1a\u53d6\u4ef6\u65f6 Recto \u4f1a\u5728\u300c\u4e0b\u8f7d\u300d\u6216\u300c\u684c\u9762\u300d\u6587\u4ef6\u5939\u91cc\u81ea\u52a8\u8bc6\u522b `Recto` \u4e2d\u8f6c\u6587\u4ef6\u5939\u3002\u6d4f\u89c8\u5668\u7684\u4e0b\u8f7d\u4f4d\u7f6e\u5728\u522b\u5904\uff08\u5982 `D:Downloads`\u3001OneDrive\uff09\u65f6\uff0c\u6269\u5c55\u4f1a\u5728 PDF \u5b58\u597d\u7ea6\u4e00\u5206\u949f\u3001Recto \u4ecd\u672a\u6536\u8d70\u65f6\u6253\u5f00\u4e00\u9875\u300c\u8ba9 Recto \u627e\u5230\u4f60\u7684\u4e0b\u8f7d\u4f4d\u7f6e\u300d\uff0c\u70b9\u300c\u4ea4\u7ed9 Obsidian\u300d\u5e76\u5728\u6d4f\u89c8\u5668\u7684\u786e\u8ba4\u91cc\u5141\u8bb8\u6253\u5f00 Obsidian \u5373\u53ef\uff0c\u6bcf\u6b21\u6253\u5f00\u6d4f\u89c8\u5668\u6700\u591a\u51fa\u73b0\u4e00\u6b21\u3002\u4e5f\u53ef\u4ee5\u624b\u52a8\u8bbe\u7f6e\uff1a\u5728\u6d4f\u89c8\u5668\u6253\u5f00 `edge://settings/downloads`\uff08Chrome \u4e3a `chrome://settings/downloads`\uff09\u67e5\u770b\u4e0b\u8f7d\u4f4d\u7f6e\uff0c\u518d\u5230 Recto \u8bbe\u7f6e \u2192\u300c\u6dfb\u52a0\u8bba\u6587\u300d\u2192\u300cPDF \u4e2d\u8f6c\u6587\u4ef6\u5939\u300d\u91cc\u9009\u62e9\u8fd9\u4e2a\u4e0b\u8f7d\u4f4d\u7f6e\uff08\u4e0d\u7528\u81ea\u5df1\u5efa `Recto` \u6587\u4ef6\u5939\uff09\u3002\n\n## \u5b83\u505a\u4ec0\u4e48\uff0c\u4e0d\u505a\u4ec0\u4e48\n\n- **\u53ea\u5904\u7406 Recto \u6253\u5f00\u7684\u6807\u7b7e\u9875**\uff1a\u7f51\u5740\u672b\u5c3e\u5e26 `#recto-intake=<\u4efb\u52a1\u53f7>` \u7684\u6807\u7b7e\u9875\u624d\u4f1a\u88ab\u5904\u7406\uff0c\u5176\u4ed6\u6d4f\u89c8\u4e00\u6982\u4e0d\u8bfb\u53d6\u3001\u4e0d\u8bb0\u5f55\u3002\n- \u5728\u51fa\u7248\u5546\u9875\u9762\u4e0a\u627e\u5230 PDF \u94fe\u63a5\uff08citation_pdf_url\uff0c\u6216 IEEE\u3001ScienceDirect\u3001Wiley\u3001Taylor & Francis \u7684\u56fa\u5b9a\u89c4\u5219\uff09\uff0c\u4e0b\u8f7d\u4e3a `Recto/recto-<\u4efb\u52a1\u53f7>.pdf`\uff0c\u4e0b\u8f7d\u5b8c\u5173\u95ed\u6807\u7b7e\u9875\u3002\n- \u4e2d\u6587 DOI\uff08\u77e5\u7f51\u3001\u4e07\u65b9\u7b49\uff09\u5148\u843d\u5230 chndoi.org \u7684\u300c\u591a\u91cd\u89e3\u6790\u5730\u5740\u9009\u62e9\u9875\u9762\u300d\uff0c\u6269\u5c55\u81ea\u52a8\u9009\u5883\u5185\u94fe\u63a5\u63a5\u7740\u8d70\u3002\u77e5\u7f51\u53ea\u7ed9\u4ece\u5b83\u81ea\u5df1\u9875\u9762\u70b9\u51fa\u7684\u4e0b\u8f7d\uff0c\u6240\u4ee5\u5728\u77e5\u7f51\u8be6\u60c5\u9875\u4e0a\u7531\u9875\u9762\u81ea\u5df1\u6253\u5f00\u300cPDF\u4e0b\u8f7d\u300d\uff08\u4e0d\u9009 CAJ\uff09\uff0c\u6d4f\u89c8\u5668\u968f\u540e\u5f00\u59cb\u7684\u8fd9\u4e2a PDF \u4e0b\u8f7d\u6539\u540d\u4e3a `Recto/recto-<\u4efb\u52a1\u53f7>.pdf`\u3002\u6ca1\u767b\u5f55\u65f6\u77e5\u7f51\u4f1a\u8f6c\u5230\u767b\u5f55\u9875\uff0c\u6807\u7b7e\u9875\u7559\u7ed9\u4f60\uff1b\u767b\u5f55\u540e\u77e5\u7f51\u901a\u5e38\u4f1a\u81ea\u52a8\u63a5\u7740\u4e0b\u8f7d\uff0c\u6ca1\u6709\u7684\u8bdd\u56de\u5230\u8be6\u60c5\u9875\u5237\u65b0\u5373\u53ef\u3002\u53ea\u6709\u5728\u67d0\u4e2a\u53d6\u4ef6\u4efb\u52a1\u6b63\u7b49\u7740\u5b83\u7684\u6587\u4ef6\u65f6\uff0c\u6269\u5c55\u624d\u4f1a\u770b\u6d4f\u89c8\u5668\u65b0\u5f00\u59cb\u7684\u4e0b\u8f7d\uff0c\u800c\u4e14\u53ea\u8ba4\u540c\u4e00\u7f51\u7ad9\u7684 PDF\uff0c\u5176\u4f59\u4e0b\u8f7d\u539f\u6837\u653e\u8fc7\u3002\n- \u9047\u5230\u767b\u5f55\u9875\u3001\u9a8c\u8bc1\u7801\u3001\u300cUnusual Traffic\u300d\u6216\u6ca1\u6709\u8bbf\u95ee\u6743\u9650\u65f6\uff0c**\u4ec0\u4e48\u90fd\u4e0d\u505a**\uff1a\u6807\u7b7e\u9875\u7559\u7ed9\u4f60\uff0c\u5de5\u5177\u680f\u56fe\u6807\u663e\u793a\u300c!\u300d\u3002\u5904\u7406\u597d\u540e\u5237\u65b0\u9875\u9762\uff0c\u6269\u5c55\u4f1a\u63a5\u7740\u4e0b\u8f7d\u3002\n- \u9875\u9762\u4e0a\u6709\u6807\u51c6\u7684\u6458\u8981\u3001\u5173\u952e\u8bcd\u3001\u9898\u540d\u3001DOI\u3001\u4f5c\u8005\u6807\u7b7e\uff08`citation_abstract`\u3001`citation_keywords`\u3001`citation_title`\u3001`citation_doi`\u3001`citation_author`\u3001Dublin Core\uff1bIEEE \u4ece\u9875\u9762\u5185\u5d4c\u6570\u636e\u8bfb DOI\uff09\u65f6\uff0c\u53e6\u5b58\u4e00\u4efd `recto-<\u4efb\u52a1\u53f7>.json`\u3002\u53ea\u6709\u8bba\u6587\u9875\u94fe\u63a5\u3001Recto \u8bfb\u4e0d\u5230 DOI \u7684\u5f85\u8865\u8bba\u6587\uff0c\u9760\u8fd9\u4efd\u6587\u4ef6\u8ba4\u51fa\u662f\u54ea\u7bc7\u3002\u8fd9\u4efd\u6587\u4ef6\u7528 data: URL \u5199\u51fa\uff08\u4e0d\u53d1\u7f51\u7edc\u8bf7\u6c42\uff09\uff0c\u5199\u5b8c\u4f1a\u4ece\u6d4f\u89c8\u5668\u7684\u4e0b\u8f7d\u5217\u8868\u91cc\u62b9\u6389\u8fd9\u4e00\u6761\u3002\n- Recto \u786e\u8ba4 PDF \u5df2\u9010\u5b57\u8282\u5b8c\u6574\u590d\u5236\u8fdb\u8bba\u6587\u5e93\u540e\uff0c\u4f1a\u76f4\u63a5\u5220\u9664\u8fd9\u4e24\u4e2a\u6587\u4ef6\uff08\u8bba\u6587\u5e93\u91cc\u6709\u540c\u6837\u7684\u4e00\u4efd\uff09\uff0c\u7a7a\u7684 `Recto` \u6587\u4ef6\u5939\u968f\u4e4b\u5220\u9664\u3002\u6838\u9a8c\u6ca1\u901a\u8fc7\u3001\u6216\u5bf9\u4e0d\u4e0a\u4efb\u4f55\u4efb\u52a1\u7684\u6587\u4ef6\u4e0d\u4f1a\u81ea\u52a8\u5220\u9664\uff0c\u7531\u4f60\u5728 Recto \u91cc\u9009\u62e9\u300c\u4e22\u5f03\u300d\uff0c\u53ea\u79fb\u5230\u56de\u6536\u7ad9\u3002\n- **\u81ea\u52a8\u8ddf\u4e0a\u65b0\u7248**\uff1a\u89e3\u538b\u52a0\u8f7d\u7684\u6269\u5c55\u672c\u6765\u8981\u5230 `edge://extensions` \u70b9\u300c\u91cd\u65b0\u52a0\u8f7d\u300d\u624d\u4f1a\u7528\u4e0a\u65b0\u6587\u4ef6\u3002\u4ece 0.1.7 \u8d77\uff0c\u6269\u5c55\u6bcf\u6b21\u63a5\u5230 Recto \u7684\u53d6\u4ef6\u6807\u7b7e\u9875\u65f6\uff0c\u4f1a\u5148\u8bfb\u81ea\u5df1\u6587\u4ef6\u5939\u91cc\u7684 `manifest.json`\uff1b\u7248\u672c\u53f7\u53d8\u4e86\u5c31\u81ea\u52a8\u91cd\u65b0\u52a0\u8f7d\uff0c\u5e76\u5237\u65b0\u5e26 `#recto-intake` \u6807\u8bb0\u7684\u6807\u7b7e\u9875\u30020.1.7 \u4e4b\u524d\u7684\u7248\u672c\u8fd8\u6ca1\u6709\u8fd9\u9879\u529f\u80fd\uff0c\u9700\u8981\u624b\u52a8\u91cd\u65b0\u52a0\u8f7d\u4e00\u6b21\u3002\n- macOS\uff1a\u652f\u6301 Chrome \u4e0e Edge\uff1bSafari \u7684\u6269\u5c55\u683c\u5f0f\u4e0d\u540c\uff0c\u6682\u4e0d\u652f\u6301\u3002\n- \u4e0d\u5bfc\u51fa cookie \u6216\u5bc6\u7801\uff0c\u4e0d\u8fde\u63a5 Recto \u670d\u52a1\u5668\u6216\u4efb\u4f55\u5176\u4ed6\u670d\u52a1\u5668\uff0c\u4e0d\u4f2a\u88c5\u6d4f\u89c8\u5668\u8eab\u4efd\uff0c\u4e0d\u7834\u89e3\u9a8c\u8bc1\u7801\u3002\n- \u4e0b\u8f7d\u56de\u6765\u7684\u4e0d\u662f PDF\uff08\u6bd4\u5982\u767b\u5f55\u9875\uff09\u65f6\uff0c\u4f1a\u5220\u9664\u8fd9\u4e2a\u6587\u4ef6\uff0c\u5e76\u628a\u6807\u7b7e\u9875\u7559\u7ed9\u4f60\u3002\n- \u53ea\u628a\u4e00\u6837\u4e1c\u897f\u4ea4\u7ed9 Recto\uff1aPDF \u5b9e\u9645\u5b58\u653e\u7684\u6587\u4ef6\u5939\u8def\u5f84\uff0c\u7ecf `obsidian://recto-intake?inbox=\u2026` \u94fe\u63a5\u4f20\u7ed9 Obsidian\uff0c\u5e76\u4e14\u53ea\u5728 Recto \u4e00\u5206\u949f\u5185\u6ca1\u6536\u8d70\u6587\u4ef6\u65f6\u624d\u4f20\u3002Recto \u8981\u5728\u8fd9\u4e2a\u6587\u4ef6\u5939\u91cc\u770b\u5230\u672c\u6b21\u53d6\u4ef6\u7684\u4efb\u52a1\u53f7\u6587\u4ef6\u624d\u4f1a\u91c7\u7528\u5b83\u3002\n\n## \u6743\u9650\n\n- `downloads`\uff1a\u4fdd\u5b58 PDF\uff1b\u7ed9\u53d6\u4ef6\u9875\u9762\u81ea\u5df1\u5f00\u59cb\u7684 PDF \u4e0b\u8f7d\uff08\u77e5\u7f51\uff09\u6539\u540d\u3002\n- `webNavigation`\uff1a\u8bc6\u522b\u54ea\u4e9b\u6807\u7b7e\u9875\u662f Recto \u6253\u5f00\u7684\uff08\u5e26 `#recto-intake` \u6807\u8bb0\uff09\u3002\n- `scripting` \u4e0e\u4e0b\u5217\u7f51\u7ad9\u7684\u8bbf\u95ee\u6743\u9650\uff1a\u5728\u8fd9\u4e9b\u9875\u9762\u4e0a\u67e5\u627e PDF \u94fe\u63a5\u3002doi.org\u3001IEEE Xplore\u3001ScienceDirect\u3001Wiley\u3001Springer\u3001Taylor & Francis\u3001MDPI\u3001IOP\u3001Frontiers\u3001Nature\u3001ACM\u3001AIP\u3001arXiv\u3001chndoi.org\uff08\u4e2d\u6587 DOI \u89e3\u6790\uff09\u3001\u77e5\u7f51\uff08cnki.net\uff09\u3002\n- `storage`\uff1a\u5728\u6d4f\u89c8\u5668\u4f1a\u8bdd\u5185\u8bb0\u4f4f\u8fdb\u884c\u4e2d\u7684\u4efb\u52a1\u548c\u5df2\u786e\u8ba4\u7684\u4e0b\u8f7d\u6587\u4ef6\u5939\uff0c\u6d4f\u89c8\u5668\u5173\u95ed\u5373\u6e05\u7a7a\u3002\n- `alarms`\uff1aPDF \u5b58\u597d\u4e00\u5206\u949f\u540e\u68c0\u67e5 Recto \u662f\u5426\u5df2\u6536\u8d70\uff08\u6269\u5c55\u540e\u53f0\u4e0d\u80fd\u957f\u65f6\u95f4\u7b49\u5f85\uff09\u3002\n\n\u901a\u8fc7 WebVPN \u4e00\u7c7b\u6539\u5199\u57df\u540d\u7684\u65b9\u5f0f\u8bbf\u95ee\u51fa\u7248\u5546\u65f6\uff0c\u9875\u9762\u4e0d\u5728\u4e0a\u8ff0\u7f51\u7ad9\u4e4b\u5185\uff0c\u6269\u5c55\u4e0d\u4f1a\u5904\u7406\uff1b\u8fd9\u65f6\u8bf7\u5728\u9875\u9762\u4e0a\u624b\u52a8\u4e0b\u8f7d PDF\uff0c\u5b58\u8fdb `\u4e0b\u8f7d\u76ee\u5f55/Recto`\u3002\n",
+		"resolver.js": "// Recto Paper Fetcher \u2014 pure decision core (T100-R). No chrome.* calls here, so Node tests can load it.\n// Given a snapshot of the current page, decide the next step: download a PDF, navigate to the PDF\n// page, wait for an automatic check to finish, or hand the tab to the user. Never solves CAPTCHAs,\n// never fakes the browser identity: anything interactive is left to the person using the browser.\n(function (root, factory) {\n\tconst api = factory();\n\tif (typeof module === \"object\" && module.exports) module.exports = api;\n\telse root.RectoResolver = api;\n})(typeof self !== \"undefined\" ? self : this, function () {\n\t\"use strict\";\n\n\tconst TOKEN_PATTERN = /#(?:.*&)?recto-intake=([a-f0-9]{8,32})(?:&|$)/i;\n\t// Interstitials that clear by themselves in a real browser (seen in T100-R spike: Wiley ~7 s).\n\tconst AUTO_CHECK = [/^just a moment/i, /^\u8bf7\u7a0d\u5019/, /checking your browser/i, /^attention required/i, /\u6b63\u5728\u8fdb\u884c\u5b89\u5168\u9a8c\u8bc1/];\n\t// Anything that needs a human, or a hard block. The tab is left to the user.\n\tconst USER_CHECK = [/are you a robot/i, /verify you are (a )?human/i, /complete the captcha/i, /captcha challenge/i,\n\t\t/unusual traffic detected/i, /error 418/i, /request unsuccessful/i, /access denied/i, /\u4eba\u673a\u9a8c\u8bc1/];\n\tconst NO_ACCESS = [/purchase (this )?(article|pdf)/i, /get access/i, /institutional (sign in|login|access)/i,\n\t\t/sign in to (view|access|download)/i, /buy (this )?article/i, /subscribe to/i];\n\n\tfunction tokenFromUrl(url) {\n\t\tconst match = String(url || \"\").match(TOKEN_PATTERN);\n\t\treturn match ? match[1].toLowerCase() : \"\";\n\t}\n\n\tfunction downloadName(token) {\n\t\treturn `Recto/recto-${String(token).toLowerCase()}.pdf`;\n\t}\n\n\tfunction metadataName(token) {\n\t\treturn `Recto/recto-${String(token).toLowerCase()}.json`;\n\t}\n\n\t// T125: the folder a finished download really landed in (DownloadItem.filename is an absolute path).\n\tfunction folderOf(filename) {\n\t\tconst value = String(filename || \"\");\n\t\tconst cut = Math.max(value.lastIndexOf(\"/\"), value.lastIndexOf(\"\\\\\"));\n\t\treturn cut > 0 ? value.slice(0, cut) : \"\";\n\t}\n\n\tfunction sameFolder(a, b) {\n\t\tconst key = value => String(value || \"\").replace(/\\\\/g, \"/\").replace(/\\/+$/, \"\").toLowerCase();\n\t\treturn !!a && !!b && key(a) === key(b);\n\t}\n\n\t// The page that asks the browser to hand the folder to Obsidian (obsidian://recto-intake?inbox=\u2026).\n\tfunction inboxReportUrl(folder) {\n\t\treturn `obsidian://recto-intake?inbox=${encodeURIComponent(String(folder || \"\"))}`;\n\t}\n\n\t// Abstract and author keywords from standard meta tags only (citation_* / Dublin Core). og:description and\n\t// generic \"description\"/\"keywords\" tags are skipped: they are often truncated or site-wide. Recto cleans\n\t// and validates again on its side; this is a best-effort hint, never required.\n\tfunction buildPageMetadata(info) {\n\t\tconst abstract = String(info && info.metaAbstract || \"\").replace(/\\s+/g, \" \").trim().slice(0, 20000);\n\t\tconst seen = new Set();\n\t\tconst keywords = [];\n\t\tfor (const raw of Array.isArray(info && info.metaKeywords) ? info.metaKeywords : []) {\n\t\t\tfor (const part of String(raw || \"\").split(/[;,]/)) {\n\t\t\t\tconst name = part.replace(/\\s+/g, \" \").trim();\n\t\t\t\tif (name.length < 2 || name.length > 120 || seen.has(name.toLowerCase())) continue;\n\t\t\t\tseen.add(name.toLowerCase());\n\t\t\t\tkeywords.push(name);\n\t\t\t\tif (keywords.length >= 40) break;\n\t\t\t}\n\t\t}\n\t\t// T128: the paper's identity from the same standard tags (plus IEEE's embedded \"doi\" field), so Recto can\n\t\t// take papers it only had a page link for. Recto looks the DOI up itself and still checks the PDF text.\n\t\tconst title = String(info && info.metaTitle || \"\").replace(/\\s+/g, \" \").trim().slice(0, 500);\n\t\tconst doi = (String(info && info.metaDoi || \"\").match(/10\\.\\d{4,9}\\/[^\\s\"<>]+/) || [\"\"])[0].replace(/[.,;]+$/, \"\").slice(0, 200);\n\t\tconst authors = [];\n\t\tfor (const raw of Array.isArray(info && info.metaAuthors) ? info.metaAuthors : []) {\n\t\t\tconst name = String(raw || \"\").replace(/\\s+/g, \" \").trim();\n\t\t\tif (name.length >= 2 && name.length <= 120 && !authors.includes(name)) authors.push(name);\n\t\t\tif (authors.length >= 50) break;\n\t\t}\n\t\tif (abstract.length < 80 && !keywords.length && !title && !doi) return null;\n\t\treturn { version: 1, abstract: abstract.length >= 80 ? abstract : \"\", keywords, title, doi, authors };\n\t}\n\n\t// Pages along one job (IEEE: article page, then the stamp page) each add what they have; the first value wins,\n\t// except that a longer keyword list replaces a shorter one.\n\tfunction mergePageMetadata(previous, next) {\n\t\tif (!next) return previous || null;\n\t\tif (!previous) return next;\n\t\treturn {\n\t\t\tversion: 1,\n\t\t\tabstract: previous.abstract || next.abstract || \"\",\n\t\t\tkeywords: (next.keywords || []).length > (previous.keywords || []).length ? next.keywords : previous.keywords || [],\n\t\t\ttitle: previous.title || next.title || \"\",\n\t\t\tdoi: previous.doi || next.doi || \"\",\n\t\t\tauthors: (previous.authors || []).length ? previous.authors : next.authors || [],\n\t\t};\n\t}\n\n\tfunction absolute(href, base) {\n\t\tconst value = String(href || \"\").trim();\n\t\t// new URL(\"\", base) returns the page itself \u2014 an empty link must stay empty.\n\t\tif (!value) return \"\";\n\t\ttry { return new URL(value.replace(/&amp;/g, \"&\"), base).href; } catch { return \"\"; }\n\t}\n\n\tfunction hostOf(url) {\n\t\ttry { return new URL(url).hostname.toLowerCase(); } catch { return \"\"; }\n\t}\n\n\tfunction pathOf(url) {\n\t\ttry { return new URL(url).pathname; } catch { return \"\"; }\n\t}\n\n\tfunction detectChallenge(info) {\n\t\tconst title = String(info && info.title || \"\").trim();\n\t\tconst text = String(info && info.text || \"\").slice(0, 3000);\n\t\tif (USER_CHECK.some(pattern => pattern.test(title) || pattern.test(text))) return \"user\";\n\t\tif (AUTO_CHECK.some(pattern => pattern.test(title) || pattern.test(text.trim()))) return \"auto\";\n\t\treturn \"\";\n\t}\n\n\tfunction looksLikePdfUrl(url) {\n\t\tconst path = pathOf(url).toLowerCase();\n\t\treturn path.endsWith(\".pdf\") || /\\/stamppdf\\/getpdf\\.jsp/i.test(path) || /\\/pdfdirect\\//.test(path);\n\t}\n\n\tfunction doiFromPath(path) {\n\t\tconst match = String(path || \"\").match(/\\/doi\\/(?:abs\\/|full\\/|epdf\\/|pdf\\/|pdfdirect\\/|reader\\/)?(10\\.\\d{4,9}\\/[^?#]+)/i);\n\t\treturn match ? decodeURIComponent(match[1]) : \"\";\n\t}\n\n\tfunction noAccess(info) {\n\t\tconst text = String(info && info.text || \"\").slice(0, 4000);\n\t\treturn NO_ACCESS.some(pattern => pattern.test(text));\n\t}\n\n\tfunction pdfLinkFrom(info) {\n\t\tconst links = Array.isArray(info && info.links) ? info.links : [];\n\t\tconst scored = links.map(link => {\n\t\t\tconst href = absolute(link && link.href, info.url);\n\t\t\tconst text = String(link && link.text || \"\");\n\t\t\tlet score = 0;\n\t\t\tif (!href || /^javascript:/i.test(href)) return null;\n\t\t\tif (/\\.pdf(\\?|$)/i.test(href)) score += 2;\n\t\t\tif (/\\/(pdf|pdfft|pdfdirect)\\b/i.test(href)) score += 2;\n\t\t\tif (/\\b(download )?pdf\\b/i.test(text)) score += 2;\n\t\t\tif (/supplement|appendix|esm|figure|slides/i.test(href + \" \" + text)) score -= 4;\n\t\t\treturn score >= 3 ? { href, score } : null;\n\t\t}).filter(Boolean).sort((a, b) => b.score - a.score);\n\t\treturn scored.length ? scored[0].href : \"\";\n\t}\n\n\t// T144: Chinese DOIs (CNKI, Wanfang\u2026) resolve through chndoi.org's \"\u591a\u91cd\u89e3\u6790\u5730\u5740\u9009\u62e9\u9875\u9762\", which only lists\n\t// links (\u5883\u5916 / \u5883\u5185) without choosing. Take the domestic one: the overseas CNKI mirror answered 404 for a\n\t// paper the domestic link served (checked 2026-11-23).\n\tfunction chinaDoiTarget(info) {\n\t\tconst base = String(info && info.url || \"\");\n\t\tconst links = (Array.isArray(info && info.links) ? info.links : [])\n\t\t\t.map(link => absolute(link && link.href, base))\n\t\t\t.filter(href => /^https?:\\/\\//i.test(href) && !/(^|\\.)chndoi\\.org$/.test(hostOf(href)));\n\t\treturn links.find(href => !/oversea/i.test(hostOf(href))) || links[0] || \"\";\n\t}\n\n\t// T144: CNKI. bar.cnki.net only serves the file to a request coming from a CNKI page (without the page as\n\t// Referer it answers \"\u6765\u6e90\u5e94\u7528\u4e0d\u6b63\u786e\"), so the extension cannot download the link itself: the page follows it,\n\t// as a click would (\"open\"), and the file it starts is claimed by claimDownload. Signing in stays with the user.\n\tfunction resolveCnki(info, host, path, url) {\n\t\tif (host === \"login.cnki.net\") return { action: \"user\", reason: \"access\" };\n\t\tif (/^\\/verify\\//i.test(path)) return { action: \"user\", reason: \"challenge\" };\n\t\tif (host === \"bar.cnki.net\") return { action: \"user\", reason: \"access\" };\n\t\tconst link = (Array.isArray(info.links) ? info.links : []).find(item => {\n\t\t\tconst href = absolute(item && item.href, url);\n\t\t\treturn /(^|\\.)cnki\\.net$/.test(hostOf(href)) && /\\/download\\//i.test(pathOf(href))\n\t\t\t\t&& /PDF\\s*\u4e0b\u8f7d|download\\s*pdf/i.test(String(item && item.text || \"\")) && !/caj/i.test(String(item && item.text || \"\"));\n\t\t});\n\t\tif (link) return { action: \"open\", url: absolute(link.href, url) };\n\t\tif (/\\/(kcms2?|KCMS)\\b/i.test(path)) return { action: \"user\", reason: \"no-pdf\" };\n\t\treturn null;\n\t}\n\n\t// T144: a download the browser started by itself (a page following a link, see \"open\") belongs to the job that\n\t// opened that link. Only PDFs, only jobs waiting for one; when the URL is not an exact match, only a single\n\t// waiting job on the same site may claim it. Returns the job's tab id, or \"\".\n\tfunction claimDownload(jobs, item) {\n\t\tif (!item || !(/pdf/i.test(item.mime || \"\") || /\\.pdf$/i.test(item.filename || \"\"))) return \"\";\n\t\tconst waiting = Object.entries(jobs || {}).filter(([, job]) => job && job.claimUrl && !job.downloadId && (job.state === \"working\" || job.state === \"user\"));\n\t\tconst exact = waiting.find(([, job]) => job.claimUrl === item.url || job.claimUrl === item.finalUrl);\n\t\tif (exact) return exact[0];\n\t\tconst site = value => hostOf(value).split(\".\").slice(-2).join(\".\");\n\t\tconst same = waiting.filter(([, job]) => site(job.claimUrl) && [item.url, item.finalUrl, item.referrer].some(value => site(value) === site(job.claimUrl)));\n\t\treturn same.length === 1 ? same[0][0] : \"\";\n\t}\n\n\t// T144: the extension folder on disk holds another version than the running code (Recto wrote a newer copy).\n\tfunction diskCopyChanged(running, onDisk) {\n\t\treturn !!onDisk && String(onDisk) !== String(running || \"\");\n\t}\n\n\t// Injected into the page: follow the link in this tab, as clicking it would (the page stays the referrer).\n\tfunction followLink(url) {\n\t\tlocation.assign(url);\n\t}\n\n\t// info: { url, title, text, metaPdf, links: [{ href, text }], frames: [src] }\n\tfunction resolvePdfAction(info) {\n\t\tconst url = String(info && info.url || \"\");\n\t\tconst host = hostOf(url);\n\t\tconst path = pathOf(url);\n\t\tconst challenge = detectChallenge(info);\n\t\tif (challenge === \"user\") return { action: \"user\", reason: \"challenge\" };\n\t\tif (challenge === \"auto\") return { action: \"wait\", reason: \"challenge\" };\n\t\tif (looksLikePdfUrl(url) && !(info && info.text)) return { action: \"download\", url };\n\n\t\tif (host === \"ieeexplore.ieee.org\") {\n\t\t\tconst doc = path.match(/^\\/document\\/(\\d+)/);\n\t\t\tif (doc) return { action: \"navigate\", url: `https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=${doc[1]}` };\n\t\t\tif (/^\\/stamp\\/stamp\\.jsp/.test(path)) {\n\t\t\t\tconst frame = (info.frames || []).map(src => absolute(src, url)).find(src => /getpdf\\.jsp|\\.pdf(\\?|$)/i.test(src));\n\t\t\t\tif (frame) return { action: \"download\", url: frame };\n\t\t\t\treturn { action: \"user\", reason: \"access\" };\n\t\t\t}\n\t\t}\n\n\t\tif (/(^|\\.)sciencedirect\\.com$/.test(host) && /\\/science\\/article\\//.test(path)) {\n\t\t\tconst meta = absolute(info.metaPdf, url);\n\t\t\tif (meta) return { action: \"download\", url: meta };\n\t\t\tconst link = (info.links || []).map(item => absolute(item && item.href, url)).find(href => /\\/pdfft\\b/.test(href));\n\t\t\tif (link) return { action: \"download\", url: link };\n\t\t\treturn { action: \"user\", reason: noAccess(info) ? \"access\" : \"no-pdf\" };\n\t\t}\n\n\t\tif (/(^|\\.)onlinelibrary\\.wiley\\.com$/.test(host)) {\n\t\t\tconst doi = doiFromPath(path);\n\t\t\tif (doi && !/\\/pdfdirect\\//.test(path)) return { action: \"download\", url: `https://${host}/doi/pdfdirect/${doi}?download=true` };\n\t\t}\n\n\t\tif (host === \"www.tandfonline.com\") {\n\t\t\tconst doi = doiFromPath(path);\n\t\t\tif (doi && !/\\/doi\\/pdf\\//.test(path)) return { action: \"download\", url: `https://www.tandfonline.com/doi/pdf/${doi}?download=true` };\n\t\t}\n\n\t\tif (/(^|\\.)chndoi\\.org$/.test(host)) {\n\t\t\tconst target = chinaDoiTarget(info);\n\t\t\treturn target ? { action: \"navigate\", url: target } : { action: \"user\", reason: \"no-pdf\" };\n\t\t}\n\n\t\tif (/(^|\\.)cnki\\.net$/.test(host)) {\n\t\t\tconst cnki = resolveCnki(info, host, path, url);\n\t\t\tif (cnki) return cnki;\n\t\t}\n\n\t\tconst meta = absolute(info && info.metaPdf, url);\n\t\tif (meta) return { action: \"download\", url: meta };\n\t\tconst link = pdfLinkFrom(info || {});\n\t\tif (link) return { action: \"download\", url: link };\n\t\treturn { action: \"user\", reason: noAccess(info) ? \"access\" : \"no-pdf\" };\n\t}\n\n\t// A tagged navigation in a tab already working on the same task is the site re-navigating by itself\n\t// (IEEE adds or drops a trailing slash and keeps the fragment). Keep the counters, or the job restarts\n\t// forever; only a different task starts fresh.\n\tfunction shouldStartJob(existing, token) {\n\t\treturn !existing || existing.token !== token;\n\t}\n\n\t// Being sent back from the PDF page twice means no access (IEEE: stamp.jsp returns to the article page).\n\t// One bounce is tolerated: IEEE sometimes bounces once just to start a session (;jsessionid=\u2026) and the\n\t// second try works. Then hand the tab to the user instead of bouncing until the step limit.\n\t// Signing in and reloading starts over.\n\tfunction planNavigate(job, url, info, maxSteps) {\n\t\tconst tried = Array.isArray(job && job.tried) ? job.tried : [];\n\t\tif (tried.filter(item => item === url).length >= 2) return { handTo: \"access\" };\n\t\tconst steps = Number(job && job.steps) || 0;\n\t\tif (steps >= maxSteps) return { handTo: \"no-pdf\" };\n\t\treturn { job: { ...job, steps: steps + 1, tried: [...tried, url] } };\n\t}\n\n\t// Injected into the page with chrome.scripting.executeScript; must stay self-contained.\n\tfunction collectPageInfo() {\n\t\tconst pick = selector => Array.prototype.slice.call(document.querySelectorAll(selector));\n\t\tconst meta = document.querySelector('meta[name=\"citation_pdf_url\"]');\n\t\tconst content = selector => { const el = document.querySelector(selector); return el ? el.getAttribute(\"content\") || \"\" : \"\"; };\n\t\treturn {\n\t\t\tmetaAbstract: content('meta[name=\"citation_abstract\"]') || content('meta[name=\"dc.description\"]') || content('meta[name=\"DC.Description\"]') || content('meta[name=\"DC.description\"]'),\n\t\t\tmetaKeywords: pick('meta[name=\"citation_keywords\"], meta[name=\"dc.subject\"], meta[name=\"DC.Subject\"], meta[name=\"DC.subject\"]').map(el => el.getAttribute(\"content\") || \"\").filter(Boolean).slice(0, 60),\n\t\t\tmetaTitle: content('meta[name=\"citation_title\"]') || content('meta[name=\"dc.title\"]') || content('meta[name=\"DC.title\"]') || content('meta[name=\"DC.Title\"]'),\n\t\t\t// IEEE Xplore has no citation_doi tag; its page data carries \"doi\":\"10.\u2026\" in an inline script.\n\t\t\tmetaDoi: content('meta[name=\"citation_doi\"]') || content('meta[name=\"prism.doi\"]') || content('meta[name=\"dc.identifier\"]') || content('meta[name=\"DC.identifier\"]')\n\t\t\t\t|| ((pick(\"script:not([src])\").map(el => el.textContent || \"\").join(\"\\n\").slice(0, 600000).match(/\"doi\"\\s*:\\s*\"(10\\.\\d{4,9}\\/[^\"\\s]+)\"/i) || [])[1] || \"\"),\n\t\t\tmetaAuthors: pick('meta[name=\"citation_author\"], meta[name=\"dc.creator\"], meta[name=\"DC.creator\"], meta[name=\"DC.Creator\"]').map(el => el.getAttribute(\"content\") || \"\").filter(Boolean).slice(0, 60),\n\t\t\turl: location.href,\n\t\t\ttitle: document.title || \"\",\n\t\t\ttext: document.body ? document.body.innerText.slice(0, 4000) : \"\",\n\t\t\tmetaPdf: meta ? meta.getAttribute(\"content\") || \"\" : \"\",\n\t\t\tlinks: pick(\"a[href]\").slice(0, 600).map(a => ({ href: a.href, text: (a.innerText || a.title || a.getAttribute(\"aria-label\") || \"\").trim().slice(0, 80) })),\n\t\t\tframes: pick(\"iframe[src], embed[src], object[data]\").map(el => el.src || el.data || \"\").filter(Boolean),\n\t\t};\n\t}\n\n\treturn { tokenFromUrl, downloadName, metadataName, folderOf, sameFolder, inboxReportUrl, buildPageMetadata, mergePageMetadata, detectChallenge, resolvePdfAction, collectPageInfo, looksLikePdfUrl,\n\t\tshouldStartJob, planNavigate, noAccess, claimDownload, followLink, diskCopyChanged };\n});\n",
 	},
 };
 const RECTO_INTAKE_SKILL_VERSION = 2;
@@ -12797,6 +13022,70 @@ function detectMarkdownLanguage(mdText, threshold) {
 }
 
 
+// ── T141 论文笔记模板（公开契约 docs/EXTENDING.md §7）──────────────────────
+// 用户在论文库根目录放一份 paper-note-template.md，新建论文笔记时就用它；没有就保持内置的空白 / 大纲。
+// 模板文件归用户所有，Recto 只读不写。占位符只增不改（CODEMAP 不变量 28）。
+// 语法：{{name}} 插入纯文本（列表用「, 」连接）；{{name|json}} 插入 JSON 值，可直接写进 frontmatter。
+// 不认识的 {{…}} 原样保留——Templater、核心模板插件等其他工具的语法不会被吃掉。
+const PAPER_NOTE_TEMPLATE_FILE = "paper-note-template.md";
+const PAPER_NOTE_TEMPLATE_PLACEHOLDERS = Object.freeze([
+	"record_id", "title", "title_original", "title_zh", "authors", "year", "venue", "citekey", "cite_label",
+	"category", "keywords", "collections", "summary_brief", "reading_status", "doi", "url", "date",
+	"pdf_link", "source_link", "translation_link", "summary_link", "outline",
+]);
+
+// 纯核：模板文本 + 占位符取值 → 笔记初始内容。appendOutline 时模板里没写 {{outline}} 就把大纲接在末尾，
+// 用户选了「章节大纲」样式却换来一篇没有大纲的笔记，会以为功能坏了。
+function renderPaperNoteTemplate(template, values, options = {}) {
+	const known = values && typeof values === "object" ? values : {};
+	let outlineUsed = false;
+	const text = String(template ?? "").replace(/\{\{\s*([a-z_]+)\s*(?:\|\s*(json)\s*)?\}\}/g, (match, name, filter) => {
+		if (!PAPER_NOTE_TEMPLATE_PLACEHOLDERS.includes(name)) return match;
+		if (name === "outline") outlineUsed = true;
+		const value = known[name];
+		if (filter === "json") return JSON.stringify(value === undefined ? null : value);
+		if (Array.isArray(value)) return value.join(", ");
+		return value === undefined || value === null ? "" : String(value);
+	});
+	const outline = String(known.outline || "");
+	if (!options.appendOutline || outlineUsed || !outline) return text;
+	const body = text.replace(/\s+$/, "");
+	return body ? `${body}\n\n${outline}\n` : outline;
+}
+
+// 纯核：papers.jsonl 条目 → 占位符取值。links 由调用方按 Obsidian 的链接设置生成好传进来。
+function buildPaperNoteTemplateValues(record, extras = {}) {
+	const entry = record && typeof record === "object" ? record : {};
+	const fields = entry.zotero && entry.zotero.fields && typeof entry.zotero.fields === "object" ? entry.zotero.fields : {};
+	const list = value => (Array.isArray(value) ? value.filter(item => typeof item === "string" && item) : []);
+	const text = value => (typeof value === "string" && value ? value : null);
+	const now = extras.now instanceof Date ? extras.now : new Date();
+	const pad = number => String(number).padStart(2, "0");
+	return {
+		record_id: text(entry.record_id),
+		title: text(entry.title_zh) || text(entry.title_original),
+		title_original: text(entry.title_original),
+		title_zh: text(entry.title_zh),
+		authors: list(entry.authors),
+		year: text(entry.year),
+		venue: text(entry.venue),
+		citekey: text(entry.citekey),
+		cite_label: text(entry.cite_label),
+		category: text(entry.category),
+		keywords: list(entry.keywords),
+		collections: list(entry.collections),
+		summary_brief: text(entry.summary_brief),
+		reading_status: text(entry.reading_status),
+		doi: text(fields.DOI),
+		url: text(fields.url),
+		date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+		pdf_link: text(extras.pdf_link) || "",
+		source_link: text(extras.source_link) || "",
+		translation_link: text(extras.translation_link) || "",
+		summary_link: text(extras.summary_link) || "",
+		outline: text(extras.outline) || "",
+	};
+}
 // ═══════════════════════════════════════════════════════════════════
 // Plugin
 // ═══════════════════════════════════════════════════════════════════
@@ -14133,6 +14422,11 @@ class RectoPlugin extends obsidian.Plugin {
 		});
 		this.registerRibbonButtons();
 		this.watchObsidianUiLanguage();
+		// T139：公开只读 API（docs/EXTENDING.md）。最后挂：其他插件收到 api-ready 时，设置与论文对象都已就绪。
+		const publicApi = createRectoPublicApi(this);
+		this.api = publicApi.api;
+		this.disposePublicApi = publicApi.dispose;
+		this.app.workspace.trigger(RECTO_API_READY_EVENT, this.api);
 	}
 	addLocalizedCommand(id, key, callback) {
 		const command = { id, name: rectoUiText(key), callback };
@@ -14207,6 +14501,12 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 	onunload() {
+		// T139：先让旧 api 失效并通知依赖方；它们拿到 api-ready 后再取新的引用。
+		if (this.disposePublicApi) {
+			this.disposePublicApi();
+			this.disposePublicApi = null;
+			try { this.app.workspace.trigger(RECTO_API_UNLOAD_EVENT); } catch {}
+		}
 		for (const doc of this.interfaceAccentDocuments || []) doc.documentElement?.classList.remove(...RECTO_INTERFACE_ACCENT_CLASSES);
 		this.interfaceAccentDocuments?.clear();
 		for (const stop of rectoBrandConfettiRuns.values()) stop();
@@ -17500,14 +17800,21 @@ class RectoPlugin extends obsidian.Plugin {
 		this.throwIfUnloaded(operation);
 		const path = this.getPaperJsonlPath();
 		const file = this.app.vault.getAbstractFileByPath(path);
+		let previous = "";
 		if (file) {
-			const current = await this.app.vault.read(file);
+			previous = await this.app.vault.read(file);
 			this.throwIfUnloaded(operation);
-			const content = serializePaperJsonl(this.getPaperJsonlEntries());
-			if (current !== content) await this.app.vault.modify(file, content);
-		} else {
-			await this.app.vault.create(path, serializePaperJsonl(this.getPaperJsonlEntries()));
 		}
+		// 读完旧文件再取条目：await 期间论文对象可能已变，取晚一点才是最新的。
+		const entries = this.getPaperJsonlEntries();
+		const content = serializePaperJsonl(entries);
+		if (file) {
+			if (previous !== content) await this.app.vault.modify(file, content);
+		} else {
+			await this.app.vault.create(path, content);
+		}
+		// T139：公开事件 library-changed，带新增 / 移除 / 改动字段；只在内容真的变了时发。
+		if (previous !== content) emitRectoLibraryChanged(this.app.workspace, previous, entries, path);
 		return path;
 	}
 
@@ -21237,6 +21544,48 @@ class RectoPlugin extends obsidian.Plugin {
 		}
 	}
 
+	// ── T142 公开 API 1.1.0 的宿主方法（契约 docs/EXTENDING.md §5）────────────
+	// 只做打开与定位：不创建、不改写任何文件，调用方给的 recordId / 路径一律先核对再用。
+
+	// 论文文件夹里的任意文件 → recordId。同名目录有孤儿记录时，优先仍在 Zotero 里的那条（与 papers.jsonl 一致）。
+	findRecordIdForVaultPath(vaultPath) {
+		const text = obsidian.normalizePath(String(vaultPath || "").trim().replace(/\\/g, "/"));
+		if (!text || text === "/") return null;
+		let found = null;
+		for (const [recordId, info] of Object.entries(this.folderMap || {})) {
+			if (!info || !info.stem) continue;
+			const folder = this.getPaperSubFolder(info.stem);
+			if (text !== folder && !text.startsWith(`${folder}/`)) continue;
+			if (info.zoteroSyncState !== "orphaned") return recordId;
+			found ||= recordId;
+		}
+		return found;
+	}
+
+	async openPaperForPublicApi(recordId, target) {
+		if (!recordId || !this.folderMap?.[recordId]?.stem) return false;
+		let path = "";
+		if (target === "note") path = this.getPaperNotePath(recordId);
+		else {
+			const entry = this.getHubEntries([recordId])[0];
+			path = entry ? this.resolveHubTargetPath(entry, target) : "";
+		}
+		const file = path ? this.app.vault.getAbstractFileByPath(path) : null;
+		if (!(file instanceof obsidian.TFile)) return false;
+		return !!await this.openRectoFile(file);
+	}
+
+	async revealPaperInHub(recordId) {
+		if (!recordId || !this.folderMap?.[recordId]) return false;
+		await this.activateRectoHub();
+		const view = this.getOpenHubViews()[0];
+		return !!(view && typeof view.revealRecord === "function" && view.revealRecord(recordId));
+	}
+
+	getPublicHubSelection() {
+		const view = this.getOpenHubViews()[0];
+		return view && typeof view.getPublicSelection === "function" ? view.getPublicSelection() : [];
+	}
 	getVaultRelativePath(absPath) {
 		const root = nodePath.resolve(this.app.vault.adapter.basePath);
 		const target = nodePath.resolve(absPath);
@@ -21299,6 +21648,35 @@ class RectoPlugin extends obsidian.Plugin {
 			{ language: name ? (activeRectoUiLocale === "en" ? ` · ${name}` : name) : "" }) };
 	}
 
+	// T141：论文库根目录有用户的 paper-note-template.md 就照它生成；没有（或论文库设置无效）保持内置内容。
+	// 模板只读不写；占位符取值来自 papers.jsonl 的同一份条目，链接按用户自己的 Obsidian 链接设置生成。
+	async buildPaperNoteContent(recordId, notePath, outline, appendOutline) {
+		let folder;
+		try { folder = this.getValidatedBaseFolder(); } catch { return outline; }
+		const vault = this.app.vault;
+		const templateFile = vault.getAbstractFileByPath(obsidian.normalizePath(folder ? `${folder}/${PAPER_NOTE_TEMPLATE_FILE}` : PAPER_NOTE_TEMPLATE_FILE));
+		if (!(templateFile instanceof obsidian.TFile)) return outline;
+		const template = await vault.read(templateFile);
+		const record = this.getPaperJsonlEntries().find(entry => entry.record_id === recordId) || null;
+		const link = relative => {
+			const file = relative && vault.getAbstractFileByPath(obsidian.normalizePath(folder ? `${folder}/${relative}` : relative));
+			if (!(file instanceof obsidian.TFile)) return "";
+			const manager = this.app.fileManager;
+			return manager && typeof manager.generateMarkdownLink === "function" ? manager.generateMarkdownLink(file, notePath) : `[[${file.path}]]`;
+		};
+		const translations = Array.isArray(record?.translations) ? record.translations : [];
+		const target = migrateDocumentLanguages(this.settings).translationTarget?.id;
+		const translation = translations.find(item => item.language === target)?.path || record?.ch_path || translations[0]?.path;
+		const values = buildPaperNoteTemplateValues(record, {
+			outline,
+			pdf_link: link(record?.pdf_path),
+			source_link: link(record?.source_path),
+			translation_link: link(translation),
+			summary_link: link(record?.summary_path),
+		});
+		return renderPaperNoteTemplate(template, values, { appendOutline });
+	}
+
 	async openPaperNote(recordId, style = this.getPaperNoteStyle()) {
 		// One creation/open per in-flight click sequence, shared across Hub views.
 		this.paperNotePromises ||= new Map();
@@ -21316,13 +21694,14 @@ class RectoPlugin extends obsidian.Plugin {
 					if (file) return;
 					const outline = style === "outline" ? await this.readPaperNoteOutline(recordId) : null;
 					if (outline && !outline.content) throw new Error(outline.description);
+					const content = await this.buildPaperNoteContent(recordId, path, outline?.content || "", !!outline);
 					this.throwIfUnloaded(operation);
 					await this.ensureFolder(this.getPaperSubFolder(this.folderMap[recordId].stem));
 					this.throwIfUnloaded(operation);
 					// Recheck after I/O; create never modifies an existing note, including an empty one.
 					file = vault.getAbstractFileByPath(path);
 					if (!file) {
-						try { file = await vault.create(path, outline?.content || ""); created = true; }
+						try { file = await vault.create(path, content); created = true; }
 						catch (error) { file = vault.getAbstractFileByPath(path); if (!(file instanceof obsidian.TFile)) throw error; }
 					}
 				}, { independent: true });
@@ -25025,6 +25404,9 @@ function createRectoHubViewClass(api) {
 			container.empty();
 			container.addClass("recto-hub-host");
 			this.rootEl = container.createDiv({ cls: "recto-ui recto-hub" });
+			// T141 公开样式钩子（docs/EXTENDING.md §6）：data-recto-* 只增不改，CSS 片段与其他插件可以依赖；
+			// 类名与 data-hub-* 仍是内部实现。
+			this.rootEl.dataset.rectoView = "hub";
 			// 队列条常驻在最底部、横跨整个 Hub，所以 root 是纵向的，三栏收进 body。
 			this.bodyEl = this.rootEl.createDiv({ cls: "recto-hub-body" });
 			this.navEl = this.bodyEl.createDiv({ cls: "recto-hub-nav" });
@@ -25162,6 +25544,10 @@ function createRectoHubViewClass(api) {
 		}
 
 		async onClose() {
+			if (this.publishedSelectionKey && this.publishedSelectionKey !== "[]") {
+				this.publishedSelectionKey = "[]";
+				emitRectoHubSelectionChanged(this.app.workspace, []);
+			}
 			this.clearBrandConfetti();
 			this.releaseBrandConfetti?.();
 			this.releaseBrandConfetti = null;
@@ -25346,6 +25732,7 @@ function createRectoHubViewClass(api) {
 		reload(options = {}) {
 			this.closeFlagMenu();
 			this.closeContextMenu();
+			this.publicRecordCache = null;
 			try {
 				this.entries = this.plugin.getHubEntries();
 				this.loadError = "";
@@ -25946,6 +26333,9 @@ function createRectoHubViewClass(api) {
 			const unconverted = entry.conversionStatus !== "converted";
 			const row = this.listEl.createDiv({ cls: "recto-hub-row" });
 			row.dataset.hubRecord = entry.recordId;
+			row.dataset.rectoRecordId = entry.recordId;
+			row.dataset.rectoReadingStatus = entry.readingStatus;
+			row.dataset.rectoConversionStatus = unconverted ? "unconverted" : "converted";
 			row.draggable = true;
 			row.toggleClass("is-active", entry.recordId === this.selectedRecordId);
 			row.toggleClass("is-selected", this.selectedIds.has(entry.recordId));
@@ -26048,6 +26438,8 @@ function createRectoHubViewClass(api) {
 			this.finishHubNote();
 			this.closeReadMenu();
 			this.detailEl.empty();
+			delete this.detailEl.dataset.rectoRecordId;
+			this.publishSelection();
 			// 所有分支（多选面板、空态、单篇）都要有返回按钮，所以排在分流之前。
 			this.renderPaneBack();
 			if (this.isBatchMode()) {
@@ -26055,6 +26447,7 @@ function createRectoHubViewClass(api) {
 				return;
 			}
 			const entry = this.getSelectedEntry();
+			if (entry) this.detailEl.dataset.rectoRecordId = entry.recordId;
 			if (!entry) {
 				this.detailEl.createDiv({ cls: "recto-hub-empty", text: rectoUiText("hub.choosePaper") });
 				return;
@@ -26101,6 +26494,7 @@ function createRectoHubViewClass(api) {
 			this.renderHubNote(entry);
 			this.renderProcessActions(this.detailEl, [entry]);
 			this.renderOpenActions(entry);
+			this.renderExtensionSections(entry);
 		}
 
 		renderHubNote(entry) {
@@ -27001,6 +27395,7 @@ function createRectoHubViewClass(api) {
 			add(menu, countLabel("hub.context.convert", summary.unconverted), "file-cog", "convert", !summary.unconverted);
 			add(menu, countLabel("hub.context.translate", translatable), "languages", "translate", !translatable);
 			menu.addSeparator();
+			this.appendExtensionMenuItems(menu, ids);
 			add(menu, countLabel("hub.context.rename"), "pencil", "rename");
 			add(menu, countLabel("hub.context.delete"), "trash-2", "delete");
 			this.contextMenu = menu;
@@ -27858,6 +28253,94 @@ function createRectoHubViewClass(api) {
 			});
 	}
 
+		// ── T142 公开扩展点（docs/EXTENDING.md §5）────────────────────────
+		// 给扩展的论文一律是 papers.jsonl 条目的拷贝。整库条目每次 reload 只算一次：详情栏会在后台
+		// 反复重画，每画一次都重建索引太贵。reload 与原地改阅读状态时作废。
+		getPublicPaperRecords() {
+			if (!this.publicRecordCache) {
+				try { this.publicRecordCache = new Map(this.plugin.getPaperJsonlEntries().map(entry => [entry.record_id, entry])); }
+				catch (error) {
+					console.warn("Recto: paper records unavailable for extensions", getSanitizedErrorMessage(error));
+					this.publicRecordCache = new Map();
+				}
+			}
+			return this.publicRecordCache;
+		}
+
+		getPublicSelection() {
+			if (this.isBatchMode()) return this.visible.filter(entry => this.selectedIds.has(entry.recordId)).map(entry => entry.recordId);
+			return this.selectedRecordId && this.getSelectedEntry() ? [this.selectedRecordId] : [];
+		}
+
+		publishSelection() {
+			const ids = this.getPublicSelection();
+			const key = JSON.stringify(ids);
+			if (key === (this.publishedSelectionKey || "[]")) return;
+			this.publishedSelectionKey = key;
+			emitRectoHubSelectionChanged(this.app.workspace, ids);
+		}
+
+		// 扩展区块排在详情栏最底部，不把阅读、转换这些主按钮往下挤。每块各自兜错：一块出错只在
+		// 它自己的位置显示一行提示，其余详情照常。异步渲染用 context.isCurrent() 判断是否已被换掉。
+		renderExtensionSections(entry) {
+			const sections = this.plugin.publicExtensions?.detailSections || [];
+			if (!sections.length) return;
+			const record = this.getPublicPaperRecords().get(entry.recordId);
+			if (!record) return;
+			const token = this.extensionRenderToken = (this.extensionRenderToken || 0) + 1;
+			for (const section of sections.slice()) {
+				const el = this.detailEl.createEl("section", { cls: "recto-hub-extension" });
+				el.dataset.rectoExtension = section.id;
+				if (section.title) el.createDiv({ cls: "recto-hub-extension-title" }).createSpan({ text: section.title });
+				const body = el.createDiv({ cls: "recto-hub-extension-body" });
+				const context = Object.freeze({ isCurrent: () => token === this.extensionRenderToken && body.isConnected });
+				runRectoExtensionCallback(section.id, () => section.render(body, cloneRectoPublicValue(record), context), () => {
+					if (!body.isConnected) return;
+					body.empty();
+					body.createDiv({ cls: "recto-hub-extension-error", text: rectoUiText("hub.extension.failed", { name: section.title || section.id }) });
+				});
+			}
+		}
+
+		// 扩展菜单项自成一组，放在「重命名 / 删除」之上：危险操作始终留在菜单最底部。
+		// when 必须同步返回 true 才显示；它抛错就当不显示。
+		appendExtensionMenuItems(menu, ids) {
+			const items = this.plugin.publicExtensions?.menuItems || [];
+			if (!items.length) return;
+			const records = this.getPublicPaperRecords();
+			const papers = ids.map(id => records.get(id)).filter(Boolean);
+			if (!papers.length) return;
+			let added = false;
+			for (const item of items.slice()) {
+				let visible = !item.when;
+				if (item.when) runRectoExtensionCallback(item.id, () => { visible = item.when(cloneRectoPublicValue(papers)) === true; });
+				if (!visible) continue;
+				menu.addItem(menuItem => {
+					menuItem.setTitle(item.title).onClick(() => {
+						runRectoExtensionCallback(item.id, () => item.onClick(cloneRectoPublicValue(papers)),
+							() => showRectoNotice(rectoUiText("hub.extension.failed", { name: item.title }), { tone: "error" }));
+					});
+					if (item.icon) menuItem.setIcon(item.icon);
+				});
+				added = true;
+			}
+			if (added) menu.addSeparator();
+		}
+
+		// api.revealInHub：清掉会把这篇筛掉的条件，退出待补视图，选中并滚到这一行。
+		revealRecord(recordId) {
+			if (!this.entries.some(entry => entry.recordId === recordId)) return false;
+			if (this.pendingMode) this.setPendingMode(false);
+			if (!this.visible.some(entry => entry.recordId === recordId)) this.clearHubFilter("all");
+			const index = this.visible.findIndex(entry => entry.recordId === recordId);
+			if (index < 0) return false;
+			while (this.renderedCount <= index && this.renderedCount < this.visible.length) this.appendListChunk();
+			this.setSelection([recordId], recordId, { anchor: recordId });
+			const row = this.findRowEl(recordId);
+			if (row && typeof row.scrollIntoView === "function") row.scrollIntoView({ block: "nearest" });
+			return true;
+		}
+
 		async cycleStatus(recordId) {
 			const entry = this.entries.find(item => item.recordId === recordId);
 			if (!entry || !entry.readingKey) return;
@@ -27872,6 +28355,7 @@ function createRectoHubViewClass(api) {
 				const next = await this.plugin.cycleReadingStatusByKey(entry.readingKey);
 				if (!next) return;
 				entry.readingStatus = next;
+				this.publicRecordCache = null;
 				this.renderNav();
 				// 只在按阅读状态筛选（这条可能要离开列表）或按状态排序时才重排；
 				// 否则原地改这一个圆点就够了，不必重画列表把滚动位置丢掉。
@@ -27880,6 +28364,7 @@ function createRectoHubViewClass(api) {
 					return;
 				}
 				const row = this.findRowEl(recordId);
+				if (row) row.dataset.rectoReadingStatus = next;
 				const dot = row ? row.querySelector("[data-hub-status-toggle]") : null;
 				if (dot) {
 					dot.className = `recto-hub-dot is-${next}`;
@@ -31208,13 +31693,6 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 
 		const inboxSetting = new obsidian.Setting(container).setName(t("settings.paperIntakeInbox")).setDesc(t("settings.paperIntakeInboxDesc"));
 		bindRectoInlineFeedback(this, "paper-intake-inbox", inboxSetting.descEl);
-		// T125：手动设置时告诉用户去哪看下载位置（浏览器内部地址，点一下复制）。
-		const inboxHint = inboxSetting.descEl.createDiv({ cls: "recto-settings-intake-hint" });
-		for (const part of t("settings.paperIntakeInboxHint", { edge: "{edge}", chrome: "{chrome}" }).split(/(\{edge\}|\{chrome\})/)) {
-			if (part === "{edge}") copyable(inboxHint, "edge://settings/downloads");
-			else if (part === "{chrome}") copyable(inboxHint, "chrome://settings/downloads");
-			else if (part) inboxHint.createSpan({ text: part });
-		}
 		const pathLine = inboxSetting.descEl.createDiv({ cls: "recto-settings-path-line" });
 		const valueEl = pathLine.createEl("code", { cls: "recto-settings-path-value", text: s.paperIntakeInboxFolder || t("settings.paperIntakeInboxAuto") });
 		let resetButton = null;
@@ -32268,6 +32746,10 @@ if (process.env.NODE_ENV === "test") {
 		matchesReaderSelectionRect,
 		isReaderSelectionColorVisible,
 		extractMarkdownHeadingOutline,
+		renderPaperNoteTemplate,
+		buildPaperNoteTemplateValues,
+		PAPER_NOTE_TEMPLATE_FILE,
+		PAPER_NOTE_TEMPLATE_PLACEHOLDERS,
 		extractRectoTranslatedTitle,
 		extractSummaryBrief,
 		extractWikiLinkPath,
@@ -32365,6 +32847,15 @@ if (process.env.NODE_ENV === "test") {
 		sanitizePersistedPendingTask,
 		scanRectoBlockAnchors,
 		serializePaperJsonl,
+		createRectoPublicApi,
+		diffPaperJsonlEntries,
+		emitRectoLibraryChanged,
+		RECTO_PUBLIC_API_VERSION,
+		RECTO_PAPER_SCHEMA_VERSION,
+		RECTO_PUBLIC_EVENTS,
+		RECTO_PUBLIC_OPEN_TARGETS,
+		RECTO_API_READY_EVENT,
+		RECTO_API_UNLOAD_EVENT,
 		shouldRejectBackendMockResult,
 		stripObsoleteLocalSettings,
 		assertRectoPublicArtifactContract,

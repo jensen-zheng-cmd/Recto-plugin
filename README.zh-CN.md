@@ -102,7 +102,9 @@ Recto 旨在衔接这一工作流：将论文导入 Obsidian，转换为 Markdow
 
 ## 开发说明
 
-本仓库为社区插件市场的发布页面，包含中英文 README、隐私说明、许可、媒体素材及分发所需的三个文件，安装文件附于 Release。日常开发在独立的私有仓库进行。
+本仓库为社区插件市场的发布页面，包含中英文 README、隐私说明、许可、开发者契约、媒体素材及分发所需的三个文件，安装文件附于 Release。日常开发在独立的私有仓库进行。
+
+想在 Recto 之上开发插件、脚本、Dataview/Bases 视图或 AI Agent 工作流，请看 [Extending Recto](docs/EXTENDING.md)（英文）：论文库布局、`papers.jsonl` 字段、frontmatter 键，以及只读插件 API 与 `library-changed` 事件。
 
 ## 第三方字体
 
