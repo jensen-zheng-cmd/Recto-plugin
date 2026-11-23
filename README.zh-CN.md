@@ -1,4 +1,4 @@
-# Zotero PDF OCR and Translation - Recto
+# Zotero PDF OCR and Translation - RectoPaper
 
 [English](https://github.com/jensen-zheng-cmd/Recto-plugin/blob/main/README.md) | **简体中文**
 
@@ -6,7 +6,7 @@
 
 ![Recto 论文库](assets/hub.png)
 
-下方图片与动图沿用早期版本的中文界面演示。当前已支持简体中文与英文界面，部分按钮位置和操作方式有所调整。
+截图为早期版本界面。当前支持简体中文与英文界面。
 
 ## 背景
 
@@ -25,6 +25,10 @@ Recto 旨在衔接这一工作流：将论文导入 Obsidian，转换为 Markdow
 ![一键导入 Zotero](assets/zotero-import.gif)
 
 ![发起转换与翻译](assets/convert-translate.gif)
+
+## 不用 Zotero 也能添加论文
+
+在论文库工具栏粘贴 DOI、arXiv 编号、题名或论文页链接，Recto 自动查找合法公开的全文入库，可以只加入 Recto，也可以同时加入 Zotero。拿不到公开 PDF 的论文进入「待补 PDF」：直接拖入 PDF，或用浏览器扩展借助日常浏览器的登录取件。
 
 ## 双语逐段对照，同步滚动
 
@@ -50,6 +54,8 @@ Recto 旨在衔接这一工作流：将论文导入 Obsidian，转换为 Markdow
 
 沿用 Zotero 分类树结构，按处理状态筛选论文。单篇论文可标记为未读、在读、已读，支持按标题、作者、期刊、分类检索。后续检查 Zotero 更新时，可导入新论文、刷新分类信息，保留已有阅读产物。
 
+可以移动论文、新建和重命名分类，不改动 Zotero。设置命名规则（如「作者 年份 - 题名」）后，已有论文可预览后批量改名，笔记与 Canvas 里的链接一起更新。论文拖进笔记或 Canvas 时是真实的链接或文件卡片。
+
 ![论文库筛选与阅读状态](assets/library-filter.gif)
 
 ## 生成结构化摘要
@@ -58,9 +64,13 @@ Recto 旨在衔接这一工作流：将论文导入 Obsidian，转换为 Markdow
 
 ![AI 摘要](assets/ai-summary.png)
 
+## 复制引用
+
+复制 GB/T 7714、APA 7、IEEE、MLA 9 格式的参考文献，或导出 BibTeX、RIS、CSL-JSON；粘贴到 Word 时期刊名保留斜体。详情栏会提示缺少的引用信息（卷、页码等），可以从 Crossref 补全。
+
 ## 安装
 
-**通过社区插件市场安装**：设置 → 第三方插件 → 浏览 → 搜索 **Recto** → 安装并启用。
+**通过社区插件市场安装**：设置 → 第三方插件 → 浏览 → 搜索 **RectoPaper** → 安装并启用。也可以直接打开[插件页面](https://obsidian.md/plugins?id=recto)。
 
 **手动安装**：前往 [Releases](https://github.com/jensen-zheng-cmd/Recto-plugin/releases) 下载 `main.js`、`manifest.json`、`styles.css` 三个文件，置于 `<your vault>/.obsidian/plugins/recto/` 目录下，重启 Obsidian 后启用。
 
@@ -81,12 +91,14 @@ Recto 旨在衔接这一工作流：将论文导入 Obsidian，转换为 Markdow
 - **仅支持 Obsidian 桌面端**。需读取本地文件系统，移动端不适用。
 - **Zotero 导入需要本地 PDF 附件**。仅云端存储、尚未下载的附件须先下载；独立 PDF 转换与 Markdown 翻译不要求 Zotero。
 - **云端处理需注册免费 Recto 账号并联网**。PDF 转换当前免费，翻译按页消耗额度，购买的额度永久有效。注册或邀请赠送以账号页展示为准；库内翻译时选取摘要不额外扣除翻译页数。
-- **当前支付方式为微信支付，人民币计价**。海外银行卡支付与 Google 登录尚未开放，请使用邮箱注册与登录。
+- **支付方式**：微信支付（人民币）或经 Paddle 的银行卡支付（美元），默认按访问地区选择，付款页可以手动切换。可用邮箱、Google 或 GitHub 登录。
 - **对照阅读需要对应文件就绪**。原文/译文对照需两份文档，PDF 对照还需 PDF 与定位数据；独立 PDF 转换时，如需对照，请开启保留 PDF 对照所需文件的选项。
 
 ## 网络服务说明
 
 转换、摘要与翻译任务均提交至 **Recto 云端服务**（`api.rectoai.uk`）处理。转换上传所选 PDF；翻译上传结构化文本，翻译已有 Markdown 时会发送该文件的文本。账号与额度管理亦通过 Recto 服务。数据流转方式、留存时长及本地保留范围，详见 [隐私与数据说明](https://github.com/jensen-zheng-cmd/Recto-plugin/blob/main/PRIVACY.md)。
+
+按 DOI、arXiv 编号、题名或链接添加论文时，查询由本机直接发往 OpenAlex、Unpaywall、Crossref、Semantic Scholar 与 arXiv；粘贴链接时会读取该论文页面。这些查询不经过 Recto 服务器，也不绕过付费墙。
 
 ## 开发说明
 

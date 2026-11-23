@@ -1,4 +1,4 @@
-# Zotero PDF OCR and Translation - Recto
+# Zotero PDF OCR and Translation - RectoPaper
 
 **English** | [简体中文](https://github.com/jensen-zheng-cmd/Recto-plugin/blob/main/README.zh-CN.md)
 
@@ -6,7 +6,7 @@
 
 ![Recto paper library](assets/hub.png)
 
-The screenshots and recordings show the Chinese interface from earlier versions. Recto now supports English and Simplified Chinese; some controls have since changed.
+Screenshots show an earlier Chinese interface. Recto supports English and Simplified Chinese.
 
 ## Background
 
@@ -25,6 +25,10 @@ Recto can also copy a paper's Zotero quick note on its first import. The optiona
 ![Import from Zotero](assets/zotero-import.gif)
 
 ![Convert and translate papers](assets/convert-translate.gif)
+
+## Add papers without Zotero
+
+Paste a DOI, arXiv ID, title, or paper page link into the library toolbar. Recto looks for a legal open-access full text and adds the paper to Recto, or to both Recto and Zotero. Papers without an open PDF wait under **Needs PDF**: drop in a PDF, or fetch it through the browser extension using your own browser sign-in.
 
 ## Read originals and translations side by side
 
@@ -50,6 +54,8 @@ Conversion produces Markdown with renderable equations, tables, and illustration
 
 Browse the Zotero collection tree, filter papers by processing status, and mark them as unread, reading, or read. Search by title, author, publication, or collection. Subsequent Zotero checks can bring in new papers and refresh collection information without replacing existing reading outputs.
 
+Move papers between collections and create or rename collections without changing Zotero. A naming rule such as "Author Year - Title" can rename existing papers after a preview, and links in notes and Canvas follow. Drag a paper into a note or Canvas to insert a real link or file card.
+
 ![Library filters and reading status](assets/library-filter.gif)
 
 ## Generate structured summaries
@@ -58,9 +64,13 @@ When translating papers from the library, you can also request a summary and cho
 
 ![AI summary](assets/ai-summary.png)
 
+## Copy citations
+
+Copy a reference in GB/T 7714, APA 7, IEEE, or MLA 9, or export BibTeX, RIS, or CSL-JSON. Journal names stay italic when pasted into Word. The detail panel flags missing fields such as volume or pages and can complete them from Crossref.
+
 ## Installation
 
-**Community plugins**: Settings → Community plugins → Browse → search for **Recto** → Install and enable.
+**Community plugins**: Settings → Community plugins → Browse → search for **RectoPaper** → Install and enable. Or open the [plugin page](https://obsidian.md/plugins?id=recto) directly.
 
 **Manual installation**: download `main.js`, `manifest.json`, and `styles.css` from [Releases](https://github.com/jensen-zheng-cmd/Recto-plugin/releases). Place them in `<your vault>/.obsidian/plugins/recto/`, restart Obsidian, and enable the plugin.
 
@@ -81,12 +91,14 @@ You can also convert PDFs outside the Zotero library or translate an existing Ma
 - **Obsidian desktop only.** Recto reads the local filesystem; mobile is not supported.
 - **Zotero library import requires local PDF attachments.** Cloud-only attachments must be downloaded first. Independent PDF conversion and Markdown translation do not require Zotero.
 - **Cloud processing requires a free Recto account and an internet connection.** PDF conversion is currently free. Translation uses page credits; purchased credits do not expire. Any signup or invitation allowance is shown on the account page. An optional summary requested with library translation does not use additional translation pages.
-- **Payments currently use WeChat Pay in CNY.** International card checkout and Google sign-in are not yet available. Use email registration and sign-in.
+- **Payments**: WeChat Pay (CNY) or card checkout via Paddle (USD). The default follows your region, and you can switch on the checkout page. Sign in with email, Google, or GitHub.
 - **Comparison requires matching files.** Original/translation comparison needs both documents; PDF comparison also needs the PDF and its mapping data. For independent PDF conversion, enable the option to retain files for PDF comparison if needed.
 
 ## Network services
 
 Conversion, summary, and translation requests go to the **Recto cloud service** (`api.rectoai.uk`). Conversion uploads the selected PDF. Translation uploads structured text; translating an existing Markdown file sends that file's text for processing. Account and credit management also use Recto's service. For data handling, retention, and local storage details, see [Privacy and data](https://github.com/jensen-zheng-cmd/Recto-plugin/blob/main/PRIVACY.md).
+
+Adding papers by DOI, arXiv ID, title, or link queries OpenAlex, Unpaywall, Crossref, Semantic Scholar, and arXiv directly from your device, and reads the publisher page for a pasted link. These lookups do not pass through Recto's servers, and paywalls are never bypassed.
 
 ## Development
 

@@ -1,9 +1,9 @@
 {
   "id": "recto",
-  "name": "Zotero PDF OCR and Translation - Recto",
-  "version": "1.1.32",
+  "name": "Zotero PDF OCR and Translation - RectoPaper",
+  "version": "1.1.33",
   "minAppVersion": "1.4.0",
-  "description": "Import your Zotero library and PDFs, convert papers to Markdown with OCR, and translate them into multiple languages for side-by-side reading.",
+  "description": "Import Zotero papers or add them by DOI or arXiv, convert PDFs to Markdown with OCR, translate them for bilingual side-by-side reading, and copy citations in APA, IEEE, GB/T 7714 or BibTeX.",
   "author": "Jensen Zheng",
   "isDesktopOnly": true
 }
