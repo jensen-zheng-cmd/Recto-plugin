@@ -123,10 +123,15 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.interface": "界面",
 		"settings.uiLanguage": "界面语言",
 		"settings.interfaceAccent": "界面强调色",
-		"settings.interfaceAccentDesc": "背景跟随 Obsidian，不影响阅读主题。",
+		"settings.interfaceAccentDesc": "主按钮、选中与链接的颜色，不影响阅读主题。",
 		"settings.interfaceAccent.red": "朱红",
 		"settings.interfaceAccent.blue": "蓝色",
 		"settings.interfaceAccent.green": "青绿",
+		"settings.interfaceAccent.ink": "墨黑",
+		"settings.interfaceSurface": "论文库底色",
+		"settings.interfaceSurfaceDesc": "中性灰不跟随 Obsidian 主题，只作用于论文库。",
+		"settings.interfaceSurface.theme": "跟随主题",
+		"settings.interfaceSurface.neutral": "中性灰",
 		"settings.uiLanguageDesc": "默认跟随 Obsidian。手动选择只改变 Recto 界面，不改变论文处理语言。",
 		"settings.followObsidian": "跟随 Obsidian",
 		"settings.intro": "登录账号、指好 Zotero 文件夹，然后把论文导入论文库，就可以开始转换与翻译。",
@@ -448,8 +453,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.clearAll": "全部清除",
 		"hub.expandCollection": "展开：{name}",
 		"hub.collapseCollection": "折叠：{name}",
-		"hub.totalCount": "{count} 篇",
-		"hub.countDetail": " · 已转换 {converted} · 有译文 {translated}",
 		"hub.loadFailed": "读取失败：{error}",
 		"hub.noPapers": "还没有论文",
 		"hub.importHint": "把 Zotero 论文库导进来就能开始。",
@@ -1340,10 +1343,15 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"settings.interface": "Interface",
 		"settings.uiLanguage": "Interface language",
 		"settings.interfaceAccent": "Interface accent",
-		"settings.interfaceAccentDesc": "Backgrounds follow Obsidian. Reading themes stay independent.",
+		"settings.interfaceAccentDesc": "Color of primary buttons, selection and links. Reading themes stay independent.",
 		"settings.interfaceAccent.red": "Vermilion",
 		"settings.interfaceAccent.blue": "Blue",
 		"settings.interfaceAccent.green": "Teal",
+		"settings.interfaceAccent.ink": "Ink",
+		"settings.interfaceSurface": "Library surface",
+		"settings.interfaceSurfaceDesc": "Neutral gray ignores the Obsidian theme and applies to the library only.",
+		"settings.interfaceSurface.theme": "Follow theme",
+		"settings.interfaceSurface.neutral": "Neutral gray",
 		"settings.uiLanguageDesc": "Follows Obsidian by default. A manual choice changes only the Recto interface, not paper processing languages.",
 		"settings.followObsidian": "Follow Obsidian",
 		"settings.intro": "Sign in, choose your Zotero folder, then import papers into your library to start converting and translating.",
@@ -1665,8 +1673,6 @@ const RECTO_UI_MESSAGES = Object.freeze({
 		"hub.clearAll": "Clear all",
 		"hub.expandCollection": "Expand: {name}",
 		"hub.collapseCollection": "Collapse: {name}",
-		"hub.totalCount": "{count} papers",
-		"hub.countDetail": " · {converted} converted · {translated} with translations",
 		"hub.loadFailed": "Could not load papers: {error}",
 		"hub.noPapers": "No papers yet",
 		"hub.importHint": "Import your Zotero library to get started.",
@@ -3027,12 +3033,16 @@ const EXTERNAL_OUTPUT_MODES = {
 };
 const DEFAULT_EXTERNAL_OUTPUT_FOLDER = "Recto 转换";
 
-const RECTO_INTERFACE_ACCENTS = ["red", "blue", "green"];
+const RECTO_INTERFACE_ACCENTS = ["red", "blue", "green", "ink"];
 const RECTO_INTERFACE_ACCENT_CLASSES = RECTO_INTERFACE_ACCENTS.map(accent => `recto-accent-${accent}`);
+// T146：论文库底色。theme = 跟随 Obsidian 主题（不挂类）；neutral = coss 中性灰，在 <html> 上挂 recto-surface-neutral。
+const RECTO_INTERFACE_SURFACES = ["theme", "neutral"];
+const RECTO_INTERFACE_SURFACE_CLASSES = ["recto-surface-neutral"];
 
 const DEFAULT_SETTINGS = {
 	uiLanguage: "follow",
 	interfaceAccent: "red",
+	interfaceSurface: "theme",
 	backendBaseUrl: DEFAULT_BACKEND_BASE_URL,
 	backendUserId: "",
 	backendSessionToken: "",
@@ -8334,7 +8344,9 @@ function normalizeHubViewState(raw) {
 		collectionPath: typeof value.collectionPath === "string" ? value.collectionPath : "",
 		includeSubcollections: typeof value.includeSubcollections === "boolean" ? value.includeSubcollections : true,
 		status: HUB_STATUS_FILTERS.includes(value.status) ? value.status : HUB_VIEW_STATE_DEFAULT.status,
-		conversion: HUB_CONVERSION_FILTERS.includes(value.conversion) ? value.conversion : HUB_VIEW_STATE_DEFAULT.conversion,
+		// T145：转换状态 chips 行已删，界面上再没有入口能设它。旧 data.json 里存的「有译文」「待处理」
+		// 若照旧恢复，列表会被一个看不见的条件筛短，所以一律回到「全部」。键仍保留，旧状态读写不报错。
+		conversion: HUB_VIEW_STATE_DEFAULT.conversion,
 		sort,
 		descending: typeof value.descending === "boolean" ? value.descending : !!HUB_SORT_DEFAULT_DESC[sort],
 		collapsedPaths: Array.isArray(value.collapsedPaths)
@@ -14445,10 +14457,13 @@ class RectoPlugin extends obsidian.Plugin {
 		});
 		const accent = RECTO_INTERFACE_ACCENTS.includes(this.settings.interfaceAccent) ? this.settings.interfaceAccent : "red";
 		const activeClass = `recto-accent-${accent}`;
+		// T146：底色与强调色走同一条路，同一批窗口一起切换。
+		const surfaceClass = this.settings.interfaceSurface === "neutral" ? "recto-surface-neutral" : "";
 		this.interfaceAccentDocuments = new Set();
 		for (const doc of documents) {
 			if (!doc.documentElement || doc.defaultView?.closed) continue;
 			for (const className of RECTO_INTERFACE_ACCENT_CLASSES) doc.documentElement.classList.toggle(className, className === activeClass);
+			for (const className of RECTO_INTERFACE_SURFACE_CLASSES) doc.documentElement.classList.toggle(className, className === surfaceClass);
 			this.interfaceAccentDocuments.add(doc);
 		}
 	}
@@ -14507,7 +14522,7 @@ class RectoPlugin extends obsidian.Plugin {
 			this.disposePublicApi = null;
 			try { this.app.workspace.trigger(RECTO_API_UNLOAD_EVENT); } catch {}
 		}
-		for (const doc of this.interfaceAccentDocuments || []) doc.documentElement?.classList.remove(...RECTO_INTERFACE_ACCENT_CLASSES);
+		for (const doc of this.interfaceAccentDocuments || []) doc.documentElement?.classList.remove(...RECTO_INTERFACE_ACCENT_CLASSES, ...RECTO_INTERFACE_SURFACE_CLASSES);
 		this.interfaceAccentDocuments?.clear();
 		for (const stop of rectoBrandConfettiRuns.values()) stop();
 		for (const session of rectoBrandConfettiSessions.values()) session.dispose();
@@ -14558,6 +14573,7 @@ class RectoPlugin extends obsidian.Plugin {
 			};
 			this.settings.uiLanguage = normalizeRectoUiPreference(this.settings.uiLanguage);
 			if (!RECTO_INTERFACE_ACCENTS.includes(this.settings.interfaceAccent)) this.settings.interfaceAccent = "red";
+			if (!RECTO_INTERFACE_SURFACES.includes(this.settings.interfaceSurface)) this.settings.interfaceSurface = "theme";
 			this.settings.backendBaseUrl = String(this.settings.backendBaseUrl || DEFAULT_BACKEND_BASE_URL).trim() || DEFAULT_BACKEND_BASE_URL;
 			// T82-B-R：全量切 API 域名，不留过渡；已保存的旧默认地址一次性改写。
 			const legacyApiBase = "https://api.paper-brain.uk";
@@ -25413,7 +25429,6 @@ function createRectoHubViewClass(api) {
 			const main = this.bodyEl.createDiv({ cls: "recto-hub-main" });
 			this.toolbarEl = main.createDiv({ cls: "recto-hub-toolbar" });
 			this.crumbsEl = main.createDiv({ cls: "recto-hub-crumbs" });
-			this.chipsEl = main.createDiv({ cls: "recto-hub-chips" });
 			// 窄栏下详情是栈里的另一屏，这条是通往它的唯一入口（多选面板也只能从这儿进）。
 			// 宽档由 CSS 收起，所以它在那边既点不到也不占位。
 			this.paneJumpEl = main.createEl("button", { cls: "recto-hub-pane-jump" });
@@ -25466,9 +25481,8 @@ function createRectoHubViewClass(api) {
 			this.registerDomEvent(this.mainEl, "dragleave", (event) => this.handleMainDragLeave(event));
 			this.registerDomEvent(this.mainEl, "drop", (event) => this.handleMainDrop(event));
 			this.registerDomEvent(this.crumbsEl, "click", (event) => this.handleCrumbClick(event));
-			this.registerDomEvent(this.chipsEl, "click", (event) => this.handleChipClick(event));
 			this.registerDomEvent(this.headEl, "click", (event) => this.handleHeadClick(event));
-			// Hub 的筛选控件（列头、分类/阅读状态、面包屑、chips、队列折叠）都是裸 div/span——
+			// Hub 的筛选控件（列头、分类/阅读状态、面包屑、队列折叠）都是裸 div/span——
 			// 结构是 T69 方案 C 的分栏布局定的，不动结构。标了 role="button" + tabindex 之后就必须
 			// 自己实现激活：span 没有原生 Enter/Space。列头早就是这么接的，这里把那条先例抽出来复用，
 			// 而不是再抄四遍。焦点环不用管——styles.css 的 `.recto-ui [tabindex]:focus-visible` 通吃。
@@ -25476,7 +25490,6 @@ function createRectoHubViewClass(api) {
 				[this.headEl, (event) => this.handleHeadClick(event)],
 				[this.navEl, (event) => this.handleNavClick(event)],
 				[this.crumbsEl, (event) => this.handleCrumbClick(event)],
-				[this.chipsEl, (event) => this.handleChipClick(event)],
 				[this.queueEl, (event) => this.handleQueueClick(event)],
 			]) {
 				this.registerDomEvent(el, "keydown", (event) => {
@@ -25813,7 +25826,6 @@ function createRectoHubViewClass(api) {
 			if (!this.selectedRecordId && this.visible.length) this.selectedRecordId = this.visible[0].recordId;
 			this.persistViewState();
 			this.renderCrumbs();
-			this.renderChips();
 			this.renderHead();
 			this.renderList();
 			if (options.preserveScroll) {
@@ -26065,8 +26077,7 @@ function createRectoHubViewClass(api) {
 				? this.entries.filter(entry => hubEntryInCollection(entry, this.filters.collectionPath, this.filters.includeSubcollections))
 				: this.entries;
 			const summary = summarizeHubEntries(scoped);
-			// 这一列只管「这篇论文和我的关系」这一个维度；转换状态全部交给下面的 chips 行，
-			// 不再一列里混两种筛选（原来的「未转换」与 chips 的同名项是同一个筛选的两个入口）。
+			// 这一列只管「这篇论文和我的关系」这一个维度，不混转换状态（T145 起转换状态不再提供筛选入口）。
 			// **「最近」也是这一维**（T86-C）：正在读/已读/未读是手动标的，「最近」是插件自己记的
 			// ——打开过、转换过、导进来过。四项互斥、各带计数，点击语义与其余三项完全一样。
 			// 「最近」排在最前、带时钟图标、下面一条分隔线（T86-C 第四轮，用户拍板）。
@@ -26218,30 +26229,6 @@ function createRectoHubViewClass(api) {
 					this.renderNavTree(node.children, depth + 1, children.createDiv({ cls: "recto-hub-nav-children-inner" }));
 				}
 			}
-		}
-
-		renderChips() {
-			this.chipsEl.empty();
-			const chips = [
-				{ key: "all", label: rectoUiText("hub.conversion.all") },
-				{ key: "converted", label: rectoUiText("hub.conversion.converted") },
-				{ key: "translated", label: rectoUiText("hub.conversion.translated") },
-				{ key: "todo", label: rectoUiText("hub.conversion.todo") },
-			];
-			for (const chip of chips) {
-				const el = this.chipsEl.createSpan({ cls: "recto-hub-chip", text: chip.label });
-				el.dataset.hubConversion = chip.key;
-				this.markAsButton(el);
-				el.toggleClass("is-active", this.filters.conversion === chip.key);
-			}
-			const summary = summarizeHubEntries(this.visible);
-			// 明细拆成独立 span：窄栏由 CSS 收起，只留总数，位置让给筛选 chip（JS 不判宽度）。
-			const count = this.chipsEl.createSpan({ cls: "recto-hub-chip-count" });
-			count.createSpan({ text: rectoUiText("hub.totalCount", { count: summary.total }) });
-			count.createSpan({
-				cls: "recto-hub-chip-count-detail",
-				text: rectoUiText("hub.countDetail", { converted: summary.converted, translated: summary.translated }),
-			});
 		}
 
 		renderList() {
@@ -28057,7 +28044,7 @@ function createRectoHubViewClass(api) {
 				this.filters.collectionPath = "";
 				if (this.filters.status === "recent") this.filters.status = "all";
 			} else if (row.dataset.hubStatus !== undefined) {
-				// 只动阅读状态这一维，转换状态归 chips 行——两个控件各管一件事。
+				// 只动阅读状态这一维。
 				// T120：没有「全部论文」行了，再点一次已选中的状态即取消，与分类行同一规矩。
 				const next = row.dataset.hubStatus || "all";
 				this.filters.status = !leavingPending && this.filters.status === next ? "all" : next;
@@ -28106,14 +28093,6 @@ function createRectoHubViewClass(api) {
 				this.filters.sort = key;
 				this.filters.descending = !!HUB_SORT_DEFAULT_DESC[key];
 			}
-			this.applyFilters();
-		}
-
-		handleChipClick(event) {
-			const chip = event.target && event.target.closest ? event.target.closest("[data-hub-conversion]") : null;
-			if (!chip) return;
-			this.filters.conversion = chip.dataset.hubConversion;
-			this.renderNav();
 			this.applyFilters();
 		}
 
@@ -32436,20 +32415,21 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 				dropdown.onChange(value => { void this.plugin.setUiLanguagePreference(value); });
 			});
 		if (languageRow.settingEl && languageRow.settingEl.addClass) languageRow.settingEl.addClass("recto-settings-language");
-		new obsidian.Setting(container)
-			.setName(rectoUiText("settings.interfaceAccent"))
-			.setDesc(rectoUiText("settings.interfaceAccentDesc"))
+		// 界面外观（T146）：强调色与论文库底色是两个独立维度，保存失败都回滚并提示。
+		const addAppearanceDropdown = (key, fallback, values) => new obsidian.Setting(container)
+			.setName(rectoUiText(`settings.${key}`))
+			.setDesc(rectoUiText(`settings.${key}Desc`))
 			.addDropdown(dropdown => {
-				for (const key of RECTO_INTERFACE_ACCENTS) dropdown.addOption(key, rectoUiText(`settings.interfaceAccent.${key}`));
-				dropdown.setValue(s.interfaceAccent || "red");
+				for (const value of values) dropdown.addOption(value, rectoUiText(`settings.${key}.${value}`));
+				dropdown.setValue(s[key] || fallback);
 				dropdown.onChange(async value => {
-					const previous = s.interfaceAccent;
+					const previous = s[key];
 					dropdown.setDisabled(true);
-					s.interfaceAccent = value;
+					s[key] = value;
 					try { await this.plugin.save(); }
 					catch (error) {
-						s.interfaceAccent = previous;
-						dropdown.setValue(previous || "red");
+						s[key] = previous;
+						dropdown.setValue(previous || fallback);
 						showRectoNotice(rectoUiText("queue.saveFailed"), { tone: "error" });
 						return;
 					}
@@ -32457,6 +32437,8 @@ class RectoSettingTab extends obsidian.PluginSettingTab {
 					this.plugin.applyInterfaceAccent(container.ownerDocument);
 				});
 			});
+		addAppearanceDropdown("interfaceAccent", "red", RECTO_INTERFACE_ACCENTS);
+		addAppearanceDropdown("interfaceSurface", "theme", RECTO_INTERFACE_SURFACES);
 
 		this.renderPaperNamingSettings(container, s);
 
