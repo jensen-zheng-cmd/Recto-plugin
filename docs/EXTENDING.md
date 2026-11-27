@@ -19,7 +19,7 @@ Put your own notes, tags and properties in `note-<stem>.md` (or anywhere else yo
 
 ## 2. Library layout
 
-The library lives in one vault folder (setting: *paper library folder*, default `论文库`). Paths inside `papers.jsonl` are **relative to that folder**.
+The library lives in one vault folder (setting: *paper library folder*; new installs default to `Recto Library`, or `Recto 论文库` when the Recto interface is Chinese; existing installs keep the folder they already use, and the old default was `论文库`). Paths inside `papers.jsonl` are **relative to that folder**.
 
 ```
 <library>/
@@ -53,7 +53,7 @@ UTF-8, one JSON object per line, sorted by original title. Recto rewrites the wh
 | `title_zh` | string \| null | Translated title taken from the Chinese translation, if any. Display `title_zh ?? title_original`. |
 | `cite_label` | string \| null | Short citation label, e.g. `Smith et al. 2020`. |
 | `citekey` | string \| null | Zotero / Better BibTeX citation key. |
-| `csl` | object \| null | Standard CSL-JSON item (`id` is the citation key). Use it for bibliographies and exports. |
+| `csl` | object \| null | Standard CSL-JSON item (`id` is the citation key: the Better BibTeX key when present, otherwise generated; unique across the library and stable once assigned). Use it for bibliographies and exports. |
 | `authors` | string[] | Authors in order. |
 | `year` | string \| null | Publication year (from Zotero). |
 | `venue` | string \| null | Journal, conference or publisher. |

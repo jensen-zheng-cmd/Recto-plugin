@@ -2,7 +2,7 @@
 
 Honest disclosure for Obsidian Community review and for users. 与真实行为一致，不美化。
 
-最后更新 / Last updated: 2026-10-01
+最后更新 / Last updated: 2026-11-26
 
 ## 什么会离开本机 / What leaves your computer
 
@@ -36,12 +36,17 @@ operation/request IDs, the associated task ID, plugin/app versions, plugin sourc
 stable error codes and code locations/cause codes. They do not contain document text, PDF copies,
 filenames, local paths, passwords/tokens, arbitrary exception messages or HTTP bodies/headers.
 They are not forwarded to processing providers and do not track reading or browsing activity.
+Recto also records, at startup and when side-by-side reading opens, whether a fixed list of Obsidian
+internals it depends on is available (capability name and available/missing only), once per plugin and
+app version, so compatibility breaks after an Obsidian update are noticed early.
 
 使用转换、翻译或恢复时，Recto 记录操作开始、阶段及结果，包括提交请求前的本地拦截。
 启用云端处理且登录后，插件静默向 Recto 上传结构化诊断，供排障使用；包括随机操作/请求编号、
 关联任务编号、插件/应用版本、插件源码哈希、操作系统、耗时、数字量级、稳定错误码、代码位置及原因链错误码。
 诊断不含正文、PDF 副本、文件名、本地路径、密码/凭据、任意异常消息或请求/响应内容，
 不转发至处理供应商，不跟踪阅读或浏览行为。
+另外，启动时及打开双栏对照时，Recto 会检查它依赖的一组固定的 Obsidian 内部能力是否可用（只记能力名与可用/缺失），
+每个插件与应用版本只记一次，用于在 Obsidian 升级后尽早发现兼容问题。
 
 Pending reports are stored separately in the plugin directory (at most 250 events / 1 MiB).
 Network failures are retried with backoff across restarts. Reports are bound to the original account;
@@ -74,9 +79,12 @@ in subsequent reports; expiry cannot establish whether a server received a repor
   explicitly queue for cloud processing are uploaded.
   **Zotero**：Recto 可能读取 vault **之外**的本地 Zotero 数据库与 **storage**（只读导入）。不会整库
   上传；只有你明确加入云端处理队列的 PDF（或 Sidecar）才会上传。
-- Recto does **not** collect general usage analytics or ship ads or a self-update channel separate from
-  Obsidian's normal Community Plugin updates.
-  插件不采集一般使用行为统计、不展示动态广告；上面的操作诊断仅供排障。
+- Recto does **not** collect in-app behavior analytics (what you open, read, click or write in your
+  vault) or ship ads or a self-update channel separate from Obsidian's normal Community Plugin updates.
+  Apart from the operation diagnostics above, the only usage signal is the server-side daily activity
+  record described below.
+  插件不采集应用内行为统计（你在库里打开、阅读、点击或写了什么），不展示动态广告；除上面的操作诊断外，
+  唯一的使用信号是下文所述的服务端每日活跃记录。
 
 ## 服务观测与反馈 / Service analytics and feedback
 
@@ -85,6 +93,23 @@ in subsequent reports; expiry cannot establish whether a server received a repor
   and error codes. This is **server-side service data**, not client-side behavioral telemetry.
   后端会保留计费、交付、可靠性与支持所需的服务元数据，例如任务来源/类型、状态、页数或字符量、
   额度用量、处理时间与错误码。这是**服务端服务数据**，不是客户端行为遥测。
+- **Daily activity (signed-in only).** Every request the plugin sends to Recto carries the plugin
+  version and the plugin's interface language. When a signed-in request reaches the backend, it keeps
+  one row per account per day (China Standard Time): the date, plugin version and interface language.
+  It does not record which request it was, how many, or anything about your documents. This is used
+  to see retention and which plugin versions are in use. Requests made while signed out are not recorded.
+  **每日活跃（仅登录后）**：插件发往 Recto 的每个请求都带上插件版本与插件界面语言。已登录的请求到达后端时，
+  后端按北京时间每个账号每天保留一行：日期、插件版本、界面语言。不记录是哪个请求、请求了几次，也不涉及你的文档。
+  用于了解留存与各插件版本的使用情况。未登录时的请求不记录。
+- **Sign-up source.** If you enter an invite code when signing up, the account keeps which code it was
+  (a user's personal code or a campaign code Recto gives to a creator or channel), so invite rewards
+  can be granted and each channel's sign-ups counted. Leaving the field blank records nothing.
+  **注册来源**：注册时填写了邀请码，账号会记下是哪个码（某位用户的个人码，或 Recto 发给创作者 / 渠道的活动码），
+  用于发放邀请奖励与统计各渠道的注册人数。不填则不记录。
+- **Diagnostic daily totals.** Before diagnostic reports are deleted after 30 days, the backend keeps
+  per-day totals (counts, durations, page sums by operation, outcome, error code and plugin version)
+  without account identifiers.
+  **诊断日汇总**：诊断报告 30 天后删除；删除前，后端按天汇总成不含账号标识的总量（按操作、结果、错误码与插件版本的次数、耗时与页数）并长期保留。
 - The in-plugin feedback form stores only the submitting account, feedback category, message, and
   submission time that the user actively submits. Feedback does **not**
   automatically attach PDFs, paper text, vault paths, client logs, passwords, payment credentials,

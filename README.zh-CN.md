@@ -96,7 +96,7 @@ Recto 旨在衔接这一工作流：将论文导入 Obsidian，转换为 Markdow
 
 ## 网络服务说明
 
-转换、摘要与翻译任务均提交至 **Recto 云端服务**（`api.rectoai.uk`）处理。转换上传所选 PDF；翻译上传结构化文本，翻译已有 Markdown 时会发送该文件的文本。账号与额度管理亦通过 Recto 服务。数据流转方式、留存时长及本地保留范围，详见 [隐私与数据说明](https://github.com/jensen-zheng-cmd/Recto-plugin/blob/main/PRIVACY.md)。
+转换、摘要与翻译任务均提交至 **Recto 云端服务**（`api.rectoai.uk`）处理。转换上传所选 PDF；翻译上传结构化文本，翻译已有 Markdown 时会发送该文件的文本。账号与额度管理亦通过 Recto 服务。发往 Recto 的请求会带上插件版本与界面语言；对已登录账号，服务端每天保留一行活跃记录（日期、插件版本、界面语言）用于了解留存，并记下注册时填写的邀请码（如有）。不记录文档内容或应用内行为。数据流转方式、留存时长及本地保留范围，详见 [隐私与数据说明](https://github.com/jensen-zheng-cmd/Recto-plugin/blob/main/PRIVACY.md)。
 
 按 DOI、arXiv 编号、题名或链接添加论文时，查询由本机直接发往 OpenAlex、Unpaywall、Crossref、Semantic Scholar 与 arXiv；粘贴链接时会读取该论文页面。这些查询不经过 Recto 服务器，也不绕过付费墙。
 

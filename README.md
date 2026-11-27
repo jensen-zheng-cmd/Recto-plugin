@@ -96,7 +96,7 @@ You can also convert PDFs outside the Zotero library or translate an existing Ma
 
 ## Network services
 
-Conversion, summary, and translation requests go to the **Recto cloud service** (`api.rectoai.uk`). Conversion uploads the selected PDF. Translation uploads structured text; translating an existing Markdown file sends that file's text for processing. Account and credit management also use Recto's service. For data handling, retention, and local storage details, see [Privacy and data](https://github.com/jensen-zheng-cmd/Recto-plugin/blob/main/PRIVACY.md).
+Conversion, summary, and translation requests go to the **Recto cloud service** (`api.rectoai.uk`). Conversion uploads the selected PDF. Translation uploads structured text; translating an existing Markdown file sends that file's text for processing. Account and credit management also use Recto's service. Requests to Recto carry the plugin version and interface language; for signed-in accounts the server keeps one daily activity row (date, plugin version, interface language) to measure retention, plus the invite code used at sign-up, if any. No document content or in-app behavior is recorded. For data handling, retention, and local storage details, see [Privacy and data](https://github.com/jensen-zheng-cmd/Recto-plugin/blob/main/PRIVACY.md).
 
 Adding papers by DOI, arXiv ID, title, or link queries OpenAlex, Unpaywall, Crossref, Semantic Scholar, and arXiv directly from your device, and reads the publisher page for a pasted link. These lookups do not pass through Recto's servers, and paywalls are never bypassed.
 
